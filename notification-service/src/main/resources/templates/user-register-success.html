@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng ký thành công</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            color: #333;
+            padding: 20px;
+        }
+
+        .email-container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+        }
+
+        .header h2 {
+            color: #1a73e8;
+        }
+
+        .content {
+            line-height: 1.6;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+        }
+
+        .highlight {
+            color: #1a73e8;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <div class="header">
+        <h2>🎉 Chúc mừng bạn đã đăng ký thành công!</h2>
+    </div>
+    <div class="content">
+        <p>Xin chào <span class="highlight" th:text="${fullName}">Nguyễn Văn A</span>,</p>
+
+        <p>Bạn đã đăng ký tài khoản thành công với thông tin như sau:</p>
+
+        <ul>
+            <li><strong>ID người dùng:</strong> <span th:text="${userId}">user-id</span></li>
+            <li><strong>Email:</strong> <span th:text="${email}">example@email.com</span></li>
+            <li><strong>Số điện thoại:</strong> <span th:text="${phone}">0123456789</span></li>
+        </ul>
+
+        <p>Cảm ơn bạn đã đăng ký. Hãy đăng nhập để trải nghiệm dịch vụ của chúng tôi.</p>
+        <p>Trân trọng,<br/>Đội ngũ hỗ trợ</p>
+    </div>
+    <div class="footer">
+        &copy; 2025 Hệ thống quản lý. Mọi quyền được bảo lưu.
+    </div>
+</div>
+</body>
+</html>

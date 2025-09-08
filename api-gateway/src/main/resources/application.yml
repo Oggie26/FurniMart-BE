@@ -1,0 +1,87 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # Route cho Swagger UI của auth-service (ưu tiên)
+        - id: auth-service-swagger
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth-service/swagger-ui/**
+          filters:
+            - RewritePath=/auth-service/swagger-ui(?<remaining>.*), /swagger-ui${remaining}
+            - StripPrefix=1
+        # Route cho tài liệu API của auth-service
+        - id: auth-service-swagger-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth-service/v3/api-docs/**
+          filters:
+            - RewritePath=/auth-service/v3/api-docs(?<remaining>.*), /v3/api-docs${remaining}
+            - StripPrefix=1
+        # Route cho API của auth-service
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth-service/**
+          filters:
+            - StripPrefix=1
+        # Routes cho các service khác
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/order-service/**
+          filters:
+            - StripPrefix=1
+        - id: employee-service
+          uri: lb://employee-service
+          predicates:
+            - Path=/employee-service/**
+          filters:
+            - StripPrefix=1
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/inventory-service/**
+          filters:
+            - StripPrefix=1
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/user-service/**
+          filters:
+            - StripPrefix=1
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/product-service/**
+          filters:
+            - StripPrefix=1
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/notification-service/**
+          filters:
+            - StripPrefix=1
+
+  main:
+    web-application-type: reactive
+
+jwt:
+  secret: 9f932d15-6d6a-44d1-ada2-37436d260e1d
+  expiration: 3600000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+    register-with-eureka: true
+    fetch-registry: true
