@@ -8,7 +8,7 @@ import com.example.productservice.repository.CategoryRepository;
 import com.example.productservice.request.CategoryRequest;
 import com.example.productservice.response.CategoryResponse;
 import com.example.productservice.response.PageResponse;
-import com.example.productservice.service.inteface.ICategoryService;
+import com.example.productservice.service.inteface.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,7 +20,8 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CategoryService implements ICategoryService {
+public class CategoryServiceImpl implements CategoryService {
+
     private final CategoryRepository categoryRepository;
 
     @Override

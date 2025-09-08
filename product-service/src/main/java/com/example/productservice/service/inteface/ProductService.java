@@ -1,13 +1,12 @@
 package com.example.productservice.service.inteface;
 
-import com.example.productservice.entity.Product;
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductResponse;
 
 import java.util.List;
 
-public interface    IProductService {
+public interface ProductService {
     ProductResponse createProduct(ProductRequest productRequest);
     ProductResponse updateProduct(ProductRequest productRequest, String productId);
     void deleteProduct(String productId);

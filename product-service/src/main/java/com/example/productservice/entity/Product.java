@@ -1,7 +1,6 @@
 package com.example.productservice.entity;
 
 import com.example.productservice.enums.EnumStatus;
-import com.example.productservice.enums.EnumUnit;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -51,10 +50,6 @@ public class Product extends AbstractEntity {
 
     @Column(nullable = false)
     private Integer quantityPerBox;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EnumUnit unit;
 
     @Column(nullable = false)
     private String thumbnailImage;

@@ -53,6 +53,17 @@ public class AuthController {
                 .build();
     }
 
+    @GetMapping("/{username}")
+    public ApiResponse<AuthResponse> getUserByUsername(@PathVariable String username) {
+        AuthResponse authResponse = authService.getUserByUsername(username);
+        return ApiResponse.<AuthResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy thông tin người dùng thành công")
+                .data(authResponse)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
 
 
 }

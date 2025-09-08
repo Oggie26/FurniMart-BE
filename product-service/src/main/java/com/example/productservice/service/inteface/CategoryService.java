@@ -6,7 +6,7 @@ import com.example.productservice.response.PageResponse;
 
 import java.util.List;
 
-public interface ICategoryService {
+public interface CategoryService {
     CategoryResponse createCategory(CategoryRequest categoryRequest);
     CategoryResponse updateCategory(Long id ,CategoryRequest categoryRequest);
     void deleteCategory( Long categoryId);

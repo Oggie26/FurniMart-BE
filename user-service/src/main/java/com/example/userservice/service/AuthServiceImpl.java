@@ -57,10 +57,13 @@ public class AuthServiceImpl implements AuthService {
 
         return  AuthResponse.builder()
                 .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
                 .fullName(user.getFullName())
                 .gender(user.getGender())
                 .role(user.getRole())
                 .status(user.getStatus())
+                .password("********")
                 .build();
     }
 
@@ -81,6 +84,19 @@ public class AuthServiceImpl implements AuthService {
         String token = jwtService.generateToken(user.getUsername());
         return LoginResponse.builder()
                 .token(token)
+                .build();
+    }
+
+    @Override
+    public AuthResponse getUserByUsername(String username) {
+        User user = userRepository.findByUsernameAndIsDeletedFalse(username)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
+
+        return AuthResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .email(user.getEmail())
                 .build();
     }
 

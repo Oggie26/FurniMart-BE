@@ -1,7 +1,6 @@
 package com.example.productservice.request;
 
 import com.example.productservice.enums.EnumStatus;
-import com.example.productservice.enums.EnumUnit;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -48,8 +47,6 @@ public class ProductRequest {
     @NotNull(message = "Status is required")
     private EnumStatus status;
 
-    @NotNull(message = "Unit is required")
-    private EnumUnit unit;
 
     @NotBlank(message = "Thumbnail image URL is required")
     @Size(max = 255, message = "Thumbnail image URL must be at most 255 characters")
@@ -61,5 +58,4 @@ public class ProductRequest {
     @NotNull(message = "Brand ID is required")
     private String brandId;
 
-    private List<ImageProductRequest> images;
 }

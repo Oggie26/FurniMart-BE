@@ -1,7 +1,6 @@
 package com.example.productservice.response;
 
 import com.example.productservice.enums.EnumStatus;
-import com.example.productservice.enums.EnumUnit;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,8 +21,6 @@ public class ProductResponse {
     private Double unitPrice;
     private Integer quantityPerBox;
     private EnumStatus status;
-    private EnumUnit unit;
-    private List<ImageProductResponse> images;
     private String slug;
     private String thumbnailImage;
     private String categoryName;

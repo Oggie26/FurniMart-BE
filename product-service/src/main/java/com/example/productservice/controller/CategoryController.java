@@ -4,7 +4,7 @@ import com.example.productservice.request.CategoryRequest;
 import com.example.productservice.response.ApiResponse;
 import com.example.productservice.response.CategoryResponse;
 import com.example.productservice.response.PageResponse;
-import com.example.productservice.service.inteface.ICategoryService;
+import com.example.productservice.service.inteface.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryController {
 
-    private final ICategoryService categoryService;
+    private final CategoryService categoryService;
 
     @PostMapping
     @Operation(summary = "Tạo danh mục mới")

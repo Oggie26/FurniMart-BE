@@ -1,7 +1,6 @@
-package com.example.userservice.response;
+package com.example.productservice.response;
 
-import com.example.userservice.enums.EnumRole;
-import com.example.userservice.enums.EnumStatus;
+import com.example.productservice.enums.EnumRole;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
@@ -13,14 +12,9 @@ import lombok.Data;
 @Builder
 public class AuthResponse {
     private String id;
-    private String fullName;
     private String username;
-    private Boolean gender;
+    private String password;
     @Enumerated(EnumType.STRING)
     private EnumRole role;
-    @Enumerated(EnumType.STRING)
-    private String email;
-    private EnumStatus status;
-    private String password;
 }
 
