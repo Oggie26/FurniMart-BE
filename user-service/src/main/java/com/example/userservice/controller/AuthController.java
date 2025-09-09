@@ -1,7 +1,9 @@
 package com.example.userservice.controller;
 
 import com.example.userservice.request.AuthRequest;
+import com.example.userservice.request.RefreshTokenRequest;
 import com.example.userservice.request.RegisterRequest;
+import com.example.userservice.request.TokenRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
@@ -64,6 +66,29 @@ public class AuthController {
                 .build();
     }
 
+    @PostMapping("/logout")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Đăng xuất", description = "API đăng xuất và blacklist token")
+    public ResponseEntity<ApiResponse<String>> logout(@RequestBody TokenRequest tokenRequest) {
+        authService.logout(tokenRequest.getToken());
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đăng xuất thành công")
+                .data("Logged out successfully")
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh Token", description = "API tạo access token mới từ refresh token")
+    public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(@RequestBody @Valid RefreshTokenRequest request) {
+        LoginResponse loginResponse = authService.refreshToken(request.getRefreshToken());
+        return ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Refresh token thành công")
+                .data(loginResponse)
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
 
 }

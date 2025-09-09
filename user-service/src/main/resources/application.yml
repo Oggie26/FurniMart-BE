@@ -4,18 +4,22 @@ server:
 spring:
   application:
     name: user-service
-
   datasource:
     url: jdbc:postgresql://localhost:5432/user_db
     username: postgres
     password: 123456
-
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
     generate-ddl: true
-
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000
+  cache:
+    type: redis
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -30,6 +34,7 @@ spring:
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
   expiration: 3600000 # 1 hour
+  refreshExpiration: 604800000 # 7 days
 
 springdoc:
   swagger-ui:

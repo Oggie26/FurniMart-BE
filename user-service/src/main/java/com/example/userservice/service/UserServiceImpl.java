@@ -3,7 +3,6 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.User;
 import com.example.userservice.event.UserPlacedEvent;
-import com.example.userservice.feign.AuthClient;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.response.*;
 import com.example.userservice.service.inteface.UserService;
@@ -21,7 +20,6 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final AuthClient authClient;
     private final KafkaTemplate<String, UserPlacedEvent> kafkaTemplate;
     private final ApplicationEventPublisher publisher;
     private final PasswordEncoder passwordEncoder;
