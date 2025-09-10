@@ -1,7 +1,8 @@
 package com.example.userservice.service;
 
-import com.example.userservice.entity.User;
-import com.example.userservice.repository.UserRepository;
+import com.example.userservice.entity.Account;
+import com.example.userservice.entity.CustomUserDetails;
+import com.example.userservice.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -17,29 +18,29 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
-    private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
         return new CustomUserDetails(
-                user.getUsername(),
-                user.getPassword(),
-                user.getRole()
+                account.getEmail(),
+                account.getPassword(),
+                account.getRole()
         );
     }
 
-    public Optional<User> getCurrentAccount() {
+    public Optional<Account> getCurrentAccount() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return Optional.empty();
         }
 
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
-            return userRepository.findByIdAndIsDeletedFalse(user.getId());
+        if (principal instanceof Account account) {
+            return accountRepository.findByIdAndIsDeletedFalse(account.getId());
         }
 
         return Optional.empty();

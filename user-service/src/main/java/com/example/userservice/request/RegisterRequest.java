@@ -19,10 +19,6 @@ import java.util.Date;
 @NoArgsConstructor
 public class RegisterRequest {
 
-    @NotBlank(message = "Username must not be blank")
-    @Size(min = 6, max = 30, message = "Username must be between 6 and 30 characters")
-    private String username;
-
     @NotBlank(message = "Password must not be blank")
     @Size(min = 6, message = "Password must be at least 6 characters long")
     private String password;
@@ -44,6 +40,5 @@ public class RegisterRequest {
     @Past(message = "BirthDay must be a past date")
     private Date birthDay;
 
-    @Enumerated(EnumType.STRING)
-    EnumRole role;
+
 }

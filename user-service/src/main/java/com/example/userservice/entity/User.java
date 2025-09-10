@@ -14,20 +14,11 @@ import java.util.Date;
 @NoArgsConstructor
 @Builder
 @Table(name = "users")
-public class User extends AbstractEntity{
+public class User extends AbstractEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     String id;
-
-    @Column(unique = true)
-    String username;
-
-    @Column
-    String password;
-
-    @Column(unique = true)
-    String email;
 
     @Column
     String fullName;
@@ -48,11 +39,10 @@ public class User extends AbstractEntity{
     @Column
     String avatar;
 
-    @Enumerated(EnumType.STRING)
-    EnumRole role;
-
     @Column(unique = true, length = 20)
     String cccd;
 
-
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
 }

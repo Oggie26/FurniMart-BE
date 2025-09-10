@@ -14,7 +14,6 @@ import lombok.Data;
 public class AuthResponse {
     private String id;
     private String fullName;
-    private String username;
     private Boolean gender;
     @Enumerated(EnumType.STRING)
     private EnumRole role;

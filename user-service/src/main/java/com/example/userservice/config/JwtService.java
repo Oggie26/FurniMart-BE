@@ -25,22 +25,22 @@ public class JwtService {
     @Value("${jwt.refreshExpiration}")
     private long refreshExpiration;
 
-    public String generateToken(Map<String, Object> claims, String username) {
+    public String generateToken(Map<String, Object> claims, String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(username)
+                .setSubject(email)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(String email) {
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(email)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + refreshExpiration))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
@@ -80,6 +80,6 @@ public class JwtService {
     }
 
     public long getExpirationTime() {
-        return jwtExpiration; // Maps to access token expiration
+        return jwtExpiration;
     }
 }

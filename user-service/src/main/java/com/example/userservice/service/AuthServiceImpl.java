@@ -1,17 +1,20 @@
 package com.example.userservice.service;
 
 import com.example.userservice.config.JwtService;
+import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
+import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.AuthRequest;
 import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
 import com.example.userservice.service.inteface.AuthService;
+import com.example.userservice.util.EmailValidator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,49 +33,46 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
 
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (request.getUsername() == null || request.getPassword() == null) {
+        if (request.getEmail() == null || request.getPassword() == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         if (request.getPassword().length() < 6) {
             throw new AppException(ErrorCode.INVALID_PASSWORD);
         }
-        if (request.getUsername().length() < 6) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
 
-        // Check username exists
-        if (userRepository.findByUsernameAndIsDeletedFalse(request.getUsername()).isPresent()) {
-            throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
-        }
-
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
+        Account account = Account.builder()
                 .email(request.getEmail())
-                .phone(request.getPhone())
+                .password(passwordEncoder.encode(request.getPassword()))
                 .status(EnumStatus.ACTIVE)
-                .birthday(request.getBirthDay())
-                .gender(request.getGender())
-                .fullName(request.getFullName())
                 .role(EnumRole.CUSTOMER)
                 .build();
 
+        User user = User.builder()
+                .phone(request.getPhone())
+                .fullName(request.getFullName())
+                .status(EnumStatus.ACTIVE)
+                .gender(request.getGender())
+                .birthday(request.getBirthDay())
+                .account(account)
+                .build();
+
+        accountRepository.save(account);
         userRepository.save(user);
 
         return AuthResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
+                .id(account.getId())
+                .email(account.getEmail())
+                .role(account.getRole())
                 .fullName(user.getFullName())
                 .gender(user.getGender())
-                .role(user.getRole())
-                .status(user.getStatus())
+                .status(account.getStatus())
                 .password("********")
                 .build();
     }
@@ -80,26 +80,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(AuthRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        User user = userRepository.findByUsernameAndIsDeletedFalse(request.getUsername())
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 
-        if (EnumStatus.INACTIVE.equals(user.getStatus())) {
+        if (EnumStatus.INACTIVE.equals(account.getStatus())) {
             throw new AppException(ErrorCode.USER_BLOCKED);
         }
-        if (EnumStatus.DELETED.equals(user.getStatus())) {
+        if (EnumStatus.DELETED.equals(account.getStatus())) {
             throw new AppException(ErrorCode.USER_DELETED);
         }
 
-        Map<String, Object> claims = Map.of("role", user.getRole().name());
+        Map<String, Object> claims = Map.of("role", account.getRole());
 
-        String accessToken = jwtService.generateToken(claims, user.getUsername());
-        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
+        String accessToken = jwtService.generateToken(claims, account.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(account.getEmail());
 
-        tokenService.saveToken(user.getUsername(), accessToken, jwtService.getJwtExpiration());
-        tokenService.saveRefreshToken(user.getUsername(), refreshToken, jwtService.getRefreshExpiration());
+        tokenService.saveToken(account.getEmail(), accessToken, jwtService.getJwtExpiration());
+        tokenService.saveRefreshToken(account.getEmail(), refreshToken, jwtService.getRefreshExpiration());
 
         return LoginResponse.builder()
                 .token(accessToken)
@@ -108,19 +108,13 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthResponse getUserByUsername(String username) {
-        User user = userRepository.findByUsernameAndIsDeletedFalse(username)
+    public AuthResponse getUserByUsername(String email) {
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
-
         return AuthResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .password(user.getPassword())
-                .email(user.getEmail())
-                .fullName(user.getFullName())
-                .gender(user.getGender())
-                .role(user.getRole())
-                .status(user.getStatus())
+                .id(account.getId())
+                .role(account.getRole())
+                .status(account.getStatus())
                 .build();
     }
 
@@ -147,21 +141,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse refreshToken(String refreshToken) {
         try {
-            String username = jwtService.extractUsername(refreshToken);
-            User user = userRepository.findByUsernameAndIsDeletedFalse(username)
+            String email = jwtService.extractUsername(refreshToken);
+            Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 
-            String storedRefreshToken = tokenService.getRefreshToken(username);
+            String storedRefreshToken = tokenService.getRefreshToken(email);
             if (!refreshToken.equals(storedRefreshToken)) {
                 throw new AppException(ErrorCode.INVALID_TOKEN);
             }
 
-            Map<String, Object> claims = Map.of("role", user.getRole().name());
-            String newAccessToken = jwtService.generateToken(claims, user.getUsername());
-            String newRefreshToken = jwtService.generateRefreshToken(user.getUsername());
+            Map<String, Object> claims = Map.of("role", account.getRole());
+            String newAccessToken = jwtService.generateToken(claims, account.getEmail());
+            String newRefreshToken = jwtService.generateRefreshToken(account.getEmail());
 
-            tokenService.saveToken(username, newAccessToken, jwtService.getJwtExpiration());
-            tokenService.saveRefreshToken(username, newRefreshToken, jwtService.getRefreshExpiration());
+            tokenService.saveToken(email, newAccessToken, jwtService.getJwtExpiration());
+            tokenService.saveRefreshToken(email, newRefreshToken, jwtService.getRefreshExpiration());
 
             return LoginResponse.builder()
                     .token(newAccessToken)
