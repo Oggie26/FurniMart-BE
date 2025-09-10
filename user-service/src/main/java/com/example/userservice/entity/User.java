@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Getter
@@ -39,10 +40,16 @@ public class User extends AbstractEntity {
     @Column
     String avatar;
 
+    @Column
+    Integer point;
+
     @Column(unique = true, length = 20)
     String cccd;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER)
+    List<Address> addresses;
 }
