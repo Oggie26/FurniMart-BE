@@ -6,6 +6,7 @@ import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
+import com.example.userservice.event.AccountCreatedEvent;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
@@ -18,6 +19,8 @@ import com.example.userservice.util.EmailValidator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
+    private final KafkaTemplate<String, AccountCreatedEvent> kafkaTemplate;
 
     @Override
     @Transactional
@@ -65,6 +69,15 @@ public class AuthServiceImpl implements AuthService {
 
         accountRepository.save(account);
         userRepository.save(user);
+
+        AccountCreatedEvent event = new AccountCreatedEvent(account.getId(),user.getFullName() , account.getEmail(),EnumRole.CUSTOMER);
+
+        try {
+            kafkaTemplate.send("account-created-topic", event);
+        } catch (AppException e) {
+            log.error("Failed to send Kafka event: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
 
         return AuthResponse.builder()
                 .id(account.getId())

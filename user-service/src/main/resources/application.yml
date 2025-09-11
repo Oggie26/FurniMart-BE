@@ -18,14 +18,13 @@ spring:
     redis:
 #      host: localhost
       host: redis
-
       port: 6379
       timeout: 60000
   cache:
     type: redis
   kafka:
 #    bootstrap-servers: localhost:9092
-    bootstrap-servers: kafka-holy:9092
+    bootstrap-servers: kafka:9092
     consumer:
       auto-offset-reset: earliest
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -37,8 +36,8 @@ spring:
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
-  expiration: 3600000 # 1 hour
-  refreshExpiration: 604800000 # 7 days
+  expiration: 3600000
+  refreshExpiration: 604800000
 
 springdoc:
   swagger-ui:

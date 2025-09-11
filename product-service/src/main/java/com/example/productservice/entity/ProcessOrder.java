@@ -1,6 +1,6 @@
 package com.example.productservice.entity;
 
-import com.example.userservice.enums.EnumProcessOrder;
+import com.example.productservice.enums.EnumProcessOrder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;

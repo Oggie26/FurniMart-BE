@@ -4,31 +4,41 @@ server:
 spring:
   application:
     name: notification-service
+
   kafka:
-    bootstrap-servers: kafka-holy:9092
+    bootstrap-servers: kafka:9092
     consumer:
       group-id: notification-group
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: com.example.notificationservice.event
+
+#    consumer:
+#      group-id: notification-group
+#      auto-offset-reset: earliest
+#      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+#      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+#      properties:
+#        spring.json.trusted.packages: com.example.notificationservice.event
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: namphse173452@fpt.edu.vn
+    password: hiau wemk mjik eaxt
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+    default-encoding: UTF-8
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
 
 eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka/
+#      defaultZone: http://localhost:8761/eureka
+
     register-with-eureka: true
     fetch-registry: true
-
-# mail:
-#   host: live.smtp.mailtrap.io
-#   port: 587
-#   username: api
-#   password: 007df15b5fb78264fe8d3855315159d8
-#   properties:
-#     mail:
-#       smtp:
-#         auth: true
-#         starttls:
-#           enable: true

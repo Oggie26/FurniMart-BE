@@ -3,6 +3,7 @@ package com.example.productservice.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.core.userdetails.User;
 
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -37,19 +38,17 @@ public class Order extends AbstractEntity{
     @Column(name = "updated_by")
     String updatedBy;
 
+    @Column
+    String addressId;
+
+    @Column
+    String userId;
+
     @OneToMany(mappedBy = "order")
     @JsonIgnore
     List<ProcessOrder> processOrders;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "address_id")
-    @JsonIgnore
-    Address address;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id")
-    @JsonIgnore
-    User user;
 }
 
 

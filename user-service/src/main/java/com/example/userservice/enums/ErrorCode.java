@@ -17,7 +17,7 @@ public enum ErrorCode {
     EXTERNAL_SERVICE_ERROR(1120, "Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
     USER_DELETED(1121, "User Deleted", HttpStatus.BAD_REQUEST),
     INVALID_TOKEN(1122, "Invalid Token", HttpStatus.BAD_REQUEST),
-
+    INTERNAL_SERVER_ERROR(1123, "Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR),
     //12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_FOUND_USER(1202, "User not found", HttpStatus.NOT_FOUND),

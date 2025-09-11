@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final KafkaTemplate<String, UserPlacedEvent> kafkaTemplate;
     private final ApplicationEventPublisher publisher;
     private final PasswordEncoder passwordEncoder;
 
