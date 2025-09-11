@@ -1,5 +1,6 @@
 package api_gateway.api_gateway.config;
 
+import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -21,7 +22,7 @@ public class JwtAuthenticationFilter implements GatewayFilter {
         String path = exchange.getRequest().getPath().toString();
         HttpMethod method = exchange.getRequest().getMethod();
 
-        if (path.startsWith("/api/user/") || HttpMethod.OPTIONS.equals(method)) {
+        if (path.startsWith("/api/auth/") || HttpMethod.OPTIONS.equals(method)) {
             return chain.filter(exchange);
         }
 
@@ -38,6 +39,13 @@ public class JwtAuthenticationFilter implements GatewayFilter {
             return exchange.getResponse().setComplete();
         }
 
+        String username = jwtService.extractUsername(token);
+        exchange.getRequest().mutate()
+                .header("X-User-Name", username)
+                .build();
+
         return chain.filter(exchange);
     }
+
+
 }

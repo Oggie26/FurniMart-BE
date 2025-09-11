@@ -22,8 +22,8 @@ public class GatewayConfig {
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
 
-                .route("auth-service", r -> r.path("/api/auth/**")
-                        .uri("lb://auth-service"))
+                .route("user-service", r -> r.path("/api/auth/**")
+                        .uri("lb://user-service"))
 
                 .route("user-service", r -> r.path("/api/user/**")
                         .filters(f -> f.filter( jwtAuthenticationFilter))
@@ -35,7 +35,7 @@ public class GatewayConfig {
 
                 .route("notification-service", r -> r.path("/api/notification/**")
                         .filters(f -> f.filter( jwtAuthenticationFilter))
-                        .uri("lb://product-service"))
+                        .uri("lb://notification-service"))
 
                 .build();
     }

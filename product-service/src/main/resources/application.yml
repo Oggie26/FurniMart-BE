@@ -27,8 +27,6 @@ jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
   expiration: 3600000
 
-
-
 eureka:
   client:
     service-url:
