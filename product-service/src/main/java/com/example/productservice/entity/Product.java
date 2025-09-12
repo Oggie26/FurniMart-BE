@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -36,20 +37,11 @@ public class Product extends AbstractEntity {
     private String description;
 
     @Column(nullable = false)
-    private Double costPrice;
-
-    @Column(nullable = false)
-    private Double sellPrice;
-
-    @Column(nullable = false)
-    private Double unitPrice;
+    private Double price;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EnumStatus status;
-
-    @Column(nullable = false)
-    private Integer quantityPerBox;
 
     @Column(nullable = false)
     private String thumbnailImage;
@@ -57,10 +49,34 @@ public class Product extends AbstractEntity {
     @Column(nullable = false, unique = true)
     private String slug;
 
+    @Column
+    private Double weight;
+
+    @Column
+    private Double height;
+
+    @Column
+    private Double width;
+
+    @Column
+    private Double length;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     @JsonIgnore
     private Category category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "material_id")
+    @JsonIgnore
+    private Material material;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Color> colors = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductModel3D> models3D = new ArrayList<>();
 }

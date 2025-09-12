@@ -13,6 +13,7 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product,String> {
     Optional<Product> findByIdAndIsDeletedFalse(String id);
+    Optional<Product> findBySlugAndIsDeletedFalse(String slug);
     Optional<Product> findByNameAndIsDeletedFalse(String name);
         @Query(value = """
         SELECT p.* 

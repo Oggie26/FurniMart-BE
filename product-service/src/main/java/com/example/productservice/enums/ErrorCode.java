@@ -30,12 +30,13 @@ public enum ErrorCode {
     CATEGORY_NOT_FOUND(1208, "Category not found", HttpStatus.NOT_FOUND),
     CATEGORY_NAME_NOT_FOUND(1209, "Category name not found", HttpStatus.NOT_FOUND),
     CATEGORY_EXISTED(1210, "Category has existed", HttpStatus.BAD_REQUEST),
-    BRAND_NOT_FOUND(1211, "Brand not found", HttpStatus.NOT_FOUND),
-    BRAND_NAME_NOT_FOUND(1212, "Brand name not found", HttpStatus.NOT_FOUND),
-    BRAND_EXISTED(1213, "Brand has existed", HttpStatus.BAD_REQUEST),
     PRODUCT_NAME_EXISTED(1216, "Product name has existed", HttpStatus.BAD_REQUEST),
     PRODUCT_EXISTED(1217, "Product has existed", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_FOUND(1218, "Product not found", HttpStatus.NOT_FOUND),
+    MATERIAL_NOT_FOUND(1219, "Material not found", HttpStatus.NOT_FOUND),
+    MATERIAL_NAME_NOT_FOUND(1220, "Material name not found", HttpStatus.NOT_FOUND),
+    MATERIAL_EXISTED(1221, "Material has existed", HttpStatus.BAD_REQUEST),
+    MATERIAL_NAME_EXISTED(1222, "Material name has existed", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -1,28 +1,28 @@
 package com.example.productservice.response;
 
-import com.example.productservice.enums.EnumStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.example.productservice.entity.Category;
+import lombok.*;
 
-import java.util.List;
-@Builder
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ProductResponse {
     private String id;
-    private String code;
     private String name;
     private String description;
-    private Double costPrice;
-    private Double sellPrice;
-    private Double unitPrice;
-    private Integer quantityPerBox;
-    private EnumStatus status;
-    private String slug;
+    private Double price;
+    private String code;
     private String thumbnailImage;
-    private String categoryName;
-    private String brandName;
+    private String slug;
+    private Double weight;
+    private Double height;
+    private Double width;
+    private Double length;
+    private Category category;
+    private ColorResponse color;
+    private MaterialResponse material;
+    private ImageResponse images;
+    private Image3DResponse images3d;
 }

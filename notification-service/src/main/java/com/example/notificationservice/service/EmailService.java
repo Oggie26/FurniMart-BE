@@ -46,4 +46,33 @@ public class EmailService {
             throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
         }
     }
+
+    public void sendMailForgotPassword(AccountPlaceEvent event, String resetToken) {
+        try {
+            String link = "http://localhost:5173/reset-password?token=" + resetToken;
+            String button = "ĐẶT LẠI MẬT KHẨU";
+
+            Context context = new Context();
+            context.setVariable("name", event.getFullName());
+            context.setVariable("button", button);
+            context.setVariable("link", link);
+
+            String htmlContent = templateEngine.process("forgotpassword", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("namphse173452@fpt.edu.vn");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Khôi phục mật khẩu FurniMart");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            System.out.println("✅ Đã gửi email quên mật khẩu thành công");
+        } catch (MessagingException e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ Lỗi khi gửi email: " + e.getMessage());
+        }
+    }
+
 }
