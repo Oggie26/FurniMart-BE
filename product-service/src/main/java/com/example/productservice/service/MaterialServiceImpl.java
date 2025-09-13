@@ -43,7 +43,7 @@ public class MaterialServiceImpl implements MaterialService {
 
     @Override
     @Transactional
-    public MaterialResponse updateMaterial(MaterialRequest materialRequest, Integer id) {
+    public MaterialResponse updateMaterial(MaterialRequest materialRequest, Long id) {
         Material material = materialRepository.findByIdAndIsDeletedFalse(id)
                         .orElseThrow(() -> new AppException(ErrorCode.MATERIAL_NOT_FOUND));
 
@@ -61,7 +61,7 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     @Override
-    public void deleteMaterial(Integer id) {
+    public void deleteMaterial(Long id) {
         Material material = materialRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(()  -> new AppException(ErrorCode.MATERIAL_NOT_FOUND));
         material.setStatus(EnumStatus.DELETED);
@@ -70,7 +70,7 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     @Override
-    public void disableMaterial(Integer id) {
+    public void disableMaterial(Long id) {
         Material material = materialRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(()  -> new AppException(ErrorCode.MATERIAL_NOT_FOUND));
         if(material.getStatus().equals(EnumStatus.ACTIVE)){
@@ -91,7 +91,7 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     @Override
-    public MaterialResponse getMaterialById(Integer id) {
+    public MaterialResponse getMaterialById(Long id) {
         Material material = materialRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(()  -> new AppException(ErrorCode.MATERIAL_NOT_FOUND));
         return mapToResponse(material);

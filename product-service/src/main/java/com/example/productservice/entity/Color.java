@@ -14,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Color {
+public class Color extends AbstractEntity{
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -25,9 +25,6 @@ public class Color {
 
     @Column
     private String hexCode;
-
-    @Column
-    private String previewImage;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")

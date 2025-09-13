@@ -38,7 +38,7 @@ public class MaterialController {
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật chất liệu")
     public ApiResponse<MaterialResponse> updateMaterial(
-            @PathVariable Integer id,
+            @PathVariable Long id,
             @Valid @RequestBody MaterialRequest request) {
         return ApiResponse.<MaterialResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -49,7 +49,7 @@ public class MaterialController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xoá mềm chất liệu (isDeleted)")
-    public ApiResponse<Void> deleteMaterial(@PathVariable Integer id) {
+    public ApiResponse<Void> deleteMaterial(@PathVariable Long id) {
         materialService.deleteMaterial(id);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
@@ -59,7 +59,7 @@ public class MaterialController {
 
     @PatchMapping("/{id}/disable")
     @Operation(summary = "Vô hiệu hoá chất liệu (set INACTIVE)")
-    public ApiResponse<Void> disableMaterial(@PathVariable Integer id) {
+    public ApiResponse<Void> disableMaterial(@PathVariable Long id) {
         materialService.disableMaterial(id);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
@@ -79,7 +79,7 @@ public class MaterialController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy chi tiết chất liệu theo ID")
-    public ApiResponse<MaterialResponse> getMaterialById(@PathVariable Integer id) {
+    public ApiResponse<MaterialResponse> getMaterialById(@PathVariable Long id) {
         return ApiResponse.<MaterialResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Lấy chất liệu thành công")

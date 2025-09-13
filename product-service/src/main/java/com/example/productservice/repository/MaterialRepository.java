@@ -9,8 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface MaterialRepository extends JpaRepository<Material,Integer> {
-    Optional<Material> findByIdAndIsDeletedFalse(Integer id);
+public interface MaterialRepository extends JpaRepository<Material,Long> {
+    Optional<Material> findByIdAndIsDeletedFalse(Long id);
     Optional<Material> findByMaterialNameAndIsDeletedFalse(String materialName);
     @Query(value = """
         SELECT * FROM categories 

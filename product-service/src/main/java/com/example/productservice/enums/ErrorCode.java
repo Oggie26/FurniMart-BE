@@ -37,6 +37,14 @@ public enum ErrorCode {
     MATERIAL_NAME_NOT_FOUND(1220, "Material name not found", HttpStatus.NOT_FOUND),
     MATERIAL_EXISTED(1221, "Material has existed", HttpStatus.BAD_REQUEST),
     MATERIAL_NAME_EXISTED(1222, "Material name has existed", HttpStatus.BAD_REQUEST),
+    CODE_EXISTED(1223, "Code has existed", HttpStatus.BAD_REQUEST),
+    CODE_NOT_FOUND(1224, "Code not found", HttpStatus.NOT_FOUND),
+    COLOR_EXISTED(1225, "Color has existed", HttpStatus.BAD_REQUEST),
+    COLOR_NOT_FOUND(1226, "Color not found", HttpStatus.NOT_FOUND),
+    COLOR_NAME_EXISTED(1227, "Color name has existed", HttpStatus.BAD_REQUEST),
+    COLOR_NAME_NOT_FOUND(1228, "Color name not found", HttpStatus.NOT_FOUND),
+    HEX_CODE_EXISTED(1229, "Hex code has existed", HttpStatus.BAD_REQUEST),
+    HEX_CODE_NOT_FOUND(1230, "Hex code not found", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

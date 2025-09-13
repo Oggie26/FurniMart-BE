@@ -1,8 +1,34 @@
-//package com.example.productservice.repository;
-//
-//import org.springframework.data.jpa.repository.JpaRepository;
-//
-//import java.awt.*;
-//
-//public interface ColorRepository extends JpaRepository<Color, String> {
-//}
+package com.example.productservice.repository;
+
+import com.example.productservice.entity.Color;
+import org.springframework.data.domain.Page;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+
+public interface ColorRepository extends JpaRepository<Color, String> {
+    Optional<Color> findByIdAndIsDeletedFalse(String id);
+    Optional<Color> findByHexCodeAndIsDeletedFalse(String hexCode);
+    Optional<Color> findByColorNameAndIsDeletedFalse(String colorName);
+    @Query(value = """
+        SELECT * FROM colors 
+        WHERE is_deleted = false 
+          AND (LOWER(color_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+               OR LOWER(hex_code) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+               OR LOWER(preview_image) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        """,
+            countQuery = """
+        SELECT COUNT(*) FROM colors 
+        WHERE is_deleted = false 
+          AND (LOWER(color_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+               OR LOWER(hex_code) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+               OR LOWER(preview_image) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        """,
+            nativeQuery = true)
+    Page<Color> searchByKeywordNative(@Param("keyword") String keyword, Pageable pageable);
+
+}

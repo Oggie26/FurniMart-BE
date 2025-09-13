@@ -9,11 +9,11 @@ import java.util.List;
 public interface MaterialService {
 
     MaterialResponse createMaterial(MaterialRequest materialRequest);
-    MaterialResponse updateMaterial(MaterialRequest materialRequest, Integer id);
-    void deleteMaterial(Integer id);
-    void disableMaterial(Integer id);
+    MaterialResponse updateMaterial(MaterialRequest materialRequest, Long id);
+    void deleteMaterial(Long id);
+    void disableMaterial(Long id);
     List<MaterialResponse> getAllMaterials();
-    MaterialResponse getMaterialById(Integer id);
+    MaterialResponse getMaterialById(Long id);
     PageResponse<MaterialResponse> searchMaterial(String request, int page, int size);
 
 }

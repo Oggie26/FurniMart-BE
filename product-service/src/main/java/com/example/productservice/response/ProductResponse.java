@@ -1,6 +1,7 @@
 package com.example.productservice.response;
 
 import com.example.productservice.entity.Category;
+import com.example.productservice.enums.EnumStatus;
 import lombok.*;
 
 @Getter
@@ -18,6 +19,7 @@ public class ProductResponse {
     private String slug;
     private Double weight;
     private Double height;
+    private EnumStatus status;
     private Double width;
     private Double length;
     private Category category;

@@ -19,7 +19,7 @@ public class Material extends AbstractEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
+    private Long id;
 
     @Column(nullable = false, unique = true)
     private String materialName;

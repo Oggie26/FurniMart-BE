@@ -14,5 +14,4 @@ public class ColorResponse {
     private String id;
     private String colorName;
     private String hexCode;
-    private String previewImage;
 }

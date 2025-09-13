@@ -3,6 +3,8 @@ package com.example.productservice.request;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -40,9 +42,15 @@ public class ProductRequest {
     @Positive(message = "Length must be > 0")
     private Double length;
 
-    @NotBlank(message = "CategoryId is required")
-    private String categoryId;
+    @NotNull(message = "CategoryId is required")
+    private Long categoryId;
 
-    @NotBlank(message = "MaterialId is required")
-    private String materialId;
+    @NotNull(message = "MaterialId is required")
+    private Long materialId;
+
+    private List<ColorRequest> colorRequests;
+
+    private List<ProductImageRequest> imageRequestList;
+
+    private List<ProductModel3DRequest> model3DRequestList;
 }

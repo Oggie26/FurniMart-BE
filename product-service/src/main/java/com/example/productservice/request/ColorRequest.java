@@ -22,5 +22,4 @@ public class ColorRequest {
     )
     private String hexCode;
 
-    private String previewImage;
 }

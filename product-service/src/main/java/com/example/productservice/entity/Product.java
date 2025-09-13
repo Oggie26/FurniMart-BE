@@ -1,6 +1,7 @@
 package com.example.productservice.entity;
 
 import com.example.productservice.enums.EnumStatus;
+import com.example.productservice.util.SlugUtil;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -79,4 +80,12 @@ public class Product extends AbstractEntity {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductModel3D> models3D = new ArrayList<>();
+
+    @PrePersist
+    @PreUpdate
+    public void generateSlug() {
+        if (this.category != null && this.name != null) {
+            this.slug = SlugUtil.toSlug(this.category.getCategoryName()) + "/" + SlugUtil.toSlug(this.name);
+        }
+    }
 }
