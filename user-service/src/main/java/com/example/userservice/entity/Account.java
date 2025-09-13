@@ -39,9 +39,13 @@ public class Account extends AbstractEntity implements UserDetails {
     @Column(nullable = false)
     private EnumStatus status;
 
+    @Builder.Default
     private boolean enabled = true;
+    @Builder.Default
     private boolean accountNonExpired = true;
+    @Builder.Default
     private boolean accountNonLocked = true;
+    @Builder.Default
     private boolean credentialsNonExpired = true;
 
     @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)

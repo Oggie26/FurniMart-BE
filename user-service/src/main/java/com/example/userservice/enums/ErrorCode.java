@@ -27,6 +27,9 @@ public enum ErrorCode {
     PHONE_NOT_FOUND(1206, "Phone not found", HttpStatus.BAD_REQUEST),
     PHONE_EXISTS(1207, "Phone already exists", HttpStatus.BAD_REQUEST),
     USER_ALREADY_EXISTS(1208, "User already exists", HttpStatus.BAD_REQUEST),
+    USER_NOT_FOUND(1209, "User not found", HttpStatus.NOT_FOUND),
+    BLOG_NOT_FOUND(1210, "Blog not found", HttpStatus.NOT_FOUND),
+    ADDRESS_NOT_FOUND(1211, "Address not found", HttpStatus.NOT_FOUND),
 
     ;
 

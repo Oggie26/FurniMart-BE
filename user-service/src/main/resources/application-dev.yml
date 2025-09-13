@@ -1,0 +1,25 @@
+# Development Profile Configuration
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/user_db
+    username: sa
+    password: 123
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+
+# Kafka is optional in development
+app:
+  kafka:
+    enabled: true  # Set to false to disable Kafka in development
+
+logging:
+  level:
+    com.example.userservice: DEBUG
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN
+    org.apache.kafka.clients.NetworkClient: ERROR
+    org.apache.kafka.clients.Metadata: ERROR

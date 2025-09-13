@@ -1,6 +1,5 @@
 package com.example.userservice.entity;
 
-import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -52,4 +51,7 @@ public class User extends AbstractEntity {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.EAGER)
     List<Address> addresses;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    List<Blog> blogs;
 }

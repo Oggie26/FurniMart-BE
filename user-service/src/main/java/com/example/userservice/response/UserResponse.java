@@ -15,17 +15,19 @@ import java.util.Date;
 @Data
 @Builder
 public class UserResponse {
-    String id;
-    String fullName;
-    String email;
-    String phone;
-    Boolean gender;
-    Date birthday;
-    String avatar;
+    private String id;
+    private String fullName;
+    private String email;
+    private String phone;
+    private Boolean gender;
+    private Date birthday;
+    private String avatar;
+    private String cccd;
+    private Integer point;
     @Enumerated(EnumType.STRING)
-    EnumRole role;
+    private EnumRole role;
     @Enumerated(EnumType.STRING)
-    EnumStatus status;
-    Date createdAt;
-    Date updatedAt;
+    private EnumStatus status;
+    private Date createdAt;
+    private Date updatedAt;
 }
