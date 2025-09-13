@@ -57,7 +57,7 @@ public class MaterialController {
                 .build();
     }
 
-    @PatchMapping("/{id}/disable")
+    @PatchMapping("/{id}")
     @Operation(summary = "Vô hiệu hoá chất liệu (set INACTIVE)")
     public ApiResponse<Void> disableMaterial(@PathVariable Long id) {
         materialService.disableMaterial(id);

@@ -1,4 +1,4 @@
-package com.example.userservice.entity;
+package com.example.userservice.service;
 
 import com.example.userservice.enums.EnumRole;
 import org.springframework.security.core.GrantedAuthority;

@@ -17,18 +17,21 @@ public interface ColorRepository extends JpaRepository<Color, String> {
     @Query(value = """
         SELECT * FROM colors 
         WHERE is_deleted = false 
-          AND (LOWER(color_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
-               OR LOWER(hex_code) LIKE LOWER(CONCAT('%', :keyword, '%')) 
-               OR LOWER(preview_image) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (
+               LOWER(color_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+               OR LOWER(hex_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
         """,
             countQuery = """
         SELECT COUNT(*) FROM colors 
         WHERE is_deleted = false 
-          AND (LOWER(color_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
-               OR LOWER(hex_code) LIKE LOWER(CONCAT('%', :keyword, '%')) 
-               OR LOWER(preview_image) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (
+               LOWER(color_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+               OR LOWER(hex_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
         """,
             nativeQuery = true)
     Page<Color> searchByKeywordNative(@Param("keyword") String keyword, Pageable pageable);
+
 
 }

@@ -55,9 +55,9 @@ public class AuthController {
                 .build();
     }
 
-    @GetMapping("/{username}")
-    public ApiResponse<AuthResponse> getUserByUsername(@PathVariable String username) {
-        AuthResponse authResponse = authService.getUserByUsername(username);
+    @GetMapping("/{email}")
+    public ApiResponse<AuthResponse> getUserByUsername(@PathVariable String email) {
+        AuthResponse authResponse = authService.getUserByUsername(email);
         return ApiResponse.<AuthResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Lấy thông tin người dùng thành công")

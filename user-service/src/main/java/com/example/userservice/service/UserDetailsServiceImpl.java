@@ -1,7 +1,6 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
-import com.example.userservice.entity.CustomUserDetails;
 import com.example.userservice.repository.AccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

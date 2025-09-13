@@ -8,7 +8,7 @@ import com.example.userservice.response.LoginResponse;
 public interface AuthService {
     AuthResponse register(RegisterRequest request);
     LoginResponse login(AuthRequest request);
-    AuthResponse getUserByUsername(String username);
+    AuthResponse getUserByUsername(String email);
     void logout(String token);
     LoginResponse refreshToken(String refreshToken);
 }

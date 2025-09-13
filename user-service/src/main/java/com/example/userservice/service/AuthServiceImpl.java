@@ -126,6 +126,8 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
         return AuthResponse.builder()
                 .id(account.getId())
+                .email(account.getEmail())
+                .password(account.getPassword())
                 .role(account.getRole())
                 .status(account.getStatus())
                 .build();

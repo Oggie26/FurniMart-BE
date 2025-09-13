@@ -10,7 +10,6 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @EnableDiscoveryClient
 @EnableCaching
 @EnableFeignClients(basePackages = "com.example.userservice.feign")
-
 public class UserServiceApplication {
 
 	public static void main(String[] args) {

@@ -12,7 +12,7 @@ import lombok.Data;
 @Builder
 public class AuthResponse {
     private String id;
-    private String username;
+    private String email;
     private String password;
     @Enumerated(EnumType.STRING)
     private EnumRole role;
