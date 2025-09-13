@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +38,7 @@ public class CategoryController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật danh mục")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CategoryResponse> updateCategory(@RequestParam Long id,@Valid @RequestBody CategoryRequest request) {
         return ApiResponse.<CategoryResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -47,6 +49,7 @@ public class CategoryController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xoá mềm danh mục (isDeleted)")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
         return ApiResponse.<Void>builder()
@@ -57,6 +60,7 @@ public class CategoryController {
 
     @PatchMapping("/{id}")
     @Operation(summary = "Vô hiệu hoá danh mục (set INACTIVE)")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> disableCategory(@PathVariable Long id) {
         categoryService.disableCategory(id);
         return ApiResponse.<Void>builder()
@@ -67,6 +71,7 @@ public class CategoryController {
 
     @GetMapping
     @Operation(summary = "Lấy danh sách tất cả danh mục")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<List<CategoryResponse>> getCategories() {
         return ApiResponse.<List<CategoryResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -77,6 +82,7 @@ public class CategoryController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy chi tiết danh mục theo ID")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<CategoryResponse> getCategoryById(@PathVariable Long id) {
         return ApiResponse.<CategoryResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -87,6 +93,7 @@ public class CategoryController {
 
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm người dùng theo nhiều tiêu chí")
+    @ResponseStatus(HttpStatus.OK)
     public ApiResponse<PageResponse<CategoryResponse>> searchUsers(
             @RequestParam(required = false) String request,
             @RequestParam(defaultValue = "0") int page,
