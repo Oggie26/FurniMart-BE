@@ -2,37 +2,65 @@ server:
   port: 8086
 
 spring:
+  profiles:
+    active: dev
   application:
     name: user-service
   datasource:
-#    url: jdbc:postgresql://localhost:5432/user_db
-    url: jdbc:postgresql://user-db:5432/user_db
-    username: postgres
-    password: 123456
+    url: jdbc:postgresql://localhost:5432/user_db
+    username: sa
+    password: 123
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
     generate-ddl: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
   data:
     redis:
-#      host: localhost
-      host: redis
+      host: localhost
       port: 6379
       timeout: 60000
+      connection-timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
   cache:
     type: redis
   kafka:
-#    bootstrap-servers: localhost:9092
-    bootstrap-servers: kafka:9092
+    bootstrap-servers: localhost:9092
     consumer:
       auto-offset-reset: earliest
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: user-service-group
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "com.example.userservice.event"
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: 1
+      retries: 3
       properties:
         spring.json.add.type.headers: false
+        max.request.size: 20971520
+    admin:
+      properties:
+        bootstrap.servers: localhost:9092
+
+# Application specific configuration
+app:
+  kafka:
+    enabled: true
+    retry-attempts: 3
+    retry-delay: 1000
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
@@ -50,6 +78,7 @@ springdoc:
 
 eureka:
   client:
+    enabled: false
     service-url:
 #      defaultZone: http://localhost:8761/eureka
       defaultZone: http://eureka-server:8761/eureka/

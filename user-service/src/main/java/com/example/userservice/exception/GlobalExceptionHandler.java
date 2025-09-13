@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
     private static final String MIN_ATTRIBUTE = "min";
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ApiResponse<Void>> handlingValidation(MethodArgumentNotValidException exception) {
         String enumKey = exception.getFieldError() != null
                 ? exception.getFieldError().getDefaultMessage()
                 : ErrorCode.INVALID_KEY.name();  // Nếu không có message mặc định, gán mã lỗi mặc định.
@@ -40,7 +40,9 @@ public class GlobalExceptionHandler {
                         .get(0)
                         .unwrap(jakarta.validation.ConstraintViolation.class);
 
-                attributes = constraintViolation.getConstraintDescriptor().getAttributes();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> constraintAttributes = (Map<String, Object>) constraintViolation.getConstraintDescriptor().getAttributes();
+                attributes = new HashMap<>(constraintAttributes);
                 log.info("Validation attributes: {}", attributes);
             }
         } catch (IllegalArgumentException e) {
@@ -51,23 +53,18 @@ public class GlobalExceptionHandler {
         }
 
         // Tạo ApiResponse với thông điệp và mã lỗi hợp lệ
-        ApiResponse apiResponse = new ApiResponse();
-        apiResponse.setStatus(errorCode.getCode());  // Lấy mã lỗi từ ErrorCode
-        apiResponse.setMessage(
-                (attributes != null)
-                        ? mapAttribute(errorCode.getMessage(), attributes)  // Xử lý message nếu có attributes
-                        : errorCode.getMessage()  // Dùng thông điệp mặc định từ ErrorCode
-        );
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                .status(errorCode.getCode())
+                .message((attributes != null)
+                        ? mapAttribute(errorCode.getMessage(), attributes)
+                        : errorCode.getMessage())
+                .build();
 
         return ResponseEntity.badRequest().body(apiResponse);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
-        // Tạo đối tượng lỗi mặc định
-        ApiResponse apiResponse = new ApiResponse();
-        apiResponse.setStatus(ErrorCode.INVALID_JSON.getCode());
-
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
         // Cung cấp thông điệp lỗi chi tiết
         String errorMessage = "JSON data invalid";
 
@@ -79,8 +76,12 @@ public class GlobalExceptionHandler {
             errorMessage = "JSON data invalid. Please check again";
         }
 
-        // Trả về thông điệp lỗi
-        apiResponse.setMessage(errorMessage);
+        // Tạo đối tượng lỗi mặc định
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                .status(ErrorCode.INVALID_JSON.getCode())
+                .message(errorMessage)
+                .build();
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
     }
 

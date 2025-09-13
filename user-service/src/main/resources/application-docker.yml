@@ -1,0 +1,30 @@
+# Docker Profile Configuration
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/user_db
+    username: sa
+    password: 123
+  data:
+    redis:
+      host: redis
+      port: 6379
+  kafka:
+    bootstrap-servers: kafka:29092
+    admin:
+      properties:
+        bootstrap.servers: kafka:29092
+
+# Kafka is enabled in Docker environment
+app:
+  kafka:
+    enabled: true
+
+eureka:
+  client:
+    enabled: false  # Disable Eureka in Docker for now
+
+logging:
+  level:
+    com.example.userservice: INFO
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN

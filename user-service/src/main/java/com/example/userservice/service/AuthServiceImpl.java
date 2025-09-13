@@ -15,11 +15,9 @@ import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
 import com.example.userservice.service.inteface.AuthService;
-import com.example.userservice.util.EmailValidator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -72,11 +70,20 @@ public class AuthServiceImpl implements AuthService {
 
         AccountCreatedEvent event = new AccountCreatedEvent(account.getId(),user.getFullName() , account.getEmail(),EnumRole.CUSTOMER);
 
+        // Send Kafka event asynchronously - don't block user registration if Kafka is unavailable
         try {
-            kafkaTemplate.send("account-created-topic", event);
-        } catch (AppException e) {
-            log.error("Failed to send Kafka event: {}", e.getMessage(), e);
-            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            kafkaTemplate.send("account-created-topic", event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Failed to send Kafka event for account: {}, error: {}", account.getEmail(), ex.getMessage());
+                        // Could implement retry logic or store in database for later processing
+                    } else {
+                        log.info("Successfully sent account creation event for: {}", account.getEmail());
+                    }
+                });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event for account: {}, error: {}", account.getEmail(), e.getMessage());
+            // Don't throw exception - allow user registration to continue even if Kafka fails
         }
 
         return AuthResponse.builder()
