@@ -1,0 +1,18 @@
+package com.example.inventoryservice.service.inteface;
+
+import com.example.inventoryservice.request.WarehouseRequest;
+import com.example.inventoryservice.response.PageResponse;
+import com.example.inventoryservice.response.WarehouseResponse;
+
+import java.util.List;
+
+public interface IWarehouseService {
+    WarehouseResponse createWarehouse(WarehouseRequest warehouseRequest);
+    WarehouseResponse updateWarehouse(String warehouseId,WarehouseRequest warehouseRequest);
+    void deleteWarehouse(String warehouseId);
+    void disableWarehouse(String warehouseId);
+    List<WarehouseResponse> getWarehouses();
+    WarehouseResponse getWarehouseById(String warehouseId);
+    PageResponse<WarehouseResponse> searchWarehouse(String request, int page, int size);
+
+}

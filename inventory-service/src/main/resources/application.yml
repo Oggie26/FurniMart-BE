@@ -1,0 +1,36 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: inventory-service
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    generate-ddl: true
+
+  datasource:
+    url: jdbc:postgresql://inventory-db:5432/inventory_db
+#    url: jdbc:postgresql://localhost:5432/inventory_db
+    username: postgres
+    password: 123456
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+jwt:
+  secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
+  expiration: 3600000
+  refreshExpiration: 604800000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+#       defaultZone: http://localhost:8761/eureka
+
