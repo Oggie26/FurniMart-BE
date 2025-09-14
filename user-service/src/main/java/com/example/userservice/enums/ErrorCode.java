@@ -30,6 +30,9 @@ public enum ErrorCode {
     USER_NOT_FOUND(1209, "User not found", HttpStatus.NOT_FOUND),
     BLOG_NOT_FOUND(1210, "Blog not found", HttpStatus.NOT_FOUND),
     ADDRESS_NOT_FOUND(1211, "Address not found", HttpStatus.NOT_FOUND),
+    STORE_NOT_FOUND(1212, "Store not found", HttpStatus.NOT_FOUND),
+    USER_STORE_RELATIONSHIP_EXISTS(1213, "User store relationship already exists", HttpStatus.BAD_REQUEST),
+    USER_STORE_RELATIONSHIP_NOT_FOUND(1214, "User store relationship not found", HttpStatus.NOT_FOUND),
 
     ;
 
