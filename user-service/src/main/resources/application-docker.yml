@@ -2,8 +2,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://postgres:5432/user_db
-    username: sa
-    password: 123
+    username: postgres
+    password: 12456
   data:
     redis:
       host: redis
@@ -14,14 +14,13 @@ spring:
       properties:
         bootstrap.servers: kafka:29092
 
-# Kafka is enabled in Docker environment
 app:
   kafka:
     enabled: true
 
 eureka:
   client:
-    enabled: false  # Disable Eureka in Docker for now
+    enabled: false
 
 logging:
   level:

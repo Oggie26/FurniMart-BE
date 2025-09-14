@@ -38,19 +38,14 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse createUser(UserRequest userRequest) {
-        log.info("Creating new user with email: {}", userRequest.getEmail());
-        
-        // Check if email already exists
         if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
             throw new AppException(ErrorCode.EMAIL_EXISTS);
         }
         
-        // Check if phone already exists
         if (userRepository.findByPhoneAndIsDeletedFalse(userRequest.getPhone()).isPresent()) {
             throw new AppException(ErrorCode.PHONE_EXISTS);
         }
 
-        // Create account first
         Account account = Account.builder()
                 .email(userRequest.getEmail())
                 .password(passwordEncoder.encode(userRequest.getPassword()))
@@ -60,7 +55,6 @@ public class UserServiceImpl implements UserService {
         
         Account savedAccount = accountRepository.save(account);
 
-        // Create user
         User user = User.builder()
                 .fullName(userRequest.getFullName())
                 .phone(userRequest.getPhone())
@@ -72,20 +66,15 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
-        log.info("User created successfully with ID: {}", savedUser.getId());
-        
         return toUserResponse(savedUser);
     }
 
     @Override
     @Transactional
     public UserResponse updateUser(String id, UserUpdateRequest userRequest) {
-        log.info("Updating user with ID: {}", id);
-        
         User existingUser = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if phone already exists for another user
         if (userRequest.getPhone() != null && !userRequest.getPhone().equals(existingUser.getPhone())) {
             userRepository.findByPhoneAndIsDeletedFalse(userRequest.getPhone())
                     .ifPresent(user -> {
@@ -95,7 +84,6 @@ public class UserServiceImpl implements UserService {
                     });
         }
 
-        // Update user fields
         if (userRequest.getFullName() != null) {
             existingUser.setFullName(userRequest.getFullName());
         }
@@ -122,15 +110,12 @@ public class UserServiceImpl implements UserService {
         }
 
         User updatedUser = userRepository.save(existingUser);
-        log.info("User updated successfully with ID: {}", updatedUser.getId());
-        
+
         return toUserResponse(updatedUser);
     }
 
     @Override
     public UserResponse getUserById(String id) {
-        log.info("Fetching user with ID: {}", id);
-        
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
@@ -139,8 +124,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getAllUsers() {
-        log.info("Fetching all users");
-        
         List<User> users = userRepository.findByIsDeletedFalse();
         return users.stream()
                 .map(this::toUserResponse)
@@ -149,8 +132,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getUsersByStatus(String status) {
-        log.info("Fetching users with status: {}", status);
-        
         EnumStatus enumStatus = EnumStatus.valueOf(status.toUpperCase());
         List<User> users = userRepository.findByStatusAndIsDeletedFalse(enumStatus);
         return users.stream()
@@ -205,25 +186,22 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteUser(String id) {
-        log.info("Deleting user with ID: {}", id);
-        
+
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
+        user.setStatus(EnumStatus.DELETED);
         user.setIsDeleted(true);
         user.getAccount().setIsDeleted(true);
         
         userRepository.save(user);
         accountRepository.save(user.getAccount());
         
-        log.info("User soft deleted successfully with ID: {}", id);
     }
 
     @Override
     @Transactional
     public void disableUser(String id) {
-        log.info("Disabling user with ID: {}", id);
-        
+
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -233,14 +211,12 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         accountRepository.save(user.getAccount());
         
-        log.info("User disabled successfully with ID: {}", id);
     }
 
     @Override
     @Transactional
     public void enableUser(String id) {
-        log.info("Enabling user with ID: {}", id);
-        
+
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -250,13 +226,10 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         accountRepository.save(user.getAccount());
         
-        log.info("User enabled successfully with ID: {}", id);
     }
 
     @Override
     public UserResponse getProfile() {
-        log.info("Fetching current user profile");
-        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         
@@ -269,8 +242,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse updateProfile(UserUpdateRequest request) {
-        log.info("Updating current user profile");
-        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         
@@ -283,8 +254,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(ChangePassword changePassword) {
-        log.info("Changing password for current user");
-        
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         
@@ -293,35 +263,24 @@ public class UserServiceImpl implements UserService {
 
         Account account = user.getAccount();
         
-        // Verify current password
         if (!passwordEncoder.matches(changePassword.getOldPassword(), account.getPassword())) {
             throw new AppException(ErrorCode.INVALID_PASSWORD);
         }
-        
-        // Update password
         account.setPassword(passwordEncoder.encode(changePassword.getNewPassword()));
         accountRepository.save(account);
-        
-        log.info("Password changed successfully for user: {}", email);
     }
 
     @Override
     public UserResponse getUserByEmail(String email) {
-        log.info("Fetching user with email: {}", email);
-        
         User user = userRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_FOUND));
-        
         return toUserResponse(user);
     }
 
     @Override
     public UserResponse getUserByPhone(String phone) {
-        log.info("Fetching user with phone: {}", phone);
-        
         User user = userRepository.findByPhoneAndIsDeletedFalse(phone)
                 .orElseThrow(() -> new AppException(ErrorCode.PHONE_NOT_FOUND));
-        
         return toUserResponse(user);
     }
 

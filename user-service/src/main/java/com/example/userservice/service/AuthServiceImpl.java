@@ -48,7 +48,9 @@ public class AuthServiceImpl implements AuthService {
         if (request.getPassword().length() < 6) {
             throw new AppException(ErrorCode.INVALID_PASSWORD);
         }
-
+        if(accountRepository.findByEmailAndIsDeletedFalse(request.getEmail()).isPresent()){
+            throw new AppException(ErrorCode.EMAIL_EXISTS);
+        }
         Account account = Account.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -70,20 +72,16 @@ public class AuthServiceImpl implements AuthService {
 
         AccountCreatedEvent event = new AccountCreatedEvent(account.getId(),user.getFullName() , account.getEmail(),EnumRole.CUSTOMER);
 
-        // Send Kafka event asynchronously - don't block user registration if Kafka is unavailable
         try {
             kafkaTemplate.send("account-created-topic", event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
-                        log.error("Failed to send Kafka event for account: {}, error: {}", account.getEmail(), ex.getMessage());
-                        // Could implement retry logic or store in database for later processing
                     } else {
                         log.info("Successfully sent account creation event for: {}", account.getEmail());
                     }
                 });
         } catch (Exception e) {
             log.error("Failed to send Kafka event for account: {}, error: {}", account.getEmail(), e.getMessage());
-            // Don't throw exception - allow user registration to continue even if Kafka fails
         }
 
         return AuthResponse.builder()

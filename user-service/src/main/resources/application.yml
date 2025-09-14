@@ -8,8 +8,8 @@ spring:
     name: user-service
   datasource:
     url: jdbc:postgresql://localhost:5432/user_db
-    username: sa
-    password: 123
+    username: postgres
+    password: 123456
   jpa:
     hibernate:
       ddl-auto: update
@@ -55,7 +55,6 @@ spring:
       properties:
         bootstrap.servers: localhost:9092
 
-# Application specific configuration
 app:
   kafka:
     enabled: true
