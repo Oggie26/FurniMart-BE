@@ -1,0 +1,45 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: file-service
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    generate-ddl: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    url: jdbc:postgresql://file-db:5432/file_db
+#    url: jdbc:postgresql://localhost:5432/file_db
+    username: postgres
+    password: 123456
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+jwt:
+  secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
+  expiration: 3600000
+  refreshExpiration: 604800000
+
+cloudinary:
+  cloud_name: your_cloud_name
+  api_key: your_api_key
+  api_secret: your_api_secret
+
+eureka:
+  client:
+    service-url:
+       defaultZone: http://eureka-server:8761/eureka
+#       defaultZone: http://localhost:8761/eureka
+
