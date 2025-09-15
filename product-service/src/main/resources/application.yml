@@ -12,7 +12,7 @@ spring:
     generate-ddl: true
 
   datasource:
-   url: jdbc:postgresql://product-db:5432/product_db
+    url: jdbc:postgresql://product-db:5432/product_db
     # url: jdbc:postgresql://localhost:5432/product_db
     username: postgres
     password: 123456
