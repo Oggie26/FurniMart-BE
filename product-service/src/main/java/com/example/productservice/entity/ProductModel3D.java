@@ -41,9 +41,6 @@ public class ProductModel3D {
     @JsonIgnore
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "color_id")
-    private Color color;
 }
 
 

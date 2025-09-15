@@ -3,6 +3,9 @@ package com.example.productservice.response;
 import com.example.productservice.entity.Category;
 import com.example.productservice.enums.EnumStatus;
 import lombok.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -22,9 +25,10 @@ public class ProductResponse {
     private EnumStatus status;
     private Double width;
     private Double length;
-    private Category category;
-    private ColorResponse color;
-    private MaterialResponse material;
-    private ImageResponse images;
-    private Image3DResponse images3d;
+    private String categoryName;
+    private List<ColorResponse> color;
+    private String materialName;
+    private List<ImageResponse> images;
+    private List<Image3DResponse> images3d;
+
 }

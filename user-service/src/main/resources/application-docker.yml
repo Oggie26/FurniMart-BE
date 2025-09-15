@@ -1,29 +1,28 @@
-# Docker Profile Configuration
-spring:
-  datasource:
-    url: jdbc:postgresql://postgres:5432/user_db
-    username: postgres
-    password: 12456
-  data:
-    redis:
-      host: redis
-      port: 6379
-  kafka:
-    bootstrap-servers: kafka:29092
-    admin:
-      properties:
-        bootstrap.servers: kafka:29092
-
-app:
-  kafka:
-    enabled: true
-
-eureka:
-  client:
-    enabled: false
-
-logging:
-  level:
-    com.example.userservice: INFO
-    org.apache.kafka: WARN
-    org.springframework.kafka: WARN
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://postgres:5432/user_db
+#    username: postgres
+#    password: 12456
+#  data:
+#    redis:
+#      host: redis
+#      port: 6379
+#  kafka:
+#    bootstrap-servers: kafka:29092
+#    admin:
+#      properties:
+#        bootstrap.servers: kafka:29092
+#
+#app:
+#  kafka:
+#    enabled: true
+#
+#eureka:
+#  client:
+#    enabled: false
+#
+#logging:
+#  level:
+#    com.example.userservice: INFO
+#    org.apache.kafka: WARN
+#    org.springframework.kafka: WARN

@@ -15,21 +15,48 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/user-service/**
+            - Path=/api/users/**
           filters:
             - StripPrefix=1
+
         - id: product-service
           uri: lb://product-service
           predicates:
-            - Path=/product-service/**
+            - Path=/api/products/**
+            - Path=/api/products/swagger-ui.html
+            - Path=/api/products/v3/api-docs/**
           filters:
             - StripPrefix=1
+
         - id: notification-service
           uri: lb://notification-service
           predicates:
-            - Path=/notification-service/**
+            - Path=/api/notifications/**
           filters:
             - StripPrefix=1
+
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - StripPrefix=1
+
+        - id: delivery-service
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/deliveries/**
+          filters:
+            - StripPrefix=1
+
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=1
+
+
 
   main:
     web-application-type: reactive
@@ -42,6 +69,6 @@ eureka:
   client:
     service-url:
 #      defaultZone: http://localhost:8761/eureka
-      defaultZone: http://eureka-server:8761/eureka/
+            defaultZone: http://eureka-server:8761/eureka/
     register-with-eureka: true
     fetch-registry: true

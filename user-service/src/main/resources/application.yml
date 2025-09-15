@@ -2,12 +2,13 @@ server:
   port: 8086
 
 spring:
-  profiles:
-    active: dev
+#  profiles:
+#    active: dev
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/user_db
+    url: jdbc:postgresql://user-db:5432/user_db
+#    url: jdbc:postgresql://localhost:5432/user_db
     username: postgres
     password: 123456
   jpa:
@@ -21,7 +22,8 @@ spring:
         format_sql: true
   data:
     redis:
-      host: localhost
+#      host: localhost
+      host: redis
       port: 6379
       timeout: 60000
       connection-timeout: 2000ms
@@ -34,7 +36,7 @@ spring:
   cache:
     type: redis
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:9092
     consumer:
       auto-offset-reset: earliest
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -46,14 +48,15 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      acks: 1
+      backs: 1
       retries: 3
       properties:
         spring.json.add.type.headers: false
         max.request.size: 20971520
     admin:
       properties:
-        bootstrap.servers: localhost:9092
+        bootstrap-servers: kafka:9092
+#        bootstrap.servers: localhost:9092
 
 app:
   kafka:
@@ -77,7 +80,7 @@ springdoc:
 
 eureka:
   client:
-    enabled: false
+    enabled: true
     service-url:
 #      defaultZone: http://localhost:8761/eureka
       defaultZone: http://eureka-server:8761/eureka/
@@ -88,3 +91,5 @@ logging:
   level:
     org.apache.kafka.clients.NetworkClient: ERROR
     org.apache.kafka.clients.Metadata: ERROR
+
+

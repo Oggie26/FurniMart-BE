@@ -1,5 +1,7 @@
 package com.example.productservice.response;
 
+import com.example.productservice.enums.Enum3DFormat;
+import com.example.productservice.enums.EnumStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,4 +13,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Image3DResponse {
     private String image3d;
+    private EnumStatus status;
+    private String modelUrl;
+    private Enum3DFormat format;
+    private Double sizeInMb;
+    private String previewImage;
 }

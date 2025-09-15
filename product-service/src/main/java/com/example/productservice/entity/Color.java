@@ -31,8 +31,5 @@ public class Color extends AbstractEntity{
     @JsonIgnore
     private Product product;
 
-    @OneToMany(mappedBy = "color", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<ProductModel3D> models3D = new ArrayList<>();
 }
 

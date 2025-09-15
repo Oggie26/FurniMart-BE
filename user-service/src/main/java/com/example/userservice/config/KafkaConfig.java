@@ -21,8 +21,8 @@ import java.util.Map;
 @EnableKafka
 @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true", matchIfMissing = false)
 public class KafkaConfig {
-    private final String BOOTSTRAP_SERVERS = "localhost:9092";
-
+//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private final String BOOTSTRAP_SERVERS = "kafka:9092";
     // ----------------- PRODUCER cho Object --------------------
     @Bean
     public ProducerFactory<String, Object> producerFactory() {

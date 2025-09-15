@@ -1,24 +1,33 @@
-# Development Profile Configuration
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/user_db
-    username: postgres
-    password: 123456
-  data:
-    redis:
-      host: localhost
-      port: 6379
-  kafka:
-    bootstrap-servers: localhost:9092
-
-app:
-  kafka:
-    enabled: true
-
-logging:
-  level:
-    com.example.userservice: DEBUG
-    org.apache.kafka: WARN
-    org.springframework.kafka: WARN
-    org.apache.kafka.clients.NetworkClient: ERROR
-    org.apache.kafka.clients.Metadata: ERROR
+## Development Profile Configuration
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/user_db
+#    username: postgres
+#    password: 123456
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+#  kafka:
+#    bootstrap-servers: localhost:9092
+#
+#eureka:
+#  client:
+#    enabled: false
+#    service-url:
+#      defaultZone: http://localhost:8761/eureka
+#    #      defaultZone: http://eureka-server:8761/eureka/
+#    register-with-eureka: true
+#    fetch-registry: true
+#
+#app:
+#  kafka:
+#    enabled: true
+#
+#logging:
+#  level:
+#    com.example.userservice: DEBUG
+#    org.apache.kafka: WARN
+#    org.springframework.kafka: WARN
+#    org.apache.kafka.clients.NetworkClient: ERROR
+#    org.apache.kafka.clients.Metadata: ERROR
