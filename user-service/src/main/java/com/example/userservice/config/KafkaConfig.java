@@ -19,7 +19,6 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
-@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true", matchIfMissing = false)
 public class KafkaConfig {
 //    private final String BOOTSTRAP_SERVERS = "localhost:9092";
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
