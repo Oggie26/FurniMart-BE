@@ -170,41 +170,6 @@ services:
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
-  payment-service:
-    build: ./payment-service
-    container_name: payment-service
-    ports:
-      - "8088:8088"
-    depends_on:
-      - eureka-server
-      - payment-db
-      - kafka
-    networks:
-      - backend
-    restart: unless-stopped
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://payment-db:5432/payment_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: "true"
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-
-  payment-db:
-    image: postgres:16
-    container_name: payment-db
-    restart: always
-    environment:
-      POSTGRES_DB: payment_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456
-    ports:
-      - "5440:5432"
-    volumes:
-      - payment_data:/var/lib/postgresql/data
-    networks:
-      - backend
-
   delivery-service:
     build: ./delivery-service
     container_name: delivery-service
@@ -238,18 +203,6 @@ services:
     networks:
       - backend
 
-  file-service:
-    build: ./file-service
-    container_name: file-service
-    ports:
-      - "8090:8090"
-    depends_on:
-      - eureka-server
-    networks:
-      - backend
-    restart: unless-stopped
-    volumes:
-      - file_data:/app/files
 
   redis:
     image: redis:7-alpine
@@ -309,6 +262,4 @@ volumes:
   product_data:
   order_data:
   inventory_data:
-  payment_data:
   delivery_data:
-  file_data:
