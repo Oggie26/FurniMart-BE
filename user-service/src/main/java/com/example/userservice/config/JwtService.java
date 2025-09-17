@@ -51,6 +51,14 @@ public class JwtService {
         return parseToken(token).getBody().getSubject();
     }
 
+    public String extractUserId(String token) {
+        return parseToken(token).getBody().get("userId", String.class);
+    }
+
+    public String extractStoreId(String token) {
+        return parseToken(token).getBody().get("storeId", String.class);
+    }
+
     public Date extractExpiration(String token) {
         return parseToken(token).getBody().getExpiration();
     }

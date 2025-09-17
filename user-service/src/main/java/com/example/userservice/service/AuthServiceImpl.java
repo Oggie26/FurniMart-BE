@@ -3,6 +3,7 @@ package com.example.userservice.service;
 import com.example.userservice.config.JwtService;
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
+import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
@@ -10,6 +11,7 @@ import com.example.userservice.event.AccountCreatedEvent;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.AuthRequest;
 import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.AuthResponse;
@@ -25,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -37,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
+    private final UserStoreRepository userStoreRepository;
     private final KafkaTemplate<String, AccountCreatedEvent> kafkaTemplate;
 
     @Override
@@ -111,14 +115,22 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.USER_DELETED);
         }
 
-        Map<String, Object> claims = Map.of("role", account.getRole());
+        List<UserStore> userStores = userStoreRepository.findByUserId(account.getUser().getId());
 
+        List<String> storeIds = userStores.stream()
+                .map(us -> us.getStore().getId())
+                .toList();
+
+        Map<String, Object> claims = Map.of(
+                "role", account.getRole(),
+                "userId", account.getId(),
+                "storeId", storeIds
+        );
         String accessToken = jwtService.generateToken(claims, account.getEmail());
         String refreshToken = jwtService.generateRefreshToken(account.getEmail());
 
         tokenService.saveToken(account.getEmail(), accessToken, jwtService.getJwtExpiration());
         tokenService.saveRefreshToken(account.getEmail(), refreshToken, jwtService.getRefreshExpiration());
-
         return LoginResponse.builder()
                 .token(accessToken)
                 .refreshToken(refreshToken)

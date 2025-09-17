@@ -57,6 +57,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setCategoryName(categoryRequest.getCategoryName());
         category.setDescription(categoryRequest.getDescription());
         category.setImage(categoryRequest.getImage());
+        category.setStatus(categoryRequest.getStatus());
 
         Category updated = categoryRepository.save(category);
         return mapToResponse(updated);
