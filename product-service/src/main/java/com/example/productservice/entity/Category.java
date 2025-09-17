@@ -25,10 +25,15 @@ public class Category extends AbstractEntity{
     @Column
     private String description;
 
+    @Column
+    private String image;
+
     @Enumerated(EnumType.STRING)
     private EnumStatus  status;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private List<Product> products;
+
+
 }
 

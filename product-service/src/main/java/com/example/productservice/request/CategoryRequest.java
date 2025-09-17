@@ -25,4 +25,6 @@ public class CategoryRequest {
 
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
+
+    private String image;
 }

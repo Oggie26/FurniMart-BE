@@ -12,7 +12,7 @@ public enum ErrorCode {
     INVALID_JSON(1101, "Json invalid", HttpStatus.BAD_REQUEST),
     INVALID_STATUS(1118, "Invalid Status", HttpStatus.BAD_REQUEST),
     INVALID_REQUEST(1119, "Invalid Request", HttpStatus.BAD_REQUEST),
-
+    ORDER_NOT_FOUND(1120, "Order not found", HttpStatus.NOT_FOUND),
     //12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     ;

@@ -35,6 +35,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .categoryName(categoryRequest.getCategoryName())
                 .description(categoryRequest.getDescription())
                 .status(EnumStatus.ACTIVE)
+                .image(categoryRequest.getImage())
                 .build();
 
         Category saved = categoryRepository.save(category);
@@ -55,6 +56,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         category.setCategoryName(categoryRequest.getCategoryName());
         category.setDescription(categoryRequest.getDescription());
+        category.setImage(categoryRequest.getImage());
 
         Category updated = categoryRepository.save(category);
         return mapToResponse(updated);
@@ -124,6 +126,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .status(category.getStatus())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
+                .image(category.getImage())
                 .build();
     }
 }

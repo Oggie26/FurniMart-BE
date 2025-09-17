@@ -18,6 +18,7 @@ public class CategoryResponse {
     Long id;
     String categoryName;
     String description;
+    String image;
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
     Date createdAt;
