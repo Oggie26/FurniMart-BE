@@ -17,6 +17,22 @@ spring:
     username: postgres
     password: 123456
 
+  data:
+    redis:
+      #      host: localhost
+      host: redis
+      port: 6379
+      timeout: 60000
+      connection-timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+    cache:
+      type: redis
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
