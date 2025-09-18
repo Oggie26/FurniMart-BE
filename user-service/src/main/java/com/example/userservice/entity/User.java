@@ -45,6 +45,15 @@ public class User extends AbstractEntity {
     @Column(unique = true, length = 20)
     String cccd;
 
+    @Column
+    String department;
+
+    @Column
+    String position;
+
+    @Column
+    Double salary;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
