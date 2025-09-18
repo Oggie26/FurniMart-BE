@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .message.sent {
+            background-color: #e3f2fd;
+            text-align: right;
+        }
+        .message.received {
+            background-color: #f1f8e9;
+        }
+        .message.system {
+            background-color: #fff3e0;
+            font-style: italic;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input, button {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat WebSocket Test</h1>
+    
+    <div class="container">
+        <h3>Connection Settings</h3>
+        <div class="input-group">
+            <input type="text" id="userId" placeholder="User ID" value="user123">
+            <input type="text" id="chatId" placeholder="Chat ID" value="chat123">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+        </div>
+        <div id="status" class="status disconnected">Disconnected</div>
+    </div>
+
+    <div class="container">
+        <h3>Messages</h3>
+        <div id="messages" class="messages"></div>
+        <div class="input-group">
+            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="typingInput" placeholder="Type to show typing indicator..." onkeyup="handleTyping()">
+        </div>
+    </div>
+
+    <div class="container">
+        <h3>Test Actions</h3>
+        <button onclick="sendPing()">Send Ping</button>
+        <button onclick="joinChat()">Join Chat</button>
+        <button onclick="leaveChat()">Leave Chat</button>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let socket = null;
+        let isConnected = false;
+
+        function connect() {
+            const userId = document.getElementById('userId').value;
+            const chatId = document.getElementById('chatId').value;
+            
+            if (!userId || !chatId) {
+                alert('Please enter both User ID and Chat ID');
+                return;
+            }
+
+            // Create SockJS connection
+            socket = new SockJS(`http://localhost:8086/ws/chat?userId=${userId}`);
+            
+            socket.onopen = function() {
+                console.log('WebSocket connection opened');
+                updateStatus('Connected', true);
+                isConnected = true;
+                addMessage('System', 'Connected to chat server', 'system');
+            };
+
+            socket.onmessage = function(event) {
+                console.log('Received message:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+                    handleWebSocketMessage(message);
+                } catch (e) {
+                    console.error('Error parsing message:', e);
+                    addMessage('System', 'Error parsing message: ' + event.data, 'system');
+                }
+            };
+
+            socket.onclose = function() {
+                console.log('WebSocket connection closed');
+                updateStatus('Disconnected', false);
+                isConnected = false;
+                addMessage('System', 'Disconnected from chat server', 'system');
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                addMessage('System', 'WebSocket error occurred', 'system');
+            };
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const chatId = document.getElementById('chatId').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!isConnected) {
+                alert('Not connected to server');
+                return;
+            }
+
+            const message = {
+                type: 'MESSAGE',
+                chatId: chatId,
+                senderId: userId,
+                content: messageInput.value,
+                messageType: 'TEXT',
+                timestamp: Date.now()
+            };
+
+            socket.send(JSON.stringify(message));
+            addMessage('You', messageInput.value, 'sent');
+            messageInput.value = '';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function handleTyping() {
+            const typingInput = document.getElementById('typingInput');
+            const chatId = document.getElementById('chatId').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!isConnected) {
+                return;
+            }
+
+            const message = {
+                type: 'TYPING',
+                chatId: chatId,
+                senderId: userId,
+                content: typingInput.value ? 'typing' : 'stopped',
+                timestamp: Date.now()
+            };
+
+            socket.send(JSON.stringify(message));
+        }
+
+        function sendPing() {
+            if (!isConnected) {
+                alert('Not connected to server');
+                return;
+            }
+
+            const message = {
+                type: 'PING',
+                content: 'ping',
+                timestamp: Date.now()
+            };
+
+            socket.send(JSON.stringify(message));
+        }
+
+        function joinChat() {
+            const chatId = document.getElementById('chatId').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!isConnected) {
+                alert('Not connected to server');
+                return;
+            }
+
+            const message = {
+                type: 'JOIN_CHAT',
+                chatId: chatId,
+                senderId: userId,
+                content: 'User joined the chat',
+                timestamp: Date.now()
+            };
+
+            socket.send(JSON.stringify(message));
+        }
+
+        function leaveChat() {
+            const chatId = document.getElementById('chatId').value;
+            const userId = document.getElementById('userId').value;
+            
+            if (!isConnected) {
+                alert('Not connected to server');
+                return;
+            }
+
+            const message = {
+                type: 'LEAVE_CHAT',
+                chatId: chatId,
+                senderId: userId,
+                content: 'User left the chat',
+                timestamp: Date.now()
+            };
+
+            socket.send(JSON.stringify(message));
+        }
+
+        function handleWebSocketMessage(message) {
+            switch (message.type) {
+                case 'CONNECTION_ESTABLISHED':
+                    addMessage('System', message.content, 'system');
+                    break;
+                case 'MESSAGE':
+                    addMessage(message.senderId, message.content, 'received');
+                    break;
+                case 'TYPING':
+                    addMessage('System', `${message.senderId} is ${message.content}`, 'system');
+                    break;
+                case 'USER_JOINED':
+                    addMessage('System', `${message.senderId} joined the chat`, 'system');
+                    break;
+                case 'USER_LEFT':
+                    addMessage('System', `${message.senderId} left the chat`, 'system');
+                    break;
+                case 'PONG':
+                    addMessage('System', 'Pong received', 'system');
+                    break;
+                case 'ERROR':
+                    addMessage('System', 'Error: ' + message.content, 'system');
+                    break;
+                default:
+                    addMessage('System', `Unknown message type: ${message.type}`, 'system');
+            }
+        }
+
+        function addMessage(sender, content, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${content}`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function updateStatus(status, connected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${connected ? 'connected' : 'disconnected'}`;
+        }
+
+        // Auto-connect on page load (optional)
+        // connect();
+    </script>
+</body>
+</html>

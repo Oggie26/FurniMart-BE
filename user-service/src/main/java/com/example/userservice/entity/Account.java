@@ -12,7 +12,10 @@ import java.util.Collection;
 import java.util.List;
 
 @Entity
-@Table(name = "accounts")
+@Table(name = "accounts", 
+       uniqueConstraints = {
+           @UniqueConstraint(columnNames = "email")
+       })
 @Getter
 @Setter
 @NoArgsConstructor

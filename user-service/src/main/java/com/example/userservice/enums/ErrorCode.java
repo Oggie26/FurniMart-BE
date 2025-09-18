@@ -33,6 +33,14 @@ public enum ErrorCode {
     STORE_NOT_FOUND(1212, "Store not found", HttpStatus.NOT_FOUND),
     USER_STORE_RELATIONSHIP_EXISTS(1213, "User store relationship already exists", HttpStatus.BAD_REQUEST),
     USER_STORE_RELATIONSHIP_NOT_FOUND(1214, "User store relationship not found", HttpStatus.NOT_FOUND),
+    
+    // Chat related errors
+    CHAT_NOT_FOUND(1215, "Chat not found", HttpStatus.NOT_FOUND),
+    MESSAGE_NOT_FOUND(1216, "Message not found", HttpStatus.NOT_FOUND),
+    ACCESS_DENIED(1217, "Access denied", HttpStatus.FORBIDDEN),
+    UNAUTHORIZED(1218, "Unauthorized", HttpStatus.UNAUTHORIZED),
+    USER_ALREADY_PARTICIPANT(1219, "User is already a participant", HttpStatus.BAD_REQUEST),
+    USER_NOT_PARTICIPANT(1220, "User is not a participant", HttpStatus.BAD_REQUEST),
 
     ;
 
