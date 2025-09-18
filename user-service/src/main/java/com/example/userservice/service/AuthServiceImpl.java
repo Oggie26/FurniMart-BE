@@ -127,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
                 "storeId", storeIds
         );
         String accessToken = jwtService.generateToken(claims, account.getEmail());
-        String refreshToken = jwtService.generateRefreshToken(account.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(claims,account.getEmail());
 
         tokenService.saveToken(account.getEmail(), accessToken, jwtService.getJwtExpiration());
         tokenService.saveRefreshToken(account.getEmail(), refreshToken, jwtService.getRefreshExpiration());
@@ -184,7 +184,7 @@ public class AuthServiceImpl implements AuthService {
 
             Map<String, Object> claims = Map.of("role", account.getRole());
             String newAccessToken = jwtService.generateToken(claims, account.getEmail());
-            String newRefreshToken = jwtService.generateRefreshToken(account.getEmail());
+            String newRefreshToken = jwtService.generateRefreshToken(claims,account.getEmail());
 
             tokenService.saveToken(email, newAccessToken, jwtService.getJwtExpiration());
             tokenService.saveRefreshToken(email, newRefreshToken, jwtService.getRefreshExpiration());

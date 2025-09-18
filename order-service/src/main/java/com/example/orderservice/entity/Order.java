@@ -3,6 +3,7 @@ package com.example.orderservice.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -13,23 +14,21 @@ import java.util.List;
 @AllArgsConstructor
 @Table(name = "orders")
 @ToString
+@Builder
 public class Order extends AbstractEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
     @Column(nullable = false)
     private String userId;
 
-    @Column(nullable = false)
+    @Column
     private String storeId;
 
     @Column(nullable = false)
-    private Integer addressId;
-
-    @Column(nullable = false)
-    private Integer quantity;
+    private Long addressId;
 
     @Column(nullable = false)
     private Double total;
@@ -37,7 +36,8 @@ public class Order extends AbstractEntity {
     @Column
     private String note;
 
-    @Column
+    @Column(nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date orderDate;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -45,4 +45,7 @@ public class Order extends AbstractEntity {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails;
+
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+    private Payment payment;
 }

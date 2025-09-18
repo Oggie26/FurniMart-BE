@@ -12,14 +12,13 @@ import java.util.List;
 public class OrderResponse {
 
     private Long id;
-    private String userId;
-    private String storeId;
-    private Integer addressId;
-    private Integer quantity;
+    private UserResponse user;
+    private StoreResponse store;
+    private AddressResponse address;
     private Double total;
     private String note;
     private Date orderDate;
-
     private List<OrderDetailResponse> orderDetails;
     private List<ProcessOrderResponse> processOrders;
+    private PaymentResponse payment;
 }

@@ -132,6 +132,17 @@ public class UserController {
                 .build();
     }
 
+
+    @GetMapping("/account/{accountId}")
+    @Operation(summary = "Lấy thông tin User bằng AccountId")
+    public ApiResponse<UserResponse> getUserByAccountId(@PathVariable String accountId) {
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .data(userService.getUserByAccountId(accountId))
+                .message("Thành công")
+                .build();
+    }
+
     @PutMapping("/profile")
     @Operation(summary = "Update current user profile")
     public ApiResponse<UserResponse> updateProfile(@Valid @RequestBody UserUpdateRequest request) {

@@ -284,6 +284,13 @@ public class UserServiceImpl implements UserService {
         return toUserResponse(user);
     }
 
+    @Override
+    public UserResponse getUserByAccountId(String accountId) {
+        User user = userRepository.findByAccountIdAndIsDeletedFalse(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
+        return toUserResponse(user);
+    }
+
     private UserResponse toUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())

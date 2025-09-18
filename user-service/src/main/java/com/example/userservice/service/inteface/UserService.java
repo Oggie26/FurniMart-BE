@@ -39,4 +39,6 @@ public interface UserService {
     UserResponse getUserByEmail(String email);
 
     UserResponse getUserByPhone(String phone);
+
+    UserResponse getUserByAccountId(String accountId);
 }

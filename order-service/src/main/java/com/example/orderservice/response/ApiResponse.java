@@ -19,4 +19,5 @@ public class ApiResponse<T> {
     private String message;
     private T data;
     private LocalDateTime timestamp;
+    private String redirectUrl;
 }

@@ -4,7 +4,6 @@ import com.example.productservice.entity.*;
 import com.example.productservice.enums.EnumStatus;
 import com.example.productservice.enums.ErrorCode;
 import com.example.productservice.exception.AppException;
-import com.example.productservice.feign.FileClient;
 import com.example.productservice.repository.*;
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.*;

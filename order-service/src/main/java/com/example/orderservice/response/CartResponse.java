@@ -12,7 +12,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CartResponse {
     Long cartId;
-    String username;
+    String userId;
     List<CartItemResponse> items;
     Double totalPrice;
 }
