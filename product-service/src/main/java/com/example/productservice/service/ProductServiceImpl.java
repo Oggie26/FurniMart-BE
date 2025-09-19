@@ -26,7 +26,6 @@ public class ProductServiceImpl implements ProductService {
     private final ColorRepository  colorRepository;
     private final ProductImageRepository productImageRepository;
     private final ProductModel3DRepository productModel3DRepository;
-    private final FileClient fileClient;
 
     @Override
     @Transactional
