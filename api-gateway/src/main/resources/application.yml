@@ -16,6 +16,7 @@ spring:
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
+            - Path=/api/wallets/**
           filters:
             - StripPrefix=1
 
@@ -53,6 +54,7 @@ spring:
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
+            - Path=/api/vouchers/**
           filters:
             - StripPrefix=1
 

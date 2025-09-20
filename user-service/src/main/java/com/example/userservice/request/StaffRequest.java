@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Past;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Builder
@@ -42,7 +43,7 @@ public class StaffRequest {
 
     private String position;
 
-    private Double salary;
+    private BigDecimal salary;
 
     @NotNull(message = "Status is required")
     @Enumerated(EnumType.STRING)
