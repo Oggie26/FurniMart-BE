@@ -42,6 +42,15 @@ public enum ErrorCode {
     USER_ALREADY_PARTICIPANT(1219, "User is already a participant", HttpStatus.BAD_REQUEST),
     USER_NOT_PARTICIPANT(1220, "User is not a participant", HttpStatus.BAD_REQUEST),
 
+    // Wallet related errors
+    WALLET_NOT_FOUND(1221, "Wallet not found", HttpStatus.NOT_FOUND),
+    WALLET_CODE_EXISTS(1222, "Wallet code already exists", HttpStatus.BAD_REQUEST),
+    USER_ALREADY_HAS_WALLET(1223, "User already has a wallet", HttpStatus.BAD_REQUEST),
+    WALLET_NOT_ACTIVE(1224, "Wallet is not active", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_BALANCE(1225, "Insufficient wallet balance", HttpStatus.BAD_REQUEST),
+    TRANSACTION_NOT_FOUND(1226, "Transaction not found", HttpStatus.NOT_FOUND),
+    TRANSACTION_CODE_EXISTS(1227, "Transaction code already exists", HttpStatus.BAD_REQUEST),
+
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

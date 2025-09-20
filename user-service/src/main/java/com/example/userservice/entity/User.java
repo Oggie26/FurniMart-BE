@@ -4,6 +4,7 @@ import com.example.userservice.enums.EnumStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class User extends AbstractEntity {
     String position;
 
     @Column
-    Double salary;
+    BigDecimal salary;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
@@ -66,4 +67,7 @@ public class User extends AbstractEntity {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<UserStore> userStores;
+
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
+    private Wallet wallet;
 }

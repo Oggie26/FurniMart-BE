@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @AllArgsConstructor
@@ -26,7 +27,7 @@ public class StaffResponse {
     private String cccd;
     private String department;
     private String position;
-    private Double salary;
+    private BigDecimal salary;
     @Enumerated(EnumType.STRING)
     private EnumRole role;
     @Enumerated(EnumType.STRING)

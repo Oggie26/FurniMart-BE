@@ -22,6 +22,13 @@ public enum ErrorCode {
     CART_NOT_FOUND(1204, "Cart not found", HttpStatus.NOT_FOUND),
     ADDRESS_NOT_FOUND(1205, "Address not found", HttpStatus.NOT_FOUND),
     STORE_NOT_FOUND(1206, "Store not found", HttpStatus.NOT_FOUND),
+    
+    // Voucher related errors
+    VOUCHER_NOT_FOUND(1207, "Voucher not found", HttpStatus.NOT_FOUND),
+    VOUCHER_CODE_EXISTS(1208, "Voucher code already exists", HttpStatus.BAD_REQUEST),
+    VOUCHER_INVALID(1209, "Voucher is invalid or expired", HttpStatus.BAD_REQUEST),
+    VOUCHER_NOT_APPLICABLE(1210, "Voucher is not applicable for this order", HttpStatus.BAD_REQUEST),
+    VOUCHER_USAGE_LIMIT_EXCEEDED(1211, "Voucher usage limit exceeded", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Past;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Builder
@@ -33,7 +34,7 @@ public class StaffUpdateRequest {
 
     private String position;
 
-    private Double salary;
+    private BigDecimal salary;
 
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
