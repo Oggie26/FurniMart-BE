@@ -2,7 +2,6 @@ package com.example.productservice.request;
 
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,9 +27,6 @@ public class ProductRequest {
     @NotBlank(message = "Thumbnail image is required")
     private String thumbnailImage;
 
-    @NotBlank(message = "Slug is required")
-    private String slug;
-
     @Positive(message = "Weight must be > 0")
     private Double weight;
 
@@ -46,12 +42,10 @@ public class ProductRequest {
     @NotNull(message = "CategoryId is required")
     private Long categoryId;
 
-    @NotNull(message = "MaterialId is required")
-    private Long materialId;
+    @NotEmpty(message = "MaterialIds is required")
+    private List<Long> materialIds;
 
     private List<ColorRequest> colorRequests;
 
-    private List<ProductImageRequest> imageRequestList;
 
-    private List<ProductModel3DRequest> model3DRequestList;
 }

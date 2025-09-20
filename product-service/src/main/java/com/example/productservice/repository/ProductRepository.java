@@ -8,12 +8,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 
 public interface ProductRepository extends JpaRepository<Product,String> {
     Optional<Product> findByIdAndIsDeletedFalse(String id);
     Optional<Product> findBySlugAndIsDeletedFalse(String slug);
+    List<Product> findByCategoryIdAndIsDeletedFalse(Long categoryId);
     Optional<Product> findByCodeAndIsDeletedFalse(String code);
     Optional<Product> findByNameAndIsDeletedFalse(String name);
         @Query(value = """

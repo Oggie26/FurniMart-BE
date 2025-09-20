@@ -37,10 +37,10 @@ public class ProductModel3D {
     private String previewImage;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
+    @JoinColumn(name = "color_id")
     @JsonIgnore
-    private Product product;
-
+    private Color color;
 }
+
 
 

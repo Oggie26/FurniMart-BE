@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class MaterialResponse {
     private Long id;
+    private String image;
     private String materialName;
     private String description;
     private EnumStatus status;

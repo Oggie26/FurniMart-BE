@@ -19,19 +19,10 @@ public class WarehouseRequest {
     @NotBlank(message = "Tên kho không được để trống")
     private String warehouseName;
 
-    private String address;
-
-    private Double latitude;
-
-    private Double longitude;
-
     @Enumerated(EnumType.STRING)
     private WarehouseStatus status;
 
     @Min(value = 0, message = "Sức chứa phải >= 0")
     private Integer capacity;
-
-    @NotBlank(message = "User ID không được để trống")
-    private String userId;
 
 }

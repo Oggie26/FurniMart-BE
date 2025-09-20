@@ -35,6 +35,7 @@ public class MaterialServiceImpl implements MaterialService {
                 .materialName(materialRequest.getMaterialName())
                 .description(materialRequest.getDescription())
                 .status(materialRequest.getStatus())
+                .image(materialRequest.getImage())
                 .build();
 
         materialRepository.save(material);
@@ -54,6 +55,7 @@ public class MaterialServiceImpl implements MaterialService {
                 });
 
         material.setDescription(materialRequest.getDescription());
+        material.setImage(materialRequest.getImage());
         material.setMaterialName(materialRequest.getMaterialName());
         material.setStatus(materialRequest.getStatus());
         materialRepository.save(material);
@@ -121,6 +123,7 @@ public class MaterialServiceImpl implements MaterialService {
                 .materialName(material.getMaterialName())
                 .description(material.getDescription())
                 .status(material.getStatus())
+                .image(material.getImage())
                 .build();
     }
 }

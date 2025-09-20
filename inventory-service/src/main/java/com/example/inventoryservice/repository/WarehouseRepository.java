@@ -12,14 +12,12 @@ import java.util.Optional;
 public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
     Optional<Warehouse> findByIdAndIsDeletedFalse(String id);
     Optional<Warehouse> findByWarehouseNameAndIsDeletedFalse(String warehouseName);
-//    Optional<Warehouse> findByUserIdAndIsDeletedFalse(String userId);
     @Query(value = """
         SELECT * FROM warehouse w
         WHERE w.is_deleted = false
         AND (
             :keyword IS NULL
             OR LOWER(w.warehouse_name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(w.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
         )
         """,
             countQuery = """
@@ -28,7 +26,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
         AND (
             :keyword IS NULL
             OR LOWER(w.warehouse_name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(w.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
         )
         """,
             nativeQuery = true)

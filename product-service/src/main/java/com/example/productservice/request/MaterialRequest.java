@@ -25,4 +25,6 @@ public class MaterialRequest {
 
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
+
+    private String image;
 }

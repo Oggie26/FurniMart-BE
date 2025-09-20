@@ -27,6 +27,9 @@ public class Warehouse extends AbstractEntity {
     @Column
     private Integer capacity;
 
+    @Column
+    private String storeId;
+
     @Enumerated(EnumType.STRING)
     private WarehouseStatus status;
 

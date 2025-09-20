@@ -1,5 +1,6 @@
 package com.example.productservice.service.inteface;
 
+import com.example.productservice.entity.Product;
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductResponse;
@@ -15,5 +16,6 @@ public interface ProductService {
     ProductResponse getProductById(String productId);
     ProductResponse getProductBySlug(String slug);
     List<ProductResponse> getProducts();
+    List<Product> getProductsByCategoryId(Long categoryId);
     PageResponse<ProductResponse> searchProduct(String request, int page, int size);
 }

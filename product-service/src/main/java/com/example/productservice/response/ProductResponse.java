@@ -1,9 +1,7 @@
 package com.example.productservice.response;
 
-import com.example.productservice.entity.Category;
 import com.example.productservice.enums.EnumStatus;
 import lombok.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,7 +26,5 @@ public class ProductResponse {
     private String categoryName;
     private List<ColorResponse> color;
     private String materialName;
-    private List<ImageResponse> images;
-    private List<Image3DResponse> images3d;
-
+    private List<MaterialResponse> materials;
 }

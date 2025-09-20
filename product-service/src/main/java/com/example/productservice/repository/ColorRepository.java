@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface ColorRepository extends JpaRepository<Color, String> {
+    void deleteAllByProductId(String productId);
     Optional<Color> findByIdAndIsDeletedFalse(String id);
     Optional<Color> findByHexCodeAndIsDeletedFalse(String hexCode);
     Optional<Color> findByColorNameAndIsDeletedFalse(String colorName);

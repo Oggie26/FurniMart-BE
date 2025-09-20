@@ -31,8 +31,10 @@ public class Material extends AbstractEntity {
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
 
-    @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = false)
+    @Column
+    private String image;
+
+    @ManyToMany(mappedBy = "materials", fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Product> products = new ArrayList<>();
 }
-

@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -22,4 +24,7 @@ public class ColorRequest {
     )
     private String hexCode;
 
+    private List<ProductImageRequest> imageRequestList;
+
+    private List<ProductModel3DRequest> model3DRequestList;
 }

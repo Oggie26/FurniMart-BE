@@ -1,5 +1,6 @@
 package com.example.productservice.controller;
 
+import com.example.productservice.entity.Product;
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.ApiResponse;
 import com.example.productservice.response.PageResponse;
@@ -11,9 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -116,6 +115,17 @@ public class ProductController {
                 .status(HttpStatus.OK.value())
                 .message("Lấy sản phẩm thành công")
                 .data(productService.getProductBySlug(slug))
+                .build();
+    }
+
+    @GetMapping("/category/{categoryId}")
+    @Operation(summary = "Lấy chi tiết sản phẩm theo Slug")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<List<Product>> getProductByCategoryId(@RequestParam Long categoryId) {
+        return ApiResponse.<List<Product>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy sản phẩm thành công")
+                .data(productService.getProductsByCategoryId(categoryId))
                 .build();
     }
 

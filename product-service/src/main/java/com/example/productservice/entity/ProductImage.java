@@ -21,7 +21,8 @@ public class ProductImage {
     private String imageUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
+    @JoinColumn(name = "color_id")
     @JsonIgnore
-    private Product product;
+    private Color color;
 }
+
