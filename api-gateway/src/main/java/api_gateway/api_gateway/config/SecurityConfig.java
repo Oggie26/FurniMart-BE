@@ -8,6 +8,8 @@
     import org.springframework.security.config.web.server.ServerHttpSecurity;
     import org.springframework.security.web.server.SecurityWebFilterChain;
     import org.springframework.web.cors.CorsConfiguration;
+    import org.springframework.web.cors.reactive.CorsConfigurationSource;
+    import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
     import java.util.List;
 
@@ -20,7 +22,7 @@
         public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
             http
                     .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                    .cors(ServerHttpSecurity.CorsSpec::disable)
+                    .cors(cor -> cor.configurationSource(corsConfigurationSource()))
                     .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                     .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
 
@@ -38,5 +40,29 @@
                     );
 
             return http.build();
+        }
+
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+            CorsConfiguration config = new CorsConfiguration();
+
+            config.setAllowedOriginPatterns(List.of(
+                    "http://localhost:5173",
+                    "http://127.0.0.1:5173",
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                    "http://152.53.169.79",
+                    "http://152.53.169.79:8080"
+            ));
+            config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+            config.addAllowedHeader("*");
+            config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+            config.setAllowCredentials(true);
+            config.setMaxAge(3600L);
+
+            UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+            source.registerCorsConfiguration("/**", config);
+
+            return source;
         }
     }

@@ -19,6 +19,10 @@ spring:
             - Path=/api/users/**
             - Path=/api/auth/**
             - Path=/api/stores/**
+            - Path=/api/blogs/**
+            - Path=/api/addresses/**
+            - Path=/api/staff/**
+            - Path=/api/wallets/**
             - Path=/api/wallets/**
           filters:
             - StripPrefix=1
@@ -41,13 +45,6 @@ spring:
           filters:
             - StripPrefix=1
 
-        - id: payment-service
-          uri: lb://payment-service
-          predicates:
-            - Path=/api/payments/**
-          filters:
-            - StripPrefix=1
-
         - id: delivery-service
           uri: lb://delivery-service
           predicates:
@@ -60,6 +57,17 @@ spring:
           predicates:
             - Path=/api/orders/**
             - Path=/api/vouchers/**
+          filters:
+            - StripPrefix=1
+
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/**
+            - Path=/api/warehouse/**
+            - Path=/api/warehouses/**
+            - Path=/api/zones/**
+
           filters:
             - StripPrefix=1
 
