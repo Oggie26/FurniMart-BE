@@ -7,6 +7,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.List;
 
 @Configuration
 @EnableWebFluxSecurity
@@ -16,31 +19,33 @@ public class SecurityConfig {
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
-                // Disable CSRF
                 .csrf(csrf -> csrf.disable())
-
-                // CORS configuration
                 .cors(cors -> cors.configurationSource(request -> {
-                    var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(java.util.List.of(
+                    CorsConfiguration config = new CorsConfiguration();
+
+                    config.setAllowedOriginPatterns(List.of(
                             "http://localhost:5173",
                             "http://127.0.0.1:5173",
+                            "http://localhost:3000",
+                            "http://127.0.0.1:3000",
                             "http://152.53.169.79"
                     ));
-                    corsConfig.setAllowedMethods(java.util.List.of(
-                            "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+
+                    config.setAllowedMethods(List.of(
+                            "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
                     ));
-                    corsConfig.setAllowedHeaders(java.util.List.of("*"));
-                    corsConfig.setAllowCredentials(true);
-                    corsConfig.setMaxAge(3600L);
-                    return corsConfig;
+
+                    config.setAllowedHeaders(List.of("*"));
+                    config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+                    config.setAllowCredentials(true);
+                    config.setMaxAge(3600L);
+
+                    return config;
                 }))
 
-                // Disable default login & basic auth
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable())
 
-                // Authorize requests
                 .authorizeExchange(exchanges -> exchanges
                         // Public endpoints
                         .pathMatchers(
@@ -48,11 +53,10 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/webjars/**",
+                                "/api/products/**",
                                 "/api/auth/**"
                         ).permitAll()
-                        // OPTIONS requests must be permitted for CORS preflight
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // All other requests require authentication
                         .anyExchange().authenticated()
                 );
 
