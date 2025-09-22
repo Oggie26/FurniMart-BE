@@ -12,27 +12,31 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 @EnableReactiveMethodSecurity
 public class SecurityConfig {
 
-        @Bean
-        public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-            return http
-                    .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                    .cors()
-                    .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
-                    .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
-                    .authorizeExchange(exchanges -> exchanges
-                            .pathMatchers(
-                                    "/swagger-ui.html",
-                                    "/swagger-ui/**",
-                                    "/v3/api-docs/**",
-                                    "/webjars/**",
-                                    "/api/auth/**",
-                                    "/api/products/**",
-                                    "/notification-service/**"
-                            ).permitAll()
+    @Bean
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> {})
+                .httpBasic(httpBasic -> httpBasic.disable())
+                .formLogin(form -> form.disable())
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/webjars/**",
+                                "/api/auth/**",
+                                "/api/products/**",
+                                "/order-service/**",
+                                "/product-service/**",
+                                "/inventory-service/**",
+                                "/user-service/**",
+                                "/notification-service/**"
+                        ).permitAll()
+                        .anyExchange().authenticated()
+                );
 
-                            .anyExchange().permitAll()
-                    )
-                    .build();
-        }
+        return http.build();
     }
+}
 
