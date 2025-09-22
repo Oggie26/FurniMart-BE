@@ -48,4 +48,7 @@ public class Order extends AbstractEntity {
 
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     private Payment payment;
+
+    @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
+    private List<Voucher> vouchers;
 }
