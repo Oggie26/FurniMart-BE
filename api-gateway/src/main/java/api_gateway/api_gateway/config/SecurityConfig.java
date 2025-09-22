@@ -18,6 +18,8 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
+                .authorizeExchange(exchange ->
+                        exchange.pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable())
                 .authorizeExchange(exchanges -> exchanges
