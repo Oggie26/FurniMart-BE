@@ -19,10 +19,10 @@
         @Bean
         public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
             http
-                    .csrf(csrf -> csrf.disable())
-                    .cors(cors -> cors.disable())
-                    .httpBasic(httpBasic -> httpBasic.disable())
-                    .formLogin(form -> form.disable())
+                    .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                    .cors(ServerHttpSecurity.CorsSpec::disable)
+                    .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                    .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
 
                     .authorizeExchange(exchanges -> exchanges
                             .pathMatchers(
