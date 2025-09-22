@@ -6,7 +6,7 @@ import com.example.inventoryservice.response.WarehouseResponse;
 
 import java.util.List;
 
-public interface IWarehouseService {
+public interface WarehouseService {
     WarehouseResponse createWarehouse(WarehouseRequest warehouseRequest, String storeId);
     WarehouseResponse updateWarehouse(String storeId,String warehouseId,WarehouseRequest warehouseRequest);
     void deleteWarehouse(String warehouseId);

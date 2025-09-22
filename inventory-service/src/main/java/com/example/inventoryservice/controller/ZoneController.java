@@ -4,7 +4,7 @@ import com.example.inventoryservice.request.ZoneRequest;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.response.ZoneResponse;
-import com.example.inventoryservice.service.inteface.IZoneService;
+import com.example.inventoryservice.service.inteface.ZoneService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +17,7 @@ import java.util.List;
 @Tag(name = "Zone Controller")
 public class ZoneController {
 
-    private final IZoneService zoneService;
+    private final ZoneService zoneService;
 
     @PostMapping
     public ApiResponse<ZoneResponse> createZone(@RequestBody ZoneRequest request) {

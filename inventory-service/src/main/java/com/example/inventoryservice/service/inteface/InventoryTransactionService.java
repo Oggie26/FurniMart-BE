@@ -1,4 +1,4 @@
 package com.example.inventoryservice.service.inteface;
 
-public interface InventoryTransaction {
+public interface InventoryTransactionService {
 }

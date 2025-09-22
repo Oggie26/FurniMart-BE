@@ -10,18 +10,19 @@ import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.LocationItemRequest;
 import com.example.inventoryservice.response.LocationItemResponse;
 import com.example.inventoryservice.response.PageResponse;
-import com.example.inventoryservice.service.inteface.ILocationItemService;
+import com.example.inventoryservice.service.inteface.LocationItemService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class LocationItemService implements ILocationItemService {
+public class LocationItemServiceImpl implements LocationItemService {
 
     private final LocationItemRepository locationItemRepository;
     private final ZoneRepository zoneRepository;

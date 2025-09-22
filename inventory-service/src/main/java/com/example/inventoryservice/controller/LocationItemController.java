@@ -4,7 +4,7 @@ import com.example.inventoryservice.request.LocationItemRequest;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.LocationItemResponse;
 import com.example.inventoryservice.response.PageResponse;
-import com.example.inventoryservice.service.inteface.ILocationItemService;
+import com.example.inventoryservice.service.inteface.LocationItemService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +17,7 @@ import java.util.List;
 @Tag(name = "Location Item Controller")
 public class LocationItemController {
 
-    private final ILocationItemService locationItemService;
+    private final LocationItemService locationItemService;
 
     @PostMapping
     public ApiResponse<LocationItemResponse> createLocationItem(@RequestBody LocationItemRequest request) {

@@ -40,7 +40,6 @@ public class ProductServiceImpl implements ProductService {
         Category category = categoryRepository.findByIdAndIsDeletedFalse(productRequest.getCategoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        // ✅ lấy list materials
         List<Material> materials = materialRepository.findAllById(productRequest.getMaterialIds());
         if (materials.isEmpty()) {
             throw new AppException(ErrorCode.MATERIAL_NOT_FOUND);
@@ -58,7 +57,7 @@ public class ProductServiceImpl implements ProductService {
                 .length(productRequest.getLength())
                 .thumbnailImage(productRequest.getThumbnailImage())
                 .status(EnumStatus.ACTIVE)
-                .materials(materials) // ✅ set materials
+                .materials(materials)
                 .build();
         productRepository.save(product);
 
@@ -133,14 +132,12 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
         product.setCategory(category);
 
-        // ✅ cập nhật materials
         List<Material> materials = materialRepository.findAllById(productRequest.getMaterialIds());
         if (materials.isEmpty()) {
             throw new AppException(ErrorCode.MATERIAL_NOT_FOUND);
         }
         product.setMaterials(materials);
 
-        // clear old colors
         colorRepository.deleteAllByProductId(productId);
 
         if (productRequest.getColorRequests() != null) {
@@ -252,6 +249,17 @@ public class ProductServiceImpl implements ProductService {
         );
     }
 
+    @Override
+    public ProductResponse getProductByColorId(String colorId, String productId) {
+        Product product = productRepository.findBySlugAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        Color color = colorRepository.findByIdAndIsDeletedFalse(colorId)
+                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
+
+        return mapToResponse(product);
+    }
+
     private ProductResponse mapToResponse(Product product) {
         return ProductResponse.builder()
                 .id(product.getId())
@@ -267,7 +275,6 @@ public class ProductServiceImpl implements ProductService {
                 .length(product.getLength())
                 .weight(product.getWeight())
                 .status(product.getStatus())
-                // ✅ map materials
                 .materials(product.getMaterials() != null ? product.getMaterials().stream()
                         .map(m -> MaterialResponse.builder()
                                 .id(m.getId())
@@ -277,7 +284,6 @@ public class ProductServiceImpl implements ProductService {
                                 .image(m.getImage())
                                 .build())
                         .toList() : null)
-                // map colors
                 .color(product.getColors() != null ? product.getColors().stream()
                         .map(c -> ColorResponse.builder()
                                 .id(c.getId())

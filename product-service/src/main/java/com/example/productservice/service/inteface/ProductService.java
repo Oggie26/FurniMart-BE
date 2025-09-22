@@ -18,4 +18,5 @@ public interface ProductService {
     List<ProductResponse> getProducts();
     List<Product> getProductsByCategoryId(Long categoryId);
     PageResponse<ProductResponse> searchProduct(String request, int page, int size);
+    ProductResponse getProductByColorId(String colorId, String productId);
 }

@@ -17,11 +17,9 @@ public class InventoryResponse {
     private String id;
     private String productId;
     private int quantity;
-    private int minQuantity;
-    private int maxQuantity;
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
     private LocationItem locationItem;
-    private List<String> warnings;
+
 
 }
