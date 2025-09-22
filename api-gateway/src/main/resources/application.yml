@@ -4,8 +4,12 @@ server:
 spring:
   application:
     name: api-gateway
+  main:
+    web-application-type: reactive
   cloud:
     gateway:
+      default-filters:
+        - AddResponseHeader=Access-Control-Allow-Origin,*
       globalcors:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:
@@ -23,7 +27,7 @@ spring:
             allowed-headers:
               - "*"
             allow-credentials: true
-            maxAge: 8000
+            max-age: 8000
       discovery:
         locator:
           enabled: true
@@ -74,9 +78,6 @@ spring:
             - Path=/api/vouchers/**
           filters:
             - StripPrefix=1
-
-  main:
-    web-application-type: reactive
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
