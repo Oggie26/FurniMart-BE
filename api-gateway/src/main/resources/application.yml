@@ -6,13 +6,14 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin REPLACE
       globalcors:
         add-to-simple-url-handler-mapping: true
         corsConfigurations:
           '[/**]':
-            allowedOrigins:
-              - http://localhost:5173
-              - http://127.0.0.1:5173
+            allowedOriginPatterns:
+              - "*"
             allowedMethods:
               - GET
               - POST
@@ -21,6 +22,8 @@ spring:
               - PATCH
               - OPTIONS
             allowedHeaders:
+              - "*"
+            exposedHeaders:
               - "*"
             allowCredentials: true
             maxAge: 8000
