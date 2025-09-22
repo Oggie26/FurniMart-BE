@@ -21,7 +21,10 @@ public class JwtAuthenticationFilter implements GatewayFilter {
         String path = exchange.getRequest().getPath().toString();
         HttpMethod method = exchange.getRequest().getMethod();
 
-        if (path.startsWith("/api/auth/") || HttpMethod.OPTIONS.equals(method)) {
+        if (path.startsWith("/api/auth/") ||
+                path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                HttpMethod.OPTIONS.equals(method)) {
             return chain.filter(exchange);
         }
 
