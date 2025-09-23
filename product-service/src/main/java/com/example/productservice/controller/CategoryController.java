@@ -39,7 +39,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật danh mục")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<CategoryResponse> updateCategory(@RequestParam Long id,@Valid @RequestBody CategoryRequest request) {
+    public ApiResponse<CategoryResponse> updateCategory(@PathVariable Long id,@Valid @RequestBody CategoryRequest request) {
         return ApiResponse.<CategoryResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Cập nhật danh mục thành công")
