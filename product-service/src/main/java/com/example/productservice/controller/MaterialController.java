@@ -2,6 +2,7 @@ package com.example.productservice.controller;
 
 import com.example.productservice.request.MaterialRequest;
 import com.example.productservice.response.ApiResponse;
+import com.example.productservice.response.MaterialResponse;
 import com.example.productservice.response.PageResponse;
 import com.example.productservice.service.inteface.MaterialService;
 import io.swagger.v3.oas.annotations.Operation;
