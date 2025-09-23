@@ -20,6 +20,15 @@ public class JwtAuthenticationFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        String path = exchange.getRequest().getPath().value();
+        
+        // Bỏ qua các auth endpoints không cần JWT token
+        if (path.startsWith("/api/auth/login") || 
+            path.startsWith("/api/auth/register") || 
+            path.startsWith("/api/auth/refresh")) {
+            return chain.filter(exchange);
+        }
+        
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
