@@ -24,6 +24,7 @@ spring:
             - Path=/api/staff/**
             - Path=/api/wallets/**
             - Path=/api/wallets/**
+            - Path=/api/profile
           filters:
             - StripPrefix=1
 

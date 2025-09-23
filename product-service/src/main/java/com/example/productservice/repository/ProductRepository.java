@@ -1,5 +1,6 @@
 package com.example.productservice.repository;
 
+import com.example.productservice.entity.Color;
 import com.example.productservice.entity.Product;
 
 import feign.Param;
@@ -15,7 +16,8 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product,String> {
     Optional<Product> findByIdAndIsDeletedFalse(String id);
     Optional<Product> findBySlugAndIsDeletedFalse(String slug);
-    List<Product> findByCategoryIdAndIsDeletedFalse(Long categoryId);
+    @Query("SELECT p FROM Product p JOIN p.colors c WHERE p.id = :productId AND c.id = :colorId AND p.isDeleted = false")
+    Optional<Product> findProductByIdAndColorId(@Param("productId") String productId, @Param("colorId") String colorId);    List<Product> findByCategoryIdAndIsDeletedFalse(Long categoryId);
     Optional<Product> findByCodeAndIsDeletedFalse(String code);
     Optional<Product> findByNameAndIsDeletedFalse(String name);
         @Query(value = """

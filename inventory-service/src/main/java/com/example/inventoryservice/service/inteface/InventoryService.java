@@ -6,9 +6,23 @@ import com.example.inventoryservice.response.InventoryResponse;
 import java.util.List;
 
 public interface InventoryService {
-    InventoryResponse upsertInventory(String productId, String locationItemId, int quantity, int minQuantity, int maxQuantity);
+
+    InventoryResponse upsertInventory(
+            String productId,
+            String locationItemId,
+            int quantity,
+            int minQuantity,
+            int maxQuantity
+    );
+
     List<InventoryResponse> getInventoryByProduct(String productId);
-    InventoryResponse increaseStock(String inventoryId, int amount);
-    InventoryResponse decreaseStock(String inventoryId, int amount);
-    boolean hasSufficientStock(String productId, int requiredQty);
+
+    InventoryResponse increaseStock(String productId, String locationItemId, int amount);
+
+    InventoryResponse decreaseStock(String productId, String locationItemId, int amount);
+
+    boolean hasSufficientStock(String productId, String locationItemId, int requiredQty);
+
+    boolean hasSufficientGlobalStock(String productId, int requiredQty);
 }
+

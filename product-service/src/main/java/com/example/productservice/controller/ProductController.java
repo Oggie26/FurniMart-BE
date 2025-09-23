@@ -121,11 +121,22 @@ public class ProductController {
     @GetMapping("/category/{categoryId}")
     @Operation(summary = "Lấy chi tiết sản phẩm theo Slug")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<List<Product>> getProductByCategoryId(@RequestParam Long categoryId) {
-        return ApiResponse.<List<Product>>builder()
+    public ApiResponse<List<ProductResponse>> getProductByCategoryId(@RequestParam Long categoryId) {
+        return ApiResponse.<List<ProductResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Lấy sản phẩm thành công")
                 .data(productService.getProductsByCategoryId(categoryId))
+                .build();
+    }
+
+    @GetMapping("/{productId}/color/{colorId}")
+    @Operation(summary = "Lấy chi tiết sản phẩm theo ColorId")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<ProductResponse> getProductByColorId(@RequestParam String productId, @RequestParam String colorId) {
+        return ApiResponse.<ProductResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy sản phẩm thành công")
+                .data(productService.getProductByColorId(colorId,productId))
                 .build();
     }
 

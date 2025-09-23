@@ -1,5 +1,6 @@
 package com.example.userservice.controller;
 
+import com.example.userservice.config.JwtService;
 import com.example.userservice.request.AuthRequest;
 import com.example.userservice.request.RefreshTokenRequest;
 import com.example.userservice.request.RegisterRequest;
@@ -8,11 +9,13 @@ import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
 import com.example.userservice.service.inteface.AuthService;
+import io.jsonwebtoken.JwtException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -29,6 +32,7 @@ import java.time.LocalDateTime;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService jwtService;
 
     @PostMapping("/login")
     @ResponseStatus(HttpStatus.OK)
@@ -89,6 +93,21 @@ public class AuthController {
                 .data(loginResponse)
                 .timestamp(LocalDateTime.now())
                 .build());
+    }
+
+    @PostMapping("/verify-token")
+    public ResponseEntity<Void> verifyToken(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String token = authorizationHeader.substring(7);
+        try {
+            jwtService.validateToken(token);
+            return ResponseEntity.ok().build();
+        } catch (JwtException | IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
     }
 
 }

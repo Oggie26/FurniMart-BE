@@ -31,7 +31,6 @@ public class ZoneServiceImpl implements ZoneService {
     @Override
     @Transactional
     public ZoneResponse createZone(ZoneRequest zoneRequest) {
-
         Warehouse warehouse = warehouseRepository.findById(zoneRequest.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 

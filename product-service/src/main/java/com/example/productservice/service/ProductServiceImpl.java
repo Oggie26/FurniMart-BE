@@ -227,8 +227,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getProductsByCategoryId(Long categoryId) {
-        return productRepository.findByCategoryIdAndIsDeletedFalse(categoryId);
+    public List<ProductResponse> getProductsByCategoryId(Long categoryId) {
+        List<Product> products = productRepository.findByCategoryIdAndIsDeletedFalse(categoryId);
+        return products.stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     @Override
@@ -251,11 +254,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse getProductByColorId(String colorId, String productId) {
-        Product product = productRepository.findBySlugAndIsDeletedFalse(productId)
+        Product product = productRepository.findProductByIdAndColorId(productId,colorId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
-
-        Color color = colorRepository.findByIdAndIsDeletedFalse(colorId)
-                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
 
         return mapToResponse(product);
     }

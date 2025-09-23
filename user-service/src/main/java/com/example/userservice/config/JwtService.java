@@ -83,6 +83,13 @@ public class JwtService {
                 .parseClaimsJws(token);
     }
 
+    public void validateToken(String token) throws JwtException {
+        Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token);
+    }
+
     private Key getSignKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
