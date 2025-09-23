@@ -13,32 +13,29 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
+        # AUTH (không cần JWT filter)
+        - id: user-auth
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**
+
+        # USER SERVICE
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/users/**
-            - Path=/api/auth/**
-            - Path=/api/stores/**
-            - Path=/api/blogs/**
-            - Path=/api/addresses/**
-            - Path=/api/staff/**
-            - Path=/api/wallets/**
-            - Path=/api/wallets/**
-            - Path=/api/profile
+            - Path=/api/users/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile
           filters:
             - StripPrefix=1
 
+        # PRODUCT SERVICE
         - id: product-service
           uri: lb://product-service
           predicates:
-            - Path=/api/products/**
-            - Path=/api/categories/**
-            - Path=/api/materials/**
-            - Path=/api/products/swagger-ui.html
-            - Path=/api/products/v3/api-docs/**
+            - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
           filters:
             - StripPrefix=1
 
+        # NOTIFICATION SERVICE
         - id: notification-service
           uri: lb://notification-service
           predicates:
@@ -46,6 +43,7 @@ spring:
           filters:
             - StripPrefix=1
 
+        # DELIVERY SERVICE
         - id: delivery-service
           uri: lb://delivery-service
           predicates:
@@ -53,22 +51,19 @@ spring:
           filters:
             - StripPrefix=1
 
+        # ORDER SERVICE
         - id: order-service
           uri: lb://order-service
           predicates:
-            - Path=/api/orders/**
-            - Path=/api/vouchers/**
+            - Path=/api/orders/**, /api/vouchers/**
           filters:
             - StripPrefix=1
 
+        # INVENTORY SERVICE
         - id: inventory-service
           uri: lb://inventory-service
           predicates:
-            - Path=/api/inventory/**
-            - Path=/api/warehouse/**
-            - Path=/api/warehouses/**
-            - Path=/api/zones/**
-
+            - Path=/api/inventory/**, /api/warehouse/**, /api/warehouses/**, /api/zones/**
           filters:
             - StripPrefix=1
 
