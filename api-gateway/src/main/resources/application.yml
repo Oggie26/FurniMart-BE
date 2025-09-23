@@ -14,7 +14,7 @@ spring:
           lower-case-service-id: true
       routes:
         # AUTH (không cần JWT filter)
-        - id: user-auth
+        - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/api/auth/**
