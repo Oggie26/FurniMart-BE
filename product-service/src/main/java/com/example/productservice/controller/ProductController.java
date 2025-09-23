@@ -107,7 +107,7 @@ public class ProductController {
                 .build();
     }
 
-    @GetMapping("/slug")
+    @GetMapping("/slug/{slug}")
     @Operation(summary = "Lấy chi tiết sản phẩm theo Slug")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ProductResponse> getProductBySlug(@RequestParam String slug) {
