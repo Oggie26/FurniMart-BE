@@ -37,5 +37,8 @@ public class Warehouse extends AbstractEntity {
     @JsonIgnore
     private List<Zone> zones;
 
+    @OneToMany(mappedBy = "warehouse", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<InventoryTransaction> inventoryTransactions;
 
 }

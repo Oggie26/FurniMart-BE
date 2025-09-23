@@ -14,7 +14,6 @@ public interface InventoryRepository extends JpaRepository<Inventory,String> {
     Optional<Inventory> findByIdAndIsDeletedFalse(String id);
     List<Inventory> findAllByProductId(String productId);
     Optional<Inventory> findByProductIdAndLocationItemId(String productId, String locationItemId);
-
     @Query("SELECT SUM(i.quantity) FROM Inventory i WHERE i.productId = :productId")
     Integer sumQuantityByProductId(@Param("productId") String productId);
 

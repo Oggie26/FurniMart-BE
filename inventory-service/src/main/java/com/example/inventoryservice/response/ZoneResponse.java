@@ -1,7 +1,5 @@
 package com.example.inventoryservice.response;
 
-import com.example.inventoryservice.entity.Inventory;
-import com.example.inventoryservice.entity.Warehouse;
 import com.example.inventoryservice.enums.EnumZone;
 import com.example.inventoryservice.enums.ZoneStatus;
 import jakarta.persistence.EnumType;

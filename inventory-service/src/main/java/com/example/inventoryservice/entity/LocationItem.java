@@ -42,6 +42,7 @@ public class LocationItem extends AbstractEntity {
     private Zone zone;
 
     @OneToMany(mappedBy = "locationItem")
+    @JsonIgnore
     private List<Inventory> inventories;
 
     @PrePersist

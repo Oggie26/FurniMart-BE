@@ -24,7 +24,7 @@ public class ProductResponse {
     private Double width;
     private Double length;
     private String categoryName;
+    private Long categoryId;
     private List<ColorResponse> color;
-    private String materialName;
     private List<MaterialResponse> materials;
 }
