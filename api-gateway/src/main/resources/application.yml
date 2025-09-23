@@ -13,59 +13,48 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # AUTH (không cần JWT filter)
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/auth/**
 
         # USER SERVICE
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/users/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile
-          filters:
-            - StripPrefix=1
+            - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile
+          filters: []
 
         # PRODUCT SERVICE
         - id: product-service
           uri: lb://product-service
           predicates:
             - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
-          filters:
-            - StripPrefix=1
+          filters: []
 
         # NOTIFICATION SERVICE
         - id: notification-service
           uri: lb://notification-service
           predicates:
             - Path=/api/notifications/**
-          filters:
-            - StripPrefix=1
+          filters: []
 
         # DELIVERY SERVICE
         - id: delivery-service
           uri: lb://delivery-service
           predicates:
             - Path=/api/deliveries/**
-          filters:
-            - StripPrefix=1
+          filters: []
 
         # ORDER SERVICE
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**, /api/vouchers/**
-          filters:
-            - StripPrefix=1
+          filters: []
 
         # INVENTORY SERVICE
         - id: inventory-service
           uri: lb://inventory-service
           predicates:
             - Path=/api/inventory/**, /api/warehouse/**, /api/warehouses/**, /api/zones/**
-          filters:
-            - StripPrefix=1
+          filters: []
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
