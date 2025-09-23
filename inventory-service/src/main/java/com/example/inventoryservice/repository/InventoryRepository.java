@@ -13,6 +13,14 @@ import java.util.Optional;
 public interface InventoryRepository extends JpaRepository<Inventory,String> {
     Optional<Inventory> findByIdAndIsDeletedFalse(String id);
     List<Inventory> findAllByProductId(String productId);
+    @Query("SELECT i FROM Inventory i " +
+            "JOIN i.locationItem li " +
+            "WHERE li.zone.id = :zoneId")
+    List<Inventory> findAllByLocationItem_Zone_ZoneId(@Param("zoneId") String zoneId);
+    @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i " +
+            "JOIN i.locationItem li " +
+            "WHERE li.zone.id = :zoneId")
+    Integer sumQuantityByLocationItem_Zone_ZoneId(@Param("zoneId") String zoneId);
     Optional<Inventory> findByProductIdAndLocationItemId(String productId, String locationItemId);
     @Query("SELECT SUM(i.quantity) FROM Inventory i WHERE i.productId = :productId")
     Integer sumQuantityByProductId(@Param("productId") String productId);

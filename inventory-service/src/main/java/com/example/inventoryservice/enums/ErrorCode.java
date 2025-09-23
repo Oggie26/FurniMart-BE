@@ -56,6 +56,7 @@ public enum ErrorCode {
     STORE_NOT_FOUND(1203, "Store not found", HttpStatus.NOT_FOUND),
     ZONE_CAPACITY_EXCEEDED(1204, "Zone capacity exceeded", HttpStatus.CONFLICT),
     EXCEEDS_MAX_QUANTITY(1205,"Exceeds maximum quantity", HttpStatus.CONFLICT),
+    BELOW_MIN_QUANTITY(1206,"Below Minimum quantity", HttpStatus.CONFLICT),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
