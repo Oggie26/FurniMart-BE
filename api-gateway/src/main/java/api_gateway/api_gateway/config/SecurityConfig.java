@@ -2,6 +2,10 @@ package api_gateway.api_gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -9,7 +13,21 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@EnableWebFluxSecurity
+@EnableReactiveMethodSecurity
 public class SecurityConfig {
+
+    @Bean
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                .authorizeExchange(exchange -> exchange
+                        .anyExchange().permitAll()
+                );
+        return http.build();
+    }
 
     @Bean
     public CorsWebFilter corsWebFilter() {
