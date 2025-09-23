@@ -107,10 +107,10 @@ public class ProductController {
                 .build();
     }
 
-    @GetMapping("/slug/{slug}")
+    @GetMapping("/slug")
     @Operation(summary = "Lấy chi tiết sản phẩm theo Slug")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<ProductResponse> getProductBySlug(@PathVariable String slug) {
+    public ApiResponse<ProductResponse> getProductBySlug(@RequestParam String slug) {
         return ApiResponse.<ProductResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Lấy sản phẩm thành công")
