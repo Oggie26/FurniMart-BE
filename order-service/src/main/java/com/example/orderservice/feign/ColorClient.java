@@ -9,6 +9,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 @FeignClient(name = "product-service",  contextId = "colorClient")
 public interface ColorClient {
 
-    @GetMapping("/{productId}/color/{colorId}")
+    @GetMapping("/api/{productId}/color/{colorId}")
     ApiResponse<ProductResponse> getProductByColorId(@PathVariable String productId, @PathVariable String colorId);
 }
