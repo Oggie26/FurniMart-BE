@@ -12,7 +12,7 @@ public class CartItemResponse {
     Long cartItemId;
     String productId;
     String productName;
-    String thumbnail;
+    String image;
     Double price;
     String colorId;
     int quantity;

@@ -5,6 +5,7 @@ import com.example.orderservice.entity.CartItem;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.AuthClient;
+import com.example.orderservice.feign.ColorClient;
 import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.CartItemRepository;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,11 +31,12 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CartServiceImpl implements CartService {
 
-    CartRepository cartRepository;
-    CartItemRepository cartItemRepository;
-    AuthClient authClient;
-    ProductClient productClient;
-    UserClient userClient;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final AuthClient authClient;
+    private final ProductClient productClient;
+    private final UserClient userClient;
+    private final ColorClient colorClient;
 
     @Override
     @Transactional
@@ -133,8 +136,6 @@ public class CartServiceImpl implements CartService {
         cartRepository.save(cart);
     }
 
-    // ================= Helper methods =================
-
     private ProductResponse getProductById(String productId) {
         ApiResponse<ProductResponse> response = productClient.getProductById(productId);
         if (response == null || response.getData() == null) {
@@ -174,7 +175,6 @@ public class CartServiceImpl implements CartService {
     }
 
     private List<CartItemResponse> convertCartItemsToResponses(Cart cart) {
-        // cache products để tránh gọi API nhiều lần
         Map<String, ProductResponse> productCache = new HashMap<>();
 
         return cart.getItems().stream()
@@ -188,7 +188,7 @@ public class CartServiceImpl implements CartService {
                             .cartItemId(item.getId())
                             .productId(item.getProductId())
                             .productName(product.getName())
-                            .thumbnail(product.getThumbnailImage())
+                            .image(getImage(item.getProductId(),item.getColorId()))
                             .price(item.getPrice())
                             .quantity(item.getQuantity())
                             .colorId(item.getColorId())
@@ -223,5 +223,14 @@ public class CartServiceImpl implements CartService {
 
         ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
         return userId.getData().getId();
+    }
+
+
+    private String getImage(String productId, String colorId) {
+        ApiResponse<ProductResponse> color = colorClient.getProductByColorId(productId, colorId);
+        if (color == null || color.getData() == null) {
+            throw new AppException(ErrorCode.COLOR_NOT_FOUND);
+        }
+        return color.getData().getId();
     }
 }
