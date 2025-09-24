@@ -227,10 +227,18 @@ public class CartServiceImpl implements CartService {
 
 
     private String getImage(String productId, String colorId) {
-        ApiResponse<ProductResponse> color = colorClient.getProductByColorId(productId, colorId);
-        if (color == null || color.getData() == null) {
+        ApiResponse<ProductResponse> response = colorClient.getProductByColorId(productId, colorId);
+        ProductResponse product = response.getData();
+
+        if (product == null || product.getColor() == null) {
             throw new AppException(ErrorCode.COLOR_NOT_FOUND);
         }
-        return color.getData().getId();
+
+        return product.getColor().stream()
+                .filter(c -> c.getId().equals(colorId))
+                .findFirst()
+                .flatMap(c -> c.getImages().stream().findFirst())
+                .map(ImageResponse::getImage)
+                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
     }
 }
