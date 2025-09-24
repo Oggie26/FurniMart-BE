@@ -26,8 +26,9 @@ public class CartController {
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> addProductToCart(
             @RequestParam String productId,
-            @RequestParam Integer quantity) {
-        cartService.addProductToCart(productId, quantity);
+            @RequestParam Integer quantity,
+            @RequestParam  String colorId) {
+        cartService.addProductToCart(productId, quantity, colorId);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Thêm sản phẩm vào giỏ hàng thành công")
@@ -61,9 +62,10 @@ public class CartController {
     @Operation(summary = "Cập nhật số lượng sản phẩm trong giỏ hàng")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> updateProductQuantity(
-            @RequestParam String productId,
-            @RequestParam Integer quantity) {
-        cartService.updateProductQuantityInCart(productId, quantity);
+            @RequestParam String  productId,
+            @RequestParam Integer quantity,
+            @RequestParam String  colorId) {
+        cartService.updateProductQuantityInCart(productId,colorId, quantity );
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Cập nhật số lượng sản phẩm thành công")
@@ -73,8 +75,8 @@ public class CartController {
     @DeleteMapping("/remove/{productId}")
     @Operation(summary = "Xoá 1 sản phẩm khỏi giỏ hàng")
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Void> deleteProductFromCart(@PathVariable String productId) {
-        cartService.deleteProductFromCart(productId);
+    public ApiResponse<Void> deleteProductFromCart(@PathVariable String productId, @PathVariable String colorId) {
+        cartService.deleteProductFromCart(productId,colorId);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Xoá sản phẩm khỏi giỏ hàng thành công")

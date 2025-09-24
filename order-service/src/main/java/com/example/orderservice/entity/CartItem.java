@@ -31,4 +31,7 @@ public class CartItem {
     @Column
     private Double price;
 
+    @Column
+    private String colorId;
+
 }

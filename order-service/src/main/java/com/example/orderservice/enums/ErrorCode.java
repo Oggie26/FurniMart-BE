@@ -29,6 +29,9 @@ public enum ErrorCode {
     VOUCHER_INVALID(1209, "Voucher is invalid or expired", HttpStatus.BAD_REQUEST),
     VOUCHER_NOT_APPLICABLE(1210, "Voucher is not applicable for this order", HttpStatus.BAD_REQUEST),
     VOUCHER_USAGE_LIMIT_EXCEEDED(1211, "Voucher usage limit exceeded", HttpStatus.BAD_REQUEST),
+    COLOR_NOT_FOUND(1212, "Color not found", HttpStatus.NOT_FOUND),
+    CART_EMPTY(1213, "Cart is empty", HttpStatus.BAD_REQUEST),
+    NOT_IMPLEMENTED(1214, "Not implemented", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

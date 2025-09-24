@@ -3,8 +3,8 @@ package com.example.inventoryservice.service;
 import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.entity.InventoryTransaction;
 import com.example.inventoryservice.entity.LocationItem;
+import com.example.inventoryservice.entity.Warehouse;
 import com.example.inventoryservice.entity.Zone;
-import com.example.inventoryservice.enums.EnumStatus;
 import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
@@ -12,9 +12,10 @@ import com.example.inventoryservice.feign.AuthClient;
 import com.example.inventoryservice.feign.ProductClient;
 import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.repository.InventoryRepository;
-import com.example.inventoryservice.repository.LocationItemRepository;
-import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.repository.InventoryTransactionRepository;
+import com.example.inventoryservice.repository.LocationItemRepository;
+import com.example.inventoryservice.repository.WarehouseRepository;
+import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.response.*;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import jakarta.transaction.Transactional;
@@ -22,10 +23,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import com.example.inventoryservice.response.*;
+
 @Service
 @RequiredArgsConstructor
 public class InventoryServiceImpl implements InventoryService {
@@ -33,6 +35,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryRepository inventoryRepository;
     private final LocationItemRepository locationItemRepository;
     private final ZoneRepository zoneRepository;
+    private final WarehouseRepository warehouseRepository;
     private final InventoryTransactionRepository transactionRepository;
     private final ProductClient productClient;
     private final UserClient userClient;
@@ -41,30 +44,28 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse upsertInventory(String productId, String locationItemId, int quantity, int minQuantity, int maxQuantity) {
-        // Kiểm tra product
         ProductResponse product = getProductById(productId);
         if (product == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
 
-        // Kiểm tra locationItem
         LocationItem locationItem = locationItemRepository.findById(locationItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
         Zone zone = zoneRepository.findById(locationItem.getZone().getId())
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
+        Warehouse warehouse = warehouseRepository.findById(zone.getWarehouse().getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        // Kiểm tra min/max quantity
         if (quantity < minQuantity || quantity > maxQuantity) {
             throw new AppException(ErrorCode.INVALID_QUANTITY_RANGE);
         }
 
-        // Kiểm tra sức chứa Zone
-        int currentTotal = inventoryRepository.sumQuantityByLocationItem_Zone_ZoneId(zone.getId());
-        if (currentTotal + quantity > zone.getQuantity()) {
-            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED );
+        // Kiểm tra sức chứa theo Warehouse (theo store)
+        int currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
+        if (currentWarehouseTotal + quantity > warehouse.getCapacity()) {
+            throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
         }
 
-        // Tạo hoặc cập nhật inventory
         Inventory inventory = inventoryRepository.findByProductIdAndLocationItemId(productId, locationItemId)
                 .orElse(new Inventory());
         inventory.setProductId(productId);
@@ -72,11 +73,10 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setQuantity(quantity);
         inventory.setMinQuantity(minQuantity);
         inventory.setMaxQuantity(maxQuantity);
-        inventory.setStatus(EnumStatus.ACTIVE);
+        inventory.setStatus(com.example.inventoryservice.enums.EnumStatus.ACTIVE);
 
         inventoryRepository.save(inventory);
 
-        // Ghi transaction
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .quantity(quantity)
                 .dateLocal(LocalDateTime.now())
@@ -84,7 +84,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .type(EnumTypes.IN)
                 .productId(productId)
                 .userId(getUserId())
-                .warehouse(locationItem.getZone().getWarehouse())
+                .warehouse(warehouse)
                 .build();
         transactionRepository.save(transaction);
 
@@ -108,15 +108,14 @@ public class InventoryServiceImpl implements InventoryService {
         if (newQuantity > inventory.getMaxQuantity()) {
             throw new AppException(ErrorCode.EXCEEDS_MAX_QUANTITY);
         }
-        if (newQuantity < inventory.getMinQuantity()) {
-            throw new AppException(ErrorCode.BELOW_MIN_QUANTITY);
-        }
 
         Zone zone = zoneRepository.findById(inventory.getLocationItem().getZone().getId())
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
-        int currentTotal = inventoryRepository.sumQuantityByLocationItem_Zone_ZoneId(zone.getId());
-        if (currentTotal + amount > zone.getQuantity()) {
-            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+        Warehouse warehouse = warehouseRepository.findById(zone.getWarehouse().getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        int currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
+        if (currentWarehouseTotal + amount > warehouse.getCapacity()) {
+            throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
         }
 
         inventory.setQuantity(newQuantity);
@@ -129,7 +128,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .type(EnumTypes.IN)
                 .productId(productId)
                 .userId(getUserId())
-                .warehouse(inventory.getLocationItem().getZone().getWarehouse())
+                .warehouse(warehouse)
                 .build();
         transactionRepository.save(transaction);
 
@@ -145,6 +144,7 @@ public class InventoryServiceImpl implements InventoryService {
         if (inventory.getQuantity() < amount) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
+
         int newQuantity = inventory.getQuantity() - amount;
         if (newQuantity < inventory.getMinQuantity()) {
             throw new AppException(ErrorCode.BELOW_MIN_QUANTITY);
@@ -153,6 +153,8 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setQuantity(newQuantity);
         inventoryRepository.save(inventory);
 
+        Warehouse warehouse = warehouseRepository.findById(inventory.getLocationItem().getZone().getWarehouse().getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .quantity(amount)
                 .dateLocal(LocalDateTime.now())
@@ -160,7 +162,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .type(EnumTypes.OUT)
                 .productId(productId)
                 .userId(getUserId())
-                .warehouse(inventory.getLocationItem().getZone().getWarehouse())
+                .warehouse(warehouse)
                 .build();
         transactionRepository.save(transaction);
 
@@ -180,6 +182,7 @@ public class InventoryServiceImpl implements InventoryService {
         return total != null && total >= requiredQty;
     }
 
+    @Override
     @Transactional
     public boolean checkZoneCapacity(String zoneId) {
         Zone zone = zoneRepository.findById(zoneId)
@@ -188,6 +191,7 @@ public class InventoryServiceImpl implements InventoryService {
         return zone.getQuantity() - currentTotal > 0;
     }
 
+    @Override
     @Transactional
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
         List<Inventory> inventories = inventoryRepository.findAllByLocationItem_Zone_ZoneId(zoneId);
@@ -196,9 +200,13 @@ public class InventoryServiceImpl implements InventoryService {
                 .collect(Collectors.toList());
     }
 
+    @Override
     @Transactional
     public List<InventoryTransactionResponse> getTransactionHistory(String productId, String zoneId) {
-        List<InventoryTransaction> transactions = transactionRepository.findByProductIdAndWarehouseId(productId, zoneId);
+        Zone zone = zoneRepository.findById(zoneId)
+                .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
+        String warehouseId = zone.getWarehouse().getId();
+        List<InventoryTransaction> transactions = transactionRepository.findByProductIdAndWarehouseId(productId, warehouseId);
         return transactions.stream()
                 .map(this::mapToTransactionResponse)
                 .collect(Collectors.toList());
@@ -208,7 +216,7 @@ public class InventoryServiceImpl implements InventoryService {
         return InventoryResponse.builder()
                 .id(inventory.getId())
                 .productId(inventory.getProductId())
-                .locationItem(inventory.getLocationItem())
+                .locationItemId(inventory.getLocationItem() != null ? inventory.getLocationItem().getId() : null)
                 .quantity(inventory.getQuantity())
                 .min_quantity(inventory.getMinQuantity())
                 .max_quantity(inventory.getMaxQuantity())
@@ -223,7 +231,9 @@ public class InventoryServiceImpl implements InventoryService {
                 .dateLocal(transaction.getDateLocal())
                 .type(transaction.getType())
                 .note(transaction.getNote())
+                .productId(transaction.getProductId())
                 .userId(transaction.getUserId())
+                .warehouseId(transaction.getWarehouse() != null ? transaction.getWarehouse().getId() : null)
                 .build();
     }
 

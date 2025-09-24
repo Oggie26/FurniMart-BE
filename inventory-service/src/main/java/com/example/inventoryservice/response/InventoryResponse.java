@@ -1,27 +1,21 @@
 package com.example.inventoryservice.response;
 
-import com.example.inventoryservice.entity.LocationItem;
 import com.example.inventoryservice.enums.EnumStatus;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import lombok.*;
-
-import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class InventoryResponse {
-
     private String id;
     private String productId;
-    private Integer quantity;
-    private Integer max_quantity;
-    private Integer min_quantity;
-    @Enumerated(EnumType.STRING)
+    private String locationItemId;
+    private int quantity;
+    private int min_quantity;
+    private int max_quantity;
     private EnumStatus status;
-    private LocationItem locationItem;
-
-
 }
