@@ -212,7 +212,7 @@ services:
       - "6379:6379"
     networks:
       - backend
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", ""] 
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
