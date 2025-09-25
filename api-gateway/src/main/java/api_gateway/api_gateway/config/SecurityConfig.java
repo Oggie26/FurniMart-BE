@@ -41,6 +41,7 @@ public class SecurityConfig {
                 "http://152.53.169.79",
                 "http://172.20.10.4:8081",
                 "exp://172.20.10.4:8081",
+                "http://localhost:8081",
                 "http://152.53.169.79:8080"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
