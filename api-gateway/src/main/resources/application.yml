@@ -48,7 +48,7 @@ spring:
                     - id: order-service
                       uri: lb://order-service
                       predicates:
-                        - Path=/api/orders/**, /api/vouchers/**
+                        - Path=/api/orders/**, /api/vouchers/** , /api/carts/**
                       filters: []
 
                     # INVENTORY SERVICE
