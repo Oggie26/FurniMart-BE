@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
+import com.example.userservice.entity.Store;
 import com.example.userservice.entity.User;
 import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
@@ -8,6 +9,7 @@ import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
+import com.example.userservice.repository.StoreRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.StaffRequest;
@@ -36,6 +38,7 @@ public class StaffServiceImpl implements StaffService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final UserStoreRepository userStoreRepository;
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -77,10 +80,15 @@ public class StaffServiceImpl implements StaffService {
         // Handle store assignments if provided
         if (staffRequest.getStoreIds() != null && !staffRequest.getStoreIds().isEmpty()) {
             for (String storeId : staffRequest.getStoreIds()) {
+                // Validate store exists
+                Store store = storeRepository.findByIdAndIsDeletedFalse(storeId)
+                        .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
+                
                 UserStore userStore = UserStore.builder()
                         .userId(savedStaff.getId())
                         .storeId(storeId)
                         .user(savedStaff)
+                        .store(store)
                         .build();
                 userStoreRepository.save(userStore);
             }
@@ -171,10 +179,15 @@ public class StaffServiceImpl implements StaffService {
             // Add new store assignments
             if (!staffRequest.getStoreIds().isEmpty()) {
                 for (String storeId : staffRequest.getStoreIds()) {
+                    // Validate store exists
+                    Store store = storeRepository.findByIdAndIsDeletedFalse(storeId)
+                            .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
+                    
                     UserStore userStore = UserStore.builder()
                             .userId(updatedStaff.getId())
                             .storeId(storeId)
                             .user(updatedStaff)
+                            .store(store)
                             .build();
                     userStoreRepository.save(userStore);
                 }
