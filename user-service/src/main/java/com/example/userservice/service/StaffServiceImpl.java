@@ -73,6 +73,20 @@ public class StaffServiceImpl implements StaffService {
                 .build();
 
         User savedStaff = userRepository.save(staff);
+        
+        // Handle store assignments if provided
+        if (staffRequest.getStoreIds() != null && !staffRequest.getStoreIds().isEmpty()) {
+            for (String storeId : staffRequest.getStoreIds()) {
+                UserStore userStore = UserStore.builder()
+                        .userId(savedStaff.getId())
+                        .storeId(storeId)
+                        .user(savedStaff)
+                        .build();
+                userStoreRepository.save(userStore);
+            }
+            log.info("Assigned staff {} to {} stores", savedStaff.getId(), staffRequest.getStoreIds().size());
+        }
+        
         return toStaffResponse(savedStaff);
     }
 
@@ -143,6 +157,31 @@ public class StaffServiceImpl implements StaffService {
         User updatedStaff = userRepository.save(existingStaff);
         if (staffRequest.getEmail() != null || staffRequest.getStatus() != null) {
             accountRepository.save(existingStaff.getAccount());
+        }
+
+        // Handle store assignments if provided
+        if (staffRequest.getStoreIds() != null) {
+            // Remove existing store assignments
+            List<UserStore> existingUserStores = userStoreRepository.findByUserIdAndIsDeletedFalse(id);
+            for (UserStore userStore : existingUserStores) {
+                userStore.setIsDeleted(true);
+                userStoreRepository.save(userStore);
+            }
+            
+            // Add new store assignments
+            if (!staffRequest.getStoreIds().isEmpty()) {
+                for (String storeId : staffRequest.getStoreIds()) {
+                    UserStore userStore = UserStore.builder()
+                            .userId(updatedStaff.getId())
+                            .storeId(storeId)
+                            .user(updatedStaff)
+                            .build();
+                    userStoreRepository.save(userStore);
+                }
+                log.info("Updated staff {} store assignments to {} stores", updatedStaff.getId(), staffRequest.getStoreIds().size());
+            } else {
+                log.info("Removed all store assignments for staff {}", updatedStaff.getId());
+            }
         }
 
         return toStaffResponse(updatedStaff);
