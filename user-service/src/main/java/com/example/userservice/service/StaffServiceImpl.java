@@ -2,12 +2,14 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
+import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.StaffRequest;
 import com.example.userservice.request.StaffUpdateRequest;
 import com.example.userservice.response.PageResponse;
@@ -33,6 +35,7 @@ public class StaffServiceImpl implements StaffService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final UserStoreRepository userStoreRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -313,6 +316,12 @@ public class StaffServiceImpl implements StaffService {
     }
 
     private StaffResponse toStaffResponse(User staff) {
+        // Load storeIds for the staff
+        List<String> storeIds = userStoreRepository.findByUserIdAndIsDeletedFalse(staff.getId())
+                .stream()
+                .map(UserStore::getStoreId)
+                .collect(Collectors.toList());
+
         return StaffResponse.builder()
                 .id(staff.getId())
                 .birthday(staff.getBirthday())
@@ -329,6 +338,7 @@ public class StaffServiceImpl implements StaffService {
                 .salary(staff.getSalary())
                 .email(staff.getAccount() != null ? staff.getAccount().getEmail() : null)
                 .role(staff.getAccount() != null ? staff.getAccount().getRole() : null)
+                .storeIds(storeIds)
                 .build();
     }
 }
