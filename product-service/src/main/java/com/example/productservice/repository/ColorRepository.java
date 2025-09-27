@@ -12,8 +12,7 @@ import java.util.Optional;
 
 public interface ColorRepository extends JpaRepository<Color, String> {
     void deleteAllByProductId(String productId);
-    Color findById(String colorId);
-    Optional<Color> findByProductIdAndIsDeletedFalse(String productId);
+    Optional<Color> findById(String colorId);
     @Query(value = """
         SELECT * FROM colors 
         WHERE is_deleted = false 

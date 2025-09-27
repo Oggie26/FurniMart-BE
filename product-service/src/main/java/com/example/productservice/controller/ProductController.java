@@ -154,7 +154,8 @@ public class ProductController {
     @Operation(summary = "Lấy chi tiết sản phẩm theo ColorId")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ColorResponse> getColorById(@PathVariable String colorId) {
-        Color color = colorRepository.findById(colorId);
+        Color color = colorRepository.findById(colorId)
+                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
          ColorResponse colorResponse = ColorResponse.builder()
                  .id(color.getId())
                  .colorName(color.getColorName())
