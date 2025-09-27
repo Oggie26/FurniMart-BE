@@ -20,7 +20,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/orders")
+@RequestMapping("/api/orders")
 @Tag(name = "Order Controller")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)

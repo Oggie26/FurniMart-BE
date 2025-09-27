@@ -1,10 +1,8 @@
 package com.example.productservice.service.inteface;
 
-import com.example.productservice.entity.Product;
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductResponse;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
