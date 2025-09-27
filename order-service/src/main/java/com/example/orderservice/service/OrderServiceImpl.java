@@ -13,8 +13,9 @@ import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,14 +23,20 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
@@ -45,35 +52,43 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrder(Long cartId, Long addressId, PaymentMethod paymentMethod, String voucherCode) {
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
-
-        if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new AppException(ErrorCode.CART_EMPTY);
+        // Kiểm tra đầu vào
+        if (cartId == null) {
+            throw new AppException(ErrorCode.CART_NOT_FOUND);
         }
-
+        if (addressId == null) {
+            throw new AppException(ErrorCode.INVALID_ADDRESS);
+        }
         if (paymentMethod == null) {
             throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
         }
 
+        // Tìm Cart và kiểm tra
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
+
+        if (cart.getItems().isEmpty()) {
+            throw new AppException(ErrorCode.CART_EMPTY);
+        }
+
+        log.info("Cart items class: {}", cart.getItems().getClass().getName()); // Debug
+
+        // Tạo Order
         Order order = buildOrder(cart, addressId);
-        order = orderRepository.save(order);
-
         List<OrderDetail> details = createOrderItemsFromCart(cart, order);
-        orderDetailRepository.saveAll(details);
-
         order.setOrderDetails(details);
-        orderRepository.save(order);
 
+        // Tạo ProcessOrder
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.PENDING);
         process.setCreatedAt(new Date());
-        processOrderRepository.save(process);
+        order.setProcessOrders(new ArrayList<>(List.of(process)));
 
-        order.setProcessOrders(List.of(process));
+        // Lưu Order
         orderRepository.save(order);
 
+        // Tạo và lưu Payment
         Payment payment = Payment.builder()
                 .order(order)
                 .paymentMethod(paymentMethod)
@@ -85,20 +100,18 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         paymentRepository.save(payment);
 
-        List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
-        if (!cartItems.isEmpty()) {
-            cartItemRepository.deleteAll(cartItems);
-        }
+        // Xóa CartItem thông qua cascade
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
-        cartRepository.save(cart);
-//
-//        try {
-//            OrderPlacedEvent event = new OrderPlacedEvent(order.getId(), order.getUserId(), order.getTotal());
-//            kafkaTemplate.send("order-placed", event);
-//        } catch (Exception ex) {
-//            ex.printStackTrace();
-//        }
+        cartRepository.save(cart); // Cascade sẽ xóa CartItem trong DB
+
+        // Gửi sự kiện Kafka
+        try {
+            OrderPlacedEvent event = new OrderPlacedEvent(order.getId(), order.getUserId(), order.getTotal());
+            kafkaTemplate.send("order-placed", event);
+        } catch (Exception ex) {
+            log.error("Failed to send Kafka event for order: {}", order.getId(), ex);
+        }
 
         return mapToResponse(order);
     }
@@ -106,7 +119,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse getOrderById(Long id) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() ->  new AppException(ErrorCode.ORDER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         return mapToResponse(order);
     }
 
@@ -114,7 +127,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() ->  new AppException(ErrorCode.ORDER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
@@ -123,11 +136,12 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
 
-         if (order.getProcessOrders() == null) {
-            order.setProcessOrders(List.of(process));
-        } else {
-            order.getProcessOrders().add(process);
-        }
+        List<ProcessOrder> processOrders = order.getProcessOrders() != null
+                ? new ArrayList<>(order.getProcessOrders())
+                : new ArrayList<>();
+        processOrders.add(process);
+        order.setProcessOrders(processOrders);
+
         orderRepository.save(order);
 
         return mapToResponse(order);
@@ -143,7 +157,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderResponse> responses = orders.getContent()
                 .stream()
                 .map(this::mapToResponse)
-                .toList();
+                .collect(Collectors.toList());
 
         return new PageResponse<>(
                 responses,
@@ -165,7 +179,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderResponse> responses = orders.getContent()
                 .stream()
                 .map(this::mapToResponse)
-                .toList();
+                .collect(Collectors.toList());
 
         return new PageResponse<>(
                 responses,
@@ -188,7 +202,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderResponse> responses = orders.getContent()
                 .stream()
                 .map(this::mapToResponse)
-                .toList();
+                .collect(Collectors.toList());
 
         return new PageResponse<>(
                 responses,
@@ -233,7 +247,7 @@ public class OrderServiceImpl implements OrderService {
                                         .price(detail.getPrice())
                                         .build())
                                 .collect(Collectors.toList())
-                                : List.of()
+                                : Collections.emptyList()
                 )
                 .processOrders(
                         order.getProcessOrders() != null
@@ -244,7 +258,7 @@ public class OrderServiceImpl implements OrderService {
                                         .createdAt(process.getCreatedAt())
                                         .build())
                                 .collect(Collectors.toList())
-                                : List.of()
+                                : Collections.emptyList()
                 )
                 .payment(paymentResponse)
                 .build();
@@ -254,6 +268,7 @@ public class OrderServiceImpl implements OrderService {
         Double total = cart.getTotalPrice();
         if (total == null) {
             total = cart.getItems().stream()
+                    .filter(item -> item.getPrice() != null && item.getQuantity() != null)
                     .mapToDouble(item -> item.getPrice() * item.getQuantity())
                     .sum();
         }
@@ -269,16 +284,13 @@ public class OrderServiceImpl implements OrderService {
 
     private List<OrderDetail> createOrderItemsFromCart(Cart cart, Order order) {
         return cart.getItems().stream()
-                .map(cartItem -> {
-                    OrderDetail detail = OrderDetail.builder()
-                            .order(order)
-                            .productId(cartItem.getProductId())
-                            .quantity(cartItem.getQuantity())
-                            .price(cartItem.getPrice())
-                            .build();
-
-                    return detail;
-                })
+                .filter(item -> item.getPrice() != null && item.getQuantity() != null)
+                .map(cartItem -> OrderDetail.builder()
+                        .order(order)
+                        .productId(cartItem.getProductId())
+                        .quantity(cartItem.getQuantity())
+                        .price(cartItem.getPrice())
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -311,7 +323,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String generateTransactionCode() {
-        return "TXN-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000);
+        return "TXN-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 10000);
     }
 
     private UserResponse safeGetUser(String userId) {
@@ -328,12 +340,11 @@ public class OrderServiceImpl implements OrderService {
         return resp.getData();
     }
 
-    private String getStoreById(String storeId){
+    private String getStoreById(String storeId) {
         ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
         if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         return response.getData().getId();
     }
-
 }

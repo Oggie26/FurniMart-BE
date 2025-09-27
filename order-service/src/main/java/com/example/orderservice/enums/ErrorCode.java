@@ -15,6 +15,7 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(1120, "Order not found", HttpStatus.NOT_FOUND),
     INVALID_QUANTITY(1121, "Invalid quantity", HttpStatus.BAD_REQUEST),
     INVALID_PAYMENT_METHOD(1122, "Invalid PaymentMethod", HttpStatus.BAD_REQUEST),
+    INVALID_ADDRESS(1123, "Invalid Address", HttpStatus.BAD_REQUEST),
     //12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_FOUND_USER(1202, "User not found", HttpStatus.NOT_FOUND),

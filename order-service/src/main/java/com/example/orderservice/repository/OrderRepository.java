@@ -10,33 +10,32 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
+
     Optional<Order> findByUserId(String userId);
 
     Optional<Order> findByIdAndIsDeletedFalse(Long orderId);
 
     Optional<Order> findByStoreId(String storeId);
 
+    // 🔍 Search theo userId + keyword
     @Query(value = """
             SELECT * FROM orders 
             WHERE is_deleted = false 
               AND user_id = :userId
               AND (
-                    LOWER(order_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(store_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
               )
             """,
             countQuery = """
-
-                    SELECT COUNT(*) FROM orders 
+            SELECT COUNT(*) FROM orders 
             WHERE is_deleted = false 
               AND user_id = :userId
               AND (
-                    LOWER(order_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(store_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
               )
             """,
             nativeQuery = true)
@@ -46,17 +45,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             Pageable pageable
     );
 
-
-    // search riêng theo storeId + keyword
+    // 🔍 Search theo storeId + keyword
     @Query(value = """
             SELECT * FROM orders 
             WHERE is_deleted = false 
               AND store_id = :storeId
               AND (
-                    LOWER(order_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
               )
             """,
             countQuery = """
@@ -64,10 +61,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             WHERE is_deleted = false 
               AND store_id = :storeId
               AND (
-                    LOWER(order_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
               )
             """,
             nativeQuery = true)
@@ -77,26 +73,25 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             Pageable pageable
     );
 
-
-    // search chung (không ràng buộc userId/storeId)
+    // 🔍 Search chung (không ràng buộc userId/storeId)
     @Query(value = """
             SELECT * FROM orders 
             WHERE is_deleted = false
               AND (
-                    LOWER(order_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(store_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
               )
             """,
             countQuery = """
             SELECT COUNT(*) FROM orders 
             WHERE is_deleted = false
               AND (
-                    LOWER(order_code) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                 OR LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(store_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
               )
             """,
             nativeQuery = true)
