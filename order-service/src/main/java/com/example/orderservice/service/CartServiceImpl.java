@@ -170,8 +170,7 @@ public class CartServiceImpl implements CartService {
 
     private Double calculateTotalPrice(Cart cart) {
         return cart.getItems().stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
-                .sum();
+                .mapToDouble(item -> item.getPrice() * item.getQuantity())                .sum();
     }
 
     private List<CartItemResponse> convertCartItemsToResponses(Cart cart) {
@@ -191,6 +190,7 @@ public class CartServiceImpl implements CartService {
                             .image(getImage(item.getProductId(),item.getColorId()))
                             .price(item.getPrice())
                             .quantity(item.getQuantity())
+                            .colorName(getColorName(item.getColorId(),item.getColorId()))
                             .colorId(item.getColorId())
                             .totalItemPrice(item.getPrice() * item.getQuantity())
                             .build();
@@ -239,6 +239,26 @@ public class CartServiceImpl implements CartService {
                 .findFirst()
                 .flatMap(c -> c.getImages().stream().findFirst())
                 .map(ImageResponse::getImage)
+                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
+    }
+
+    private String getColorName(String productId, String colorId) {
+        ApiResponse<ProductResponse> response = colorClient.getProductByColorId(productId, colorId);
+
+        if (response == null || response.getData() == null ) {
+            throw new AppException(ErrorCode.COLOR_NOT_FOUND);
+        }
+
+        ProductResponse product = response.getData();
+
+        if (product.getColor() == null) {
+            throw new AppException(ErrorCode.COLOR_NOT_FOUND);
+        }
+
+        return product.getColor().stream()
+                .filter(c -> c.getId().equals(colorId))
+                .findFirst()
+                .map(ColorResponse::getColorName)
                 .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
     }
 }

@@ -15,6 +15,7 @@ public class CartItemResponse {
     String image;
     Double price;
     String colorId;
+    String colorName;
     int quantity;
     Double totalItemPrice;
 }
