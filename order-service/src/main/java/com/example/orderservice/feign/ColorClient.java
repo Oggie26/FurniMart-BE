@@ -13,6 +13,6 @@ public interface ColorClient {
     @GetMapping("/api/products/{productId}/color/{colorId}")
     ApiResponse<ProductResponse> getProductByColorId(@PathVariable String productId, @PathVariable String colorId);
 
-    @GetMapping("/api/products/{colorId}")
+    @GetMapping("/api/products/colors/{colorId}")
     ApiResponse<ColorResponse> getColorById(@PathVariable String colorId);
 }

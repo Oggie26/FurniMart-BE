@@ -1,6 +1,5 @@
 package com.example.productservice.repository;
 
-import com.example.productservice.entity.Color;
 import com.example.productservice.entity.Product;
 
 import feign.Param;
@@ -11,7 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
-
 
 public interface ProductRepository extends JpaRepository<Product,String> {
     Optional<Product> findByIdAndIsDeletedFalse(String id);

@@ -150,7 +150,7 @@ public class ProductController {
                 .build();
     }
 
-    @GetMapping("/{colorId}")
+    @GetMapping("/colors/{colorId}")
     @Operation(summary = "Lấy chi tiết sản phẩm theo ColorId")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<ColorResponse> getColorById(@PathVariable String colorId) {
