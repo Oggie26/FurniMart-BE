@@ -12,6 +12,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Builder
 @Data
@@ -48,4 +49,6 @@ public class StaffRequest {
     @NotNull(message = "Status is required")
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
+
+    private List<String> storeIds;
 }

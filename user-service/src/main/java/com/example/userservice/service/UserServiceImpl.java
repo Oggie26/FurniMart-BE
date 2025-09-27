@@ -2,11 +2,13 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
+import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.*;
@@ -33,6 +35,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final UserStoreRepository userStoreRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -293,6 +296,12 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserResponse toUserResponse(User user) {
+        // Load storeIds for the user
+        List<String> storeIds = userStoreRepository.findByUserIdAndIsDeletedFalse(user.getId())
+                .stream()
+                .map(UserStore::getStoreId)
+                .collect(Collectors.toList());
+
         return UserResponse.builder()
                 .id(user.getId())
                 .birthday(user.getBirthday())
@@ -307,6 +316,7 @@ public class UserServiceImpl implements UserService {
                 .point(user.getPoint())
                 .email(user.getAccount() != null ? user.getAccount().getEmail() : null)
                 .role(user.getAccount() != null ? user.getAccount().getRole() : null)
+                .storeIds(storeIds)
                 .build();
     }
 }

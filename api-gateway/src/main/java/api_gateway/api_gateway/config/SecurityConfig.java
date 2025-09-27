@@ -39,6 +39,7 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "http://152.53.169.79",
+                "exp://192.168.102.7:8081",
                 "http://172.20.10.4:8081",
                 "exp://172.20.10.4:8081",
                 "http://localhost:8081",

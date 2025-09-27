@@ -10,6 +10,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Builder
 @Data
@@ -38,4 +39,6 @@ public class StaffUpdateRequest {
 
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
+
+    private List<String> storeIds;
 }

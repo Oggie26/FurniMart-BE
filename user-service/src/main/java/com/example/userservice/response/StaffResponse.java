@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -34,4 +35,5 @@ public class StaffResponse {
     private EnumStatus status;
     private Date createdAt;
     private Date updatedAt;
+    private List<String> storeIds;
 }
