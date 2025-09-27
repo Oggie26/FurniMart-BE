@@ -1,15 +1,24 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.service.VNPayService;
+import com.example.orderservice.util.VNPayUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
 public class VNPayController {
+
+    @Value("${vnpay.hashSecret}")
+    private String hashSecret;
 
     private final VNPayService vnPayService;
 
@@ -21,8 +30,28 @@ public class VNPayController {
     }
 
     @GetMapping("/vnpay-return")
-    public String vnpayReturn(@RequestParam Map<String, String> allParams) {
-        // Khi thanh toán xong VNPay sẽ redirect về đây kèm query param
-        return "VNPay Response: " + allParams.toString();
+    public ResponseEntity<String> vnpayReturn(HttpServletRequest request) {
+        Map<String, String> vnpParams = new HashMap<>();
+        Map<String, String[]> parameterMap = request.getParameterMap();
+
+        for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+            vnpParams.put(entry.getKey(), entry.getValue()[0]);
+        }
+
+        // Xác minh chữ ký
+        String secureHash = vnpParams.remove("vnp_SecureHash");
+        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+
+        if (signValue.equals(secureHash)) {
+            String responseCode = vnpParams.get("vnp_ResponseCode");
+            if ("00".equals(responseCode)) {
+                String orderId = vnpParams.get("vnp_TxnRef");
+                return ResponseEntity.ok("✅ Payment Success: Order " + orderId);
+            } else {
+                return ResponseEntity.badRequest().body("❌ Payment Failed: ResponseCode=" + responseCode);
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("❌ Invalid signature");
+        }
     }
 }
