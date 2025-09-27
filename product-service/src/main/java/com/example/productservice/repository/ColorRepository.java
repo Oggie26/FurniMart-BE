@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public interface ColorRepository extends JpaRepository<Color, String> {
     void deleteAllByProductId(String productId);
-    Optional<Color> findByIdAndIsDeletedFalse(String id);
+    Color findById(String colorId);
     Optional<Color> findByProductIdAndIsDeletedFalse(String productId);
     @Query(value = """
         SELECT * FROM colors 

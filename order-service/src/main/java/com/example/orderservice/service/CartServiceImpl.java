@@ -190,7 +190,7 @@ public class CartServiceImpl implements CartService {
                             .image(getImage(item.getProductId(),item.getColorId()))
                             .price(item.getPrice())
                             .quantity(item.getQuantity())
-                            .colorName(getColorName(item.getColorId(),item.getColorId()))
+                            .colorName(getColorName(item.getColorId()))
                             .colorId(item.getColorId())
                             .totalItemPrice(item.getPrice() * item.getQuantity())
                             .build();
@@ -242,23 +242,12 @@ public class CartServiceImpl implements CartService {
                 .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
     }
 
-    private String getColorName(String productId, String colorId) {
-        ApiResponse<ProductResponse> response = colorClient.getProductByColorId(productId, colorId);
+    private String getColorName(String colorId) {
+        ApiResponse<ColorResponse> response = colorClient.getColorById(colorId);
 
         if (response == null || response.getData() == null ) {
             throw new AppException(ErrorCode.COLOR_NOT_FOUND);
         }
-
-        ProductResponse product = response.getData();
-
-        if (product.getColor() == null) {
-            throw new AppException(ErrorCode.COLOR_NOT_FOUND);
-        }
-
-        return product.getColor().stream()
-                .filter(c -> c.getId().equals(colorId))
-                .findFirst()
-                .map(ColorResponse::getColorName)
-                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
+        return response.getData().getColorName();
     }
 }

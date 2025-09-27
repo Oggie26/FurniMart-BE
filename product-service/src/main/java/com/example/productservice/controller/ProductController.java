@@ -1,8 +1,13 @@
 package com.example.productservice.controller;
 
+import com.example.productservice.entity.Color;
 import com.example.productservice.entity.Product;
+import com.example.productservice.enums.ErrorCode;
+import com.example.productservice.exception.AppException;
+import com.example.productservice.repository.ColorRepository;
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.ApiResponse;
+import com.example.productservice.response.ColorResponse;
 import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductResponse;
 import com.example.productservice.service.inteface.ProductService;
@@ -14,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.awt.*;
 import java.util.List;
 
 @RestController
@@ -24,20 +30,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
-
-//    @PostMapping(value = "/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    @Operation(summary = "Tạo sản phẩm mới")
-//    @ResponseStatus(HttpStatus.CREATED)
-//    public ApiResponse<ProductResponse> createProduct(
-//            @RequestPart("product") @Valid ProductRequest request,
-//            @RequestPart("thumbnail") MultipartFile thumbnail) {
-//
-//        return ApiResponse.<ProductResponse>builder()
-//                .status(HttpStatus.CREATED.value())
-//                .message("Tạo sản phẩm thành công")
-//                .data(productService.createProduct(request, thumbnail))
-//                .build();
-//    }
+    private final ColorRepository colorRepository;
 
     @PostMapping()
     public ApiResponse<ProductResponse> createProduct(
@@ -157,4 +150,20 @@ public class ProductController {
                 .build();
     }
 
+    @GetMapping("/{colorId}")
+    @Operation(summary = "Lấy chi tiết sản phẩm theo ColorId")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<ColorResponse> getColorById(@PathVariable String colorId) {
+        Color color = colorRepository.findById(colorId);
+         ColorResponse colorResponse = ColorResponse.builder()
+                 .id(color.getId())
+                 .colorName(color.getColorName())
+                 .hexCode(color.getHexCode())
+                 .build();
+        return ApiResponse.<ColorResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy màu thành công")
+                .data(colorResponse)
+                .build();
+    }
 }

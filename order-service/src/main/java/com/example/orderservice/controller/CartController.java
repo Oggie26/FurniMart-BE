@@ -72,7 +72,7 @@ public class CartController {
                 .build();
     }
 
-    @DeleteMapping("/remove/{productId}")
+    @DeleteMapping("/remove/{productId}/color/{colorId}")
     @Operation(summary = "Xoá 1 sản phẩm khỏi giỏ hàng")
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> deleteProductFromCart(@PathVariable String productId, @PathVariable String colorId) {
