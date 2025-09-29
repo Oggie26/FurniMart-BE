@@ -55,7 +55,7 @@ spring:
                     - id: inventory-service
                       uri: lb://inventory-service
                       predicates:
-                        - Path=/api/inventory/**, /api/warehouse/**, /api/warehouses/**, /api/zones/**
+                        - Path=/api/inventories/**, /api/warehouses/**,/api/location-items/**, /api/zones/**
                       filters: []
 
 jwt:
