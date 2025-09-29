@@ -199,6 +199,24 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public List<InventoryTransactionResponse> getAllTransactions() {
+        return transactionRepository.findAll()
+                .stream()
+                .filter(inventoryTransaction ->  inventoryTransaction.getQuantity() > 0)
+                .map(this::mapToTransactionResponse)
+                .toList();
+    }
+
+    @Override
+    public List<InventoryResponse> getAllInventory() {
+        return inventoryRepository.findAll()
+                .stream()
+                .filter(inventory -> inventory.getQuantity() > 0)
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
         List<Inventory> inventories = inventoryRepository.findAllByLocationItem_Zone_ZoneId(zoneId);

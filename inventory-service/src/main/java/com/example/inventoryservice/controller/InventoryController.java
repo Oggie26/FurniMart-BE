@@ -177,4 +177,26 @@ public class InventoryController {
                             .build());
         }
     }
+
+    @Operation(summary = "Lấy tất cả lịch sử giao dịch tồn kho")
+    @GetMapping("/transactions")
+    public ResponseEntity<ApiResponse<List<InventoryTransactionResponse>>> getAllTransactions() {
+        List<InventoryTransactionResponse> transactions = inventoryService.getAllTransactions();
+        return ResponseEntity.ok(ApiResponse.<List<InventoryTransactionResponse>>builder()
+                .status(200)
+                .message("Lấy tất cả lịch sử giao dịch tồn kho thành công")
+                .data(transactions)
+                .build());
+    }
+
+    @Operation(summary = "Lấy tất cả inventory")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getAllInventory() {
+        List<InventoryResponse> inventories = inventoryService.getAllInventory();
+        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy tất cả inventory thành công")
+                .data(inventories)
+                .build());
+    }
 }

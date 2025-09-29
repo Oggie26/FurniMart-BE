@@ -31,5 +31,9 @@ public interface InventoryService {
     List<InventoryResponse> getInventoryByZone(String zoneId);
 
     boolean checkZoneCapacity(String zoneId);
+
+    List<InventoryTransactionResponse> getAllTransactions();
+
+    List<InventoryResponse> getAllInventory();
 }
 
