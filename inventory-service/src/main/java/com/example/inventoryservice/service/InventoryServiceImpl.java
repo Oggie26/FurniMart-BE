@@ -60,8 +60,14 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.INVALID_QUANTITY_RANGE);
         }
 
-        // Kiểm tra sức chứa theo Warehouse (theo store)
-        int currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
+        Integer currentZoneTotal = inventoryRepository.sumQuantityByZoneId(zone.getId());
+        if (currentZoneTotal == null) currentZoneTotal = 0;
+        if (currentZoneTotal + quantity > zone.getQuantity()) {
+            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+        }
+
+        Integer currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
+        if (currentWarehouseTotal == null) currentWarehouseTotal = 0;
         if (currentWarehouseTotal + quantity > warehouse.getCapacity()) {
             throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
         }
@@ -90,6 +96,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         return mapToResponse(inventory);
     }
+
 
     @Override
     public List<InventoryResponse> getInventoryByProduct(String productId) {
