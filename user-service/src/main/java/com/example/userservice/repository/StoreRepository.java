@@ -23,9 +23,13 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     
     List<Store> findByCityAndIsDeletedFalse(String city);
     
+    List<Store> findByDistrictAndIsDeletedFalse(String district);
+    
     @Query("SELECT s FROM Store s WHERE s.isDeleted = false AND " +
            "(LOWER(s.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(s.city) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(s.district) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(s.ward) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(s.addressLine) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     Page<Store> searchStores(@Param("searchTerm") String searchTerm, Pageable pageable);
     

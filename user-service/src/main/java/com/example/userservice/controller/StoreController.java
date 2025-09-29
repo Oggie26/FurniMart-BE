@@ -121,6 +121,16 @@ public class StoreController {
                 .build();
     }
 
+    @GetMapping("/district/{district}")
+    @Operation(summary = "Get stores by district")
+    public ApiResponse<List<StoreResponse>> getStoresByDistrict(@PathVariable String district) {
+        return ApiResponse.<List<StoreResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Stores retrieved successfully")
+                .data(storeService.getStoresByDistrict(district))
+                .build();
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete store")
     @ResponseStatus(HttpStatus.NO_CONTENT)

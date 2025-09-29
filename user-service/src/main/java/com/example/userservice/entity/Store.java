@@ -26,7 +26,10 @@ public class Store extends AbstractEntity {
     private String city;
 
     @Column
-    private String war;
+    private String district;
+
+    @Column
+    private String ward;
 
     @Column
     private String street;
