@@ -50,6 +50,7 @@ public enum ErrorCode {
     INSUFFICIENT_BALANCE(1225, "Insufficient wallet balance", HttpStatus.BAD_REQUEST),
     TRANSACTION_NOT_FOUND(1226, "Transaction not found", HttpStatus.NOT_FOUND),
     TRANSACTION_CODE_EXISTS(1227, "Transaction code already exists", HttpStatus.BAD_REQUEST),
+    ORDER_NOT_FOUND(1228, "Order not found", HttpStatus.NOT_FOUND),
 
     ;
 

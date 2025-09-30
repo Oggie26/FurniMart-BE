@@ -13,7 +13,7 @@ public class OrderResponse {
 
     private Long id;
     private UserResponse user;
-    private StoreResponse store;
+    private String storeId;
     private AddressResponse address;
     private Double total;
     private String note;

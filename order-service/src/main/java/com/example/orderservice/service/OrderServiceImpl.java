@@ -52,7 +52,6 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrder(Long cartId, Long addressId, PaymentMethod paymentMethod, String voucherCode) {
-        // Kiểm tra đầu vào
         if (cartId == null) {
             throw new AppException(ErrorCode.CART_NOT_FOUND);
         }
@@ -63,7 +62,6 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
         }
 
-        // Tìm Cart và kiểm tra
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
 
@@ -71,24 +69,21 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.CART_EMPTY);
         }
 
-        log.info("Cart items class: {}", cart.getItems().getClass().getName()); // Debug
+        log.info("Cart items class: {}", cart.getItems().getClass().getName());
 
-        // Tạo Order
         Order order = buildOrder(cart, addressId);
         List<OrderDetail> details = createOrderItemsFromCart(cart, order);
         order.setOrderDetails(details);
 
-        // Tạo ProcessOrder
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.PENDING);
         process.setCreatedAt(new Date());
         order.setProcessOrders(new ArrayList<>(List.of(process)));
 
-        // Lưu Order
         orderRepository.save(order);
 
-        // Tạo và lưu Payment
+
         Payment payment = Payment.builder()
                 .order(order)
                 .paymentMethod(paymentMethod)
@@ -100,18 +95,23 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         paymentRepository.save(payment);
 
-        // Xóa CartItem thông qua cascade
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
-        cartRepository.save(cart); // Cascade sẽ xóa CartItem trong DB
+        cartRepository.save(cart);
 
-        // Gửi sự kiện Kafka
         try {
             OrderPlacedEvent event = new OrderPlacedEvent(order.getId(), order.getUserId(), order.getTotal());
-            kafkaTemplate.send("order-placed", event);
+            kafkaTemplate.send("order-created-placed", event)
+                    .whenComplete((result, ex) -> {
+                if (ex != null) {
+                } else {
+                    log.info("Successfully sent account creation event for: {}", order.getId());
+                }
+            });
         } catch (Exception ex) {
             log.error("Failed to send Kafka event for order: {}", order.getId(), ex);
         }
+
 
         return mapToResponse(order);
     }
@@ -261,6 +261,7 @@ public class OrderServiceImpl implements OrderService {
                                 : Collections.emptyList()
                 )
                 .payment(paymentResponse)
+                .storeId(order.getStoreId())
                 .build();
     }
 

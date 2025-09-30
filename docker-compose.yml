@@ -2,6 +2,28 @@ version: '3.8'
 
 services:
 
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080" # dashboard traefik
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - backend
+
+
   eureka-server:
     build: ./eureka-server
     container_name: eureka-server
@@ -14,13 +36,17 @@ services:
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
-    ports:
-      - "8080:8080"
     depends_on:
       - eureka-server
     networks:
       - backend
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gateway.rule=Host(`furnimart.click`)"
+      - "traefik.http.routers.gateway.entrypoints=websecure"
+      - "traefik.http.routers.gateway.tls.certresolver=myresolver"
+      - "traefik.http.services.gateway.loadbalancer.server.port=8080"
 
   product-service:
     build: ./product-service
