@@ -239,8 +239,10 @@ services:
     networks:
       - backend
     command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
     labels:
-      - "traefik.enable=false"
+        - "traefik.enable=false"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
@@ -291,3 +293,4 @@ volumes:
   order_data:
   inventory_data:
   delivery_data:
+  redis-data:
