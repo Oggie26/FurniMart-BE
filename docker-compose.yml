@@ -239,6 +239,8 @@ services:
     networks:
       - backend
     command: ["redis-server", "--appendonly", "yes"]
+    labels:
+      - "traefik.enable=false"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
