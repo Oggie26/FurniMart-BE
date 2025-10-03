@@ -20,7 +20,8 @@ public class StoreResponse {
     private String id;
     private String name;
     private String city;
-    private String war;
+    private String district;
+    private String ward;
     private String street;
     private String addressLine;
     private String latitude;

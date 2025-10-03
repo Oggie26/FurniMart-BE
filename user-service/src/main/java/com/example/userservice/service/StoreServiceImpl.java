@@ -40,7 +40,8 @@ public class StoreServiceImpl implements StoreService {
         Store store = Store.builder()
                 .name(request.getName())
                 .city(request.getCity())
-                .war(request.getWar())
+                .district(request.getDistrict())
+                .ward(request.getWard())
                 .street(request.getStreet())
                 .addressLine(request.getAddressLine())
                 .latitude(request.getLatitude())
@@ -62,7 +63,8 @@ public class StoreServiceImpl implements StoreService {
 
         store.setName(request.getName());
         store.setCity(request.getCity());
-        store.setWar(request.getWar());
+        store.setDistrict(request.getDistrict());
+        store.setWard(request.getWard());
         store.setStreet(request.getStreet());
         store.setAddressLine(request.getAddressLine());
         store.setLatitude(request.getLatitude());
@@ -130,6 +132,14 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public List<StoreResponse> getStoresByCity(String city) {
         List<Store> stores = storeRepository.findByCityAndIsDeletedFalse(city);
+        return stores.stream()
+                .map(this::mapToStoreResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<StoreResponse> getStoresByDistrict(String district) {
+        List<Store> stores = storeRepository.findByDistrictAndIsDeletedFalse(district);
         return stores.stream()
                 .map(this::mapToStoreResponse)
                 .collect(Collectors.toList());
@@ -207,7 +217,8 @@ public class StoreServiceImpl implements StoreService {
                 .id(store.getId())
                 .name(store.getName())
                 .city(store.getCity())
-                .war(store.getWar())
+                .district(store.getDistrict())
+                .ward(store.getWard())
                 .street(store.getStreet())
                 .addressLine(store.getAddressLine())
                 .latitude(store.getLatitude())
