@@ -179,6 +179,7 @@ public class ProductServiceImpl implements ProductService {
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
+                .productColors(product.getProductColors())
                 .status(product.getStatus())
                 .length(product.getLength())
                 .weight(product.getWeight())
