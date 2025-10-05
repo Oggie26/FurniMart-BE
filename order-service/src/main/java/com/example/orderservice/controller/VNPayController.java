@@ -39,7 +39,7 @@ public class VNPayController {
         }
 
         String secureHash = vnpParams.remove("vnp_SecureHash");
-        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+        String signValue = VNPayUtils.hashAllFields(vnpParams, "AMHK5P8JFFXKFUWCF6DC1NWUTJC26LHY");
 
         if (signValue.equals(secureHash)) {
             String responseCode = vnpParams.get("vnp_ResponseCode");
