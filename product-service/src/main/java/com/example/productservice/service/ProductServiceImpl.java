@@ -180,7 +180,10 @@ public class ProductServiceImpl implements ProductService {
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
-                .productColors(productColorRepository.findByProductIdAndIsDeletedFalse(product.getId()))
+                .productColors(product.getProductColors() != null ?
+                        product.getProductColors().stream()
+                                .map(this::mapProductColorToDTO)
+                                .toList() : null)
                 .status(product.getStatus())
                 .length(product.getLength())
                 .weight(product.getWeight())
@@ -195,4 +198,30 @@ public class ProductServiceImpl implements ProductService {
                         .toList() : null)
                 .build();
     }
+
+    private ProductColorDTO mapProductColorToDTO(ProductColor productColor) {
+        return ProductColorDTO.builder()
+                .id(productColor.getId())
+                .color(ColorResponse.builder()
+                        .id(productColor.getColor().getId())
+                        .colorName(productColor.getColor().getColorName())
+                        .build())
+                .images(productColor.getImages() != null ?
+                        productColor.getImages().stream()
+                                .map(img -> ImageResponse.builder()
+                                        .id(img.getId())
+                                        .image(img.getImageUrl())
+                                        .build())
+                                .toList() : null)
+                .models3D(productColor.getModels3D() != null ?
+                        productColor.getModels3D().stream()
+                                .map(model -> Image3DResponse.builder()
+                                        .image3d(model.getId())
+                                        .modelUrl(model.getModelUrl())
+                                        .build())
+                                .toList() : null)
+                .status(productColor.getStatus())
+                .build();
+    }
+
 }
