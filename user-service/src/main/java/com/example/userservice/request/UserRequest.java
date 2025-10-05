@@ -19,13 +19,10 @@ public class UserRequest {
     @NotBlank(message = "Họ tên không được để trống")
     private String fullName;
 
-    @NotBlank(message = "Tên đăng nhập không được để trống")
-    private String username;
-
     @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
 
-    private String authId;
+    private String storeId;
 
     @Email(message = "Email không hợp lệ")
     private String email;
