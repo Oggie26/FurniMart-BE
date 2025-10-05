@@ -30,14 +30,7 @@ public class VNPayController {
     }
 
     @GetMapping("/vnpay-return")
-    public ResponseEntity<String> vnpayReturn(HttpServletRequest request) {
-        Map<String, String> vnpParams = new HashMap<>();
-        Map<String, String[]> parameterMap = request.getParameterMap();
-
-        for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
-            vnpParams.put(entry.getKey(), entry.getValue()[0]);
-        }
-
+    public ResponseEntity<?> vnpayReturn(@RequestParam Map<String, String> vnpParams) {
         String secureHash = vnpParams.remove("vnp_SecureHash");
         vnpParams.remove("vnp_SecureHashType");
 
@@ -47,12 +40,23 @@ public class VNPayController {
             String responseCode = vnpParams.get("vnp_ResponseCode");
             if ("00".equals(responseCode)) {
                 String orderId = vnpParams.get("vnp_TxnRef");
-                return ResponseEntity.ok("✅ Payment Success: Order " + orderId);
+                return ResponseEntity.ok(Map.of(
+                        "status", 200,
+                        "message", "✅ Payment Success",
+                        "orderId", orderId
+                ));
             } else {
-                return ResponseEntity.badRequest().body("❌ Payment Failed: ResponseCode=" + responseCode);
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", 400,
+                        "message", "❌ Payment Failed: " + responseCode
+                ));
             }
         } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("❌ Invalid signature");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "status", 400,
+                    "message", "❌ Invalid signature"
+            ));
         }
     }
+
 }
