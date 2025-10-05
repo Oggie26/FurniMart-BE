@@ -23,5 +23,4 @@ public class ProductModel3DRequest {
 
     private String previewImage;
 
-    private String productId;
 }

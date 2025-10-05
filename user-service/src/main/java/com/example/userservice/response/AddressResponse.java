@@ -1,5 +1,6 @@
 package com.example.userservice.response;
 
+import jakarta.persistence.Column;
 import lombok.*;
 
 @Getter
@@ -21,4 +22,6 @@ public class AddressResponse {
     private String userId;
     private String userName;
     private String fullAddress;
+    private Double latitude;
+    private Double longitude;
 }

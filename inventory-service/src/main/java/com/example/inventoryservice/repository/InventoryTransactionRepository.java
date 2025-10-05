@@ -8,8 +8,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface InventoryTransactionRepository extends JpaRepository<InventoryTransaction, Long> {
-    @Query("SELECT it FROM InventoryTransaction it WHERE it.productId = :productId AND it.warehouse.id = :warehouseId")
-    List<InventoryTransaction> findByProductIdAndWarehouseId(@Param("productId") String productId, @Param("warehouseId") String warehouseId);
+    @Query("SELECT it FROM InventoryTransaction it WHERE it.productColorId = :productColorId AND it.warehouse.id = :warehouseId")
+    List<InventoryTransaction> findByProductColorIddAndWarehouseId(@Param("productColorId") String productId, @Param("warehouseId") String warehouseId);
 
     // Các query bổ sung nếu cần, ví dụ: tìm theo userId
     List<InventoryTransaction> findByUserId(String userId);

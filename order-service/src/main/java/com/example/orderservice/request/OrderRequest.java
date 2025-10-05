@@ -30,6 +30,8 @@ public class OrderRequest {
 
     private String note;
 
+    private String reason;
+
     @NotNull(message = "Order details are required")
     private List<OrderDetailRequest> orderDetails;
 }

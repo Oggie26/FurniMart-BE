@@ -43,8 +43,8 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse upsertInventory(String productId, String locationItemId, int quantity, int minQuantity, int maxQuantity) {
-        ProductResponse product = getProductById(productId);
+    public InventoryResponse upsertInventory(String productColorId, String locationItemId, int quantity, int minQuantity, int maxQuantity) {
+        ProductColorResponse product = getProductColorById(productColorId);
         if (product == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
@@ -72,9 +72,9 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
         }
 
-        Inventory inventory = inventoryRepository.findByProductIdAndLocationItemId(productId, locationItemId)
+        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(productColorId, locationItemId)
                 .orElse(new Inventory());
-        inventory.setProductId(productId);
+        inventory.setProductColorId(productColorId);
         inventory.setLocationItem(locationItem);
         inventory.setQuantity(quantity);
         inventory.setMinQuantity(minQuantity);
@@ -86,9 +86,9 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .quantity(quantity)
                 .dateLocal(LocalDateTime.now())
-                .note("Upsert inventory for product " + productId)
+                .note("Upsert inventory for product " + productColorId)
                 .type(EnumTypes.IN)
-                .productId(productId)
+                .productColorId(productColorId)
                 .userId(getUserId())
                 .warehouse(warehouse)
                 .build();
@@ -99,16 +99,16 @@ public class InventoryServiceImpl implements InventoryService {
 
 
     @Override
-    public List<InventoryResponse> getInventoryByProduct(String productId) {
-        return inventoryRepository.findAllByProductId(productId).stream()
+    public List<InventoryResponse> getInventoryByProduct(String productColorId) {
+        return inventoryRepository.findAllByProductColorId(productColorId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public InventoryResponse increaseStock(String productId, String locationItemId, int amount) {
-        Inventory inventory = inventoryRepository.findByProductIdAndLocationItemId(productId, locationItemId)
+    public InventoryResponse increaseStock(String productColorId, String locationItemId, int amount) {
+        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(productColorId, locationItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
         int newQuantity = inventory.getQuantity() + amount;
@@ -131,9 +131,9 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .quantity(amount)
                 .dateLocal(LocalDateTime.now())
-                .note("Increase stock for product " + productId)
+                .note("Increase stock for product " + productColorId)
                 .type(EnumTypes.IN)
-                .productId(productId)
+                .productColorId(productColorId)
                 .userId(getUserId())
                 .warehouse(warehouse)
                 .build();
@@ -144,8 +144,8 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse decreaseStock(String productId, String locationItemId, int amount) {
-        Inventory inventory = inventoryRepository.findByProductIdAndLocationItemId(productId, locationItemId)
+    public InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount) {
+        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(productColorId, locationItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
         if (inventory.getQuantity() < amount) {
@@ -165,9 +165,9 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .quantity(amount)
                 .dateLocal(LocalDateTime.now())
-                .note("Decrease stock for product " + productId)
+                .note("Decrease stock for product " + productColorId)
                 .type(EnumTypes.OUT)
-                .productId(productId)
+                .productColorId(productColorId)
                 .userId(getUserId())
                 .warehouse(warehouse)
                 .build();
@@ -178,7 +178,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public boolean hasSufficientStock(String productId, String locationItemId, int requiredQty) {
-        return inventoryRepository.findByProductIdAndLocationItemId(productId, locationItemId)
+        return inventoryRepository.findByProductColorIdAndLocationItemId(productId, locationItemId)
                 .map(inventory -> inventory.getQuantity() >= requiredQty)
                 .orElse(false);
     }
@@ -227,11 +227,11 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public List<InventoryTransactionResponse> getTransactionHistory(String productId, String zoneId) {
+    public List<InventoryTransactionResponse> getTransactionHistory(String productColorId, String zoneId) {
         Zone zone = zoneRepository.findById(zoneId)
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
         String warehouseId = zone.getWarehouse().getId();
-        List<InventoryTransaction> transactions = transactionRepository.findByProductIdAndWarehouseId(productId, warehouseId);
+        List<InventoryTransaction> transactions = transactionRepository.findByProductColorIddAndWarehouseId(productColorId, warehouseId);
         return transactions.stream()
                 .map(this::mapToTransactionResponse)
                 .collect(Collectors.toList());
@@ -240,7 +240,7 @@ public class InventoryServiceImpl implements InventoryService {
     private InventoryResponse mapToResponse(Inventory inventory) {
         return InventoryResponse.builder()
                 .id(inventory.getId())
-                .productId(inventory.getProductId())
+                .productColorId(inventory.getProductColorId())
                 .locationItemId(inventory.getLocationItem() != null ? inventory.getLocationItem().getId() : null)
                 .quantity(inventory.getQuantity())
                 .min_quantity(inventory.getMinQuantity())
@@ -256,7 +256,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .dateLocal(transaction.getDateLocal())
                 .type(transaction.getType())
                 .note(transaction.getNote())
-                .productId(transaction.getProductId())
+                .productColorId(transaction.getProductColorId())
                 .userId(transaction.getUserId())
                 .warehouseId(transaction.getWarehouse() != null ? transaction.getWarehouse().getId() : null)
                 .build();
@@ -264,6 +264,14 @@ public class InventoryServiceImpl implements InventoryService {
 
     private ProductResponse getProductById(String productId) {
         ApiResponse<ProductResponse> response = productClient.getProductById(productId);
+        if (response == null || response.getData() == null) {
+            return null;
+        }
+        return response.getData();
+    }
+
+    private ProductColorResponse getProductColorById(String productColorId) {
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
         if (response == null || response.getData() == null) {
             return null;
         }

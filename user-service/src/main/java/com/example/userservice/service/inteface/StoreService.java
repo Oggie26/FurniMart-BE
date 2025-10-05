@@ -1,5 +1,7 @@
 package com.example.userservice.service.inteface;
 
+import com.example.userservice.entity.Store;
+import com.example.userservice.request.StoreDistance;
 import com.example.userservice.request.StoreRequest;
 import com.example.userservice.request.UserStoreRequest;
 import com.example.userservice.response.PageResponse;
@@ -27,7 +29,6 @@ public interface StoreService {
     
     void deleteStore(String id);
     
-    // Many-to-many relationship methods
     UserStoreResponse addUserToStore(UserStoreRequest request);
     
     void removeUserFromStore(String userId, String storeId);
@@ -35,4 +36,10 @@ public interface StoreService {
     List<StoreResponse> getStoresByUserId(String userId);
     
     List<UserStoreResponse> getUsersByStoreId(String storeId);
+
+    Store getNearestStore(double lat, double lon);
+
+    List<Store> getNearestStores(double lat, double lon, int limit);
+
+    List<StoreDistance> findNearestStores(double lat, double lon, int limit);
 }

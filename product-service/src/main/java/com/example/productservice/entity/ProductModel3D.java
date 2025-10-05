@@ -2,45 +2,33 @@ package com.example.productservice.entity;
 
 import com.example.productservice.enums.Enum3DFormat;
 import com.example.productservice.enums.EnumStatus;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "product_models_3d")
+@Table(name = "product_model_3d")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductModel3D {
-
+public class ProductModel3D extends AbstractEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EnumStatus status;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_color_id", nullable = false)
+    private ProductColor productColor;
 
-    @Column(nullable = false)
     private String modelUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Enum3DFormat format;
 
-    @Column(nullable = false)
     private Double sizeInMb;
-
-    @Column(nullable = false)
     private String previewImage;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "color_id")
-    @JsonIgnore
-    private Color color;
+    @Enumerated(EnumType.STRING)
+    private EnumStatus status;
 }
-
-
-

@@ -40,15 +40,8 @@ public class Product extends AbstractEntity {
     @Column(nullable = false)
     private Double price;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EnumStatus status;
-
     @Column(nullable = false)
     private String thumbnailImage;
-
-    @Column(nullable = false, unique = true)
-    private String slug;
 
     @Column
     private Double weight;
@@ -58,6 +51,12 @@ public class Product extends AbstractEntity {
 
     @Column
     private Double width;
+
+    @Enumerated(EnumType.STRING)
+    private EnumStatus status;
+
+    @Column
+    private String slug;
 
     @Column
     private Double length;
@@ -77,7 +76,8 @@ public class Product extends AbstractEntity {
 
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Color> colors = new ArrayList<>();
+    private List<ProductColor> productColors = new ArrayList<>();
+
 
     @PrePersist
     @PreUpdate

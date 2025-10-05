@@ -24,7 +24,7 @@ public class InventoryTransactionResponse {
 
     private String note;
 
-    private String productId;
+    private String productColorId;
 
     private String userId;
 

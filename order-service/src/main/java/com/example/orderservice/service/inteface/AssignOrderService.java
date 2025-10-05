@@ -1,6 +1,9 @@
 package com.example.orderservice.service.inteface;
 
+import com.example.orderservice.enums.EnumProcessOrder;
+
 public interface AssignOrderService {
-    String assignOrderToStore(Long orderId);
+    void assignOrderToStore(Long orderId);
+    void acceptRejectOrderByManager(Long orderId , String storeId , String reason, EnumProcessOrder status);
 
 }

@@ -17,7 +17,7 @@ public class InventoryReminderJob {
     public void checkLowStock() {
         inventoryRepository.findAll().forEach(inventory -> {
             if (inventory.getQuantity() < inventory.getMinQuantity()) {
-                System.out.println("⚠ Cảnh báo: " + inventory.getProductId()
+                System.out.println("⚠ Cảnh báo: " + inventory.getProductColorId()
                         + " dưới mức tồn tối thiểu (" + inventory.getQuantity() + "/" + inventory.getMinQuantity() + ")");
                 // Ở đây có thể gửi email, notification hoặc call API
             }

@@ -1,5 +1,6 @@
 package com.example.productservice.response;
 
+import com.example.productservice.entity.ProductColor;
 import com.example.productservice.enums.EnumStatus;
 import lombok.*;
 
@@ -17,14 +18,12 @@ public class ProductResponse {
     private Double price;
     private String code;
     private String thumbnailImage;
-    private String slug;
     private Double weight;
     private Double height;
-    private EnumStatus status;
     private Double width;
     private Double length;
     private String categoryName;
     private Long categoryId;
-    private List<ColorResponse> color;
+    private EnumStatus status;
     private List<MaterialResponse> materials;
 }

@@ -20,12 +20,11 @@ public class StoreResponse {
     private String id;
     private String name;
     private String city;
-    private String war;
+    private String ward;
     private String street;
     private String addressLine;
-    private String latitude;
-    private String longitude;
-    
+    private Double latitude;
+    private Double longitude;
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
     

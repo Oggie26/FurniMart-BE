@@ -1,5 +1,6 @@
 package com.example.orderservice.entity;
 
+import com.example.orderservice.enums.EnumProcessOrder;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,6 +33,12 @@ public class Order extends AbstractEntity {
 
     @Column(nullable = false)
     private Double total;
+
+    @Enumerated(EnumType.STRING)
+    private EnumProcessOrder status;
+
+    @Column
+    private String reason;
 
     @Column
     private String note;

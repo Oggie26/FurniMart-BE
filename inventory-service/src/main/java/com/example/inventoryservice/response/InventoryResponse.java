@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class InventoryResponse {
     private String id;
-    private String productId;
+    private String productColorId;
     private String locationItemId;
     private int quantity;
     private int min_quantity;

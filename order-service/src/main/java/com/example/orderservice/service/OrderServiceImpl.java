@@ -74,7 +74,7 @@ public class OrderServiceImpl implements OrderService {
         Order order = buildOrder(cart, addressId);
         List<OrderDetail> details = createOrderItemsFromCart(cart, order);
         order.setOrderDetails(details);
-
+        order.setStatus(EnumProcessOrder.PENDING);
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.PENDING);
@@ -236,13 +236,15 @@ public class OrderServiceImpl implements OrderService {
                 .address(safeGetAddress(order.getAddressId()))
                 .total(order.getTotal())
                 .note(order.getNote())
+                .status(order.getStatus())
+                .reason(order.getReason())
                 .orderDate(order.getOrderDate())
                 .orderDetails(
                         order.getOrderDetails() != null
                                 ? order.getOrderDetails().stream()
                                 .map(detail -> OrderDetailResponse.builder()
                                         .id(detail.getId())
-                                        .productId(detail.getProductId())
+                                        .productColorId(detail.getProductColorId())
                                         .quantity(detail.getQuantity())
                                         .price(detail.getPrice())
                                         .build())
@@ -288,7 +290,7 @@ public class OrderServiceImpl implements OrderService {
                 .filter(item -> item.getPrice() != null && item.getQuantity() != null)
                 .map(cartItem -> OrderDetail.builder()
                         .order(order)
-                        .productId(cartItem.getProductId())
+                        .productColorId(cartItem.getProductColorId())
                         .quantity(cartItem.getQuantity())
                         .price(cartItem.getPrice())
                         .build())

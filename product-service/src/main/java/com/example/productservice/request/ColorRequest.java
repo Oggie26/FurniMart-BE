@@ -24,7 +24,5 @@ public class ColorRequest {
     )
     private String hexCode;
 
-    private List<ProductImageRequest> imageRequestList;
 
-    private List<ProductModel3DRequest> model3DRequestList;
 }

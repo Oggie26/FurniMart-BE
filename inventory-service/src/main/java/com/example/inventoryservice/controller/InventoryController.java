@@ -30,13 +30,13 @@ public class InventoryController {
     @Operation(summary = "Tạo hoặc cập nhật inventory")
     @PostMapping
     public ResponseEntity<ApiResponse<InventoryResponse>> upsertInventory(
-            @RequestParam @NotBlank(message = "Product ID is required") String productId,
+            @RequestParam @NotBlank(message = "Product ID is required") String productColorId,
             @RequestParam @NotBlank(message = "Location Item ID is required") String locationItemId,
             @RequestParam @NotNull(message = "Quantity is required") @Min(value = 0, message = "Quantity must be non-negative") int quantity,
             @RequestParam @NotNull(message = "Min Quantity is required") @Min(value = 0, message = "Min Quantity must be non-negative") int minQuantity,
             @RequestParam @NotNull(message = "Max Quantity is required") @Min(value = 0, message = "Max Quantity must be non-negative") int maxQuantity) {
         try {
-            InventoryResponse response = inventoryService.upsertInventory(productId, locationItemId, quantity, minQuantity, maxQuantity);
+            InventoryResponse response = inventoryService.upsertInventory(productColorId, locationItemId, quantity, minQuantity, maxQuantity);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Cập nhật hoặc tạo inventory thành công")
@@ -52,10 +52,10 @@ public class InventoryController {
     }
 
     @Operation(summary = "Lấy danh sách inventory theo product")
-    @GetMapping("/product/{productId}")
+    @GetMapping("/productColorId/{productColorId}")
     public ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventoryByProduct(
-            @PathVariable @NotBlank(message = "Product ID is required") String productId) {
-        List<InventoryResponse> response = inventoryService.getInventoryByProduct(productId);
+            @PathVariable @NotBlank(message = "Product ID is required") String productColorId) {
+        List<InventoryResponse> response = inventoryService.getInventoryByProduct(productColorId);
         return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách inventory theo sản phẩm thành công")
@@ -64,13 +64,13 @@ public class InventoryController {
     }
 
     @Operation(summary = "Tăng tồn kho")
-    @PatchMapping("/{productId}/{locationItemId}/increase")
+    @PatchMapping("/{productColorId}/{locationItemId}/increase")
     public ResponseEntity<ApiResponse<InventoryResponse>> increaseStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productId,
+            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
             @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
         try {
-            InventoryResponse response = inventoryService.increaseStock(productId, locationItemId, amount);
+            InventoryResponse response = inventoryService.increaseStock(productColorId, locationItemId, amount);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Tăng tồn kho thành công")
@@ -86,13 +86,13 @@ public class InventoryController {
     }
 
     @Operation(summary = "Giảm tồn kho")
-    @PatchMapping("/{productId}/{locationItemId}/decrease")
+    @PatchMapping("/{productColorId}/{locationItemId}/decrease")
     public ResponseEntity<ApiResponse<InventoryResponse>> decreaseStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productId,
+            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
             @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
         try {
-            InventoryResponse response = inventoryService.decreaseStock(productId, locationItemId, amount);
+            InventoryResponse response = inventoryService.decreaseStock(productColorId, locationItemId, amount);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Giảm tồn kho thành công")
@@ -108,12 +108,12 @@ public class InventoryController {
     }
 
     @Operation(summary = "Kiểm tra tồn kho cục bộ")
-    @GetMapping("/{productId}/{locationItemId}/check-stock")
+    @GetMapping("/{productColorId}/{locationItemId}/check-stock")
     public ResponseEntity<ApiResponse<Boolean>> hasSufficientStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productId,
+            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
             @RequestParam @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty) {
-        boolean response = inventoryService.hasSufficientStock(productId, locationItemId, requiredQty);
+        boolean response = inventoryService.hasSufficientStock(productColorId, locationItemId, requiredQty);
         return ResponseEntity.ok(ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho cục bộ thành công")
@@ -122,11 +122,11 @@ public class InventoryController {
     }
 
     @Operation(summary = "Kiểm tra tồn kho toàn cục")
-    @GetMapping("/{productId}/check-global-stock")
+    @GetMapping("/{productColorId}/check-global-stock")
     public ResponseEntity<ApiResponse<Boolean>> hasSufficientGlobalStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productId,
+            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @RequestParam @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty) {
-        boolean response = inventoryService.hasSufficientGlobalStock(productId, requiredQty);
+        boolean response = inventoryService.hasSufficientGlobalStock(productColorId, requiredQty);
         return ResponseEntity.ok(ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho toàn cục thành công")
@@ -155,12 +155,12 @@ public class InventoryController {
     }
 
     @Operation(summary = "Lấy lịch sử giao dịch theo product và zone")
-    @GetMapping("/transaction-history/{productId}/{zoneId}")
+    @GetMapping("/transaction-history/{productColorId}/{zoneId}")
     public ResponseEntity<ApiResponse<List<InventoryTransactionResponse>>> getTransactionHistory(
-            @PathVariable @NotBlank(message = "Product ID is required") String productId,
+            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @PathVariable @NotBlank(message = "Zone ID is required") String zoneId) {
         try {
-            List<InventoryTransactionResponse> response = inventoryService.getTransactionHistory(productId, zoneId);
+            List<InventoryTransactionResponse> response = inventoryService.getTransactionHistory(productColorId, zoneId);
             return ResponseEntity.ok(ApiResponse.<List<InventoryTransactionResponse>>builder()
                     .status(200)
                     .message("Lấy lịch sử giao dịch thành công")

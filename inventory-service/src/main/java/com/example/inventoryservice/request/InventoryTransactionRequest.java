@@ -33,7 +33,7 @@ public class InventoryTransactionRequest {
     private String LocationItemId;
 
     @NotNull(message = "Product ID is required")
-    private String productId;
+    private String productColorId;
 
     @NotNull(message = "Status is required")
     private EnumStatus status;

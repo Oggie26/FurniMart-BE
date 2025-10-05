@@ -11,8 +11,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface ColorRepository extends JpaRepository<Color, String> {
-    void deleteAllByProductId(String productId);
     Optional<Color> findById(String colorId);
+    Optional<Color> findByColorNameAndIsDeletedFalse(String colorName);
     @Query(value = """
         SELECT * FROM colors 
         WHERE is_deleted = false 

@@ -18,7 +18,7 @@ public class Inventory extends AbstractEntity {
     private String id;
 
     @Column(nullable = false)
-    private String productId;
+    private String productColorId;
 
     @Column(nullable = false)
     private int quantity;

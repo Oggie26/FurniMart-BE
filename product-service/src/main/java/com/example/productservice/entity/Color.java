@@ -26,16 +26,9 @@ public class Color extends AbstractEntity {
     @Column
     private String hexCode;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    @JsonIgnore
-    private Product product;
-
     @OneToMany(mappedBy = "color", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductImage> images = new ArrayList<>();
+    private List<ProductColor> productColors = new ArrayList<>();
 
-    @OneToMany(mappedBy = "color", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductModel3D> models3D = new ArrayList<>();
 }
 
 

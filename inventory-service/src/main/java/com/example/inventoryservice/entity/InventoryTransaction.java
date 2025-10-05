@@ -32,7 +32,7 @@ public class InventoryTransaction {
     private String note;
 
     @Column
-    private String productId;
+    private String productColorId;
 
     @Column
     private String userId;

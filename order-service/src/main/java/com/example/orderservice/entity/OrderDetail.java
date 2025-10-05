@@ -17,7 +17,7 @@ public class OrderDetail extends AbstractEntity {
     private Long id;
 
     @Column(nullable = false)
-    private String productId;
+    private String productColorId;
 
     @Column(nullable = false)
     private Integer quantity;

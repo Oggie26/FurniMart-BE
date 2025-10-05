@@ -23,9 +23,6 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final MaterialRepository materialRepository;
-    private final ColorRepository colorRepository;
-    private final ProductImageRepository productImageRepository;
-    private final ProductModel3DRepository productModel3DRepository;
 
     @Override
     @Transactional
@@ -51,56 +48,16 @@ public class ProductServiceImpl implements ProductService {
                 .code(productRequest.getCode())
                 .price(productRequest.getPrice())
                 .category(category)
+                .status(productRequest.getStatus())
                 .weight(productRequest.getWeight())
                 .width(productRequest.getWidth())
                 .height(productRequest.getHeight())
                 .length(productRequest.getLength())
                 .thumbnailImage(productRequest.getThumbnailImage())
-                .status(EnumStatus.ACTIVE)
                 .materials(materials)
                 .build();
         productRepository.save(product);
 
-        if (productRequest.getColorRequests() != null) {
-            List<Color> colors = productRequest.getColorRequests().stream()
-                    .map(colorReq -> {
-                        Color color = Color.builder()
-                                .colorName(colorReq.getColorName())
-                                .hexCode(colorReq.getHexCode())
-                                .product(product)
-                                .build();
-                        colorRepository.save(color);
-
-                        if (colorReq.getImageRequestList() != null) {
-                            List<ProductImage> images = colorReq.getImageRequestList().stream()
-                                    .map(imgReq -> ProductImage.builder()
-                                            .imageUrl(imgReq.getImageUrl())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productImageRepository.saveAll(images);
-                            color.setImages(images);
-                        }
-
-                        if (colorReq.getModel3DRequestList() != null) {
-                            List<ProductModel3D> models = colorReq.getModel3DRequestList().stream()
-                                    .map(modelReq -> ProductModel3D.builder()
-                                            .status(EnumStatus.ACTIVE)
-                                            .modelUrl(modelReq.getModelUrl())
-                                            .previewImage(modelReq.getPreviewImage())
-                                            .format(modelReq.getFormat())
-                                            .sizeInMb(modelReq.getSizeInMb())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productModel3DRepository.saveAll(models);
-                            color.setModels3D(models);
-                        }
-                        return color;
-                    })
-                    .toList();
-            product.setColors(colors);
-        }
 
         return mapToResponse(product);
     }
@@ -123,6 +80,8 @@ public class ProductServiceImpl implements ProductService {
         product.setCode(productRequest.getCode());
         product.setPrice(productRequest.getPrice());
         product.setWeight(productRequest.getWeight());
+        product.setDescription(productRequest.getDescription());
+        product.setStatus(productRequest.getStatus());
         product.setWidth(productRequest.getWidth());
         product.setHeight(productRequest.getHeight());
         product.setLength(productRequest.getLength());
@@ -137,50 +96,6 @@ public class ProductServiceImpl implements ProductService {
             throw new AppException(ErrorCode.MATERIAL_NOT_FOUND);
         }
         product.setMaterials(materials);
-
-        colorRepository.deleteAllByProductId(productId);
-
-        if (productRequest.getColorRequests() != null) {
-            List<Color> colors = productRequest.getColorRequests().stream()
-                    .map(colorReq -> {
-                        Color color = Color.builder()
-                                .colorName(colorReq.getColorName())
-                                .hexCode(colorReq.getHexCode())
-                                .product(product)
-                                .build();
-                        colorRepository.save(color);
-
-                        if (colorReq.getImageRequestList() != null) {
-                            List<ProductImage> images = colorReq.getImageRequestList().stream()
-                                    .map(imgReq -> ProductImage.builder()
-                                            .imageUrl(imgReq.getImageUrl())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productImageRepository.saveAll(images);
-                            color.setImages(images);
-                        }
-
-                        if (colorReq.getModel3DRequestList() != null) {
-                            List<ProductModel3D> models = colorReq.getModel3DRequestList().stream()
-                                    .map(modelReq -> ProductModel3D.builder()
-                                            .status(EnumStatus.ACTIVE)
-                                            .modelUrl(modelReq.getModelUrl())
-                                            .previewImage(modelReq.getPreviewImage())
-                                            .format(modelReq.getFormat())
-                                            .sizeInMb(modelReq.getSizeInMb())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productModel3DRepository.saveAll(models);
-                            color.setModels3D(models);
-                        }
-                        return color;
-                    })
-                    .toList();
-            product.setColors(colors);
-        }
-
         productRepository.save(product);
         return mapToResponse(product);
     }
@@ -190,7 +105,6 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findByIdAndIsDeletedFalse(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         product.setIsDeleted(true);
-        product.setStatus(EnumStatus.DELETED);
         productRepository.save(product);
     }
 
@@ -252,13 +166,6 @@ public class ProductServiceImpl implements ProductService {
         );
     }
 
-    @Override
-    public ProductResponse getProductByColorId(String colorId, String productId) {
-        Product product = productRepository.findProductByIdAndColorId(productId,colorId)
-                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
-
-        return mapToResponse(product);
-    }
 
     private ProductResponse mapToResponse(Product product) {
         return ProductResponse.builder()
@@ -266,16 +173,15 @@ public class ProductServiceImpl implements ProductService {
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
-                .slug(product.getSlug())
                 .code(product.getCode())
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
+                .status(product.getStatus())
                 .length(product.getLength())
                 .weight(product.getWeight())
-                .status(product.getStatus())
                 .materials(product.getMaterials() != null ? product.getMaterials().stream()
                         .map(m -> MaterialResponse.builder()
                                 .id(m.getId())
@@ -283,26 +189,6 @@ public class ProductServiceImpl implements ProductService {
                                 .description(m.getDescription())
                                 .status(m.getStatus())
                                 .image(m.getImage())
-                                .build())
-                        .toList() : null)
-                .color(product.getColors() != null ? product.getColors().stream()
-                        .map(c -> ColorResponse.builder()
-                                .id(c.getId())
-                                .colorName(c.getColorName())
-                                .hexCode(c.getHexCode())
-                                .images(c.getImages() != null ? c.getImages().stream()
-                                        .map(i -> new ImageResponse(i.getImageUrl()))
-                                        .toList() : null)
-                                .models3D(c.getModels3D() != null ? c.getModels3D().stream()
-                                        .map(m -> new Image3DResponse(
-                                                m.getModelUrl(),
-                                                m.getStatus(),
-                                                m.getModelUrl(),
-                                                m.getFormat(),
-                                                m.getSizeInMb(),
-                                                m.getPreviewImage()
-                                        ))
-                                        .toList() : null)
                                 .build())
                         .toList() : null)
                 .build();

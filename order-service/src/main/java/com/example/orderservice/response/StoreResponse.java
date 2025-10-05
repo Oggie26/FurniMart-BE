@@ -21,7 +21,7 @@ public class StoreResponse {
     private String name;
     private String city;
     private String district;
-    private String war;
+    private String ward;
     private String street;
     private String addressLine;
     private String latitude;

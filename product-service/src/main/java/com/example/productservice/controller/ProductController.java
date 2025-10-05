@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.awt.*;
 import java.util.List;
 
 @RestController
@@ -119,17 +118,6 @@ public class ProductController {
                 .status(HttpStatus.OK.value())
                 .message("Lấy sản phẩm thành công")
                 .data(productService.getProductsByCategoryId(categoryId))
-                .build();
-    }
-
-    @GetMapping("/{productId}/color/{colorId}")
-    @Operation(summary = "Lấy chi tiết sản phẩm theo ColorId")
-    @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<ProductResponse> getProductByColorId(@PathVariable String productId, @PathVariable String colorId) {
-        return ApiResponse.<ProductResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Lấy sản phẩm thành công")
-                .data(productService.getProductByColorId(colorId,productId))
                 .build();
     }
 

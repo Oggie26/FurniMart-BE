@@ -9,24 +9,24 @@ import java.util.List;
 public interface InventoryService {
 
     InventoryResponse upsertInventory(
-            String productId,
+            String productColorId,
             String locationItemId,
             int quantity,
             int minQuantity,
             int maxQuantity
     );
 
-    List<InventoryResponse> getInventoryByProduct(String productId);
+    List<InventoryResponse> getInventoryByProduct(String productColorId);
 
     InventoryResponse increaseStock(String productId, String locationItemId, int amount);
 
     InventoryResponse decreaseStock(String productId, String locationItemId, int amount);
 
-    boolean hasSufficientStock(String productId, String locationItemId, int requiredQty);
+    boolean hasSufficientStock(String productColorId, String locationItemId, int requiredQty);
 
-    boolean hasSufficientGlobalStock(String productId, int requiredQty);
+    boolean hasSufficientGlobalStock(String productColorId, int requiredQty);
 
-    List<InventoryTransactionResponse> getTransactionHistory(String productId, String zoneId);
+    List<InventoryTransactionResponse> getTransactionHistory(String productColorId, String zoneId);
 
     List<InventoryResponse> getInventoryByZone(String zoneId);
 

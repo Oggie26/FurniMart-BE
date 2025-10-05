@@ -6,6 +6,7 @@ import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.service.VNPayService;
+import com.example.orderservice.service.inteface.AssignOrderService;
 import com.example.orderservice.service.inteface.OrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,10 +28,10 @@ import java.util.Map;
 @Slf4j
 public class OrderController {
 
-    OrderService orderService;
-    VNPayService vnPayService;
+    private final OrderService orderService;
+    private final VNPayService vnPayService;
+    private final AssignOrderService assignOrderService;
 
-    // ================== Checkout ==================
     @PostMapping("/checkout")
     public ApiResponse<Void> checkout(
             @RequestParam Long addressId,
@@ -57,7 +58,6 @@ public class OrderController {
         }
     }
 
-    // ================== Get Order ==================
     @GetMapping("/{id}")
     public ApiResponse<OrderResponse> getOrderById(@PathVariable Long id) {
         return ApiResponse.<OrderResponse>builder()
@@ -67,7 +67,6 @@ public class OrderController {
                 .build();
     }
 
-    // ================== Search Order ==================
     @GetMapping("/search/customer")
     public ApiResponse<PageResponse<OrderResponse>> searchOrderByCustomer(
             @RequestParam(defaultValue = "") String keyword,
@@ -80,6 +79,32 @@ public class OrderController {
                 .data(orderService.searchOrderByCustomer(keyword, page, size))
                 .build();
     }
+
+    @PostMapping("/{orderId}/manager-decision")
+    public ApiResponse<String> managerAcceptOrRejectOrder(
+            @PathVariable Long orderId,
+            @RequestParam(required = false) String storeId,
+            @RequestParam(required = false) String reason,
+            @RequestParam EnumProcessOrder status
+    ) {
+        assignOrderService.acceptRejectOrderByManager(orderId, storeId, reason, status);
+
+        String message;
+        if (status == EnumProcessOrder.MANAGER_ACCEPT) {
+            message = "Quản lý đã chấp nhận đơn hàng #" + orderId;
+        } else if (status == EnumProcessOrder.MANAGER_REJECT) {
+            message = "Quản lý đã từ chối đơn hàng #" + orderId
+                    + (storeId != null ? " và gán lại cho cửa hàng khác" : "");
+        } else {
+            message = "Trạng thái không hợp lệ";
+        }
+
+        return ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message(message)
+                .build();
+    }
+
 
     @GetMapping("/search")
     public ApiResponse<PageResponse<OrderResponse>> searchOrder(
@@ -108,7 +133,6 @@ public class OrderController {
                 .build();
     }
 
-    // ================== Update Order Status ==================
     @PutMapping("/{id}/status")
     public ApiResponse<OrderResponse> updateOrderStatus(
             @PathVariable Long id,
@@ -121,7 +145,6 @@ public class OrderController {
                 .build();
     }
 
-    // ================== VNPay Callback ==================
     @GetMapping("/payment-callback")
     public ApiResponse<String> handlePaymentCallback(@RequestParam Map<String, String> params) {
         String orderId = params.get("orderId");
@@ -142,7 +165,18 @@ public class OrderController {
         }
     }
 
-    // ================== Helper ==================
+    @PostMapping("/{orderId}/assign-store")
+    public ApiResponse<String> assignOrderToStore(
+            @PathVariable Long orderId
+    ) {
+        assignOrderService.assignOrderToStore(orderId);
+
+        return ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đã gán đơn hàng cho cửa hàng thành công" + orderId)
+                .build();
+    }
+
     private String getClientIp(HttpServletRequest request) {
         String clientIp = request.getHeader("X-Forwarded-For");
         return (clientIp == null || clientIp.isEmpty()) ? request.getRemoteAddr() : clientIp;

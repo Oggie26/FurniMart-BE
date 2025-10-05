@@ -22,4 +22,6 @@ public class BlogRequest {
 
     @NotBlank(message = "User ID is required")
     private String userId;
+
+    private String image;
 }

@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,25 +39,24 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public void addProductToCart(String productId, Integer quantity, String colorId) {
-        if (quantity <= 0) {
+    public void addProductToCart(String productColorId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
             throw new AppException(ErrorCode.INVALID_QUANTITY);
         }
 
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
 
-        ProductResponse product = getProductById(productId);
+        ProductColorResponse productColor = getProductColor(productColorId);
 
         Optional<CartItem> existingItem = cart.getItems().stream()
-                .filter(item -> item.getProductId().equals(productId)
-                        && Objects.equals(item.getColorId(), colorId))
+                .filter(item -> item.getProductColorId().equals(productColorId))
                 .findFirst();
 
         if (existingItem.isPresent()) {
             existingItem.get().setQuantity(existingItem.get().getQuantity() + quantity);
         } else {
-            addNewItemToCart(cart, product, quantity, colorId);
+            addNewItemToCart(cart, productColor, quantity);
         }
 
         cart.updateTotalPrice();
@@ -67,13 +65,12 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public void deleteProductFromCart(String productId, String colorId) {
+    public void deleteProductFromCart(String productColorId) {
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
 
         CartItem itemToRemove = cart.getItems().stream()
-                .filter(cartItem -> cartItem.getProductId().equals(productId)
-                        && Objects.equals(cartItem.getColorId(), colorId))
+                .filter(cartItem -> cartItem.getProductColorId().equals(productColorId))
                 .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -87,6 +84,10 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void removeProductFromCart(List<String> cartItemIds) {
+        if (cartItemIds == null || cartItemIds.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
 
@@ -110,15 +111,22 @@ public class CartServiceImpl implements CartService {
     public CartResponse getCart() {
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
-        Double totalPrice = calculateTotalPrice(cart);
+
         List<CartItemResponse> itemResponses = convertCartItemsToResponses(cart);
-        return createCartResponse(cart, itemResponses, totalPrice);
+        Double totalPrice = calculateTotalPrice(cart);
+
+        return CartResponse.builder()
+                .cartId(cart.getId())
+                .userId(cart.getUserId())
+                .items(itemResponses)
+                .totalPrice(totalPrice)
+                .build();
     }
 
     @Override
     @Transactional
-    public void updateProductQuantityInCart(String productId, String colorId, Integer quantity) {
-        if (quantity <= 0) {
+    public void updateProductQuantityInCart(String productColorId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
             throw new AppException(ErrorCode.INVALID_QUANTITY);
         }
 
@@ -126,8 +134,7 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCartEntity(userId);
 
         CartItem cartItem = cart.getItems().stream()
-                .filter(item -> item.getProductId().equals(productId)
-                        && Objects.equals(item.getColorId(), colorId))
+                .filter(item -> item.getProductColorId().equals(productColorId))
                 .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -136,8 +143,8 @@ public class CartServiceImpl implements CartService {
         cartRepository.save(cart);
     }
 
-    private ProductResponse getProductById(String productId) {
-        ApiResponse<ProductResponse> response = productClient.getProductById(productId);
+    private ProductColorResponse getProductColor(String productColorId) {
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
         if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
@@ -157,12 +164,11 @@ public class CartServiceImpl implements CartService {
         return cartRepository.save(newCart);
     }
 
-    private void addNewItemToCart(Cart cart, ProductResponse product, Integer quantity, String colorId) {
+    private void addNewItemToCart(Cart cart, ProductColorResponse productColor, Integer quantity) {
         CartItem newItem = CartItem.builder()
-                .productId(product.getId())
-                .price(product.getPrice())
+                .productColorId(productColor.getId())
+                .price(productColor.getProduct().getPrice())
                 .quantity(quantity)
-                .colorId(colorId)
                 .cart(cart)
                 .build();
         cart.getItems().add(newItem);
@@ -170,41 +176,35 @@ public class CartServiceImpl implements CartService {
 
     private Double calculateTotalPrice(Cart cart) {
         return cart.getItems().stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())                .sum();
+                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                .sum();
     }
 
     private List<CartItemResponse> convertCartItemsToResponses(Cart cart) {
-        Map<String, ProductResponse> productCache = new HashMap<>();
+        Map<String, ProductColorResponse> productColorCache = new HashMap<>();
 
         return cart.getItems().stream()
                 .map(item -> {
-                    ProductResponse product = productCache.computeIfAbsent(
-                            item.getProductId(),
-                            this::getProductById
+                    ProductColorResponse productColor = productColorCache.computeIfAbsent(
+                            item.getProductColorId(),
+                            this::getProductColor
                     );
 
                     return CartItemResponse.builder()
                             .cartItemId(item.getId())
-                            .productId(item.getProductId())
-                            .productName(product.getName())
-                            .image(getImage(item.getProductId(),item.getColorId()))
+                            .productColorId(item.getProductColorId())
+                            .productName(productColor.getProduct().getName())
+                            .image(productColor.getImages().stream()
+                                    .findFirst()
+                                    .map(ImageResponse::getImage)
+                                    .orElse(null))
                             .price(item.getPrice())
                             .quantity(item.getQuantity())
-                            .colorName(getColorName(item.getColorId()))
-                            .colorId(item.getColorId())
+                            .colorName(productColor.getColor() != null ? productColor.getColor().getColorName() : "")
                             .totalItemPrice(item.getPrice() * item.getQuantity())
                             .build();
                 })
                 .collect(Collectors.toList());
-    }
-
-    private CartResponse createCartResponse(Cart cart, List<CartItemResponse> itemResponses, Double totalPrice) {
-        return CartResponse.builder()
-                .cartId(cart.getId())
-                .userId(cart.getUserId())
-                .items(itemResponses)
-                .totalPrice(totalPrice)
-                .build();
     }
 
     private String getUserId() {
@@ -221,33 +221,11 @@ public class CartServiceImpl implements CartService {
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
 
-        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
-        return userId.getData().getId();
-    }
-
-
-    private String getImage(String productId, String colorId) {
-        ApiResponse<ProductResponse> response = colorClient.getProductByColorId(productId, colorId);
-        ProductResponse product = response.getData();
-
-        if (product == null || product.getColor() == null) {
-            throw new AppException(ErrorCode.COLOR_NOT_FOUND);
+        ApiResponse<UserResponse> userIdResponse = userClient.getUserByAccountId(response.getData().getId());
+        if (userIdResponse == null || userIdResponse.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
 
-        return product.getColor().stream()
-                .filter(c -> c.getId().equals(colorId))
-                .findFirst()
-                .flatMap(c -> c.getImages().stream().findFirst())
-                .map(ImageResponse::getImage)
-                .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
-    }
-
-    private String getColorName(String colorId) {
-        ApiResponse<ColorResponse> response = colorClient.getColorById(colorId);
-
-        if (response == null || response.getData() == null ) {
-            throw new AppException(ErrorCode.COLOR_NOT_FOUND);
-        }
-        return response.getData().getColorName();
+        return userIdResponse.getData().getId();
     }
 }

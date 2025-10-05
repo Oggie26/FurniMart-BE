@@ -19,4 +19,5 @@ public class BlogResponse {
     private String userName;
     private Date createdAt;
     private Date updatedAt;
+    private String image;
 }

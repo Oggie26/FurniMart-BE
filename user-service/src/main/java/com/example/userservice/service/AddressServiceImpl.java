@@ -257,6 +257,8 @@ public class AddressServiceImpl implements AddressService {
                 .userId(address.getUser().getId())
                 .userName(address.getUser().getFullName())
                 .fullAddress(fullAddress)
+                .longitude(address.getLongitude())
+                .latitude(address.getLatitude())
                 .build();
     }
 

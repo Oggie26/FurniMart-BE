@@ -25,7 +25,7 @@ public class VNPayController {
     @GetMapping("/vnpay")
     public String createPayment(@RequestParam Double amount,
                                 @RequestParam Long orderId) throws Exception {
-        String returnUrl = "http://localhost:8085/api/v1/payment/vnpay-return";
+        String returnUrl = "http://localhost:5173/api/v1/payment/vnpay-return";
         return vnPayService.createPaymentUrl(orderId, amount, returnUrl);
     }
 
@@ -38,7 +38,6 @@ public class VNPayController {
             vnpParams.put(entry.getKey(), entry.getValue()[0]);
         }
 
-        // Xác minh chữ ký
         String secureHash = vnpParams.remove("vnp_SecureHash");
         String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
 
