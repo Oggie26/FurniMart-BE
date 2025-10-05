@@ -23,6 +23,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final MaterialRepository materialRepository;
+    private final ProductColorRepository productColorRepository;
 
     @Override
     @Transactional
@@ -179,7 +180,7 @@ public class ProductServiceImpl implements ProductService {
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
-                .productColors(product.getProductColors())
+                .productColors(productColorRepository.findByProductIdAndIsDeletedFalse(product.getId()))
                 .status(product.getStatus())
                 .length(product.getLength())
                 .weight(product.getWeight())
