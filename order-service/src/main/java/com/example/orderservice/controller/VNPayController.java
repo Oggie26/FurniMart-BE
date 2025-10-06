@@ -25,38 +25,44 @@ public class VNPayController {
     @GetMapping("/vnpay")
     public String createPayment(@RequestParam Double amount,
                                 @RequestParam Long orderId) throws Exception {
-        String returnUrl = "http://localhost:8085/api/v1/payment/vnpay-return"; // ✅ backend URL
+        String returnUrl = "http://localhost:8085/api/v1/payment/vnpay-return";
         return vnPayService.createPaymentUrl(orderId, amount, returnUrl);
     }
 
     @GetMapping("/vnpay-return")
     public ResponseEntity<?> vnpayReturn(@RequestParam Map<String, String> vnpParams) {
-        String secureHash = vnpParams.remove("vnp_SecureHash");
-        vnpParams.remove("vnp_SecureHashType");
+        // Clone để tránh modify map gốc của Spring
+        Map<String, String> fields = new HashMap<>(vnpParams);
 
-        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+        String secureHash = fields.remove("vnp_SecureHash");
+        fields.remove("vnp_SecureHashType");
 
-        if (signValue.equals(secureHash)) {
-            String responseCode = vnpParams.get("vnp_ResponseCode");
+        String signValue = VNPayUtils.hashAllFields(fields, hashSecret);
+
+        if (signValue.equalsIgnoreCase(secureHash)) {
+            String responseCode = fields.get("vnp_ResponseCode");
+            String orderId = fields.get("vnp_TxnRef");
+
             if ("00".equals(responseCode)) {
-                String orderId = vnpParams.get("vnp_TxnRef");
                 return ResponseEntity.ok(Map.of(
                         "status", 200,
-                        "message", "✅ Payment Success",
+                        "message", "Payment success",
                         "orderId", orderId
                 ));
             } else {
-                return ResponseEntity.badRequest().body(Map.of(
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                         "status", 400,
-                        "message", "❌ Payment Failed: " + responseCode
+                        "message", "Payment failed with code: " + responseCode,
+                        "orderId", orderId
                 ));
             }
         } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                     "status", 400,
-                    "message", "❌ Invalid signature"
+                    "message", "Invalid VNPay signature"
             ));
         }
     }
+
 
 }
