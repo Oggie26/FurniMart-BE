@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,30 +37,29 @@ public class VNPayController {
     }
 
     @GetMapping("/vnpay-return")
-    public ResponseEntity<?> vnpayReturn(@RequestParam Map<String, String> vnpParams,
-                                         HttpServletResponse response) throws IOException {
+    public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
+                            HttpServletResponse response) throws IOException {
+
+        // Lấy và loại bỏ chữ ký từ params
         String secureHash = vnpParams.remove("vnp_SecureHash");
         vnpParams.remove("vnp_SecureHashType");
 
+        // Tính chữ ký lại
         String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
 
         String frontendUrl = "http://localhost:5173/payment-success";
 
-        if (signValue.equals(secureHash)) {
+        if (signValue.equalsIgnoreCase(secureHash)) {
             String responseCode = vnpParams.get("vnp_ResponseCode");
             String orderId = vnpParams.get("vnp_TxnRef");
 
             if ("00".equals(responseCode)) {
-                response.sendRedirect(frontendUrl + "?status=success&orderId=" + orderId);
-                return null;
+                response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
             } else {
-                response.sendRedirect(frontendUrl + "?status=failed&code=" + responseCode);
-                return null;
+                response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
             }
         } else {
             response.sendRedirect(frontendUrl + "?status=invalid");
-            return null;
         }
     }
-
 }
