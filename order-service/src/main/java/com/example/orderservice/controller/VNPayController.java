@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,17 +34,20 @@ public class VNPayController {
 
     @GetMapping("/vnpay-return")
     public ResponseEntity<?> vnpayReturn(@RequestParam Map<String, String> vnpParams) {
-        Map<String, String> fields = new HashMap<>(vnpParams);
+        Map<String, String> params = new HashMap<>(vnpParams); // clone để an toàn
 
-        String secureHash = fields.remove("vnp_SecureHash");
-        fields.remove("vnp_SecureHashType");
+        try {
+            boolean valid = vnPayService.validateCallback(params);
+            if (!valid) {
+                log.error("Invalid VNPay signature: received={}", vnpParams.get("vnp_SecureHash"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                        "status", 400,
+                        "message", "Invalid VNPay signature"
+                ));
+            }
 
-        String signValue = VNPayUtils.hashAllFields(fields, hashSecret);
-        log.error(secureHash);
-        log.error(signValue);
-        if (signValue.equalsIgnoreCase(secureHash)) {
-            String responseCode = fields.get("vnp_ResponseCode");
-            String orderId = fields.get("vnp_TxnRef");
+            String responseCode = params.get("vnp_ResponseCode");
+            String orderId = params.get("vnp_TxnRef");
 
             if ("00".equals(responseCode)) {
                 return ResponseEntity.ok(Map.of(
@@ -58,13 +62,15 @@ public class VNPayController {
                         "orderId", orderId
                 ));
             }
-        } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                    "status", 400,
-                    "message", "Invalid VNPay signature"
+        } catch (UnsupportedEncodingException e) {
+            log.error("Error validating VNPay callback", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "status", 500,
+                    "message", "Server error when validating signature"
             ));
         }
     }
+
 
 
 }
