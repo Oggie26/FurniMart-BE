@@ -4,6 +4,7 @@ import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.util.VNPayUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
+@Slf4j
 public class VNPayController {
 
     @Value("${vnpay.hashSecret}")
@@ -31,14 +33,14 @@ public class VNPayController {
 
     @GetMapping("/vnpay-return")
     public ResponseEntity<?> vnpayReturn(@RequestParam Map<String, String> vnpParams) {
-        // Clone để tránh modify map gốc của Spring
         Map<String, String> fields = new HashMap<>(vnpParams);
 
         String secureHash = fields.remove("vnp_SecureHash");
         fields.remove("vnp_SecureHashType");
 
         String signValue = VNPayUtils.hashAllFields(fields, hashSecret);
-
+        log.error(secureHash);
+        log.error(signValue);
         if (signValue.equalsIgnoreCase(secureHash)) {
             String responseCode = fields.get("vnp_ResponseCode");
             String orderId = fields.get("vnp_TxnRef");
