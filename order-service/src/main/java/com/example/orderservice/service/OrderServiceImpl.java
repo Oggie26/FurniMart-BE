@@ -136,16 +136,16 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
 
-        List<ProcessOrder> processOrders = order.getProcessOrders() != null
-                ? new ArrayList<>(order.getProcessOrders())
-                : new ArrayList<>();
-        processOrders.add(process);
-        order.setProcessOrders(processOrders);
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
+        }
+        order.getProcessOrders().add(process);
 
         orderRepository.save(order);
 
         return mapToResponse(order);
     }
+
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {

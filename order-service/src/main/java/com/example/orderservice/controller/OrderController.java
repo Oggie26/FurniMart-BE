@@ -133,7 +133,7 @@ public class OrderController {
                 .build();
     }
 
-    @PutMapping("/{id}/status")
+    @PutMapping("/status/{id}")
     public ApiResponse<OrderResponse> updateOrderStatus(
             @PathVariable Long id,
             @RequestParam EnumProcessOrder status
