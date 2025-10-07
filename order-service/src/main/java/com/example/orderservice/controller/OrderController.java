@@ -133,17 +133,17 @@ public class OrderController {
                 .build();
     }
 
-    @PutMapping("/status/{id}")
-    public ApiResponse<OrderResponse> updateOrderStatus(
-            @PathVariable Long id,
-            @RequestParam EnumProcessOrder status
-    ) {
-        return ApiResponse.<OrderResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Cập nhật trạng thái đơn hàng thành công")
-                .data(orderService.updateOrderStatus(id, status))
-                .build();
-    }
+        @PutMapping("/status/{id}")
+        public ApiResponse<OrderResponse> updateOrderStatus(
+                @PathVariable Long id,
+                @RequestParam EnumProcessOrder status
+        ) {
+            return ApiResponse.<OrderResponse>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Cập nhật trạng thái đơn hàng thành công")
+                    .data(orderService.updateOrderStatus(id, status))
+                    .build();
+        }
 
     @GetMapping("/payment-callback")
     public ApiResponse<String> handlePaymentCallback(@RequestParam Map<String, String> params) {

@@ -205,6 +205,7 @@ public class ProductServiceImpl implements ProductService {
                 .color(ColorResponse.builder()
                         .id(productColor.getColor().getId())
                         .colorName(productColor.getColor().getColorName())
+                        .hexCode(productColor.getColor().getHexCode())
                         .build())
                 .images(productColor.getImages() != null ?
                         productColor.getImages().stream()
