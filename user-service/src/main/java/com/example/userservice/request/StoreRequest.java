@@ -17,6 +17,8 @@ public class StoreRequest {
     
     private String city;
     
+    private String district;
+    
     private String ward;
     
     private String street;

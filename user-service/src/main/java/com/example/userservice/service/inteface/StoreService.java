@@ -27,6 +27,8 @@ public interface StoreService {
     
     List<StoreResponse> getStoresByCity(String city);
     
+    List<StoreResponse> getStoresByDistrict(String district);
+    
     void deleteStore(String id);
     
     UserStoreResponse addUserToStore(UserStoreRequest request);
