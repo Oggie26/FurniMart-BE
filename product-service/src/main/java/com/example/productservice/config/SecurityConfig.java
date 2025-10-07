@@ -29,26 +29,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors
-                        .configurationSource(request -> {
-                            CorsConfiguration config = new CorsConfiguration();
-                            config.setAllowedOriginPatterns(List.of(
-                                "http://localhost:3000",
-                                "http://localhost:5173",
-                                "http://localhost:8080",
-                                "http://127.0.0.1:3000",
-                                "http://127.0.0.1:5173",
-                                "http://127.0.0.1:8080"
-                            ));
-                            
-                            config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                            config.setAllowedHeaders(List.of("*"));
-                            config.setExposedHeaders(List.of("Authorization", "Content-Type"));
-                            config.setAllowCredentials(true);
-                            config.setMaxAge(3600L);
-                            return config;
-                        })
-                )
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -57,6 +37,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/users/info/{authId}",
                                 "/api/products/**",
+                                "/api/product-colors/**",
+                                "/api/materials/**",
+                                "/api/categories/**",
                                 "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated()

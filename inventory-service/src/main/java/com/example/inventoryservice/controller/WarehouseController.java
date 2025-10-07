@@ -4,7 +4,7 @@ import com.example.inventoryservice.request.WarehouseRequest;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.response.WarehouseResponse;
-import com.example.inventoryservice.service.inteface.IWarehouseService;
+import com.example.inventoryservice.service.inteface.WarehouseService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WarehouseController {
 
-    private final IWarehouseService warehouseService;
+    private final WarehouseService warehouseService;
 
     @PostMapping("/{storeId}")
     public ApiResponse<WarehouseResponse> createWarehouse(

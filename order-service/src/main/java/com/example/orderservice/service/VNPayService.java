@@ -31,8 +31,8 @@ public class VNPayService {
 
     public String createPaymentUrl(Long orderId, Double amount, String ipAddress) throws UnsupportedEncodingException {
         Map<String, String> params = new HashMap<>();
-        String returnUrl = "myapp://payment-success?orderId=" + orderId;
-
+//            String returnUrl = "http://localhost:5173/payment-success?orderId=" + orderId;
+        String returnUrl = "http://152.53.169.79:8080/api/v1/payment/vnpay-return";
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
         params.put("vnp_TmnCode", tmnCode);

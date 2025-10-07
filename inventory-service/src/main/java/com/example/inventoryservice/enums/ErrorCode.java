@@ -49,10 +49,15 @@ public enum ErrorCode {
     NOT_ENOUGH_QUANTITY(1162, "Not enough quantity", HttpStatus.CONFLICT),
     INSUFFICIENT_STOCK(1163, "Insufficient stock", HttpStatus.CONFLICT),
     INVALID_WAREHOUSE_STOREID(1167, "Invalid warehouse storeID", HttpStatus.BAD_REQUEST),
+    INVALID_QUANTITY_RANGE(1168, "Invalid quantity range", HttpStatus.BAD_REQUEST),
     //12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_FOUND_USER(1202, "User not found", HttpStatus.NOT_FOUND),
     STORE_NOT_FOUND(1203, "Store not found", HttpStatus.NOT_FOUND),
+    ZONE_CAPACITY_EXCEEDED(1204, "Zone capacity exceeded", HttpStatus.CONFLICT),
+    EXCEEDS_MAX_QUANTITY(1205,"Exceeds maximum quantity", HttpStatus.CONFLICT),
+    BELOW_MIN_QUANTITY(1206,"Below Minimum quantity", HttpStatus.CONFLICT),
+    WAREHOUSE_CAPACITY_EXCEEDED(1207, "Warehouse capacity exceeded", HttpStatus.CONFLICT),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

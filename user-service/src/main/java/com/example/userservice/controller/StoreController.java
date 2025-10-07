@@ -1,5 +1,7 @@
 package com.example.userservice.controller;
 
+import com.example.userservice.entity.Store;
+import com.example.userservice.request.StoreDistance;
 import com.example.userservice.request.StoreRequest;
 import com.example.userservice.request.UserStoreRequest;
 import com.example.userservice.response.*;
@@ -184,4 +186,34 @@ public class StoreController {
                 .data(storeService.getUsersByStoreId(storeId))
                 .build();
     }
+
+//    @GetMapping("/nearest")
+//    @Operation(summary = "Lấy cửa hàng gần nhất theo vị trí (lat, lon)")
+//    public ApiResponse<Store> getNearestStore(
+//            @RequestParam double lat,
+//            @RequestParam double lon) {
+//        return ApiResponse.<Store>builder()
+//                .status(HttpStatus.OK.value())
+//                .message("Lấy cửa hàng gần nhất thành công")
+//                .data(storeService.getNearestStore(lat, lon))
+//                .build();
+//    }
+
+    @GetMapping("/nearest/list")
+    @Operation(summary = "Lấy danh sách cửa hàng gần nhất theo vị trí (lat, lon)")
+    public ApiResponse<List<StoreDistance>> getNearestStores(
+            @RequestParam double lat,
+            @RequestParam double lon,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        List<StoreDistance> nearestStores = storeService.findNearestStores(lat, lon, limit);
+
+        return ApiResponse.<List<StoreDistance>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy danh sách cửa hàng gần nhất thành công")
+                .data(nearestStores)
+                .build();
+    }
+
+
 }

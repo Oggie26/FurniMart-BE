@@ -4,73 +4,73 @@ server:
 spring:
   application:
     name: api-gateway
-  cloud:
-    gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/**
-            - Path=/api/wallets/**
-          filters:
-            - StripPrefix=1
-
-        - id: product-service
-          uri: lb://product-service
-          predicates:
-            - Path=/api/products/**
-            - Path=/api/products/swagger-ui.html
-            - Path=/api/products/v3/api-docs/**
-          filters:
-            - StripPrefix=1
-
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/notifications/**
-          filters:
-            - StripPrefix=1
-
-        - id: payment-service
-          uri: lb://payment-service
-          predicates:
-            - Path=/api/payments/**
-          filters:
-            - StripPrefix=1
-
-        - id: delivery-service
-          uri: lb://delivery-service
-          predicates:
-            - Path=/api/deliveries/**
-          filters:
-            - StripPrefix=1
-
-        - id: order-service
-          uri: lb://order-service
-          predicates:
-            - Path=/api/orders/**
-            - Path=/api/vouchers/**
-          filters:
-            - StripPrefix=1
-
-
-
   main:
     web-application-type: reactive
+  cloud:
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+
+            # USER SERVICE
+                    - id: user-service
+                      uri: lb://user-service
+                      predicates:
+                        - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile
+                      filters: []
+
+                    # PRODUCT SERVICE
+                    - id: product-service
+                      uri: lb://product-service
+                      predicates:
+                        - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
+                      filters: []
+
+                    # NOTIFICATION SERVICE
+                    - id: notification-service
+                      uri: lb://notification-service
+                      predicates:
+                        - Path=/api/notifications/**
+                      filters: []
+
+                    # DELIVERY SERVICE
+                    - id: delivery-service
+                      uri: lb://delivery-service
+                      predicates:
+                        - Path=/api/deliveries/**
+                      filters: []
+
+                    # ORDER SERVICE
+                    - id: order-service
+                      uri: lb://order-service
+                      predicates:
+                        - Path=/api/orders/**, /api/vouchers/**, /api/v1/** , /api/carts/**
+                      filters: []
+
+                    # INVENTORY SERVICE
+                    - id: inventory-service
+                      uri: lb://inventory-service
+                      predicates:
+                        - Path=/api/inventories/**, /api/warehouses/**,/api/location-items/**, /api/zones/**
+                      filters: []
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
   expiration: 3600000
+  refreshExpiration: 604800000
 
 eureka:
   client:
     service-url:
-#      defaultZone: http://localhost:8761/eureka
-            defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty.http.client: DEBUG

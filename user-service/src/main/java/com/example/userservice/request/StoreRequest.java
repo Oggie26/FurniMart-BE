@@ -25,9 +25,9 @@ public class StoreRequest {
     
     private String addressLine;
     
-    private String latitude;
+    private Double latitude;
     
-    private String longitude;
+    private Double longitude;
     
     @NotNull(message = "Trạng thái không được để trống")
     @Enumerated(EnumType.STRING)

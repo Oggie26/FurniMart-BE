@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class OrderPlacedEvent {
-    private String orderId;
+    private Long orderId;
     private String userId;
     private Double total;
 }

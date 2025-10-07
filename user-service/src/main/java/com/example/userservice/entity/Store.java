@@ -38,10 +38,10 @@ public class Store extends AbstractEntity {
     private String addressLine;
 
     @Column
-    private String latitude;
+    private Double latitude;
 
     @Column
-    private String longitude;
+    private Double longitude;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

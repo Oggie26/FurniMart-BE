@@ -10,7 +10,7 @@ import com.example.inventoryservice.request.WarehouseRequest;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.response.StoreResponse;
 import com.example.inventoryservice.response.WarehouseResponse;
-import com.example.inventoryservice.service.inteface.IWarehouseService;
+import com.example.inventoryservice.service.inteface.WarehouseService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class WarehouseService implements IWarehouseService {
+public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final StoreClient storeClient;
@@ -157,4 +157,5 @@ public class WarehouseService implements IWarehouseService {
             throw new AppException(ErrorCode.INVALID_WAREHOUSE_STOREID);
         }
     }
+
 }

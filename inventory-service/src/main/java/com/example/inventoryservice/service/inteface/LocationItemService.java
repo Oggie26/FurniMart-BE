@@ -6,7 +6,7 @@ import com.example.inventoryservice.response.PageResponse;
 
 import java.util.List;
 
-public interface ILocationItemService {
+public interface LocationItemService {
     LocationItemResponse createLocationItem(LocationItemRequest locationItemRequest);
     LocationItemResponse updateLocationItem(LocationItemRequest locationItemRequest, String locationItemId);
     void deleteLocationItem(String locationItemId);

@@ -20,8 +20,8 @@ import java.util.Map;
 @EnableKafka
 public class KafkaConsumerConfig {
 
-//    private String BOOTSTRAP_SERVERS = "kafka:9092";
-    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+    private String BOOTSTRAP_SERVERS = "kafka:9092";
+//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
 
     private final String GROUP_ID = "notification-group";
 

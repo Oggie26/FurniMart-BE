@@ -43,6 +43,7 @@ public class BlogServiceImpl implements BlogService {
                 .content(blogRequest.getContent())
                 .status(blogRequest.getStatus())
                 .user(user)
+                .image(blogRequest.getImage())
                 .build();
 
         Blog savedBlog = blogRepository.save(blog);
@@ -65,6 +66,7 @@ public class BlogServiceImpl implements BlogService {
         existingBlog.setName(blogRequest.getName());
         existingBlog.setContent(blogRequest.getContent());
         existingBlog.setStatus(blogRequest.getStatus());
+        existingBlog.setImage(blogRequest.getImage());
         existingBlog.setUser(user);
 
         Blog updatedBlog = blogRepository.save(existingBlog);
@@ -195,6 +197,7 @@ public class BlogServiceImpl implements BlogService {
                 .content(blog.getContent())
                 .status(blog.getStatus())
                 .userId(blog.getUser().getId())
+                .image(blog.getImage())
                 .userName(blog.getUser().getFullName())
                 .createdAt(blog.getCreatedAt())
                 .updatedAt(blog.getUpdatedAt())

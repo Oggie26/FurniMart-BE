@@ -8,6 +8,7 @@ import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.StoreRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.UserStoreRepository;
+import com.example.userservice.request.StoreDistance;
 import com.example.userservice.request.StoreRequest;
 import com.example.userservice.request.UserStoreRequest;
 import com.example.userservice.response.PageResponse;
@@ -18,10 +19,12 @@ import com.example.userservice.service.inteface.StoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -210,6 +213,42 @@ public class StoreServiceImpl implements StoreService {
         return userStores.stream()
                 .map(this::mapToUserStoreResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Store getNearestStore(double lat, double lon) {
+        return storeRepository.findNearestStore(lat, lon);
+    }
+
+    @Override
+    public List<Store> getNearestStores(double lat, double lon, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return storeRepository.findNearestStores(lat, lon, pageable);
+    }
+
+    public List<StoreDistance> findNearestStores(double lat, double lon, int limit) {
+        List<Store> stores = storeRepository.findAllWithCoordinates();
+
+        return stores.stream()
+                .map(store -> {
+                    double distance = haversine(lat, lon, store.getLatitude(), store.getLongitude());
+                    StoreResponse storeResponse = mapToStoreResponse(store);
+                    return new StoreDistance(storeResponse, distance);
+                })
+                .sorted(Comparator.comparing(StoreDistance::getDistance))
+                .limit(limit)
+                .toList();
+    }
+
+    private double haversine(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
     }
 
     private StoreResponse mapToStoreResponse(Store store) {

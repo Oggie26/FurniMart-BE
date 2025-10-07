@@ -56,6 +56,8 @@ public class AddressServiceImpl implements AddressService {
                 .street(addressRequest.getStreet())
                 .addressLine(addressRequest.getAddressLine())
                 .isDefault(addressRequest.getIsDefault())
+                .latitude(addressRequest.getLatitude())
+                .longitude(addressRequest.getLongitude())
                 .user(user)
                 .build();
 
@@ -257,6 +259,8 @@ public class AddressServiceImpl implements AddressService {
                 .userId(address.getUser().getId())
                 .userName(address.getUser().getFullName())
                 .fullAddress(fullAddress)
+                .longitude(address.getLongitude())
+                .latitude(address.getLatitude())
                 .build();
     }
 

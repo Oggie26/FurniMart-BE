@@ -23,9 +23,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final MaterialRepository materialRepository;
-    private final ColorRepository colorRepository;
-    private final ProductImageRepository productImageRepository;
-    private final ProductModel3DRepository productModel3DRepository;
+    private final ProductColorRepository productColorRepository;
 
     @Override
     @Transactional
@@ -40,7 +38,6 @@ public class ProductServiceImpl implements ProductService {
         Category category = categoryRepository.findByIdAndIsDeletedFalse(productRequest.getCategoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        // ✅ lấy list materials
         List<Material> materials = materialRepository.findAllById(productRequest.getMaterialIds());
         if (materials.isEmpty()) {
             throw new AppException(ErrorCode.MATERIAL_NOT_FOUND);
@@ -52,56 +49,16 @@ public class ProductServiceImpl implements ProductService {
                 .code(productRequest.getCode())
                 .price(productRequest.getPrice())
                 .category(category)
+                .status(productRequest.getStatus())
                 .weight(productRequest.getWeight())
                 .width(productRequest.getWidth())
                 .height(productRequest.getHeight())
                 .length(productRequest.getLength())
                 .thumbnailImage(productRequest.getThumbnailImage())
-                .status(EnumStatus.ACTIVE)
-                .materials(materials) // ✅ set materials
+                .materials(materials)
                 .build();
         productRepository.save(product);
 
-        if (productRequest.getColorRequests() != null) {
-            List<Color> colors = productRequest.getColorRequests().stream()
-                    .map(colorReq -> {
-                        Color color = Color.builder()
-                                .colorName(colorReq.getColorName())
-                                .hexCode(colorReq.getHexCode())
-                                .product(product)
-                                .build();
-                        colorRepository.save(color);
-
-                        if (colorReq.getImageRequestList() != null) {
-                            List<ProductImage> images = colorReq.getImageRequestList().stream()
-                                    .map(imgReq -> ProductImage.builder()
-                                            .imageUrl(imgReq.getImageUrl())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productImageRepository.saveAll(images);
-                            color.setImages(images);
-                        }
-
-                        if (colorReq.getModel3DRequestList() != null) {
-                            List<ProductModel3D> models = colorReq.getModel3DRequestList().stream()
-                                    .map(modelReq -> ProductModel3D.builder()
-                                            .status(EnumStatus.ACTIVE)
-                                            .modelUrl(modelReq.getModelUrl())
-                                            .previewImage(modelReq.getPreviewImage())
-                                            .format(modelReq.getFormat())
-                                            .sizeInMb(modelReq.getSizeInMb())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productModel3DRepository.saveAll(models);
-                            color.setModels3D(models);
-                        }
-                        return color;
-                    })
-                    .toList();
-            product.setColors(colors);
-        }
 
         return mapToResponse(product);
     }
@@ -124,6 +81,8 @@ public class ProductServiceImpl implements ProductService {
         product.setCode(productRequest.getCode());
         product.setPrice(productRequest.getPrice());
         product.setWeight(productRequest.getWeight());
+        product.setDescription(productRequest.getDescription());
+        product.setStatus(productRequest.getStatus());
         product.setWidth(productRequest.getWidth());
         product.setHeight(productRequest.getHeight());
         product.setLength(productRequest.getLength());
@@ -133,57 +92,11 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
         product.setCategory(category);
 
-        // ✅ cập nhật materials
         List<Material> materials = materialRepository.findAllById(productRequest.getMaterialIds());
         if (materials.isEmpty()) {
             throw new AppException(ErrorCode.MATERIAL_NOT_FOUND);
         }
         product.setMaterials(materials);
-
-        // clear old colors
-        colorRepository.deleteAllByProductId(productId);
-
-        if (productRequest.getColorRequests() != null) {
-            List<Color> colors = productRequest.getColorRequests().stream()
-                    .map(colorReq -> {
-                        Color color = Color.builder()
-                                .colorName(colorReq.getColorName())
-                                .hexCode(colorReq.getHexCode())
-                                .product(product)
-                                .build();
-                        colorRepository.save(color);
-
-                        if (colorReq.getImageRequestList() != null) {
-                            List<ProductImage> images = colorReq.getImageRequestList().stream()
-                                    .map(imgReq -> ProductImage.builder()
-                                            .imageUrl(imgReq.getImageUrl())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productImageRepository.saveAll(images);
-                            color.setImages(images);
-                        }
-
-                        if (colorReq.getModel3DRequestList() != null) {
-                            List<ProductModel3D> models = colorReq.getModel3DRequestList().stream()
-                                    .map(modelReq -> ProductModel3D.builder()
-                                            .status(EnumStatus.ACTIVE)
-                                            .modelUrl(modelReq.getModelUrl())
-                                            .previewImage(modelReq.getPreviewImage())
-                                            .format(modelReq.getFormat())
-                                            .sizeInMb(modelReq.getSizeInMb())
-                                            .color(color)
-                                            .build())
-                                    .toList();
-                            productModel3DRepository.saveAll(models);
-                            color.setModels3D(models);
-                        }
-                        return color;
-                    })
-                    .toList();
-            product.setColors(colors);
-        }
-
         productRepository.save(product);
         return mapToResponse(product);
     }
@@ -193,7 +106,6 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findByIdAndIsDeletedFalse(productId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         product.setIsDeleted(true);
-        product.setStatus(EnumStatus.DELETED);
         productRepository.save(product);
     }
 
@@ -230,8 +142,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getProductsByCategoryId(Long categoryId) {
-        return productRepository.findByCategoryIdAndIsDeletedFalse(categoryId);
+    public List<ProductResponse> getProductsByCategoryId(Long categoryId) {
+        List<Product> products = productRepository.findByCategoryIdAndIsDeletedFalse(categoryId);
+        return products.stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     @Override
@@ -252,22 +167,26 @@ public class ProductServiceImpl implements ProductService {
         );
     }
 
+
     private ProductResponse mapToResponse(Product product) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
-                .slug(product.getSlug())
                 .code(product.getCode())
+                .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
+                .productColors(product.getProductColors() != null ?
+                        product.getProductColors().stream()
+                                .map(this::mapProductColorToDTO)
+                                .toList() : null)
+                .status(product.getStatus())
                 .length(product.getLength())
                 .weight(product.getWeight())
-                .status(product.getStatus())
-                // ✅ map materials
                 .materials(product.getMaterials() != null ? product.getMaterials().stream()
                         .map(m -> MaterialResponse.builder()
                                 .id(m.getId())
@@ -277,27 +196,36 @@ public class ProductServiceImpl implements ProductService {
                                 .image(m.getImage())
                                 .build())
                         .toList() : null)
-                // map colors
-                .color(product.getColors() != null ? product.getColors().stream()
-                        .map(c -> ColorResponse.builder()
-                                .id(c.getId())
-                                .colorName(c.getColorName())
-                                .hexCode(c.getHexCode())
-                                .images(c.getImages() != null ? c.getImages().stream()
-                                        .map(i -> new ImageResponse(i.getImageUrl()))
-                                        .toList() : null)
-                                .models3D(c.getModels3D() != null ? c.getModels3D().stream()
-                                        .map(m -> new Image3DResponse(
-                                                m.getModelUrl(),
-                                                m.getStatus(),
-                                                m.getModelUrl(),
-                                                m.getFormat(),
-                                                m.getSizeInMb(),
-                                                m.getPreviewImage()
-                                        ))
-                                        .toList() : null)
-                                .build())
-                        .toList() : null)
                 .build();
     }
+
+    private ProductColorDTO mapProductColorToDTO(ProductColor productColor) {
+        return ProductColorDTO.builder()
+                .id(productColor.getId())
+                .color(ColorResponse.builder()
+                        .id(productColor.getColor().getId())
+                        .colorName(productColor.getColor().getColorName())
+                        .build())
+                .images(productColor.getImages() != null ?
+                        productColor.getImages().stream()
+                                .map(img -> ImageResponse.builder()
+                                        .id(img.getId())
+                                        .image(img.getImageUrl())
+                                        .build())
+                                .toList() : null)
+                .models3D(productColor.getModels3D() != null ?
+                        productColor.getModels3D().stream()
+                                .map(model -> Image3DResponse.builder()
+                                        .image3d(model.getId())
+                                        .modelUrl(model.getModelUrl())
+                                        .format(model.getFormat())
+                                        .previewImage(model.getPreviewImage())
+                                        .sizeInMb(model.getSizeInMb())
+                                        .status(model.getStatus())
+                                        .build())
+                                .toList() : null)
+                .status(productColor.getStatus())
+                .build();
+    }
+
 }

@@ -13,20 +13,30 @@ import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
@@ -42,49 +52,66 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrder(Long cartId, Long addressId, PaymentMethod paymentMethod, String voucherCode) {
-
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
-
+        if (cartId == null) {
+            throw new AppException(ErrorCode.CART_NOT_FOUND);
+        }
+        if (addressId == null) {
+            throw new AppException(ErrorCode.INVALID_ADDRESS);
+        }
         if (paymentMethod == null) {
             throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
         }
 
-        Order order = buildOrder(cart, addressId );
-        orderRepository.save(order);
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
 
-        List<CartItem> cartItems = cartItemRepository.findByCartId(cart.getId());
-        List<OrderDetail> details = cartItems.stream()
-                .map(item -> OrderDetail.builder()
-                        .productId(item.getProductId())
-                        .quantity(item.getQuantity())
-                        .price(item.getPrice())
-                        .order(order)
-                        .build()
-                ).toList();
+        if (cart.getItems().isEmpty()) {
+            throw new AppException(ErrorCode.CART_EMPTY);
+        }
 
+        log.info("Cart items class: {}", cart.getItems().getClass().getName());
+
+        Order order = buildOrder(cart, addressId);
+        List<OrderDetail> details = createOrderItemsFromCart(cart, order);
         order.setOrderDetails(details);
-        orderDetailRepository.saveAll(details);
-
+        order.setStatus(EnumProcessOrder.PENDING);
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.PENDING);
         process.setCreatedAt(new Date());
+        order.setProcessOrders(new ArrayList<>(List.of(process)));
 
-        order.setProcessOrders(List.of(process));
-        processOrderRepository.save(process);
+        orderRepository.save(order);
+
 
         Payment payment = Payment.builder()
                 .order(order)
                 .paymentMethod(paymentMethod)
                 .paymentStatus(PaymentStatus.PENDING)
                 .date(new Date())
-                .total(cart.getTotalPrice())
+                .total(order.getTotal())
                 .userId(order.getUserId())
                 .transactionCode(generateTransactionCode())
                 .build();
-
         paymentRepository.save(payment);
+
+        cart.getItems().clear();
+        cart.setTotalPrice(0.0);
+        cartRepository.save(cart);
+
+        try {
+            OrderPlacedEvent event = new OrderPlacedEvent(order.getId(), order.getUserId(), order.getTotal());
+            kafkaTemplate.send("order-created-placed", event)
+                    .whenComplete((result, ex) -> {
+                if (ex != null) {
+                } else {
+                    log.info("Successfully sent account creation event for: {}", order.getId());
+                }
+            });
+        } catch (Exception ex) {
+            log.error("Failed to send Kafka event for order: {}", order.getId(), ex);
+        }
+
 
         return mapToResponse(order);
     }
@@ -92,24 +119,101 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse getOrderById(Long id) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() ->  new AppException(ErrorCode.ORDER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         return mapToResponse(order);
     }
 
     @Override
+    @Transactional
     public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() ->  new AppException(ErrorCode.ORDER_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(status);
         process.setCreatedAt(new Date());
 
-        order.getProcessOrders().add(process);
         processOrderRepository.save(process);
 
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
+        }
+        order.getProcessOrders().add(process);
+
+        orderRepository.save(order);
+
         return mapToResponse(order);
+    }
+
+
+
+    @Override
+    public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String userId = getUserId();
+
+        Page<Order> orders = orderRepository.searchByUserIdAndKeyword(userId, request, pageable);
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
+    }
+
+    @Override
+    public PageResponse<OrderResponse> searchOrder(String request, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
+    }
+
+    @Override
+    public PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId) {
+        Pageable pageable = PageRequest.of(page, size);
+        String id = getStoreById(storeId);
+
+        Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
     }
 
     private OrderResponse mapToResponse(Order order) {
@@ -129,23 +233,24 @@ public class OrderServiceImpl implements OrderService {
 
         return OrderResponse.builder()
                 .id(order.getId())
-                .user(getUser(order.getUserId()))
-//                .store(getStore(order.getStoreId() != null ? order.getStoreId() : null ))
-                .address(getAddress(order.getAddressId()))
+                .user(safeGetUser(order.getUserId()))
+                .address(safeGetAddress(order.getAddressId()))
                 .total(order.getTotal())
                 .note(order.getNote())
+                .status(order.getStatus())
+                .reason(order.getReason())
                 .orderDate(order.getOrderDate())
                 .orderDetails(
                         order.getOrderDetails() != null
                                 ? order.getOrderDetails().stream()
                                 .map(detail -> OrderDetailResponse.builder()
                                         .id(detail.getId())
-                                        .productId(detail.getProductId())
+                                        .productColorId(detail.getProductColorId())
                                         .quantity(detail.getQuantity())
                                         .price(detail.getPrice())
                                         .build())
-                                .toList()
-                                : List.of()
+                                .collect(Collectors.toList())
+                                : Collections.emptyList()
                 )
                 .processOrders(
                         order.getProcessOrders() != null
@@ -155,33 +260,41 @@ public class OrderServiceImpl implements OrderService {
                                         .status(process.getStatus())
                                         .createdAt(process.getCreatedAt())
                                         .build())
-                                .toList()
-                                : List.of()
+                                .collect(Collectors.toList())
+                                : Collections.emptyList()
                 )
                 .payment(paymentResponse)
+                .storeId(order.getStoreId())
                 .build();
     }
 
     private Order buildOrder(Cart cart, Long addressId) {
-        return Order.builder()
-                .total(cart.getTotalPrice())
+        Double total = cart.getTotalPrice();
+        if (total == null) {
+            total = cart.getItems().stream()
+                    .filter(item -> item.getPrice() != null && item.getQuantity() != null)
+                    .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                    .sum();
+        }
+
+        Order order = Order.builder()
+                .total(total)
                 .userId(getUserId())
                 .addressId(getAddressById(addressId))
                 .orderDate(new Date())
                 .build();
+        return order;
     }
 
     private List<OrderDetail> createOrderItemsFromCart(Cart cart, Order order) {
         return cart.getItems().stream()
-                .map(cartItem -> {
-                    OrderDetail orderItem = new OrderDetail();
-                    orderItem.setOrder(order);
-                    orderItem.setProductId(cartItem.getProductId());
-                    orderItem.setQuantity(cartItem.getQuantity());
-                    orderItem.setPrice(cartItem.getPrice());
-                    orderItem.setPrice(cartItem.getPrice() * cartItem.getQuantity());
-                    return orderItem;
-                })
+                .filter(item -> item.getPrice() != null && item.getQuantity() != null)
+                .map(cartItem -> OrderDetail.builder()
+                        .order(order)
+                        .productColorId(cartItem.getProductColorId())
+                        .quantity(cartItem.getQuantity())
+                        .price(cartItem.getPrice())
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -199,7 +312,10 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
         ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
-        return userId.getData().getId() ;
+        if (userId == null || userId.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+        return userId.getData().getId();
     }
 
     private Long getAddressById(Long addressId) {
@@ -210,27 +326,29 @@ public class OrderServiceImpl implements OrderService {
         return response.getData().getId();
     }
 
-    private String getStoreById(String storeId){
+    private String generateTransactionCode() {
+        return "TXN-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 10000);
+    }
+
+    private UserResponse safeGetUser(String userId) {
+        if (userId == null) return null;
+        ApiResponse<UserResponse> resp = userClient.getUserById(userId);
+        if (resp == null || resp.getData() == null) return null;
+        return resp.getData();
+    }
+
+    private AddressResponse safeGetAddress(Long addressId) {
+        if (addressId == null) return null;
+        ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
+        if (resp == null || resp.getData() == null) return null;
+        return resp.getData();
+    }
+
+    private String getStoreById(String storeId) {
         ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
         if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         return response.getData().getId();
-    }
-
-    private String generateTransactionCode() {
-        return "TXN-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000);
-    }
-
-    private UserResponse getUser(String userId) {
-        return userClient.getUserById(userId).getData();
-    }
-
-    private AddressResponse getAddress(Long addressId) {
-        return userClient.getAddressById(addressId).getData();
-    }
-
-    private StoreResponse getStore(String storeId) {
-        return storeClient.getStoreById(storeId).getData();
     }
 }

@@ -1,15 +1,31 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.service.VNPayService;
+import com.example.orderservice.util.VNPayUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
+@Slf4j
 public class VNPayController {
+
+    @Value("${vnpay.hashSecret}")
+    private String hashSecret;
 
     private final VNPayService vnPayService;
 
@@ -21,8 +37,29 @@ public class VNPayController {
     }
 
     @GetMapping("/vnpay-return")
-    public String vnpayReturn(@RequestParam Map<String, String> allParams) {
-        // Khi thanh toán xong VNPay sẽ redirect về đây kèm query param
-        return "VNPay Response: " + allParams.toString();
+    public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
+                            HttpServletResponse response) throws IOException {
+
+        // Lấy và loại bỏ chữ ký từ params
+        String secureHash = vnpParams.remove("vnp_SecureHash");
+        vnpParams.remove("vnp_SecureHashType");
+
+        // Tính chữ ký lại
+        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+
+        String frontendUrl = "http://localhost:5173/payment-success";
+
+        if (signValue.equalsIgnoreCase(secureHash)) {
+            String responseCode = vnpParams.get("vnp_ResponseCode");
+            String orderId = vnpParams.get("vnp_TxnRef");
+
+            if ("00".equals(responseCode)) {
+                response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+            } else {
+                response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
+            }
+        } else {
+            response.sendRedirect(frontendUrl + "?status=invalid");
+        }
     }
 }

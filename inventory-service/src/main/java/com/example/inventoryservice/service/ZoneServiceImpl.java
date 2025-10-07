@@ -10,7 +10,7 @@ import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.ZoneRequest;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.response.ZoneResponse;
-import com.example.inventoryservice.service.inteface.IZoneService;
+import com.example.inventoryservice.service.inteface.ZoneService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ZoneService implements IZoneService {
+public class ZoneServiceImpl implements ZoneService {
 
     private final ZoneRepository zoneRepository;
     private final WarehouseRepository warehouseRepository;
@@ -31,7 +31,6 @@ public class ZoneService implements IZoneService {
     @Override
     @Transactional
     public ZoneResponse createZone(ZoneRequest zoneRequest) {
-
         Warehouse warehouse = warehouseRepository.findById(zoneRequest.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
@@ -126,6 +125,7 @@ public class ZoneService implements IZoneService {
         zone.setIsDeleted(true);
         zoneRepository.save(zone);
     }
+
     @Override
     @Transactional
     public void disableZone(String zoneId) {

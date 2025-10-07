@@ -6,7 +6,7 @@ import com.example.inventoryservice.response.ZoneResponse;
 
 import java.util.List;
 
-public interface IZoneService {
+public interface ZoneService {
     ZoneResponse createZone(ZoneRequest zoneRequest);
     ZoneResponse updateZone(ZoneRequest zoneRequest, String zoneId);
     void deleteZone(String zoneId);

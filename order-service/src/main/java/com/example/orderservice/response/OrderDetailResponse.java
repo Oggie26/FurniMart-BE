@@ -9,7 +9,7 @@ import lombok.*;
 public class OrderDetailResponse {
 
     private Long id;
-    private String productId;
+    private String productColorId;
     private Integer quantity;
     private Double price;
 }

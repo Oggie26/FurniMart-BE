@@ -23,7 +23,7 @@ public class CartItem {
     private Cart cart;
 
     @Column
-    private String productId;
+    private String productColorId;
 
     @Column
     private Integer quantity;

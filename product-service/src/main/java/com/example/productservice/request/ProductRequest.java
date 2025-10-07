@@ -1,5 +1,8 @@
 package com.example.productservice.request;
 
+import com.example.productservice.enums.EnumStatus;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -45,7 +48,6 @@ public class ProductRequest {
     @NotEmpty(message = "MaterialIds is required")
     private List<Long> materialIds;
 
-    private List<ColorRequest> colorRequests;
-
-
+    @Enumerated(EnumType.STRING)
+    EnumStatus status;
 }

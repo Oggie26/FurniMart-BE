@@ -65,6 +65,7 @@ public class UserServiceImpl implements UserService {
                 .gender(userRequest.getGender())
                 .status(userRequest.getStatus())
                 .avatar(userRequest.getAvatar())
+                .point(0)
                 .account(savedAccount)
                 .build();
 

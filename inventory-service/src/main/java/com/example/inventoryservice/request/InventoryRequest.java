@@ -12,7 +12,7 @@ import lombok.*;
 public class InventoryRequest {
 
     @NotBlank(message = "Product ID is required")
-    private String productId;
+    private String productColorId;
 
     @Min(value = 0, message = "Quantity must be at least 0")
     private int quantity;

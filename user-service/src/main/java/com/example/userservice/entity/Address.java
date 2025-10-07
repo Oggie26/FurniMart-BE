@@ -41,6 +41,12 @@ public class Address
     @Column(name = "is_default")
     Boolean isDefault;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JsonIgnore
     @JoinColumn(name = "user_id")
