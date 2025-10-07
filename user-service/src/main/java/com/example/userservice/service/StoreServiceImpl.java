@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -162,30 +163,66 @@ public class StoreServiceImpl implements StoreService {
     @Override
     @Transactional
     public UserStoreResponse addUserToStore(UserStoreRequest request) {
-        // Check if user exists
-        User user = userRepository.findByIdAndIsDeletedFalse(request.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        log.info("Attempting to add user {} to store {}", request.getUserId(), request.getStoreId());
         
-        // Check if store exists
-        Store store = storeRepository.findByIdAndIsDeletedFalse(request.getStoreId())
-                .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
-        
-        // Check if relationship already exists
-        if (userStoreRepository.findByUserIdAndStoreIdAndIsDeletedFalse(request.getUserId(), request.getStoreId()).isPresent()) {
-            throw new AppException(ErrorCode.USER_STORE_RELATIONSHIP_EXISTS);
+        try {
+            // Check if user exists
+            User user = userRepository.findByIdAndIsDeletedFalse(request.getUserId())
+                    .orElseThrow(() -> {
+                        log.error("User not found for store assignment with id: {}", request.getUserId());
+                        return new AppException(ErrorCode.USER_NOT_FOUND);
+                    });
+            
+            log.info("Found user: {} (email: {})", user.getFullName(), user.getAccount().getEmail());
+            
+            // Check if store exists
+            Store store = storeRepository.findByIdAndIsDeletedFalse(request.getStoreId())
+                    .orElseThrow(() -> {
+                        log.error("Store not found for user assignment with id: {}", request.getStoreId());
+                        return new AppException(ErrorCode.STORE_NOT_FOUND);
+                    });
+            
+            log.info("Found store: {} (location: {})", store.getName(), store.getAddressLine());
+            
+            // Check if relationship already exists
+            if (userStoreRepository.findByUserIdAndStoreIdAndIsDeletedFalse(request.getUserId(), request.getStoreId()).isPresent()) {
+                log.warn("User-store relationship already exists for user {} and store {}", 
+                        request.getUserId(), request.getStoreId());
+                throw new AppException(ErrorCode.USER_STORE_RELATIONSHIP_EXISTS);
+            }
+            
+            UserStore userStore = UserStore.builder()
+                    .userId(request.getUserId())
+                    .storeId(request.getStoreId())
+                    .user(user)
+                    .store(store)
+                    .build();
+            
+            UserStore savedUserStore = userStoreRepository.save(userStore);
+            log.info("Successfully added user {} to store {} with relationship id: {}", 
+                    request.getUserId(), request.getStoreId(), savedUserStore.getUserId() + "_" + savedUserStore.getStoreId());
+            
+            // Verify the relationship was actually saved
+            Optional<UserStore> verification = userStoreRepository.findByUserIdAndStoreIdAndIsDeletedFalse(
+                    request.getUserId(), request.getStoreId());
+            if (verification.isEmpty()) {
+                log.error("CRITICAL: User-store relationship was not persisted! User: {}, Store: {}", 
+                        request.getUserId(), request.getStoreId());
+                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+            
+            log.info("Verified: User-store relationship successfully persisted");
+            return mapToUserStoreResponse(savedUserStore);
+            
+        } catch (AppException e) {
+            log.error("Application error adding user {} to store {}: {}", 
+                    request.getUserId(), request.getStoreId(), e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error adding user {} to store {}", 
+                    request.getUserId(), request.getStoreId(), e);
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
-        
-        UserStore userStore = UserStore.builder()
-                .userId(request.getUserId())
-                .storeId(request.getStoreId())
-                .user(user)
-                .store(store)
-                .build();
-        
-        UserStore savedUserStore = userStoreRepository.save(userStore);
-        log.info("User {} added to store {}", request.getUserId(), request.getStoreId());
-        
-        return mapToUserStoreResponse(savedUserStore);
     }
 
     @Override
