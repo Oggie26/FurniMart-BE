@@ -1,12 +1,14 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.enums.EnumProcessOrder;
+import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
-import com.example.orderservice.response.ApiResponse;
-import com.example.orderservice.response.OrderResponse;
-import com.example.orderservice.response.PageResponse;
+import com.example.orderservice.exception.AppException;
+import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.service.inteface.AssignOrderService;
+import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,9 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -30,7 +34,9 @@ public class OrderController {
 
     private final OrderService orderService;
     private final VNPayService vnPayService;
+    private final CartService cartService;
     private final AssignOrderService assignOrderService;
+    private final InventoryClient inventoryClient;
 
     @PostMapping("/checkout")
     public ApiResponse<Void> checkout(
@@ -41,6 +47,20 @@ public class OrderController {
             HttpServletRequest request
     ) throws UnsupportedEncodingException {
         String clientIp = getClientIp(request);
+
+        CartResponse cartResponse = cartService.getCartById(cartId);
+        List<CartItemResponse> cartItems = cartResponse.getItems();
+
+        for (CartItemResponse item : cartItems) {
+            ResponseEntity<ApiResponse<Boolean>> response =
+                    inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
+
+            boolean available = response.getBody() != null ? response.getBody().getData() : false;
+
+            if (!available) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
+        }
 
         if (paymentMethod == PaymentMethod.VNPAY) {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
@@ -57,6 +77,7 @@ public class OrderController {
                     .build();
         }
     }
+
 
     @GetMapping("/{id}")
     public ApiResponse<OrderResponse> getOrderById(@PathVariable Long id) {
@@ -181,4 +202,5 @@ public class OrderController {
         String clientIp = request.getHeader("X-Forwarded-For");
         return (clientIp == null || clientIp.isEmpty()) ? request.getRemoteAddr() : clientIp;
     }
+
 }

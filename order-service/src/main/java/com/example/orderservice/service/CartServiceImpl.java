@@ -117,6 +117,28 @@ public class CartServiceImpl implements CartService {
         cartRepository.save(cart);
     }
 
+    @Override
+    public CartResponse getCartById(Long id) {
+        Cart cart = cartRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
+
+        String userId = getUserId();
+        if (!cart.getUserId().equals(userId)) {
+            throw new AppException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        List<CartItemResponse> itemResponses = convertCartItemsToResponses(cart);
+        Double totalPrice = calculateTotalPrice(cart);
+
+        return CartResponse.builder()
+                .cartId(cart.getId())
+                .userId(cart.getUserId())
+                .items(itemResponses)
+                .totalPrice(totalPrice)
+                .build();
+    }
+
+
 
     @Override
     @Transactional
