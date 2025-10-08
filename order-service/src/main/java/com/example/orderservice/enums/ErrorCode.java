@@ -33,6 +33,7 @@ public enum ErrorCode {
     COLOR_NOT_FOUND(1212, "Color not found", HttpStatus.NOT_FOUND),
     CART_EMPTY(1213, "Cart is empty", HttpStatus.BAD_REQUEST),
     NOT_IMPLEMENTED(1214, "Not implemented", HttpStatus.BAD_REQUEST),
+    CART_ITEM_NOT_FOUND(1215, "Cart item not found", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

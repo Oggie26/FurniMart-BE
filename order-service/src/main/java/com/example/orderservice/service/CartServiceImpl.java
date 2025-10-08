@@ -92,19 +92,31 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCartEntity(userId);
 
         List<CartItem> itemsToRemove = cart.getItems().stream()
-                .filter(cartItem -> cartItemIds.contains(cartItem.getId()))
+                .filter(item -> cartItemIds.contains(item.getId()))
                 .toList();
 
         if (itemsToRemove.isEmpty()) {
-            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+            throw new AppException(ErrorCode.CART_ITEM_NOT_FOUND);
         }
 
-        cart.getItems().removeAll(itemsToRemove);
         cartItemRepository.deleteAll(itemsToRemove);
-
+        itemsToRemove.forEach(cart.getItems()::remove);
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
+
+
+    @Override
+    @Transactional
+    public void clearCart() {
+        Cart cart = cartRepository.findByUserId(getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
+        cartItemRepository.deleteAll(cart.getItems());
+        cart.getItems().clear();
+        cart.setTotalPrice(0.0);
+        cartRepository.save(cart);
+    }
+
 
     @Override
     @Transactional
@@ -166,7 +178,7 @@ public class CartServiceImpl implements CartService {
 
     private void addNewItemToCart(Cart cart, ProductColorResponse productColor, Integer quantity) {
         CartItem newItem = CartItem.builder()
-                .productColorId(productColor.getId())
+                    .productColorId(productColor.getId())
                 .price(productColor.getProduct().getPrice())
                 .quantity(quantity)
                 .cart(cart)
