@@ -123,7 +123,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException exception) {
-        log.error("Application error: {}", exception.getMessage());
+        log.error("Application error: {} - Error Code: {} - Status: {}", 
+                exception.getMessage(), 
+                exception.getErrorCode().getCode(), 
+                exception.getErrorCode().getStatusCode());
+        
+        // Log stack trace for debugging
+        log.error("Stack trace for error code {}: ", exception.getErrorCode().getCode(), exception);
+        
         return ResponseEntity.status(exception.getErrorCode().getStatusCode())
                 .body(ApiResponse.<Void>builder()
                         .status(exception.getErrorCode().getCode())
@@ -134,11 +141,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUncaughtException(Exception exception) {
-        log.error("Uncaught exception: ", exception);
+        log.error("Uncaught exception of type {}: {}", exception.getClass().getSimpleName(), exception.getMessage());
+        log.error("Full stack trace: ", exception);
+        
+        // Provide more specific error message based on exception type
+        String errorMessage = ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage();
+        if (exception instanceof DataIntegrityViolationException) {
+            errorMessage = "Database constraint violation. Please check your data.";
+        } else if (exception instanceof IllegalArgumentException) {
+            errorMessage = "Invalid argument provided: " + exception.getMessage();
+        }
+        
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.<Void>builder()
                         .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
-                        .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
+                        .message(errorMessage)
                         .build());
     }
 

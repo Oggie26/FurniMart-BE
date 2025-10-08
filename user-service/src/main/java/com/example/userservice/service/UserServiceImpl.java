@@ -190,16 +190,31 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteUser(String id) {
-
-        User user = userRepository.findByIdAndIsDeletedFalse(id)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        user.setStatus(EnumStatus.DELETED);
-        user.setIsDeleted(true);
-        user.getAccount().setIsDeleted(true);
+        log.info("Attempting to delete user with id: {}", id);
         
-        userRepository.save(user);
-        accountRepository.save(user.getAccount());
-        
+        try {
+            User user = userRepository.findByIdAndIsDeletedFalse(id)
+                    .orElseThrow(() -> {
+                        log.error("User not found for deletion with id: {}", id);
+                        return new AppException(ErrorCode.USER_NOT_FOUND);
+                    });
+            
+            log.info("Found user to delete: {} (email: {})", user.getFullName(), user.getAccount().getEmail());
+            
+            user.setStatus(EnumStatus.DELETED);
+            user.setIsDeleted(true);
+            user.getAccount().setIsDeleted(true);
+            
+            User savedUser = userRepository.save(user);
+            Account savedAccount = accountRepository.save(user.getAccount());
+            
+            log.info("Successfully deleted user with id: {} and account with id: {}", 
+                    savedUser.getId(), savedAccount.getId());
+            
+        } catch (Exception e) {
+            log.error("Error deleting user with id: {}", id, e);
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @Override
