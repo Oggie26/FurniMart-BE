@@ -85,6 +85,7 @@ public class InventoryController {
         }
     }
 
+    @Operation(summary = "Đếm số lượng tồn kho của sản phẩm ProductColor")
     @GetMapping("/total/{productColorId}")
     public ResponseEntity<ApiResponse<Integer>> getTotalStockByProduct(@PathVariable String productColorId) {
         return ResponseEntity.ok(ApiResponse.<Integer>builder()
