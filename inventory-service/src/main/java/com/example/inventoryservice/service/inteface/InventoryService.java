@@ -35,5 +35,8 @@ public interface InventoryService {
     List<InventoryTransactionResponse> getAllTransactions();
 
     List<InventoryResponse> getAllInventory();
+
+    int getTotalStockByProductColorId(String productColorId);
+
 }
 

@@ -217,6 +217,11 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public int getTotalStockByProductColorId(String productColorId) {
+        return inventoryRepository.getTotalQuantityByProductColorId(productColorId);
+    }
+
+    @Override
     @Transactional
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
         List<Inventory> inventories = inventoryRepository.findAllByLocationItem_Zone_ZoneId(zoneId);

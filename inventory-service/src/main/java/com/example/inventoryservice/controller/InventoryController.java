@@ -85,6 +85,15 @@ public class InventoryController {
         }
     }
 
+    @GetMapping("/total/{productColorId}")
+    public ResponseEntity<ApiResponse<Integer>> getTotalStockByProduct(@PathVariable String productColorId) {
+        return ResponseEntity.ok(ApiResponse.<Integer>builder()
+                .status(200)
+                .message("Tăng tồn kho thành công")
+                .data(inventoryService.getTotalStockByProductColorId(productColorId))
+                .build());
+    }
+
     @Operation(summary = "Giảm tồn kho")
     @PatchMapping("/{productColorId}/{locationItemId}/decrease")
     public ResponseEntity<ApiResponse<InventoryResponse>> decreaseStock(
