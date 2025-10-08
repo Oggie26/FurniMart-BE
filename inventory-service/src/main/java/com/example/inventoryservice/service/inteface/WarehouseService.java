@@ -13,6 +13,7 @@ public interface WarehouseService {
     void disableWarehouse(String warehouseId);
     List<WarehouseResponse> getWarehouses();
     WarehouseResponse getWarehouseById(String warehouseId);
+    WarehouseResponse getWarehouseByStoreId(String storeId);
     PageResponse<WarehouseResponse> searchWarehouse(String request, int page, int size);
 
 }
