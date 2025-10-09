@@ -38,16 +38,14 @@ public class EmailOrderService {
             String link = "http://localhost:5173/orders/" + event.getOrderId();
             String button = "Xem chi tiết đơn hàng";
 
-            OrderResponse order = getOrder(event.getOrderId());
 
             Context context = new Context();
-            context.setVariable("name", getUserId());
+            context.setVariable("name", event.getFullName());
             context.setVariable("button", button);
             context.setVariable("link", link);
-            context.setVariable("orderDate", order.getOrderDate());
+            context.setVariable("orderDate", event.getOrderDate());
             context.setVariable("paymentMethod", event.getPaymentMethod());
-            context.setVariable("totalAmount", order.getTotal());
-            context.setVariable("orderCode", order.getId());
+            context.setVariable("totalAmount", event.getTotalPrice());
 
             context.setVariable("items", event.getItems());
             String htmlContent = templateEngine.process("ordercreatesuccess", context);
@@ -56,7 +54,7 @@ public class EmailOrderService {
 
             helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
             helper.setTo(getUserId());
-            helper.setSubject("🛒 Đơn hàng #" + order.getId() + " của bạn đã được thanh toán thành công!");
+            helper.setSubject("🛒 Đơn hàng #" + event.getOrderId() + " của bạn đã được thanh toán thành công!");
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);

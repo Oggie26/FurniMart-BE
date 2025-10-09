@@ -133,12 +133,16 @@ public class OrderServiceImpl implements OrderService {
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
                             .productColorId(detail.getProductColorId())
                             .quantity(detail.getQuantity())
+                            .price(detail.getPrice())
                             .build())
                     .toList();
 
             OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .email(order.getUserId())
+                    .fullName(safeGetUser(order.getUserId()).getFullName())
+                    .orderDate(order.getOrderDate())
+                    .totalPrice(order.getTotal())
                     .orderId(order.getId())
-                    .userId(order.getUserId())
                     .addressLine(getAddress(order.getAddressId()))
                     .paymentMethod(order.getPayment().getPaymentMethod())
                     .items(orderItems)
@@ -152,7 +156,7 @@ public class OrderServiceImpl implements OrderService {
                             }
                         });
             } catch (Exception e) {
-                log.error("Failed to send Kafka event {}, error: {}", event.getUserId(), e.getMessage());
+                log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
             }
         }
         return mapToResponse(order);

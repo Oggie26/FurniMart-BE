@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
 import java.util.List;
 
 @Data
@@ -14,11 +15,13 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderCreatedEvent {
     private Long orderId;
-    private String userId;
+    private String email;
+    private String fullName;
+    private Date orderDate;
+    private Double totalPrice;
     private String addressLine;
     private List<OrderItem> items;
     private PaymentMethod paymentMethod;
-
 
     @Data
     @Builder
@@ -26,6 +29,7 @@ public class OrderCreatedEvent {
     @AllArgsConstructor
     public static class OrderItem {
         private String productColorId;
+        private Double price;
         private int quantity;
     }
 }
