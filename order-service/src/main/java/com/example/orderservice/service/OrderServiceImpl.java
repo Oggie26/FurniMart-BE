@@ -8,6 +8,7 @@ import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.AuthClient;
+import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
@@ -40,8 +41,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
-    private final OrderDetailRepository orderDetailRepository;
-    private final CartItemRepository cartItemRepository;
+    private final ProductClient productClient;
     private final CartRepository cartRepository;
     private final PaymentRepository paymentRepository;
     private final UserClient userClient;
@@ -133,7 +133,9 @@ public class OrderServiceImpl implements OrderService {
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
                             .productColorId(detail.getProductColorId())
                             .quantity(detail.getQuantity())
+                            .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
                             .price(detail.getPrice())
+                            .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
                             .build())
                     .toList();
 
@@ -372,4 +374,13 @@ public class OrderServiceImpl implements OrderService {
         if (resp == null || resp.getData() == null) return null;
         return resp.getData().getAddressLine();
     }
+
+    private ProductColorResponse getProductColorResponse(String id){
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData();
+    }
+
 }

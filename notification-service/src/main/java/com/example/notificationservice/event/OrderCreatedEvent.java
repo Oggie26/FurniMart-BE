@@ -29,7 +29,9 @@ public class OrderCreatedEvent {
     @AllArgsConstructor
     public static class OrderItem {
         private String productColorId;
+        private String productName;
         private Double price;
+        private String colorName;
         private int quantity;
     }
 }
