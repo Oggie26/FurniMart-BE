@@ -1,4 +1,3 @@
-
 package com.example.orderservice.config;
 
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -20,11 +19,14 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+
+    // ✅ Nếu chạy Docker Compose, giữ "kafka:9092"
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
-    // ----------------- PRODUCER cho Object --------------------
+    // private final String BOOTSTRAP_SERVERS = "localhost:9092"; // dùng local nếu cần test
+
+    // ----------------- PRODUCER cho OrderCreatedEvent --------------------
     @Bean
-    public ProducerFactory<String, Object> producerFactory() {
+    public ProducerFactory<String, OrderCreatedEvent> producerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -32,24 +34,10 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(config);
     }
 
+    // ✅ Đặt tên bean là kafkaTemplate -> tự inject vào controller
     @Bean
-    public KafkaTemplate<String, Object> kafkaTemplate() {
+    public KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
-    }
-
-
-    @Bean
-    public ProducerFactory<String, OrderCreatedEvent> orderCreatedEventProducerFactory() {
-        Map<String, Object> config = new HashMap<>();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new DefaultKafkaProducerFactory<>(config);
-    }
-
-    @Bean
-    public KafkaTemplate<String, OrderCreatedEvent> orderCreatedEventKafkaTemplate() {
-        return new KafkaTemplate<>(orderCreatedEventProducerFactory());
     }
 
     // ----------------- PRODUCER cho String (nếu cần) --------------------
