@@ -1,4 +1,3 @@
-
 package com.example.orderservice.config;
 
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -20,7 +19,7 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+    //    private final String BOOTSTRAP_SERVERS = "localhost:9092";
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
     // ----------------- PRODUCER cho Object --------------------
     @Bean
@@ -33,7 +32,13 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ProducerFactory<String, OrderCreatedEvent> orderCreatedEventProducerFactory() {
+    public KafkaTemplate<String, Object> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+
+
+    @Bean
+    public ProducerFactory<String, OrderCreatedEvent> accountCreatedEventProducerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -43,7 +48,7 @@ public class KafkaConfig {
 
     @Bean
     public KafkaTemplate<String, OrderCreatedEvent> accountCreatedEventKafkaTemplate() {
-        return new KafkaTemplate<>(orderCreatedEventProducerFactory());
+        return new KafkaTemplate<>(accountCreatedEventProducerFactory());
     }
 
     // ----------------- PRODUCER cho String (nếu cần) --------------------
@@ -71,7 +76,7 @@ public class KafkaConfig {
 
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "user-service-group");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "order-service-group");
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);

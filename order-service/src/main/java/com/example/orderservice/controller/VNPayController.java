@@ -34,7 +34,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class VNPayController {
-
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final OrderRepository orderRepository;
     private final UserClient userClient;
