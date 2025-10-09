@@ -47,7 +47,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserClient userClient;
     private final AuthClient authClient;
     private final StoreClient storeClient;
-    KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
 
 
     @Override
