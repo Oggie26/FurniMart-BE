@@ -30,15 +30,12 @@ public class EmailOrderService {
 
     public void sendMailToCreateOrderSuccess(OrderCreatedEvent event) {
         try {
-            // ✅ Link và button hiển thị trong email
             String link = "http://localhost:5173/orders/" + event.getOrderId();
             String button = "Xem chi tiết đơn hàng";
 
-            // ✅ Lấy dữ liệu user và order từ Feign client
             UserResponse user = getUser(event.getUserId());
             OrderResponse order = getOrder(event.getOrderId());
 
-            // ✅ Tạo context Thymeleaf
             Context context = new Context();
             context.setVariable("name", user.getFullName());
             context.setVariable("button", button);
