@@ -1,8 +1,7 @@
 package com.example.notificationservice.exception;
-
-import com.example.inventoryservice.enums.ErrorCode;
-import com.example.inventoryservice.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
+import com.example.notificationservice.enums.ErrorCode;
+import com.example.notificationservice.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.*;

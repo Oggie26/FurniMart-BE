@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatusCode;
 @Getter
 public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
+    UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     //11xx
     INVALID_KEY(1100, "Invalid uncategorized error", HttpStatus.BAD_REQUEST),
     INVALID_JSON(1101, "Json invalid", HttpStatus.BAD_REQUEST),
