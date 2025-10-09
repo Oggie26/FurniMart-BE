@@ -13,7 +13,10 @@ import org.springframework.stereotype.Component;
 public class OrderEventListener {
     private final EmailOrderService orderService;
 
-    @KafkaListener(topics = "order-created-topic", groupId = "notification-group")
+    @KafkaListener(topics = "order-created-topic",
+            groupId = "notification-group",
+            containerFactory = "orderCreatedKafkaListenerContainerFactory"
+    )
     public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
         orderService.sendMailToCreateOrderSuccess(event);
