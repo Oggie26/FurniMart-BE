@@ -53,12 +53,12 @@ public class EmailOrderService {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
             helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
-            helper.setTo(getUserId());
+            helper.setTo(event.getEmail());
             helper.setSubject("🛒 Đơn hàng #" + event.getOrderId() + " của bạn đã được thanh toán thành công!");
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            log.info("✅ Email đơn hàng gửi thành công tới {}", getUserId());
+            log.info("✅ Email đơn hàng gửi thành công tới {}", event.getEmail());
 
         } catch (MessagingException e) {
             log.error("❌ Lỗi khi gửi email: {}", e.getMessage());
