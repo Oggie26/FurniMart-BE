@@ -83,7 +83,6 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-
         Payment payment = Payment.builder()
                 .order(order)
                 .paymentMethod(paymentMethod)
@@ -111,7 +110,6 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception ex) {
             log.error("Failed to send Kafka event for order: {}", order.getId(), ex);
         }
-
 
         return mapToResponse(order);
     }
@@ -145,8 +143,6 @@ public class OrderServiceImpl implements OrderService {
 
         return mapToResponse(order);
     }
-
-
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {

@@ -90,7 +90,7 @@ public class InventoryController {
     public ResponseEntity<ApiResponse<Integer>> getTotalStockByProduct(@PathVariable String productColorId) {
         return ResponseEntity.ok(ApiResponse.<Integer>builder()
                 .status(200)
-                .message("Tăng tồn kho thành công")
+                .message("Lấy kho thành công")
                 .data(inventoryService.getTotalStockByProductColorId(productColorId))
                 .build());
     }

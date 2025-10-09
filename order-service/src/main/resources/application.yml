@@ -33,6 +33,24 @@ spring:
     cache:
       type: redis
 
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      auto-offset-reset: earliest
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: user-service-group
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "com.example.orderservice.event"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      backs: 1
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+        max.request.size: 20971520
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
