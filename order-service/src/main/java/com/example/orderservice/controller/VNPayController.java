@@ -1,19 +1,13 @@
 package com.example.orderservice.controller;
 
-import com.example.orderservice.entity.Order;
-import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.event.OrderCreatedEvent;
-import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
-import com.example.orderservice.response.AddressResponse;
-import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.util.VNPayUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -30,7 +23,6 @@ import java.util.Map;
 @Slf4j
 public class VNPayController {
 
-    KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final OrderRepository orderRepository;
     private final UserClient userClient;
 
@@ -63,37 +55,6 @@ public class VNPayController {
 
             if ("00".equals(responseCode)) {
                 response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
-
-                Order order = orderRepository.findByIdAndIsDeletedFalse(Long.valueOf(vnpParams.get("vnp_TxnRef")))
-                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-                List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                        .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                                .productColorId(detail.getProductColorId())
-                                .quantity(detail.getQuantity())
-                                .build())
-                        .toList();
-
-                OrderCreatedEvent event = OrderCreatedEvent.builder()
-                        .orderId(order.getId())
-                        .userId(order.getUserId())
-                        .addressLine(safeGetAddress(order.getAddressId()))
-                        .paymentMethod(order.getPayment().getPaymentMethod())
-                        .items(orderItems)
-                        .build();
-
-                try {
-                    kafkaTemplate.send("order-created-topic", event)
-                            .whenComplete((result, ex) -> {
-                                if (ex != null) {
-                                } else {
-                                    log.info("Successfully sent order creation event for: {}", event.getOrderId());
-                                }
-                            });
-                } catch (Exception e) {
-                    log.error("Failed to send Kafka event {}, error: {}", event.getUserId(), e.getMessage());
-                }
-
             } else {
                 response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
             }
@@ -102,10 +63,5 @@ public class VNPayController {
         }
     }
 
-    private String safeGetAddress(Long addressId) {
-        if (addressId == null) return null;
-        ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
-        if (resp == null || resp.getData() == null) return null;
-        return resp.getData().getAddressLine();
-    }
+
 }
