@@ -6,7 +6,6 @@ import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCreatedEvent;
-import com.example.orderservice.event.OrderPlacedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.AuthClient;
 import com.example.orderservice.feign.StoreClient;
@@ -48,7 +47,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserClient userClient;
     private final AuthClient authClient;
     private final StoreClient storeClient;
-    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
 
 
     @Override
