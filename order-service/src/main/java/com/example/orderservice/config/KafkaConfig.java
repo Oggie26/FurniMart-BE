@@ -1,3 +1,4 @@
+
 package com.example.orderservice.config;
 
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -19,14 +20,11 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-
-    // ✅ Nếu chạy Docker Compose, giữ "kafka:9092"
+//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
-    // private final String BOOTSTRAP_SERVERS = "localhost:9092"; // dùng local nếu cần test
-
-    // ----------------- PRODUCER cho OrderCreatedEvent --------------------
+    // ----------------- PRODUCER cho Object --------------------
     @Bean
-    public ProducerFactory<String, OrderCreatedEvent> producerFactory() {
+    public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -34,10 +32,18 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(config);
     }
 
-    // ✅ Đặt tên bean là kafkaTemplate -> tự inject vào controller
     @Bean
-    public KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate() {
-        return new KafkaTemplate<>(producerFactory());
+    public ProducerFactory<String, OrderCreatedEvent> orderCreatedEventProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, OrderCreatedEvent> accountCreatedEventKafkaTemplate() {
+        return new KafkaTemplate<>(orderCreatedEventProducerFactory());
     }
 
     // ----------------- PRODUCER cho String (nếu cần) --------------------
@@ -65,7 +71,7 @@ public class KafkaConfig {
 
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "order-service-group");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "user-service-group");
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
