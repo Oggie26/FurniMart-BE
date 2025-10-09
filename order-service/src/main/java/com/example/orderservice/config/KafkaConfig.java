@@ -5,9 +5,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
@@ -20,9 +20,9 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 public class KafkaConfig {
+    //    private final String BOOTSTRAP_SERVERS = "localhost:9092";
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
-
-    // Unified ProducerFactory for JSON serialization
+    // ----------------- PRODUCER cho Object --------------------
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -32,14 +32,27 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(config);
     }
 
-    // KafkaTemplate for Object (including OrderCreatedEvent)
     @Bean
-    @Primary
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
-    // KafkaTemplate for String
+
+    @Bean
+    public ProducerFactory<String, OrderCreatedEvent> accountCreatedEventProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, OrderCreatedEvent> accountCreatedEventKafkaTemplate() {
+        return new KafkaTemplate<>(accountCreatedEventProducerFactory());
+    }
+
+    // ----------------- PRODUCER cho String (nếu cần) --------------------
     @Bean
     public ProducerFactory<String, String> stringProducerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -54,7 +67,7 @@ public class KafkaConfig {
         return new KafkaTemplate<>(stringProducerFactory());
     }
 
-    // Consumer configuration
+    // ----------------- CONSUMER --------------------
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         JsonDeserializer<Object> deserializer = new JsonDeserializer<>();
