@@ -44,6 +44,7 @@ public class KafkaConsumerConfig {
                 new JsonDeserializer<>(AccountPlaceEvent.class, false));
     }
 
+    @Bean
     public ConsumerFactory<String, OrderCreatedEvent> orderCreatedConsumerFactory() {
         return new DefaultKafkaConsumerFactory<>(
                 baseConfigs(),
@@ -57,6 +58,14 @@ public class KafkaConsumerConfig {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, AccountPlaceEvent>();
 
         factory.setConsumerFactory(accountConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> orderCreatedKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent>();
+
+        factory.setConsumerFactory(orderCreatedConsumerFactory());
         return factory;
     }
 
