@@ -10,22 +10,17 @@ import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.util.VNPayUtils;
-import jakarta.inject.Qualifier;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +29,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class VNPayController {
-    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+
+    KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final OrderRepository orderRepository;
     private final UserClient userClient;
 
