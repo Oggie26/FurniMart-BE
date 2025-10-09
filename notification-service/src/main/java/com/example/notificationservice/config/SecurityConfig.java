@@ -35,6 +35,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/users/info/{authId}",
                                 "/api/users/**",
+                                "/api/orders/**",
                                 "/api/inventories/total/**",
                                 "/swagger-ui.html"
                         ).permitAll()
