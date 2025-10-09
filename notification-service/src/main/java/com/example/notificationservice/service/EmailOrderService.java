@@ -46,7 +46,7 @@ public class EmailOrderService {
             context.setVariable("orderDate", event.getOrderDate());
             context.setVariable("paymentMethod", event.getPaymentMethod());
             context.setVariable("totalAmount", event.getTotalPrice());
-
+            {log.error(event.getEmail());}
             context.setVariable("items", event.getItems());
             String htmlContent = templateEngine.process("ordercreatesuccess", context);
             MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -69,31 +69,4 @@ public class EmailOrderService {
         }
     }
 
-    private String getUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        String username = authentication.getName();
-        ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
-
-        if (response == null || response.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
-        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
-        if (userId == null || userId.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
-        return userId.getData().getEmail();
-    }
-
-    private OrderResponse getOrder(Long id) {
-        ApiResponse<OrderResponse> orderResp = orderClient.getOrderById(id);
-        if (orderResp == null || orderResp.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_ORDER);
-        }
-        return orderResp.getData();
-    }
 }

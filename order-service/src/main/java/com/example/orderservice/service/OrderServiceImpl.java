@@ -140,7 +140,7 @@ public class OrderServiceImpl implements OrderService {
                     .toList();
 
             OrderCreatedEvent event = OrderCreatedEvent.builder()
-                    .email(order.getUserId())
+                    .email(safeGetUser(order.getUserId()).getEmail())
                     .fullName(safeGetUser(order.getUserId()).getFullName())
                     .orderDate(order.getOrderDate())
                     .totalPrice(order.getTotal())
