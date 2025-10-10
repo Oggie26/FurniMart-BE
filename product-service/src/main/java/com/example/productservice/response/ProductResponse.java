@@ -24,6 +24,7 @@ public class ProductResponse {
     private Double length;
     private String categoryName;
     private Long categoryId;
+    private String slug;
     private EnumStatus status;
     private List<ProductColorDTO> productColors;
     private List<MaterialResponse> materials;
