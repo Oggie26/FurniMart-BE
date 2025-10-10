@@ -175,6 +175,7 @@ public class ProductServiceImpl implements ProductService {
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .code(product.getCode())
+                .slug(product.getSlug())
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
                 .thumbnailImage(product.getThumbnailImage())
