@@ -50,7 +50,5 @@ public class ProductRequest {
 
     @Enumerated(EnumType.STRING)
     EnumStatus status; 
-    
-    private String slug; 
 
 }
