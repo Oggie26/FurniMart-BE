@@ -71,6 +71,16 @@ public class WarehouseController {
                 .build();
     }
 
+    @GetMapping("/store/{storeId}")
+    public ApiResponse<WarehouseResponse> getWarehousesByStoreId (@PathVariable String storeId) {
+        return ApiResponse.<WarehouseResponse>builder()
+                .status(200)
+                .message("Lấy kho thành công")
+                .data(warehouseService.getWarehouseByStoreId(storeId))
+                .build();
+    }
+
+
     @GetMapping("/{warehouseId}")
     public ApiResponse<WarehouseResponse> getWarehouseById(@PathVariable String warehouseId) {
         return ApiResponse.<WarehouseResponse>builder()

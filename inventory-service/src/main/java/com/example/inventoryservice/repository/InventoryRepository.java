@@ -14,6 +14,9 @@ public interface InventoryRepository extends JpaRepository<Inventory,String> {
 
     List<Inventory> findAllByProductColorId(String productColorId);
 
+    @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i WHERE i.productColorId = :productColorId")
+    int getTotalQuantityByProductColorId(String productColorId);
+
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i " +
             "JOIN i.locationItem li " +
             "JOIN li.zone z " +

@@ -10,4 +10,6 @@ public interface CartService {
     void removeProductFromCart(List<String> productId);
     CartResponse getCart();
     void updateProductQuantityInCart(String productId,  Integer quantity);
-}
+    void clearCart();
+    CartResponse getCartById(Long id);
+    }

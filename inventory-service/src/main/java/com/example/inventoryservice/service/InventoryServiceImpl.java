@@ -108,7 +108,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse increaseStock(String productColorId, String locationItemId, int amount) {
-        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(productColorId, locationItemId)
+        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(locationItemId, productColorId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
         int newQuantity = inventory.getQuantity() + amount;
@@ -217,6 +217,11 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public int getTotalStockByProductColorId(String productColorId) {
+        return inventoryRepository.getTotalQuantityByProductColorId(productColorId);
+    }
+
+    @Override
     @Transactional
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
         List<Inventory> inventories = inventoryRepository.findAllByLocationItem_Zone_ZoneId(zoneId);
@@ -297,4 +302,33 @@ public class InventoryServiceImpl implements InventoryService {
         }
         return userResponse.getData().getId();
     }
+
+//    public boolean reserveStock(String productColorId, int quantity) {
+//        String key = "stock:" + productColorId;
+//
+//        return redisTemplate.execute((RedisCallback<Boolean>) connection -> {
+//            byte[] rawKey = key.getBytes();
+//            connection.watch(rawKey);
+//
+//            byte[] rawValue = connection.get(rawKey);
+//            if (rawValue == null) return false;
+//            String valueStr = new String(rawValue);
+//            JSONObject stockData = new JSONObject(valueStr);
+//
+//            int available = stockData.getInt("available");
+//            if (available < quantity) {
+//                connection.unwatch();
+//                return false;
+//            }
+//
+//            stockData.put("available", available - quantity);
+//            stockData.put("reserved", stockData.getInt("reserved") + quantity);
+//
+//            connection.multi(); // Bắt đầu transaction
+//            connection.set(rawKey, stockData.toString().getBytes());
+//            return connection.exec() != null; // Commit
+//        });
+//    }
+
+
 }

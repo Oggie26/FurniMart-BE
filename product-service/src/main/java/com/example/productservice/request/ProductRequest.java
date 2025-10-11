@@ -49,5 +49,6 @@ public class ProductRequest {
     private List<Long> materialIds;
 
     @Enumerated(EnumType.STRING)
-    EnumStatus status;
+    EnumStatus status; 
+
 }

@@ -1,6 +1,7 @@
 package com.example.notificationservice.config;
 
 import com.example.notificationservice.event.AccountPlaceEvent;
+import com.example.notificationservice.event.OrderCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -44,10 +45,27 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
+    public ConsumerFactory<String, OrderCreatedEvent> orderCreatedConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(OrderCreatedEvent.class, false)
+        );
+    }
+
+    @Bean
     public ConcurrentKafkaListenerContainerFactory<String, AccountPlaceEvent> accountKafkaListenerContainerFactory() {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, AccountPlaceEvent>();
 
         factory.setConsumerFactory(accountConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent> orderCreatedKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent>();
+
+        factory.setConsumerFactory(orderCreatedConsumerFactory());
         return factory;
     }
 

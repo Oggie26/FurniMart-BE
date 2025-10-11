@@ -5,9 +5,10 @@ import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
-import com.example.orderservice.event.OrderPlacedEvent;
+import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.AuthClient;
+import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
@@ -40,14 +41,14 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
-    private final OrderDetailRepository orderDetailRepository;
-    private final CartItemRepository cartItemRepository;
+    private final ProductClient productClient;
     private final CartRepository cartRepository;
     private final PaymentRepository paymentRepository;
     private final UserClient userClient;
     private final AuthClient authClient;
     private final StoreClient storeClient;
-    private final KafkaTemplate<String, OrderPlacedEvent> kafkaTemplate;
+    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+
 
     @Override
     @Transactional
@@ -83,7 +84,6 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-
         Payment payment = Payment.builder()
                 .order(order)
                 .paymentMethod(paymentMethod)
@@ -98,20 +98,6 @@ public class OrderServiceImpl implements OrderService {
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
-
-        try {
-            OrderPlacedEvent event = new OrderPlacedEvent(order.getId(), order.getUserId(), order.getTotal());
-            kafkaTemplate.send("order-created-placed", event)
-                    .whenComplete((result, ex) -> {
-                if (ex != null) {
-                } else {
-                    log.info("Successfully sent account creation event for: {}", order.getId());
-                }
-            });
-        } catch (Exception ex) {
-            log.error("Failed to send Kafka event for order: {}", order.getId(), ex);
-        }
-
 
         return mapToResponse(order);
     }
@@ -140,13 +126,43 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
-
         orderRepository.save(order);
 
+        if(status.equals(EnumProcessOrder.PAYMENT)){
+            List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                    .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                            .productColorId(detail.getProductColorId())
+                            .quantity(detail.getQuantity())
+                            .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                            .price(detail.getPrice())
+                            .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                            .build())
+                    .toList();
+
+            OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .email(safeGetUser(order.getUserId()).getEmail())
+                    .fullName(safeGetUser(order.getUserId()).getFullName())
+                    .orderDate(order.getOrderDate())
+                    .totalPrice(order.getTotal())
+                    .orderId(order.getId())
+                    .addressLine(getAddress(order.getAddressId()))
+                    .paymentMethod(order.getPayment().getPaymentMethod())
+                    .items(orderItems)
+                    .build();
+            try {
+                kafkaTemplate.send("order-created-topic", event)
+                        .whenComplete((result, ex) -> {
+                            if (ex != null) {
+                            } else {
+                                log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                            }
+                        });
+            } catch (Exception e) {
+                log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+            }
+        }
         return mapToResponse(order);
     }
-
-
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
@@ -351,4 +367,20 @@ public class OrderServiceImpl implements OrderService {
         }
         return response.getData().getId();
     }
+
+    private String getAddress(Long addressId) {
+        if (addressId == null) return null;
+        ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
+        if (resp == null || resp.getData() == null) return null;
+        return resp.getData().getAddressLine();
+    }
+
+    private ProductColorResponse getProductColorResponse(String id){
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData();
+    }
+
 }

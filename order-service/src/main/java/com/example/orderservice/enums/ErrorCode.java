@@ -23,6 +23,7 @@ public enum ErrorCode {
     CART_NOT_FOUND(1204, "Cart not found", HttpStatus.NOT_FOUND),
     ADDRESS_NOT_FOUND(1205, "Address not found", HttpStatus.NOT_FOUND),
     STORE_NOT_FOUND(1206, "Store not found", HttpStatus.NOT_FOUND),
+
     
     // Voucher related errors
     VOUCHER_NOT_FOUND(1207, "Voucher not found", HttpStatus.NOT_FOUND),
@@ -33,6 +34,8 @@ public enum ErrorCode {
     COLOR_NOT_FOUND(1212, "Color not found", HttpStatus.NOT_FOUND),
     CART_EMPTY(1213, "Cart is empty", HttpStatus.BAD_REQUEST),
     NOT_IMPLEMENTED(1214, "Not implemented", HttpStatus.BAD_REQUEST),
+    CART_ITEM_NOT_FOUND(1215, "Cart item not found", HttpStatus.NOT_FOUND),
+    OUT_OF_STOCK(1216, "Out of stock ", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

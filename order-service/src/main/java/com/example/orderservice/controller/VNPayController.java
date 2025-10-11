@@ -1,21 +1,20 @@
 package com.example.orderservice.controller;
 
+import com.example.orderservice.event.OrderCreatedEvent;
+import com.example.orderservice.feign.UserClient;
+import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.util.VNPayUtils;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -23,6 +22,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class VNPayController {
+
+    private final OrderRepository orderRepository;
+    private final UserClient userClient;
 
     @Value("${vnpay.hashSecret}")
     private String hashSecret;
@@ -40,11 +42,9 @@ public class VNPayController {
     public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
                             HttpServletResponse response) throws IOException {
 
-        // Lấy và loại bỏ chữ ký từ params
         String secureHash = vnpParams.remove("vnp_SecureHash");
         vnpParams.remove("vnp_SecureHashType");
 
-        // Tính chữ ký lại
         String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
 
         String frontendUrl = "http://localhost:5173/payment-success";
@@ -62,4 +62,6 @@ public class VNPayController {
             response.sendRedirect(frontendUrl + "?status=invalid");
         }
     }
+
+
 }

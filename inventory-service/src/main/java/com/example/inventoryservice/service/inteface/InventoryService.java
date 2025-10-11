@@ -18,9 +18,9 @@ public interface InventoryService {
 
     List<InventoryResponse> getInventoryByProduct(String productColorId);
 
-    InventoryResponse increaseStock(String productId, String locationItemId, int amount);
+    InventoryResponse increaseStock(String productColorId, String locationItemId, int amount);
 
-    InventoryResponse decreaseStock(String productId, String locationItemId, int amount);
+    InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount);
 
     boolean hasSufficientStock(String productColorId, String locationItemId, int requiredQty);
 
@@ -35,5 +35,8 @@ public interface InventoryService {
     List<InventoryTransactionResponse> getAllTransactions();
 
     List<InventoryResponse> getAllInventory();
+
+    int getTotalStockByProductColorId(String productColorId);
+
 }
 

@@ -123,6 +123,13 @@ public class WarehouseServiceImpl implements WarehouseService {
     }
 
     @Override
+    public WarehouseResponse getWarehouseByStoreId(String storeId) {
+        Warehouse warehouse = warehouseRepository.findByStoreId(storeId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        return toWarehouseResponse(warehouse);
+    }
+
+    @Override
     public PageResponse<WarehouseResponse> searchWarehouse(String request, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Warehouse> warehousesPage = warehouseRepository.searchByKeywordNative(request, pageable);
@@ -147,6 +154,7 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .capacity(warehouse.getCapacity())
                 .zone(warehouse.getZones())
                 .status(warehouse.getStatus())
+                .zone(warehouse.getZones())
                 .build();
     }
 

@@ -175,6 +175,7 @@ public class ProductServiceImpl implements ProductService {
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .code(product.getCode())
+                .slug(product.getSlug())
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory() != null ? product.getCategory().getCategoryName() : null)
                 .thumbnailImage(product.getThumbnailImage())
@@ -205,6 +206,7 @@ public class ProductServiceImpl implements ProductService {
                 .color(ColorResponse.builder()
                         .id(productColor.getColor().getId())
                         .colorName(productColor.getColor().getColorName())
+                        .hexCode(productColor.getColor().getHexCode())
                         .build())
                 .images(productColor.getImages() != null ?
                         productColor.getImages().stream()

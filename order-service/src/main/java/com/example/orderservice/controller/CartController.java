@@ -81,4 +81,15 @@ public class CartController {
                 .message("Xoá sản phẩm khỏi giỏ hàng thành công")
                 .build();
     }
+
+    @DeleteMapping("")
+    @Operation(summary = "Dọn sạch giỏ hàng")
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<Void> clearCart() {
+        cartService.clearCart();
+        return ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Dọn giỏ hàng thành công")
+                .build();
+    }
 }
