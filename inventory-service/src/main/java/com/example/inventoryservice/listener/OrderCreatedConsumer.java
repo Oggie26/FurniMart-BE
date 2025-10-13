@@ -1,5 +1,6 @@
 package com.example.inventoryservice.listener;
 import com.example.inventoryservice.entity.Inventory;
+import com.example.inventoryservice.event.OrderCreatedEvent;
 import com.example.inventoryservice.repository.InventoryRepository;
 import com.example.inventoryservice.service.InventoryServiceImpl;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class OrderCreatedConsumer {
             groupId = "inventory-group",
             containerFactory = "inventoryCreatedKafkaListenerContainerFactory"
     )
-    public void handleOrderCreated(com.example.notificationservice.event.OrderCreatedEvent event) {
+    public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
 
         event.getItems().forEach(item -> {
