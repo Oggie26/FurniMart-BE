@@ -3,6 +3,7 @@ package com.example.userservice.service;
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
 import com.example.userservice.entity.UserStore;
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
@@ -25,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -333,6 +335,129 @@ public class UserServiceImpl implements UserService {
                 .role(user.getAccount() != null ? user.getAccount().getRole() : null)
                 .storeIds(storeIds)
                 .build();
+    }
+    
+    @Override
+    public List<UserResponse> getAllEmployees() {
+        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.SELLER, EnumRole.BRANCH_MANAGER, EnumRole.DELIVERER, EnumRole.STAFF);
+        List<User> employees = userRepository.findEmployeesByRoles(employeeRoles);
+        return employees.stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<UserResponse> getEmployeesByRole(EnumRole role) {
+        // Only allow employee roles
+        if (!isEmployeeRole(role)) {
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
+        List<User> employees = userRepository.findEmployeesByRole(role);
+        return employees.stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<UserResponse> getEmployeesByStoreId(String storeId) {
+        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.SELLER, EnumRole.BRANCH_MANAGER, EnumRole.DELIVERER, EnumRole.STAFF);
+        List<User> employees = userRepository.findEmployeesByStoreIdAndRoles(storeId, employeeRoles);
+        return employees.stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<UserResponse> getEmployeesByStoreIdAndRole(String storeId, EnumRole role) {
+        // Only allow employee roles
+        if (!isEmployeeRole(role)) {
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
+        List<User> employees = userRepository.findEmployeesByStoreIdAndRole(storeId, role);
+        return employees.stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public PageResponse<UserResponse> getEmployeesWithPagination(int page, int size) {
+        log.info("Fetching employees with pagination - page: {}, size: {}", page, size);
+        
+        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.SELLER, EnumRole.BRANCH_MANAGER, EnumRole.DELIVERER, EnumRole.STAFF);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<User> employeePage = userRepository.findEmployeesByRoles(employeeRoles, pageable);
+        
+        List<UserResponse> employeeResponses = employeePage.getContent().stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+
+        return PageResponse.<UserResponse>builder()
+                .content(employeeResponses)
+                .totalElements(employeePage.getTotalElements())
+                .totalPages(employeePage.getTotalPages())
+                .size(employeePage.getSize())
+                .number(employeePage.getNumber())
+                .first(employeePage.isFirst())
+                .last(employeePage.isLast())
+                .build();
+    }
+    
+    @Override
+    public PageResponse<UserResponse> getEmployeesByRoleWithPagination(EnumRole role, int page, int size) {
+        log.info("Fetching employees by role {} with pagination - page: {}, size: {}", role, page, size);
+        
+        // Only allow employee roles
+        if (!isEmployeeRole(role)) {
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<User> employeePage = userRepository.findEmployeesByRole(role, pageable);
+        
+        List<UserResponse> employeeResponses = employeePage.getContent().stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+
+        return PageResponse.<UserResponse>builder()
+                .content(employeeResponses)
+                .totalElements(employeePage.getTotalElements())
+                .totalPages(employeePage.getTotalPages())
+                .size(employeePage.getSize())
+                .number(employeePage.getNumber())
+                .first(employeePage.isFirst())
+                .last(employeePage.isLast())
+                .build();
+    }
+    
+    @Override
+    @Transactional
+    public UserResponse updateUserRole(String userId, EnumRole newRole) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Prevent updating customer roles
+        if (user.getAccount().getRole() == EnumRole.CUSTOMER) {
+            throw new AppException(ErrorCode.CANNOT_UPDATE_CUSTOMER_ROLE);
+        }
+        
+        // Only allow updating to employee roles
+        if (!isEmployeeRole(newRole)) {
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
+        user.getAccount().setRole(newRole);
+        accountRepository.save(user.getAccount());
+        
+        return toUserResponse(user);
+    }
+    
+    private boolean isEmployeeRole(EnumRole role) {
+        return role == EnumRole.SELLER || 
+               role == EnumRole.BRANCH_MANAGER || 
+               role == EnumRole.DELIVERER || 
+               role == EnumRole.STAFF;
     }
 }
 
