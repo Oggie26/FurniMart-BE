@@ -1,5 +1,4 @@
 package com.example.inventoryservice.listener;
-
 import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.repository.InventoryRepository;
 import com.example.inventoryservice.service.InventoryServiceImpl;

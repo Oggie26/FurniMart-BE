@@ -1,6 +1,6 @@
-package com.example.notificationservice.event;
+package com.example.inventoryservice.event;
 
-import com.example.notificationservice.enums.PaymentMethod;
+import com.example.inventoryservice.enums.PaymentMethod;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
