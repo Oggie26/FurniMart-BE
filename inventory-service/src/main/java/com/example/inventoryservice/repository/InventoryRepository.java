@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface InventoryRepository extends JpaRepository<Inventory,String> {
 
     List<Inventory> findAllByProductColorId(String productColorId);
+    Optional<Inventory> findByProductColorId(String productColorId);
 
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i WHERE i.productColorId = :productColorId")
     int getTotalQuantityByProductColorId(String productColorId);

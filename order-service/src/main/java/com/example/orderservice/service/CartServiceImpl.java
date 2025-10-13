@@ -138,8 +138,6 @@ public class CartServiceImpl implements CartService {
                 .build();
     }
 
-
-
     @Override
     @Transactional
     public CartResponse getCart() {

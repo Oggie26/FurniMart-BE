@@ -1,6 +1,9 @@
 package com.example.orderservice.controller;
 
+import com.example.orderservice.entity.Order;
+import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.event.OrderCreatedEvent;
+import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.service.VNPayService;
@@ -54,6 +57,8 @@ public class VNPayController {
             String orderId = vnpParams.get("vnp_TxnRef");
 
             if ("00".equals(responseCode)) {
+                Order order = orderRepository.findById(Long.parseLong(orderId))
+                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
                 response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
             } else {
                 response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
