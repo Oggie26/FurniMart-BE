@@ -1,5 +1,6 @@
 package com.example.userservice.service.inteface;
 
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.ChangePassword;
@@ -41,4 +42,20 @@ public interface UserService {
     UserResponse getUserByPhone(String phone);
 
     UserResponse getUserByAccountId(String accountId);
+    
+    // Employee management methods (Admin only)
+    List<UserResponse> getAllEmployees();
+    
+    List<UserResponse> getEmployeesByRole(EnumRole role);
+    
+    List<UserResponse> getEmployeesByStoreId(String storeId);
+    
+    List<UserResponse> getEmployeesByStoreIdAndRole(String storeId, EnumRole role);
+    
+    PageResponse<UserResponse> getEmployeesWithPagination(int page, int size);
+    
+    PageResponse<UserResponse> getEmployeesByRoleWithPagination(EnumRole role, int page, int size);
+    
+    // Role update method (Admin only)
+    UserResponse updateUserRole(String userId, EnumRole newRole);
 }

@@ -51,6 +51,10 @@ public enum ErrorCode {
     TRANSACTION_NOT_FOUND(1226, "Transaction not found", HttpStatus.NOT_FOUND),
     TRANSACTION_CODE_EXISTS(1227, "Transaction code already exists", HttpStatus.BAD_REQUEST),
     ORDER_NOT_FOUND(1228, "Order not found", HttpStatus.NOT_FOUND),
+    
+    // Employee management errors
+    INVALID_ROLE(1229, "Invalid role for employee operations", HttpStatus.BAD_REQUEST),
+    CANNOT_UPDATE_CUSTOMER_ROLE(1230, "Cannot update customer role", HttpStatus.FORBIDDEN),
 
     ;
 
