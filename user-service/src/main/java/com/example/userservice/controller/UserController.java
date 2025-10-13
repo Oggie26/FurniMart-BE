@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,8 +25,9 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    @Operation(summary = "Create new user")
+    @Operation(summary = "Create new user (Admin only for employee accounts)")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -35,7 +37,8 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update user information")
+    @Operation(summary = "Update user information (Admin only for employee accounts)")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> updateUser(@PathVariable String id, @Valid @RequestBody UserUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -55,7 +58,8 @@ public class UserController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all users")
+    @Operation(summary = "Get all users (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<UserResponse>> getAllUsers() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -184,7 +188,8 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Soft delete user")
+    @Operation(summary = "Soft delete user (Admin only)")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ApiResponse.<Void>builder()
