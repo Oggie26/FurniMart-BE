@@ -14,6 +14,7 @@ import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
+import com.example.orderservice.service.inteface.WarrantyService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,7 @@ public class OrderServiceImpl implements OrderService {
     private final AuthClient authClient;
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private final WarrantyService warrantyService;
 
 
     @Override
