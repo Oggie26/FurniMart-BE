@@ -58,4 +58,10 @@ public class Order extends AbstractEntity {
 
     @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
     private List<Voucher> vouchers;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Warranty> warranties;
+
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+    private DeliveryConfirmation deliveryConfirmation;
 }

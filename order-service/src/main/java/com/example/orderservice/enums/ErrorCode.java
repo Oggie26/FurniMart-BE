@@ -35,7 +35,17 @@ public enum ErrorCode {
     CART_EMPTY(1213, "Cart is empty", HttpStatus.BAD_REQUEST),
     NOT_IMPLEMENTED(1214, "Not implemented", HttpStatus.BAD_REQUEST),
     CART_ITEM_NOT_FOUND(1215, "Cart item not found", HttpStatus.NOT_FOUND),
-    OUT_OF_STOCK(1216, "Out of stock ", HttpStatus.BAD_REQUEST)
+    OUT_OF_STOCK(1216, "Out of stock ", HttpStatus.BAD_REQUEST),
+    
+    // Warranty related errors
+    WARRANTY_NOT_FOUND(1217, "Warranty not found", HttpStatus.NOT_FOUND),
+    WARRANTY_CANNOT_BE_CLAIMED(1218, "Warranty cannot be claimed", HttpStatus.BAD_REQUEST),
+    WARRANTY_CLAIM_NOT_FOUND(1219, "Warranty claim not found", HttpStatus.NOT_FOUND),
+    
+    // Delivery confirmation related errors
+    DELIVERY_CONFIRMATION_NOT_FOUND(1220, "Delivery confirmation not found", HttpStatus.NOT_FOUND),
+    DELIVERY_CONFIRMATION_ALREADY_EXISTS(1221, "Delivery confirmation already exists", HttpStatus.BAD_REQUEST),
+    QR_CODE_ALREADY_SCANNED(1222, "QR code already scanned", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
