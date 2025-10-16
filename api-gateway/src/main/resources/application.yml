@@ -27,7 +27,7 @@ spring:
                     - id: product-service
                       uri: lb://product-service
                       predicates:
-                        - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
+                        - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
                       filters: []
 
                     # NOTIFICATION SERVICE

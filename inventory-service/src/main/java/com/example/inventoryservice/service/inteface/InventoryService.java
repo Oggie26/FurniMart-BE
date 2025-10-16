@@ -16,15 +16,26 @@ public interface InventoryService {
             int maxQuantity
     );
 
-    List<InventoryResponse> getInventoryByProduct(String productColorId);
-
     InventoryResponse increaseStock(String productColorId, String locationItemId, int amount, String warehouseId);
 
     InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount, String warehouseId);
 
+    void transferInventory(String productColorId, String locationItemId, int quantity, String warehouse1_Id, String warehouse2_Id);
+    InventoryResponse reserveStock(String productColorId, int amount);
+
+
+    InventoryResponse releaseStock(String productColorId, int amount);
+
     boolean hasSufficientStock(String productColorId, String locationItemId, int requiredQty);
 
     boolean hasSufficientGlobalStock(String productColorId, int requiredQty);
+
+    int getTotalStockByProductColorId(String productColorId);
+
+
+    int getTotalAvailableStockByProductColorId(String productColorId);
+
+    List<InventoryResponse> getInventoryByProduct(String productColorId);
 
     List<InventoryTransactionResponse> getTransactionHistory(String productColorId, String zoneId);
 
@@ -36,10 +47,5 @@ public interface InventoryService {
 
     List<InventoryResponse> getAllInventory();
 
-    int getTotalStockByProductColorId(String productColorId);
-
     InventoryResponse getInventoryById(String inventoryId);
-
-    void transferInventory(String productColorId, String locationItemId, int quantity, String warehouse1_Id, String warehouse2_Id);
 }
-

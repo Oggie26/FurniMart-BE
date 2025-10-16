@@ -15,8 +15,13 @@ public interface InventoryRepository extends JpaRepository<Inventory,String> {
     List<Inventory> findAllByProductColorId(String productColorId);
     Optional<Inventory> findByProductColorId(String productColorId);
 
+    // Tính tổng Tồn kho Vật lý (giữ nguyên)
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i WHERE i.productColorId = :productColorId")
     int getTotalQuantityByProductColorId(String productColorId);
+
+    // BỔ SUNG: Tính tổng Tồn kho Dự trữ (Reserved Stock)
+    @Query("SELECT COALESCE(SUM(i.reservedQuantity), 0) FROM Inventory i WHERE i.productColorId = :productColorId")
+    int getTotalReservedQuantityByProductColorId(@Param("productColorId") String productColorId);
 
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM Inventory i " +
             "JOIN i.locationItem li " +
@@ -33,7 +38,14 @@ public interface InventoryRepository extends JpaRepository<Inventory,String> {
             "JOIN i.locationItem li " +
             "WHERE li.zone.id = :zoneId")
     Integer sumQuantityByLocationItem_Zone_ZoneId(@Param("zoneId") String zoneId);
+
+    // Giữ nguyên: Tìm Inventory theo ProductColorId và LocationItemId
     Optional<Inventory> findByProductColorIdAndLocationItemId(String productColorId, String locationItemId);
+
+    // Đã có: Tìm Inventory theo LocationItemId và ProductColorId (dùng trong decreaseStock)
+    Optional<Inventory> findByLocationItem_IdAndProductColorId(String locationItemId, String productColorId);
+
+    // Cần thay đổi query này để SUM đúng trường quantity khi check global
     @Query("SELECT SUM(i.quantity) FROM Inventory i WHERE i.productColorId = :productColorId")
     Integer sumQuantityByProductId(@Param("productColorId") String productId);
 
@@ -41,7 +53,6 @@ public interface InventoryRepository extends JpaRepository<Inventory,String> {
     int sumQuantityByZoneId(@Param("zoneId") String zoneId);
 
 
-    Optional<Inventory> findByLocationItem_IdAndProductColorId(String locationItemId, String productColorId);
     @Query(value = """
             SELECT * FROM inventory i
             WHERE i.status = 'ACTIVE'

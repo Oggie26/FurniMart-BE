@@ -15,6 +15,8 @@ public class InventoryResponse {
     private String productColorId;
     private String locationItemId;
     private int quantity;
+    private int available_quantity;
+    private int reserved_quantity;
     private int min_quantity;
     private int max_quantity;
     private EnumStatus status;

@@ -29,6 +29,8 @@ public class Inventory extends AbstractEntity {
     @Column(nullable = false)
     private int maxQuantity;
 
+    private int reservedQuantity = 0;
+
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
 

@@ -61,7 +61,6 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         Integer currentZoneTotal = inventoryRepository.sumQuantityByZoneId(zone.getId());
-        if (currentZoneTotal == null) currentZoneTotal = 0;
         if (currentZoneTotal + quantity > zone.getQuantity()) {
             throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
         }
@@ -79,6 +78,9 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setQuantity(quantity);
         inventory.setMinQuantity(minQuantity);
         inventory.setMaxQuantity(maxQuantity);
+        if (inventory.getId() == null) {
+            inventory.setReservedQuantity(0);
+        }
         inventory.setStatus(com.example.inventoryservice.enums.EnumStatus.ACTIVE);
 
         inventoryRepository.save(inventory);
@@ -152,6 +154,13 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
 
+        int reserved = inventory.getReservedQuantity();
+        if (reserved >= amount) {
+            inventory.setReservedQuantity(reserved - amount);
+        } else if (reserved > 0) {
+            inventory.setReservedQuantity(0);
+        }
+
         int newQuantity = inventory.getQuantity() - amount;
         if (newQuantity < inventory.getMinQuantity()) {
             throw new AppException(ErrorCode.BELOW_MIN_QUANTITY);
@@ -165,8 +174,68 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryTransaction transaction = InventoryTransaction.builder()
                 .quantity(amount)
                 .dateLocal(LocalDateTime.now())
-                .note("Decrease stock for product " + productColorId)
-                .type(EnumTypes.OUT)
+                .note("Decrease stock for product " + productColorId + " (Fulfillment)")
+                .type(EnumTypes.OUT) // Loại OUT: Xuất kho thực tế
+                .productColorId(productColorId)
+                .userId(getUserId())
+                .warehouse(warehouse)
+                .build();
+        transactionRepository.save(transaction);
+
+        return mapToResponse(inventory);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse reserveStock(String productColorId, int amount) {
+        if (!hasSufficientGlobalStock(productColorId, amount)) {
+            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
+        }
+
+        Inventory inventory = inventoryRepository.findAllByProductColorId(productColorId).stream()
+                .filter(i -> (i.getQuantity() - i.getReservedQuantity()) >= amount)
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.INSUFFICIENT_STOCK));
+
+        inventory.setReservedQuantity(inventory.getReservedQuantity() + amount);
+        inventoryRepository.save(inventory);
+
+        Warehouse warehouse = inventory.getLocationItem() != null ?
+                inventory.getLocationItem().getZone().getWarehouse() : null;
+
+        InventoryTransaction transaction = InventoryTransaction.builder()
+                .quantity(amount)
+                .dateLocal(LocalDateTime.now())
+                .note("Stock reserved for order of product " + productColorId)
+                .type(EnumTypes.RESERVE)
+                .productColorId(productColorId)
+                .userId(getUserId())
+                .warehouse(warehouse)
+                .build();
+        transactionRepository.save(transaction);
+
+        return mapToResponse(inventory);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse releaseStock(String productColorId, int amount) {
+        Inventory inventory = inventoryRepository.findAllByProductColorId(productColorId).stream()
+                .filter(i -> i.getReservedQuantity() >= amount)
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+
+        inventory.setReservedQuantity(inventory.getReservedQuantity() - amount);
+        inventoryRepository.save(inventory);
+
+        Warehouse warehouse = inventory.getLocationItem() != null ?
+                inventory.getLocationItem().getZone().getWarehouse() : null;
+
+        InventoryTransaction transaction = InventoryTransaction.builder()
+                .quantity(amount)
+                .dateLocal(LocalDateTime.now())
+                .note("Reserved stock released for order cancellation of product " + productColorId)
+                .type(EnumTypes.RELEASE) // Loại RELEASE
                 .productColorId(productColorId)
                 .userId(getUserId())
                 .warehouse(warehouse)
@@ -179,14 +248,17 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public boolean hasSufficientStock(String productId, String locationItemId, int requiredQty) {
         return inventoryRepository.findByProductColorIdAndLocationItemId(productId, locationItemId)
-                .map(inventory -> inventory.getQuantity() >= requiredQty)
+                .map(inventory -> (inventory.getQuantity() - inventory.getReservedQuantity()) >= requiredQty)
                 .orElse(false);
     }
 
     @Override
     public boolean hasSufficientGlobalStock(String productId, int requiredQty) {
-        Integer total = inventoryRepository.sumQuantityByProductId(productId);
-        return total != null && total >= requiredQty;
+        int totalPhysical = inventoryRepository.getTotalQuantityByProductColorId(productId);
+        int totalReserved = inventoryRepository.getTotalReservedQuantityByProductColorId(productId);
+
+        int availableStock = totalPhysical - totalReserved;
+        return availableStock >= requiredQty;
     }
 
     @Override
@@ -211,7 +283,7 @@ public class InventoryServiceImpl implements InventoryService {
     public List<InventoryResponse> getAllInventory() {
         return inventoryRepository.findAll()
                 .stream()
-                .filter(inventory -> inventory.getQuantity() > 0)
+                .filter(inventory -> (inventory.getQuantity() - inventory.getReservedQuantity()) > 0)
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -219,6 +291,13 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
         return inventoryRepository.getTotalQuantityByProductColorId(productColorId);
+    }
+
+    @Override
+    public int getTotalAvailableStockByProductColorId(String productColorId) {
+        int totalPhysical = inventoryRepository.getTotalQuantityByProductColorId(productColorId);
+        int totalReserved = inventoryRepository.getTotalReservedQuantityByProductColorId(productColorId);
+        return totalPhysical - totalReserved;
     }
 
     @Override
@@ -261,11 +340,16 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private InventoryResponse mapToResponse(Inventory inventory) {
+        // [FIX] Bổ sung reservedQuantity và availableQuantity
+        int availableQuantity = inventory.getQuantity() - inventory.getReservedQuantity();
+
         return InventoryResponse.builder()
                 .id(inventory.getId())
                 .productColorId(inventory.getProductColorId())
                 .locationItemId(inventory.getLocationItem() != null ? inventory.getLocationItem().getId() : null)
                 .quantity(inventory.getQuantity())
+                .reserved_quantity(inventory.getReservedQuantity())
+                .available_quantity(availableQuantity)
                 .min_quantity(inventory.getMinQuantity())
                 .max_quantity(inventory.getMaxQuantity())
                 .status(inventory.getStatus())
@@ -320,33 +404,4 @@ public class InventoryServiceImpl implements InventoryService {
         }
         return userResponse.getData().getId();
     }
-
-//    public boolean reserveStock(String productColorId, int quantity) {
-//        String key = "stock:" + productColorId;
-//
-//        return redisTemplate.execute((RedisCallback<Boolean>) connection -> {
-//            byte[] rawKey = key.getBytes();
-//            connection.watch(rawKey);
-//
-//            byte[] rawValue = connection.get(rawKey);
-//            if (rawValue == null) return false;
-//            String valueStr = new String(rawValue);
-//            JSONObject stockData = new JSONObject(valueStr);
-//
-//            int available = stockData.getInt("available");
-//            if (available < quantity) {
-//                connection.unwatch();
-//                return false;
-//            }
-//
-//            stockData.put("available", available - quantity);
-//            stockData.put("reserved", stockData.getInt("reserved") + quantity);
-//
-//            connection.multi(); // Bắt đầu transaction
-//            connection.set(rawKey, stockData.toString().getBytes());
-//            return connection.exec() != null; // Commit
-//        });
-//    }
-
-
 }
