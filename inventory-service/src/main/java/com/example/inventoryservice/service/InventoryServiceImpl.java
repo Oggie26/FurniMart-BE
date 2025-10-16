@@ -107,7 +107,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse increaseStock(String productColorId, String locationItemId, int amount) {
+    public InventoryResponse increaseStock(String productColorId, String locationItemId, int amount, String warehouseId ) {
         Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(locationItemId, productColorId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
@@ -144,7 +144,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount) {
+    public InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount, String warehouseId) {
         Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(productColorId, locationItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
@@ -219,6 +219,24 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
         return inventoryRepository.getTotalQuantityByProductColorId(productColorId);
+    }
+
+    @Override
+    public InventoryResponse getInventoryById(String inventoryId) {
+        Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+        return mapToResponse(inventory);
+    }
+
+    @Override
+    public void transferInventory(String productColorId, String locationItemId, int quantity, String warehouse1_Id, String warehouse2_Id) {
+        Warehouse warehouse1 = warehouseRepository.findByIdAndIsDeletedFalse(warehouse1_Id)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        Warehouse warehouse2 = warehouseRepository.findByIdAndIsDeletedFalse(warehouse2_Id)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        decreaseStock(productColorId, locationItemId, quantity, warehouse1_Id);
+
+        increaseStock(productColorId, locationItemId, quantity, warehouse2_Id);
     }
 
     @Override
