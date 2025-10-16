@@ -64,13 +64,14 @@ public class InventoryController {
     }
 
     @Operation(summary = "Tăng tồn kho")
-    @PatchMapping("/{productColorId}/{locationItemId}/increase")
+    @PatchMapping("/{warehouseId}/{productColorId}/{locationItemId}/increase")
     public ResponseEntity<ApiResponse<InventoryResponse>> increaseStock(
+            @PathVariable @NotBlank(message = "Warehouse is required") String warehouseId,
             @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
             @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
         try {
-            InventoryResponse response = inventoryService.increaseStock(productColorId, locationItemId, amount);
+            InventoryResponse response = inventoryService.increaseStock(productColorId, locationItemId, amount, warehouseId);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Tăng tồn kho thành công")
@@ -96,13 +97,14 @@ public class InventoryController {
     }
 
     @Operation(summary = "Giảm tồn kho")
-    @PatchMapping("/{productColorId}/{locationItemId}/decrease")
+    @PatchMapping("/{warehouseId}/{productColorId}/{locationItemId}/decrease")
     public ResponseEntity<ApiResponse<InventoryResponse>> decreaseStock(
+            @PathVariable @NotBlank(message = "Warehouse is required") String warehouseId,
             @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
             @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
             @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
         try {
-            InventoryResponse response = inventoryService.decreaseStock(productColorId, locationItemId, amount);
+            InventoryResponse response = inventoryService.decreaseStock(productColorId, locationItemId, amount,  warehouseId);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Giảm tồn kho thành công")
