@@ -33,15 +33,16 @@ public class OrderCreatedConsumer {
         event.getItems().forEach(item -> {
             log.info("🔹 Processing productColorId={} quantity={}", item.getProductColorId(), item.getQuantity());
             try {
-                Inventory inventory = inventoryRepository.findByProductColorId(item.getProductColorId())
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cho productColorId=" + item.getProductColorId()));
-                String warehouseId = getStoreById(event.getStoreId());
-                inventoryService.decreaseStock(
-                        item.getProductColorId(),
-                        inventory.getLocationItem().getId(),
-                        item.getQuantity(),
-                        warehouseId
-                );
+//                Inventory inventory = inventoryRepository.findByProductColorId(item.getProductColorId())
+//                        .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cho productColorId=" + item.getProductColorId()));
+//                String warehouseId = getStoreById(event.getStoreId());
+//                inventoryService.decreaseStock(
+//                        item.getProductColorId(),
+//                        inventory.getLocationItem().getId(),
+//                        item.getQuantity(),
+//                        warehouseId
+//                );
+                inventoryService.reserveStock(item.getProductColorId(), item.getQuantity());
 
                 log.info("✅ Decreased stock for productColorId={} by {}", item.getProductColorId(), item.getQuantity());
             } catch (Exception e) {

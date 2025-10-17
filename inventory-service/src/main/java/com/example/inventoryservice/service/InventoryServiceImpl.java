@@ -175,7 +175,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .quantity(amount)
                 .dateLocal(LocalDateTime.now())
                 .note("Decrease stock for product " + productColorId + " (Fulfillment)")
-                .type(EnumTypes.OUT) // Loại OUT: Xuất kho thực tế
+                .type(EnumTypes.OUT)
                 .productColorId(productColorId)
                 .userId(getUserId())
                 .warehouse(warehouse)
@@ -340,7 +340,6 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private InventoryResponse mapToResponse(Inventory inventory) {
-        // [FIX] Bổ sung reservedQuantity và availableQuantity
         int availableQuantity = inventory.getQuantity() - inventory.getReservedQuantity();
 
         return InventoryResponse.builder()
