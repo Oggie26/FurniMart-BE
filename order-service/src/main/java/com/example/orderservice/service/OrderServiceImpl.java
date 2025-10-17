@@ -49,8 +49,7 @@ public class OrderServiceImpl implements OrderService {
     private final AuthClient authClient;
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
-    private final WarrantyService warrantyService;
-
+    private final AssignOrderServiceImpl assignOrderService;
 
     @Override
     @Transactional
@@ -129,7 +128,7 @@ public class OrderServiceImpl implements OrderService {
         }
         order.getProcessOrders().add(process);
         orderRepository.save(order);
-
+        assignOrderService.assignOrderToStore(orderId);
         if(status.equals(EnumProcessOrder.PAYMENT)){
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
@@ -147,10 +146,12 @@ public class OrderServiceImpl implements OrderService {
                     .orderDate(order.getOrderDate())
                     .totalPrice(order.getTotal())
                     .orderId(order.getId())
+                    .storeId(order.getStoreId())
                     .addressLine(getAddress(order.getAddressId()))
                     .paymentMethod(order.getPayment().getPaymentMethod())
                     .items(orderItems)
                     .build();
+
             try {
                 kafkaTemplate.send("order-created-topic", event)
                         .whenComplete((result, ex) -> {

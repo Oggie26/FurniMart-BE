@@ -14,7 +14,6 @@ import java.util.Optional;
 public interface LocationItemRepository extends JpaRepository<LocationItem, String> {
     Optional<LocationItem> findByIdAndIsDeletedFalse(String locationItemId);
     Optional<LocationItem> findFirstByZone_Warehouse_Id(String warehouseId);
-    Optional<LocationItem> findByProductColorId(String productColorId);
     List<LocationItem> findByZoneIdAndIsDeletedFalse(String zoneId);
     Optional<LocationItem> findByZoneIdAndRowLabelAndColumnNumberAndIsDeletedFalse(
             String zoneId,

@@ -22,6 +22,7 @@ public class OrderCreatedEvent {
     private Double totalPrice;
     private String addressLine;
     private List<OrderItem> items;
+    private String storeId;
     private PaymentMethod paymentMethod;
 
     @Data

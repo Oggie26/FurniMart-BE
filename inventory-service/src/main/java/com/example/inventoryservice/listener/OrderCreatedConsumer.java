@@ -4,8 +4,11 @@ import com.example.inventoryservice.entity.LocationItem;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.event.OrderCreatedEvent;
 import com.example.inventoryservice.exception.AppException;
+import com.example.inventoryservice.feign.StoreClient;
 import com.example.inventoryservice.repository.InventoryRepository;
 import com.example.inventoryservice.repository.LocationItemRepository;
+import com.example.inventoryservice.response.ApiResponse;
+import com.example.inventoryservice.response.StoreResponse;
 import com.example.inventoryservice.service.InventoryServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,7 @@ public class OrderCreatedConsumer {
 
     private final InventoryServiceImpl inventoryService;
     private final InventoryRepository inventoryRepository;
+    private final StoreClient storeClient;
     private final LocationItemRepository locationItemRepository;
 
     @KafkaListener(
@@ -34,14 +38,12 @@ public class OrderCreatedConsumer {
             try {
                 Inventory inventory = inventoryRepository.findByProductColorId(item.getProductColorId())
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cho productColorId=" + item.getProductColorId()));
-                LocationItem locationItem = locationItemRepository.findByProductColorId(item.getProductColorId())
-                                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
-
+                String warehouseId = getStoreById(event.getStoreId());
                 inventoryService.decreaseStock(
                         item.getProductColorId(),
                         inventory.getLocationItem().getId(),
                         item.getQuantity(),
-                        locationItem.getZone().getWarehouse().getId()
+                        warehouseId
                 );
 
                 log.info("✅ Decreased stock for productColorId={} by {}", item.getProductColorId(), item.getQuantity());
@@ -49,5 +51,13 @@ public class OrderCreatedConsumer {
                 log.error("❌ Error decreasing stock for productColorId={} : {}", item.getProductColorId(), e.getMessage(), e);
             }
         });
+    }
+
+    private String getStoreById(String storeId) {
+        ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        }
+        return response.getData().getId();
     }
 }
