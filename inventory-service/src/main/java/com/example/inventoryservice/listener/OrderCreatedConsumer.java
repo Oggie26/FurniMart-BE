@@ -23,7 +23,6 @@ public class OrderCreatedConsumer {
     private final InventoryServiceImpl inventoryService;
     private final InventoryRepository inventoryRepository;
     private final StoreClient storeClient;
-    private final LocationItemRepository locationItemRepository;
 
     @KafkaListener(
             topics = "order-created-topic",
