@@ -1,12 +1,10 @@
 package com.example.inventoryservice.listener;
 import com.example.inventoryservice.entity.Inventory;
-import com.example.inventoryservice.entity.LocationItem;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.event.OrderCreatedEvent;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.StoreClient;
 import com.example.inventoryservice.repository.InventoryRepository;
-import com.example.inventoryservice.repository.LocationItemRepository;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.StoreResponse;
 import com.example.inventoryservice.service.InventoryServiceImpl;
@@ -27,7 +25,7 @@ public class OrderCreatedConsumer {
     @KafkaListener(
             topics = "order-created-topic",
             groupId = "inventory-group",
-            containerFactory = "inventoryCreatedKafkaListenerContainerFactory"
+            containerFactory = "orderCreatedKafkaListenerContainerFactory"
     )
     public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
