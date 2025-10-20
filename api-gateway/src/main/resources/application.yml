@@ -41,7 +41,7 @@ spring:
                     - id: delivery-service
                       uri: lb://delivery-service
                       predicates:
-                        - Path=/api/deliveries/**
+                        - Path=/api/deliveries/**, /api/delivery-confirmations/**
                       filters: []
 
                     # ORDER SERVICE
