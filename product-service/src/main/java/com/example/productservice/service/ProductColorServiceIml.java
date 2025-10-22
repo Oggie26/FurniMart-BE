@@ -107,22 +107,18 @@ public class ProductColorServiceIml implements ProductColorService {
         }
 
         if (request.getImageRequests() != null) {
-            productImageRepository.deleteByProductColorId(existing.getId());
-
+            existing.getImages().clear();
             List<ProductImage> images = request.getImageRequests().stream()
                     .map(imgReq -> ProductImage.builder()
                             .productColor(existing)
                             .imageUrl(imgReq.getImageUrl())
                             .build())
                     .toList();
-
-            productImageRepository.saveAll(images);
-            existing.setImages(images);
+            existing.getImages().addAll(images);
         }
 
         if (request.getModel3DRequests() != null) {
-            productModel3DRepository.deleteByProductColorId(existing.getId());
-
+            existing.getModels3D().clear();
             List<ProductModel3D> models3D = request.getModel3DRequests().stream()
                     .map(modelReq -> ProductModel3D.builder()
                             .productColor(existing)
@@ -133,18 +129,12 @@ public class ProductColorServiceIml implements ProductColorService {
                             .previewImage(modelReq.getPreviewImage())
                             .build())
                     .toList();
-
-            productModel3DRepository.saveAll(models3D);
-            existing.setModels3D(models3D);
+            existing.getModels3D().addAll(models3D);
         }
 
         ProductColor saved = productColorRepository.save(existing);
-
         return mapToResponse(saved);
     }
-
-
-
 
     @Override
     public void deleteProductColor(String productColorId) {
