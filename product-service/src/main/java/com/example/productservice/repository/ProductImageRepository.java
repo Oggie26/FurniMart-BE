@@ -5,6 +5,6 @@ import com.example.productservice.entity.ProductModel3D;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProductImageRepository extends JpaRepository<ProductImage, String> {
-    ProductImage deleteByProductColorId(String productColorId);
+    void deleteByProductColorId(String productColorId);
 
 }
