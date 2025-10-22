@@ -90,10 +90,6 @@ public class ProductColorServiceIml implements ProductColorService {
             Color color = colorRepository.findById(request.getColorId())
                     .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
 
-            if (productColorRepository.existsByProductIdAndColorId(existing.getProduct().getId(), request.getColorId())) {
-                throw new AppException(ErrorCode.COLOR_ALREADY_EXISTS);
-            }
-
             existing.setColor(color);
         }
 
