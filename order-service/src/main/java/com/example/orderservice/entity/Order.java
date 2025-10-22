@@ -62,6 +62,13 @@ public class Order extends AbstractEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Warranty> warranties;
 
+    @Column(name = "qr_code", unique = true)
+    private String qrCode;
+
+    @Column(name = "qr_code_generated_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date qrCodeGeneratedAt;
+
 //    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
 //    private DeliveryConfirmation deliveryConfirmation;
 }

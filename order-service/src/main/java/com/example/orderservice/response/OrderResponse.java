@@ -24,4 +24,6 @@ public class OrderResponse {
     private List<OrderDetailResponse> orderDetails;
     private List<ProcessOrderResponse> processOrders;
     private PaymentResponse payment;
+    private String qrCode;
+    private Date qrCodeGeneratedAt;
 }

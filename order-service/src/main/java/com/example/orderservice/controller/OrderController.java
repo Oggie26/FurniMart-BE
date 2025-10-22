@@ -78,6 +78,19 @@ public class OrderController {
         }
     }
 
+    @PostMapping("/pre-order")
+    public ApiResponse<OrderResponse> createPreOrder(
+            @RequestParam Long addressId,
+            @RequestParam Long cartId,
+            @RequestParam(required = false) String voucherCode
+    ) {
+        OrderResponse orderResponse = orderService.createPreOrder(cartId, addressId, voucherCode);
+        return ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Tạo đơn hàng trước thành công")
+                .data(orderResponse)
+                .build();
+    }
 
     @GetMapping("/{id}")
     public ApiResponse<OrderResponse> getOrderById(@PathVariable Long id) {
@@ -195,6 +208,41 @@ public class OrderController {
         return ApiResponse.<String>builder()
                 .status(HttpStatus.OK.value())
                 .message("Đã gán đơn hàng cho cửa hàng thành công" + orderId)
+                .build();
+    }
+
+    @GetMapping("/pre-orders")
+    public ApiResponse<PageResponse<OrderResponse>> getPreOrders(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.<PageResponse<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy danh sách đơn hàng trước thành công")
+                .data(orderService.getOrdersByStatus(EnumProcessOrder.PRE_ORDER, page, size))
+                .build();
+    }
+
+    @PostMapping("/{orderId}/approve-pre-order")
+    public ApiResponse<OrderResponse> approvePreOrder(@PathVariable Long orderId) {
+        OrderResponse orderResponse = orderService.updateOrderStatus(orderId, EnumProcessOrder.PENDING);
+        return ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Phê duyệt đơn hàng trước thành công")
+                .data(orderResponse)
+                .build();
+    }
+
+    @PostMapping("/{orderId}/reject-pre-order")
+    public ApiResponse<OrderResponse> rejectPreOrder(
+            @PathVariable Long orderId,
+            @RequestParam String reason
+    ) {
+        OrderResponse orderResponse = orderService.updateOrderStatus(orderId, EnumProcessOrder.CANCELLED);
+        return ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Từ chối đơn hàng trước thành công")
+                .data(orderResponse)
                 .build();
     }
 

@@ -14,7 +14,6 @@ import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
-import com.example.orderservice.service.inteface.WarrantyService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -100,6 +98,47 @@ public class OrderServiceImpl implements OrderService {
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
 
+        return mapToResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse createPreOrder(Long cartId, Long addressId, String voucherCode) {
+        if (cartId == null) {
+            throw new AppException(ErrorCode.CART_NOT_FOUND);
+        }
+        if (addressId == null) {
+            throw new AppException(ErrorCode.INVALID_ADDRESS);
+        }
+
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
+
+        if (cart.getItems().isEmpty()) {
+            throw new AppException(ErrorCode.CART_EMPTY);
+        }
+
+        log.info("Creating pre-order for cart: {}", cartId);
+
+        Order order = buildOrder(cart, addressId);
+        List<OrderDetail> details = createOrderItemsFromCart(cart, order);
+        order.setOrderDetails(details);
+        order.setStatus(EnumProcessOrder.PRE_ORDER);
+        
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.PRE_ORDER);
+        process.setCreatedAt(new Date());
+        order.setProcessOrders(new ArrayList<>(List.of(process)));
+
+        orderRepository.save(order);
+
+        // Clear cart after creating pre-order
+        cart.getItems().clear();
+        cart.setTotalPrice(0.0);
+        cartRepository.save(cart);
+
+        log.info("Pre-order created successfully with ID: {}", order.getId());
         return mapToResponse(order);
     }
 
@@ -235,6 +274,27 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
+    @Override
+    public PageResponse<OrderResponse> getOrdersByStatus(EnumProcessOrder status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Order> orders = orderRepository.findByStatusAndIsDeletedFalse(status, pageable);
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
+    }
+
     private OrderResponse mapToResponse(Order order) {
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
 
@@ -284,6 +344,8 @@ public class OrderServiceImpl implements OrderService {
                 )
                 .payment(paymentResponse)
                 .storeId(order.getStoreId())
+                .qrCode(order.getQrCode())
+                .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .build();
     }
 

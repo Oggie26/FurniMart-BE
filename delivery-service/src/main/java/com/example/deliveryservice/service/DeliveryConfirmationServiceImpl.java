@@ -10,7 +10,9 @@ import com.example.deliveryservice.feign.WarrantyClient;
 import com.example.deliveryservice.repository.DeliveryConfirmationRepository;
 import com.example.deliveryservice.request.DeliveryConfirmationRequest;
 import com.example.deliveryservice.request.QRCodeScanRequest;
+import com.example.deliveryservice.response.ApiResponse;
 import com.example.deliveryservice.response.DeliveryConfirmationResponse;
+import com.example.deliveryservice.response.OrderResponse;
 import com.example.deliveryservice.service.inteface.DeliveryConfirmationService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,9 +22,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.ResponseEntity;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,7 +56,8 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String deliveryStaffId = authentication.getName();
 
-        String qrCode = generateQRCodeForOrder(request.getOrderId());
+        // Get QR code from order service instead of generating it
+        String qrCode = getQRCodeFromOrder(request.getOrderId());
 
         DeliveryConfirmation confirmation = DeliveryConfirmation.builder()
                 .orderId(request.getOrderId())
@@ -177,26 +179,20 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public String generateQRCodeForOrder(Long orderId) {
+    private String getQRCodeFromOrder(Long orderId) {
         try {
-            String data = "ORDER_" + orderId + "_" + LocalDateTime.now();
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(data.getBytes());
-
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
+            ResponseEntity<ApiResponse<OrderResponse>> response = orderClient.getOrderById(orderId);
+            if (response.getBody() != null && response.getBody().getData() != null) {
+                String qrCode = response.getBody().getData().getQrCode();
+                if (qrCode != null && !qrCode.isEmpty()) {
+                    return qrCode;
                 }
-                hexString.append(hex);
             }
-
-            return "QR_" + hexString.substring(0, 16).toUpperCase();
-        } catch (NoSuchAlgorithmException e) {
-            log.error("Error generating QR code", e);
-            return "QR_" + orderId + "_" + System.currentTimeMillis();
+            log.warn("QR code not found for order: {}", orderId);
+            return "QR_NOT_FOUND_" + orderId;
+        } catch (Exception e) {
+            log.error("Error fetching QR code for order {}: {}", orderId, e.getMessage());
+            return "QR_ERROR_" + orderId;
         }
     }
 
