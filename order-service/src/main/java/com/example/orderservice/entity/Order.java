@@ -62,6 +62,6 @@ public class Order extends AbstractEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Warranty> warranties;
 
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
-    private DeliveryConfirmation deliveryConfirmation;
+//    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+//    private DeliveryConfirmation deliveryConfirmation;
 }
