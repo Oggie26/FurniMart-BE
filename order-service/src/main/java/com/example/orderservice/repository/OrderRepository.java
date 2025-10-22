@@ -17,6 +17,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByStoreId(String storeId);
 
+    Page<Order> findByStatusAndIsDeletedFalse(com.example.orderservice.enums.EnumProcessOrder status, Pageable pageable);
+
     // 🔍 Search theo userId + keyword
     @Query(value = """
             SELECT * FROM orders 

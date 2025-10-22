@@ -28,6 +28,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final InventoryClient inventoryClient;
     private final UserClient userClient;
     private final ProcessOrderRepository processOrderRepository;
+    private final QRCodeService qrCodeService;
 
     @Override
     @Transactional
@@ -69,13 +70,19 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     }
 
     private void handleManagerAccept(Order order) {
+        // Generate QR code when manager accepts the order
+        QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(order.getId());
+        
         ProcessOrder process = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.MANAGER_ACCEPT)
                 .createdAt(new Date())
                 .build();
         processOrderRepository.save(process);
+        
         order.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
+        order.setQrCode(qrCodeResult.getQrCodeString());
+        order.setQrCodeGeneratedAt(new Date());
         order.setProcessOrders(order.getProcessOrders());
         orderRepository.save(order);
     }

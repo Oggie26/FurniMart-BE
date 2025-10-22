@@ -25,8 +25,6 @@ public interface DeliveryConfirmationService {
     List<DeliveryConfirmationResponse> getScannedConfirmations();
 
     List<DeliveryConfirmationResponse> getUnscannedConfirmations();
-
-    String generateQRCodeForOrder(Long orderId);
 }
 
 
