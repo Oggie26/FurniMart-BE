@@ -90,14 +90,21 @@ public class ProductColorServiceIml implements ProductColorService {
             Color color = colorRepository.findById(request.getColorId())
                     .orElseThrow(() -> new AppException(ErrorCode.COLOR_NOT_FOUND));
 
+            boolean colorExists = productColorRepository.existsByProductIdAndColorIdAndIdNot(
+                    existing.getProduct().getId(),
+                    request.getColorId(),
+                    existing.getId()
+            );
+            if (colorExists) {
+                throw new AppException(ErrorCode.COLOR_ALREADY_EXISTS);
+            }
+
             existing.setColor(color);
         }
 
         if (request.getStatus() != null) {
             existing.setStatus(request.getStatus());
         }
-
-        productColorRepository.save(existing);
 
         if (request.getImageRequests() != null) {
             productImageRepository.deleteByProductColorId(existing.getId());
@@ -131,10 +138,11 @@ public class ProductColorServiceIml implements ProductColorService {
             existing.setModels3D(models3D);
         }
 
-        productColorRepository.save(existing);
+        ProductColor saved = productColorRepository.save(existing);
 
-        return mapToResponse(existing);
+        return mapToResponse(saved);
     }
+
 
 
 

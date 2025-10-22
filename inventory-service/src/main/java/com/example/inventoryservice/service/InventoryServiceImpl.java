@@ -127,18 +127,15 @@ public class InventoryServiceImpl implements InventoryService {
         if (currentZoneTotal + amount > zone.getQuantity())
             throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
 
-        // --- Kiểm tra sức chứa Warehouse ---
         Warehouse warehouse = zone.getWarehouse();
         Integer currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
         if (currentWarehouseTotal == null) currentWarehouseTotal = 0;
         if (currentWarehouseTotal + amount > warehouse.getCapacity())
             throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
 
-        // --- Cập nhật tồn ---
         inventory.setQuantity(newQuantity);
         inventoryRepository.save(inventory);
 
-        // --- Ghi log giao dịch ---
         transactionRepository.save(InventoryTransaction.builder()
                 .quantity(amount)
                 .dateLocal(LocalDateTime.now())
@@ -156,7 +153,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount, String warehouseId) {
-        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(productColorId, locationItemId)
+        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId( locationItemId, productColorId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
         if (inventory.getQuantity() < amount)

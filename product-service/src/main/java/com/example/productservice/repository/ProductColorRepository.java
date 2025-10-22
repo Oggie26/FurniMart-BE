@@ -11,4 +11,6 @@ import java.util.Optional;
 public interface ProductColorRepository extends JpaRepository<ProductColor, String> {
     Optional<ProductColor> findByIdAndIsDeletedFalse(String id);
     boolean existsByProductIdAndColorId(String productId, String colorId);
+    boolean existsByProductIdAndColorIdAndIdNot(String productId, String colorId, String id);
+
 }
