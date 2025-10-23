@@ -20,7 +20,7 @@ spring:
                     - id: user-service
                       uri: lb://user-service
                       predicates:
-                        - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile
+                        - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile , /api/employees/**
                       filters: []
 
                     # PRODUCT SERVICE
