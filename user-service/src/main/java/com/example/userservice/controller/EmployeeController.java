@@ -7,7 +7,7 @@ import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.UserResponse;
-import com.example.userservice.service.inteface.UserService;
+import com.example.userservice.service.inteface.EmployeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,24 +25,20 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class EmployeeController {
-    private final UserService userService;
+    private final EmployeeService employeeService;
 
     // ========== ADMIN ONLY CRUD OPERATIONS ==========
     
     @PostMapping
-    @Operation(summary = "Create new employee (Admin only)")
+    @Operation(summary = "Create new employee (Admin only) - Can create SELLER, BRANCH_MANAGER, DELIVERER, STAFF roles ONLY")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
-        // Ensure only employee roles can be created
-        if (!isEmployeeRole(request.getRole())) {
-            throw new IllegalArgumentException("Only employee roles can be created through this endpoint");
-        }
-        
+        // Validation is now handled in EmployeeService - will throw exception if ADMIN or CUSTOMER role
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Employee created successfully")
-                .data(userService.createUser(request))
+                .data(employeeService.createEmployee(request))
                 .build();
     }
 
@@ -53,7 +49,7 @@ public class EmployeeController {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employee updated successfully")
-                .data(userService.updateUser(id, request))
+                .data(employeeService.updateEmployee(id, request))
                 .build();
     }
 
@@ -61,7 +57,7 @@ public class EmployeeController {
     @Operation(summary = "Delete employee (Admin only)")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteEmployee(@PathVariable String id) {
-        userService.deleteUser(id);
+        employeeService.deleteEmployee(id);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employee deleted successfully")
@@ -72,7 +68,7 @@ public class EmployeeController {
     @Operation(summary = "Disable employee (Admin only)")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> disableEmployee(@PathVariable String id) {
-        userService.disableUser(id);
+        employeeService.disableEmployee(id);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employee disabled successfully")
@@ -83,7 +79,7 @@ public class EmployeeController {
     @Operation(summary = "Enable employee (Admin only)")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> enableEmployee(@PathVariable String id) {
-        userService.enableUser(id);
+        employeeService.enableEmployee(id);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employee enabled successfully")
@@ -91,13 +87,13 @@ public class EmployeeController {
     }
 
     @PatchMapping("/{id}/role")
-    @Operation(summary = "Update employee role (Admin only)")
+    @Operation(summary = "Update employee role (Admin only) - Can only update to employee roles")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> updateEmployeeRole(@PathVariable String id, @Valid @RequestBody RoleUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employee role updated successfully")
-                .data(userService.updateUserRole(id, request.getRole()))
+                .data(employeeService.updateEmployeeRole(id, request.getRole()))
                 .build();
     }
 
@@ -110,7 +106,7 @@ public class EmployeeController {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employee retrieved successfully")
-                .data(userService.getUserById(id))
+                .data(employeeService.getEmployeeById(id))
                 .build();
     }
     
@@ -121,7 +117,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employees retrieved successfully")
-                .data(userService.getAllEmployees())
+                .data(employeeService.getAllEmployees())
                 .build();
     }
 
@@ -134,7 +130,21 @@ public class EmployeeController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Employees retrieved successfully with pagination")
-                .data(userService.getEmployeesWithPagination(page, size))
+                .data(employeeService.getEmployeesWithPagination(page, size))
+                .build();
+    }
+    
+    @GetMapping("/search")
+    @Operation(summary = "Search employees by name, email, or phone")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<UserResponse>> searchEmployees(
+            @RequestParam String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.<PageResponse<UserResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employees search completed successfully")
+                .data(employeeService.searchEmployees(searchTerm, page, size))
                 .build();
     }
 
@@ -147,7 +157,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Sellers retrieved successfully")
-                .data(userService.getEmployeesByRole(EnumRole.SELLER))
+                .data(employeeService.getEmployeesByRole(EnumRole.SELLER))
                 .build();
     }
 
@@ -158,7 +168,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Branch managers retrieved successfully")
-                .data(userService.getEmployeesByRole(EnumRole.BRANCH_MANAGER))
+                .data(employeeService.getEmployeesByRole(EnumRole.BRANCH_MANAGER))
                 .build();
     }
 
@@ -169,7 +179,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Delivery staff retrieved successfully")
-                .data(userService.getEmployeesByRole(EnumRole.DELIVERER))
+                .data(employeeService.getEmployeesByRole(EnumRole.DELIVERER))
                 .build();
     }
 
@@ -180,7 +190,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("General staff retrieved successfully")
-                .data(userService.getEmployeesByRole(EnumRole.STAFF))
+                .data(employeeService.getEmployeesByRole(EnumRole.STAFF))
                 .build();
     }
 
@@ -193,7 +203,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store employees retrieved successfully")
-                .data(userService.getEmployeesByStoreId(storeId))
+                .data(employeeService.getEmployeesByStoreId(storeId))
                 .build();
     }
 
@@ -204,7 +214,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store sellers retrieved successfully")
-                .data(userService.getEmployeesByStoreIdAndRole(storeId, EnumRole.SELLER))
+                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.SELLER))
                 .build();
     }
 
@@ -215,7 +225,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store branch managers retrieved successfully")
-                .data(userService.getEmployeesByStoreIdAndRole(storeId, EnumRole.BRANCH_MANAGER))
+                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.BRANCH_MANAGER))
                 .build();
     }
 
@@ -226,7 +236,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store delivery staff retrieved successfully")
-                .data(userService.getEmployeesByStoreIdAndRole(storeId, EnumRole.DELIVERER))
+                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.DELIVERER))
                 .build();
     }
 
@@ -237,7 +247,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store general staff retrieved successfully")
-                .data(userService.getEmployeesByStoreIdAndRole(storeId, EnumRole.STAFF))
+                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.STAFF))
                 .build();
     }
 
@@ -252,7 +262,7 @@ public class EmployeeController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Sellers retrieved successfully with pagination")
-                .data(userService.getEmployeesByRoleWithPagination(EnumRole.SELLER, page, size))
+                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.SELLER, page, size))
                 .build();
     }
 
@@ -265,7 +275,7 @@ public class EmployeeController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Branch managers retrieved successfully with pagination")
-                .data(userService.getEmployeesByRoleWithPagination(EnumRole.BRANCH_MANAGER, page, size))
+                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.BRANCH_MANAGER, page, size))
                 .build();
     }
 
@@ -278,7 +288,7 @@ public class EmployeeController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Delivery staff retrieved successfully with pagination")
-                .data(userService.getEmployeesByRoleWithPagination(EnumRole.DELIVERER, page, size))
+                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.DELIVERER, page, size))
                 .build();
     }
 
@@ -291,16 +301,59 @@ public class EmployeeController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("General staff retrieved successfully with pagination")
-                .data(userService.getEmployeesByRoleWithPagination(EnumRole.STAFF, page, size))
+                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.STAFF, page, size))
                 .build();
     }
 
-    // ========== UTILITY METHODS ==========
+    // ========== EMPLOYEE STATISTICS ==========
     
-    private boolean isEmployeeRole(EnumRole role) {
-        return role == EnumRole.SELLER || 
-               role == EnumRole.BRANCH_MANAGER || 
-               role == EnumRole.DELIVERER || 
-               role == EnumRole.STAFF;
+    @GetMapping("/count")
+    @Operation(summary = "Get total employee count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Long> getTotalEmployeeCount() {
+        return ApiResponse.<Long>builder()
+                .status(HttpStatus.OK.value())
+                .message("Total employee count retrieved successfully")
+                .data(employeeService.getTotalEmployeeCount())
+                .build();
+    }
+
+    @GetMapping("/count/role/{role}")
+    @Operation(summary = "Get employee count by role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Long> getEmployeeCountByRole(@PathVariable EnumRole role) {
+        return ApiResponse.<Long>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee count for role " + role + " retrieved successfully")
+                .data(employeeService.getEmployeeCountByRole(role))
+                .build();
+    }
+
+    // ========== STORE ASSIGNMENT ==========
+    
+    @PostMapping("/{employeeId}/store/{storeId}")
+    @Operation(summary = "Assign employee to store")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> assignEmployeeToStore(
+            @PathVariable String employeeId,
+            @PathVariable String storeId) {
+        employeeService.assignEmployeeToStore(employeeId, storeId);
+        return ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee assigned to store successfully")
+                .build();
+    }
+
+    @DeleteMapping("/{employeeId}/store/{storeId}")
+    @Operation(summary = "Remove employee from store")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> removeEmployeeFromStore(
+            @PathVariable String employeeId,
+            @PathVariable String storeId) {
+        employeeService.removeEmployeeFromStore(employeeId, storeId);
+        return ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee removed from store successfully")
+                .build();
     }
 }

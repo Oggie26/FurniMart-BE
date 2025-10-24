@@ -55,6 +55,8 @@ public enum ErrorCode {
     // Employee management errors
     INVALID_ROLE(1229, "Invalid role for employee operations", HttpStatus.BAD_REQUEST),
     CANNOT_UPDATE_CUSTOMER_ROLE(1230, "Cannot update customer role", HttpStatus.FORBIDDEN),
+    CANNOT_CREATE_ADMIN_ROLE(1231, "Cannot create ADMIN role through employee API", HttpStatus.FORBIDDEN),
+    CANNOT_CREATE_CUSTOMER_THROUGH_EMPLOYEE_API(1232, "Cannot create CUSTOMER role through employee API", HttpStatus.FORBIDDEN),
 
     ;
 
