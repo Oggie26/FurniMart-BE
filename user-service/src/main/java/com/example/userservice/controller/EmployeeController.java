@@ -42,6 +42,20 @@ public class EmployeeController {
                 .build();
     }
 
+    @PostMapping("/admins")
+    @Operation(summary = "Create new admin user (Admin only) - Only existing admin users can create other admin accounts")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponse> createAdmin(@Valid @RequestBody UserRequest request) {
+        // Force ADMIN role and validate admin creation
+        request.setRole(EnumRole.ADMIN);
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Admin user created successfully")
+                .data(employeeService.createAdmin(request))
+                .build();
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update employee information (Admin only)")
     @PreAuthorize("hasRole('ADMIN')")

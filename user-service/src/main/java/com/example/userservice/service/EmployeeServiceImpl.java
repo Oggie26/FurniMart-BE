@@ -9,6 +9,7 @@ import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.EmployeeRepository;
+import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
@@ -42,6 +43,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final AccountRepository accountRepository;
+    private final UserRepository userRepository;
     private final UserStoreRepository userStoreRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -119,6 +121,59 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (userRequest.getStoreId() != null && !userRequest.getStoreId().isEmpty()) {
             assignEmployeeToStore(savedUser.getId(), userRequest.getStoreId());
         }
+
+        return toUserResponse(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse createAdmin(UserRequest userRequest) {
+        log.info("Creating new admin user with email: {}", userRequest.getEmail());
+        
+        // Force ADMIN role
+        userRequest.setRole(EnumRole.ADMIN);
+        
+        // Check if email already exists
+        if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
+            log.error("Email already exists: {}", userRequest.getEmail());
+            throw new AppException(ErrorCode.EMAIL_EXISTS);
+        }
+        
+        // Check if phone already exists
+        if (userRepository.findByPhoneAndIsDeletedFalse(userRequest.getPhone()).isPresent()) {
+            log.error("Phone already exists: {}", userRequest.getPhone());
+            throw new AppException(ErrorCode.PHONE_EXISTS);
+        }
+
+        // Create account with ADMIN role
+        Account account = Account.builder()
+                .email(userRequest.getEmail())
+                .password(passwordEncoder.encode(userRequest.getPassword()))
+                .role(EnumRole.ADMIN) // Force ADMIN role
+                .status(userRequest.getStatus())
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .build();
+        
+        Account savedAccount = accountRepository.save(account);
+        log.info("Created admin account: {}", savedAccount.getId());
+
+        // Create user
+        User user = User.builder()
+                .fullName(userRequest.getFullName())
+                .phone(userRequest.getPhone())
+                .birthday(userRequest.getBirthday())
+                .gender(userRequest.getGender())
+                .status(userRequest.getStatus())
+                .avatar(userRequest.getAvatar())
+                .point(0)
+                .account(savedAccount)
+                .build();
+
+        User savedUser = userRepository.save(user);
+        log.info("Created admin user: {} with email: {}", savedUser.getId(), userRequest.getEmail());
 
         return toUserResponse(savedUser);
     }

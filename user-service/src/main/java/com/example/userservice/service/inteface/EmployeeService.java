@@ -26,6 +26,16 @@ public interface EmployeeService {
     UserResponse createEmployee(UserRequest userRequest);
 
     /**
+     * Create a new admin user with ADMIN role.
+     * Only existing admin users can create other admin accounts.
+     * 
+     * @param userRequest The admin data (role will be forced to ADMIN)
+     * @return Created admin response
+     * @throws com.example.userservice.exception.AppException if validation fails
+     */
+    UserResponse createAdmin(UserRequest userRequest);
+
+    /**
      * Update employee information
      * 
      * @param id Employee ID
