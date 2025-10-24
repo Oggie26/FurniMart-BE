@@ -43,6 +43,11 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse createUser(UserRequest userRequest) {
+        // NOTE: For employee creation (SELLER, BRANCH_MANAGER, DELIVERER, STAFF),
+        // it is recommended to use EmployeeService.createEmployee() for better validation
+        // and to ensure ADMIN roles cannot be created through employee endpoints.
+        // This method is primarily used for ADMIN and CUSTOMER creation.
+        
         if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
             throw new AppException(ErrorCode.EMAIL_EXISTS);
         }

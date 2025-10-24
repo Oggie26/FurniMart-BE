@@ -53,4 +53,8 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     @Query("SELECT u FROM User u JOIN u.userStores us WHERE us.storeId = :storeId AND u.account.role = :role AND u.isDeleted = false")
     List<User> findEmployeesByStoreIdAndRole(@Param("storeId") String storeId, @Param("role") EnumRole role);
+    
+    // Admin-related queries
+    @Query("SELECT u FROM User u WHERE u.account.role = :role AND u.isDeleted = false")
+    List<User> findByAccountRoleAndIsDeletedFalse(@Param("role") EnumRole role);
 }
