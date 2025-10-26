@@ -21,6 +21,10 @@ public interface UserStoreRepository extends JpaRepository<UserStore, UserStoreI
     Optional<UserStore> findByUserIdAndStoreId(@Param("userId") String userId, @Param("storeId") String storeId);
     
     void deleteByUserIdAndStoreId(String userId, String storeId);
+    
+    void deleteByUserId(String userId);
 
     List<UserStore> findByUserId(String userId);
+    
+    List<UserStore> findByStoreId(String storeId);
 }
