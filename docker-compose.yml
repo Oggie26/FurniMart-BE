@@ -128,6 +128,19 @@ services:
     networks:
       - backend
 
+  ai-service:
+    build: ./ai-service
+    container_name: ai-service
+    ports:
+      - "9000:9000"
+    depends_on:
+      - eureka-server
+    networks:
+      - backend
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
   order-service:
     build: ./order-service
     container_name: order-service

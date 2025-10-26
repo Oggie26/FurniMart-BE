@@ -39,7 +39,7 @@ spring:
       auto-offset-reset: earliest
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      group-id: user-service-group
+      group-id: order-service-group
       enable-auto-commit: false
       properties:
         spring.json.trusted.packages: "com.example.orderservice.event"

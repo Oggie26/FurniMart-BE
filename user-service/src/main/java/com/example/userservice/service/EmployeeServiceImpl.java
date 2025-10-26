@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
+import com.example.userservice.entity.Store;
 import com.example.userservice.entity.User;
 import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
@@ -9,6 +10,7 @@ import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.EmployeeRepository;
+import com.example.userservice.repository.StoreRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.UserRequest;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -45,10 +48,12 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final UserStoreRepository userStoreRepository;
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
 
     // Define employee roles as constants
     private static final List<EnumRole> EMPLOYEE_ROLES = Arrays.asList(
+        EnumRole.ADMIN,           // Allow ADMIN creation
         EnumRole.SELLER, 
         EnumRole.BRANCH_MANAGER, 
         EnumRole.DELIVERER, 
@@ -60,14 +65,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     public UserResponse createEmployee(UserRequest userRequest) {
         log.info("Creating employee with role: {}", userRequest.getRole());
         
-        // Validate that role is an employee role (NOT ADMIN or CUSTOMER)
+        // Validate that role is an employee role (allow ADMIN, block CUSTOMER)
         validateEmployeeRole(userRequest.getRole());
-        
-        // Check if ADMIN role is being created - explicitly block it
-        if (userRequest.getRole() == EnumRole.ADMIN) {
-            log.error("Attempt to create ADMIN role through employee API");
-            throw new AppException(ErrorCode.CANNOT_CREATE_ADMIN_ROLE);
-        }
         
         // Check if CUSTOMER role is being created - explicitly block it
         if (userRequest.getRole() == EnumRole.CUSTOMER) {
@@ -227,9 +226,47 @@ public class EmployeeServiceImpl implements EmployeeService {
             existingEmployee.setCccd(userRequest.getCccd());
         }
 
+        // Handle role update
+        if (userRequest.getRole() != null) {
+            // Validate new role
+            validateEmployeeRole(userRequest.getRole());
+            
+            // Update account role
+            existingEmployee.getAccount().setRole(userRequest.getRole());
+            log.info("Updated employee role to: {}", userRequest.getRole());
+        }
+
+        // Handle store assignment
+        if (userRequest.getStoreId() != null) {
+            // Validate store exists
+            Store store = storeRepository.findById(userRequest.getStoreId())
+                    .orElseThrow(() -> {
+                        log.error("Store not found: {}", userRequest.getStoreId());
+                        return new AppException(ErrorCode.STORE_NOT_FOUND);
+                    });
+
+            // Check if employee is already assigned to this store
+            Optional<UserStore> existingUserStore = userStoreRepository.findByUserIdAndStoreId(id, userRequest.getStoreId());
+            
+            if (existingUserStore.isEmpty()) {
+                // Remove from all other stores first
+                userStoreRepository.deleteByUserId(id);
+                
+                // Assign to new store
+                UserStore userStore = UserStore.builder()
+                        .user(existingEmployee)
+                        .store(store)
+                        .build();
+                userStoreRepository.save(userStore);
+                log.info("Assigned employee {} to store {}", id, userRequest.getStoreId());
+            } else {
+                log.info("Employee {} is already assigned to store {}", id, userRequest.getStoreId());
+            }
+        }
+
         User updatedEmployee = employeeRepository.save(existingEmployee);
         
-        if (userRequest.getStatus() != null) {
+        if (userRequest.getStatus() != null || userRequest.getRole() != null) {
             accountRepository.save(existingEmployee.getAccount());
         }
         
@@ -518,14 +555,9 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
-     * Validate that the role is an employee role (NOT ADMIN or CUSTOMER)
+     * Validate that the role is an employee role (allow ADMIN, block CUSTOMER)
      */
     private void validateEmployeeRole(EnumRole role) {
-        if (role == EnumRole.ADMIN) {
-            log.error("ADMIN role is not allowed in employee operations");
-            throw new AppException(ErrorCode.CANNOT_CREATE_ADMIN_ROLE);
-        }
-        
         if (role == EnumRole.CUSTOMER) {
             log.error("CUSTOMER role is not allowed in employee operations");
             throw new AppException(ErrorCode.CANNOT_CREATE_CUSTOMER_THROUGH_EMPLOYEE_API);
