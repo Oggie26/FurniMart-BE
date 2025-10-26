@@ -30,11 +30,11 @@ public class EmployeeController {
     // ========== ADMIN ONLY CRUD OPERATIONS ==========
     
     @PostMapping
-    @Operation(summary = "Create new employee (Admin only) - Can create SELLER, BRANCH_MANAGER, DELIVERER, STAFF roles ONLY")
+    @Operation(summary = "Create new employee (Admin only) - Can create ADMIN, SELLER, BRANCH_MANAGER, DELIVERER, STAFF roles")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
-        // Validation is now handled in EmployeeService - will throw exception if ADMIN or CUSTOMER role
+        // Validation is now handled in EmployeeService - allows ADMIN and employee roles, blocks CUSTOMER
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Employee created successfully")
@@ -57,7 +57,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update employee information (Admin only)")
+    @Operation(summary = "Update employee information (Admin only) - Supports updating role and store assignment")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> updateEmployee(@PathVariable String id, @Valid @RequestBody UserUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()

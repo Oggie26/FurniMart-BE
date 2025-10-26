@@ -289,6 +289,12 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private StoreResponse mapToStoreResponse(Store store) {
+        // Get all users assigned to this store
+        List<UserStore> userStores = userStoreRepository.findByStoreId(store.getId());
+        List<UserResponse> users = userStores.stream()
+                .map(userStore -> mapToUserResponse(userStore.getUser()))
+                .collect(Collectors.toList());
+        
         return StoreResponse.builder()
                 .id(store.getId())
                 .name(store.getName())
@@ -300,6 +306,7 @@ public class StoreServiceImpl implements StoreService {
                 .latitude(store.getLatitude())
                 .longitude(store.getLongitude())
                 .status(store.getStatus())
+                .users(users)  // Populate users list
                 .createdAt(store.getCreatedAt())
                 .updatedAt(store.getUpdatedAt())
                 .build();

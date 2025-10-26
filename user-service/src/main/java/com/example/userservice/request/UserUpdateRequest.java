@@ -1,6 +1,9 @@
 package com.example.userservice.request;
 
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Past;
 import lombok.*;
 
@@ -29,4 +32,10 @@ public class UserUpdateRequest {
     private String cccd;
     
     private Integer point;
+    
+    // New fields for employee management
+    private String storeId;
+    
+    @Enumerated(EnumType.STRING)
+    private EnumRole role;
 }
