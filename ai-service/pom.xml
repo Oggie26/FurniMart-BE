@@ -14,13 +14,22 @@
 	<properties>
 		<java.version>21</java.version>
 		<spring.boot.version>3.3.4</spring.boot.version>
-		<spring.ai.version>1.0.0-M3</spring.ai.version>
+		<spring.ai.version>1.0.0-RC1</spring.ai.version>
 		<spring.cloud.version>2023.0.3</spring.cloud.version>
 	</properties>
 
+	<!-- Repositories -->
+	<repositories>
+		<repository>
+			<id>spring-milestones</id>
+			<name>Spring Milestones</name>
+			<url>https://repo.spring.io/milestone</url>
+		</repository>
+	</repositories>
+
 	<dependencyManagement>
 		<dependencies>
-			<!-- Spring Boot -->
+			<!-- Spring Boot BOM -->
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-dependencies</artifactId>
@@ -29,7 +38,7 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- Spring Cloud -->
+			<!-- Spring Cloud BOM -->
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
@@ -38,7 +47,7 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- Spring AI -->
+			<!-- Spring AI BOM -->
 			<dependency>
 				<groupId>org.springframework.ai</groupId>
 				<artifactId>spring-ai-bom</artifactId>
@@ -50,7 +59,7 @@
 	</dependencyManagement>
 
 	<dependencies>
-		<!-- Web -->
+		<!-- Spring Web -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -86,13 +95,14 @@
 			<artifactId>spring-kafka</artifactId>
 		</dependency>
 
-		<!-- Spring AI (OpenAI integration) -->
+		<!-- Spring AI OpenAI Starter -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+			<version>${spring.ai.version}</version>
 		</dependency>
 
-		<!-- Swagger UI -->
+		<!-- Swagger / OpenAPI -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
@@ -116,7 +126,7 @@
 
 	<build>
 		<plugins>
-			<!-- Spring Boot Plugin -->
+			<!-- Spring Boot Maven Plugin -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
