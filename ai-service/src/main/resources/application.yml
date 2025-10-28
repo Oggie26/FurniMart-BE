@@ -8,10 +8,10 @@ spring:
   ai:
     openai:
       base-url: https://api.openai.com/v1
-      api-key: ${OPENAI_API_KEY} # ??t trong bi?n môi tr??ng
+      api-key: ${OPENAI_API_KEY:dummy_key} # fallback dummy_key n?u bi?n ch?a ??t
       chat:
         options:
-          model: gpt-4o-mini   # model nh?, t?c ?? cao
+          model: gpt-4o-mini # model nh?, t?c ?? cao
 
   kafka:
     bootstrap-servers: kafka:9092
@@ -34,4 +34,3 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka
-

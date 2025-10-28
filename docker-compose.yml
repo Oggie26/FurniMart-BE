@@ -131,6 +131,8 @@ services:
   ai-service:
     build: ./ai-service
     container_name: ai-service
+    env_file:
+      - .env
     ports:
       - "9000:9000"
     depends_on:
