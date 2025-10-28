@@ -25,8 +25,9 @@ public interface ProductClient {
 
     @GetMapping("/api/products/search")
     ApiResponse<PageResponse<ProductResponse>> searchProducts(
-            @RequestParam(required = false) String request,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size
+            @RequestParam(value = "request", required = false) String request,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "5") int size
     );
+
 }
