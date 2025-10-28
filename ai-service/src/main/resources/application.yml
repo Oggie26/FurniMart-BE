@@ -1,0 +1,37 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: ai-service
+
+  ai:
+    openai:
+      base-url: https://api.openai.com/v1
+      api-key: ${OPENAI_API_KEY} # ??t trong bi?n môi tr??ng
+      chat:
+        options:
+          model: gpt-4o-mini   # model nh?, t?c ?? cao
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      group-id: ai-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.aiservice.event"
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+

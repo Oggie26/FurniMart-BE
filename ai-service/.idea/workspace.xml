@@ -4,8 +4,26 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="063bc057-2de4-4e52-b006-ca2eab60b58a" name="Changes" comment="Merge pull request #20 from Oggie26/branch/phong&#10;&#10;feat: Complete employee management API improvements">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/config/OpenAIConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/controller/ChatBoxController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/enums/Enum3DFormat.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/enums/EnumStatus.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/enums/ErrorCode.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/exception/AppException.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/exception/GlobalExceptionHandler.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/feign/ProductClient.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/ApiResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/ColorResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/Image3DResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/ImageResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/PageResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/ProductColorResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/response/ProductResponse.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/service/ChatBoxService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,36 +38,20 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="PREVIOUS_COMMIT_AUTHORS">
-      <list>
-        <option value="ThanhPhong383 &lt;37406424+thanhphong383@users.noreply.github.com&gt;" />
-      </list>
-    </option>
-    <option name="PUSH_AUTO_UPDATE" value="true" />
-    <option name="RECENT_BRANCH_BY_REPOSITORY">
-      <map>
-        <entry key="$PROJECT_DIR$/.." value="main" />
-      </map>
-    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
-    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
-  <component name="GitHubPullRequestSearchHistory">{
-  &quot;lastFilter&quot;: {
-    &quot;state&quot;: &quot;OPEN&quot;,
-    &quot;assignee&quot;: &quot;Oggie26&quot;
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Oggie26"
   }
-}</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Oggie26/FurniMart-BE&quot;,
-    &quot;accountId&quot;: &quot;999502c8-c47f-4fe9-a926-54affe51eae2&quot;
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Oggie26/FurniMart-BE",
+    "accountId": "999502c8-c47f-4fe9-a926-54affe51eae2"
   }
-}</component>
-  <component name="KubernetesApiPersistence">{}</component>
-  <component name="KubernetesApiProvider">{
-  &quot;isMigrated&quot;: true
-}</component>
+}]]></component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -57,49 +59,42 @@
       </MavenGeneralSettings>
     </option>
   </component>
-  <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 5
-}</component>
-  <component name="ProjectId" id="34dDqZJZhIhCwzsm0NpxkDSOAWs" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 5
+}]]></component>
+  <component name="ProjectId" id="34gTw09dlTjGLQB3JnLQhLALPt8" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;Spring Boot.AiServiceApplication.executor&quot;: &quot;Run&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Admin/Desktop/FurniMart-BE/ai-service/src/main/java/com/example/aiservice/response&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;project.propVCSSupport.DirectoryMappings&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "Spring Boot.AiServiceApplication.executor": "Run",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/Admin/Desktop/FurniMart-BE/ai-service/src/main/java/com/example/aiservice/feign",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\Admin\Desktop\FurniMart-BE\ai-service\src\main\java\com\example\aiservice\response" />
-      <recent name="C:\Users\Admin\Desktop\FurniMart-BE\ai-service\src\main\java\com\example\aiservice\enums" />
+      <recent name="C:\Users\Admin\Desktop\FurniMart-BE\ai-service\src\main\java\com\example\aiservice\feign" />
+      <recent name="C:\Users\Admin\Desktop\FurniMart-BE\ai-service\src\main\java\com\example\ai_service\exception" />
+      <recent name="C:\Users\Admin\Desktop\FurniMart-BE\ai-service\src\main\java\com\example\ai_service\enums" />
+      <recent name="C:\Users\Admin\Desktop\FurniMart-BE\ai-service\src\main\java\com\example\ai_service\response" />
     </key>
   </component>
-  <component name="RunManager" selected="Spring Boot.AiServiceApplication">
-    <configuration name="AiServiceApplication (1)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
-      <module name="ai-service" />
-      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.aiservice.AiServiceApplication" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
+  <component name="RunManager">
     <configuration name="AiServiceApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <module name="ai-service" />
-      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.ai_service.AiServiceApplication" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.aiservice.AiServiceApplication" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -116,60 +111,16 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="063bc057-2de4-4e52-b006-ca2eab60b58a" name="Changes" comment="" />
-      <created>1761534746459</created>
+      <changelist id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="" />
+      <created>1761634453380</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1761534746459</updated>
-      <workItem from="1761534747672" duration="471000" />
-      <workItem from="1761622488954" duration="7823000" />
+      <updated>1761634453380</updated>
+      <workItem from="1761634456457" duration="1261000" />
     </task>
-    <task id="LOCAL-00001" summary="Merge pull request #20 from Oggie26/branch/phong&#10;&#10;feat: Complete employee management API improvements">
-      <option name="closed" value="true" />
-      <created>1761629708469</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1761629708469</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Merge pull request #20 from Oggie26/branch/phong&#10;&#10;feat: Complete employee management API improvements">
-      <option name="closed" value="true" />
-      <created>1761630027062</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1761630027062</updated>
-    </task>
-    <task id="LOCAL-00003" summary="Merge pull request #20 from Oggie26/branch/phong&#10;&#10;feat: Complete employee management API improvements">
-      <option name="closed" value="true" />
-      <created>1761630124969</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1761630124969</updated>
-    </task>
-    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
-  <component name="VcsManagerConfiguration">
-    <ignored-roots>
-      <path value="$PROJECT_DIR$" />
-    </ignored-roots>
-    <MESSAGE value="Merge pull request #20 from Oggie26/branch/phong&#10;&#10;feat: Complete employee management API improvements" />
-    <option name="LAST_COMMIT_MESSAGE" value="Merge pull request #20 from Oggie26/branch/phong&#10;&#10;feat: Complete employee management API improvements" />
   </component>
 </project>
