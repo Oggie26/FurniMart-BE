@@ -7,7 +7,7 @@ spring:
 
   ai:
     openai:
-      base-url: https://api.openai.com/v1
+      base-url: https://api.openai.com
       api-key: ${OPENAI_API_KEY:dummy_key} # fallback dummy_key n?u bi?n ch?a ??t
       chat:
         options:
