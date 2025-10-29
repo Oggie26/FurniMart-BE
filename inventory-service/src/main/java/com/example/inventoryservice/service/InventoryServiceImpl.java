@@ -218,7 +218,6 @@ public class InventoryServiceImpl implements InventoryService {
         return mapToResponse(inventory);
     }
 
-    // ✅ Giải phóng tồn
     @Override
     @Transactional
     public InventoryResponse releaseStock(String productColorId, int amount) {
@@ -245,7 +244,6 @@ public class InventoryServiceImpl implements InventoryService {
         return mapToResponse(inventory);
     }
 
-    // ✅ Các hàm tiện ích khác
     @Override
     public boolean hasSufficientStock(String productId, String locationItemId, int requiredQty) {
         return inventoryRepository.findByProductColorIdAndLocationItemId(productId, locationItemId)
@@ -355,7 +353,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-    // ✅ Feign helper
     private ProductColorResponse getProductColorById(String productColorId) {
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
         if (response == null || response.getData() == null) return null;

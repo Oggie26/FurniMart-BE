@@ -2,7 +2,6 @@ package com.example.aiservice.service;
 
 import com.example.aiservice.feign.ProductClient;
 import com.example.aiservice.response.ApiResponse;
-import com.example.aiservice.response.PageResponse;
 import com.example.aiservice.response.ProductResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +11,7 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,50 +22,47 @@ public class ChatBoxService {
     private final ProductClient productClient;
 
     public String chatWithAI(String message) {
-        // 🔹 B1: Rút gọn và làm sạch input
         String keyword = extractKeyword(message);
-        log.info("User message: {}", message);
-        log.info("Extracted keyword: {}", keyword);
+        log.info("💬 User message: {}", message);
+        log.info("🔍 Extracted keyword: {}", keyword);
 
-        // 🔹 B2: Gọi Product Service để tìm sản phẩm
-        ApiResponse<PageResponse<ProductResponse>> response;
+        ApiResponse<List<ProductResponse>> response;
         try {
-            response = productClient.searchProducts(keyword, 0, 5);
+            response = productClient.getProducts();
         } catch (Exception e) {
             log.error("❌ Lỗi khi gọi Product Service qua Feign: {}", e.getMessage());
-            return "Xin lỗi, hiện tôi không thể lấy dữ liệu sản phẩm. Bạn thử lại sau nhé!";
+            return "Xin lỗi, tôi chưa thể lấy dữ liệu sản phẩm. Bạn thử lại sau nhé!";
         }
 
-        if (response == null || response.getData() == null || response.getData().getContent().isEmpty()) {
-            return "Hiện chưa tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn 😅.";
+        if (response == null || response.getData() == null || response.getData().isEmpty()) {
+            return "Hiện chưa có sản phẩm nào trong hệ thống 😅.";
         }
 
-        List<ProductResponse> products = response.getData().getContent();
+        List<ProductResponse> filtered = response.getData().stream()
+                .filter(p -> p.getName().toLowerCase().contains(keyword.toLowerCase()))
+                .limit(5)
+                .toList();
 
-        // 🔹 B3: Ghép danh sách sản phẩm thành văn bản
+        if (filtered.isEmpty()) {
+            return "Tôi không tìm thấy sản phẩm nào có liên quan đến “" + keyword + "” 😅.";
+        }
+
         StringBuilder productSummary = new StringBuilder("Một số sản phẩm bạn có thể quan tâm:\n");
-        for (ProductResponse p : products) {
-            productSummary.append("- ")
-                    .append(p.getName())
-                    .append(" (Giá: ")
-                    .append(p.getPrice())
-                    .append("₫)\n");
+        for (ProductResponse p : filtered) {
+            productSummary.append("- ").append(p.getName())
+                    .append(" (Giá: ").append(p.getPrice()).append("₫)\n");
         }
 
-        // 🔹 B4: Tạo prompt cho AI
         String prompt = """
-                Bạn là trợ lý tư vấn nội thất thông minh FurniAI.
+                Bạn là trợ lý nội thất FurniAI thân thiện.
                 Người dùng hỏi: %s
                 Dưới đây là danh sách sản phẩm có thể phù hợp:
                 %s
-                Hãy phản hồi bằng giọng thân thiện, ngắn gọn và gợi ý thêm cách phối hợp nội thất hoặc vật liệu phù hợp.
+                Hãy trả lời ngắn gọn, tự nhiên, tư vấn gợi ý thêm cách phối nội thất hoặc vật liệu phù hợp.
                 """.formatted(message, productSummary);
 
-        // 🔹 B5: Gọi AI model (Spring AI)
         try {
             ChatResponse aiResponse = chatModel.call(new Prompt(prompt));
-            aiResponse.getResult();
-            aiResponse.getResult().getOutput();
             return aiResponse.getResult().getOutput().getText();
         } catch (Exception e) {
             log.error("❌ Lỗi khi gọi OpenAI API: {}", e.getMessage());
