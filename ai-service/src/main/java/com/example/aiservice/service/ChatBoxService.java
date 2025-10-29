@@ -11,7 +11,6 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,13 +21,17 @@ public class ChatBoxService {
     private final ProductClient productClient;
 
     public String chatWithAI(String message) {
-        String keyword = extractKeyword(message);
         log.info("💬 User message: {}", message);
+
+        String keyword = extractKeyword(message);
         log.info("🔍 Extracted keyword: {}", keyword);
 
         ApiResponse<List<ProductResponse>> response;
+
         try {
             response = productClient.getProducts();
+            log.info("✅ Gọi Product Service thành công, nhận được {} sản phẩm",
+                    response != null && response.getData() != null ? response.getData().size() : 0);
         } catch (Exception e) {
             log.error("❌ Lỗi khi gọi Product Service qua Feign: {}", e.getMessage());
             return "Xin lỗi, tôi chưa thể lấy dữ liệu sản phẩm. Bạn thử lại sau nhé!";
@@ -39,27 +42,33 @@ public class ChatBoxService {
         }
 
         List<ProductResponse> filtered = response.getData().stream()
-                .filter(p -> p.getName().toLowerCase().contains(keyword.toLowerCase()))
+                .filter(p -> p.getName() != null &&
+                        p.getName().toLowerCase().contains(keyword.toLowerCase()))
                 .limit(5)
                 .toList();
 
         if (filtered.isEmpty()) {
-            return "Tôi không tìm thấy sản phẩm nào có liên quan đến “" + keyword + "” 😅.";
+            return "Tôi không tìm thấy sản phẩm nào liên quan đến “" + keyword + "” 😅.";
         }
 
+        // Tóm tắt sản phẩm gửi cho AI
         StringBuilder productSummary = new StringBuilder("Một số sản phẩm bạn có thể quan tâm:\n");
         for (ProductResponse p : filtered) {
-            productSummary.append("- ").append(p.getName())
-                    .append(" (Giá: ").append(p.getPrice()).append("₫)\n")
-                    .append(" (Màu: ").append(p.getColor()).append("\n")
-            ;
+            productSummary.append("- ")
+                    .append(p.getName())
+                    .append(" (Giá: ").append(p.getPrice()).append("₫");
+            if (p.getColor() != null ) {
+                productSummary.append(", Màu: ").append(p.getColor());
+            }
+            productSummary.append(")\n");
         }
 
+        // Prompt cho AI
         String prompt = """
             Bạn là trợ lý nội thất thông minh FurniAI.
             Hãy đọc câu hỏi của người dùng và tư vấn thật chuyên nghiệp.
             
-            Thông tin người dùng hỏi:
+            Câu hỏi người dùng:
             "%s"
             
             Danh sách sản phẩm hiện có trong cửa hàng:
@@ -73,7 +82,6 @@ public class ChatBoxService {
             
             Hãy trả lời bằng tiếng Việt tự nhiên, giọng thân thiện như đang tư vấn khách hàng.
             """.formatted(message, productSummary);
-
 
         try {
             ChatResponse aiResponse = chatModel.call(new Prompt(prompt));
