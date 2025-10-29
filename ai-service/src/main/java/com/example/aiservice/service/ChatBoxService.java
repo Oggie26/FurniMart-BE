@@ -50,16 +50,30 @@ public class ChatBoxService {
         StringBuilder productSummary = new StringBuilder("Một số sản phẩm bạn có thể quan tâm:\n");
         for (ProductResponse p : filtered) {
             productSummary.append("- ").append(p.getName())
-                    .append(" (Giá: ").append(p.getPrice()).append("₫)\n");
+                    .append(" (Giá: ").append(p.getPrice()).append("₫)\n")
+                    .append(" (Màu: ").append(p.getColor()).append("\n")
+            ;
         }
 
         String prompt = """
-                Bạn là trợ lý nội thất FurniAI thân thiện.
-                Người dùng hỏi: %s
-                Dưới đây là danh sách sản phẩm có thể phù hợp:
-                %s
-                Hãy trả lời ngắn gọn, tự nhiên, tư vấn gợi ý thêm cách phối nội thất hoặc vật liệu phù hợp.
-                """.formatted(message, productSummary);
+            Bạn là trợ lý nội thất thông minh FurniAI.
+            Hãy đọc câu hỏi của người dùng và tư vấn thật chuyên nghiệp.
+            
+            Thông tin người dùng hỏi:
+            "%s"
+            
+            Danh sách sản phẩm hiện có trong cửa hàng:
+            %s
+            
+            Nhiệm vụ của bạn:
+            - Nếu người dùng hỏi về tư vấn nội thất, hãy phân tích nhu cầu (phòng, diện tích, phong cách, màu sắc, ngân sách).
+            - Đề xuất 2–3 sản phẩm phù hợp trong danh sách kèm lý do chọn.
+            - Gợi ý thêm vật liệu hoặc màu sắc để phối hợp đẹp mắt.
+            - Nếu câu hỏi không liên quan sản phẩm, hãy trả lời thân thiện, ngắn gọn, và gợi ý cách hỏi khác.
+            
+            Hãy trả lời bằng tiếng Việt tự nhiên, giọng thân thiện như đang tư vấn khách hàng.
+            """.formatted(message, productSummary);
+
 
         try {
             ChatResponse aiResponse = chatModel.call(new Prompt(prompt));
