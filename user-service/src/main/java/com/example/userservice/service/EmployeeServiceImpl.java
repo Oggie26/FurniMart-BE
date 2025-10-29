@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 /**
  * Implementation of EmployeeService for managing employee operations.
- * This service ensures that only employee roles (SELLER, BRANCH_MANAGER, DELIVERER, STAFF) 
+ * This service ensures that only employee roles (MANAGER, DELIVERY, STAFF) 
  * can be created and managed through employee endpoints.
  * ADMIN and CUSTOMER roles are explicitly blocked from these operations.
  */
@@ -54,9 +54,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     // Define employee roles as constants
     private static final List<EnumRole> EMPLOYEE_ROLES = Arrays.asList(
         EnumRole.ADMIN,           // Allow ADMIN creation
-        EnumRole.SELLER, 
-        EnumRole.BRANCH_MANAGER, 
-        EnumRole.DELIVERER, 
+        EnumRole.MANAGER,
+        EnumRole.DELIVERY,
         EnumRole.STAFF
     );
 

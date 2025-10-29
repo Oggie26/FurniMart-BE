@@ -43,7 +43,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse createUser(UserRequest userRequest) {
-        // NOTE: For employee creation (SELLER, BRANCH_MANAGER, DELIVERER, STAFF),
+        // NOTE: For employee creation (MANAGER, DELIVERY, STAFF),
         // it is recommended to use EmployeeService.createEmployee() for better validation
         // and to ensure ADMIN roles cannot be created through employee endpoints.
         // This method is primarily used for ADMIN and CUSTOMER creation.
@@ -344,7 +344,7 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public List<UserResponse> getAllEmployees() {
-        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.SELLER, EnumRole.BRANCH_MANAGER, EnumRole.DELIVERER, EnumRole.STAFF);
+        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.MANAGER, EnumRole.DELIVERY, EnumRole.STAFF);
         List<User> employees = userRepository.findEmployeesByRoles(employeeRoles);
         return employees.stream()
                 .map(this::toUserResponse)
@@ -366,7 +366,7 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public List<UserResponse> getEmployeesByStoreId(String storeId) {
-        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.SELLER, EnumRole.BRANCH_MANAGER, EnumRole.DELIVERER, EnumRole.STAFF);
+        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.MANAGER, EnumRole.DELIVERY, EnumRole.STAFF);
         List<User> employees = userRepository.findEmployeesByStoreIdAndRoles(storeId, employeeRoles);
         return employees.stream()
                 .map(this::toUserResponse)
@@ -390,7 +390,7 @@ public class UserServiceImpl implements UserService {
     public PageResponse<UserResponse> getEmployeesWithPagination(int page, int size) {
         log.info("Fetching employees with pagination - page: {}, size: {}", page, size);
         
-        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.SELLER, EnumRole.BRANCH_MANAGER, EnumRole.DELIVERER, EnumRole.STAFF);
+        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.MANAGER, EnumRole.DELIVERY, EnumRole.STAFF);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<User> employeePage = userRepository.findEmployeesByRoles(employeeRoles, pageable);
         
@@ -459,9 +459,8 @@ public class UserServiceImpl implements UserService {
     }
     
     private boolean isEmployeeRole(EnumRole role) {
-        return role == EnumRole.SELLER || 
-               role == EnumRole.BRANCH_MANAGER || 
-               role == EnumRole.DELIVERER || 
+        return role == EnumRole.MANAGER || 
+               role == EnumRole.DELIVERY || 
                role == EnumRole.STAFF;
     }
 }

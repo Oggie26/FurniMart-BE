@@ -29,7 +29,7 @@ public class StaffController {
     @PostMapping
     @Operation(summary = "Create new staff member")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<StaffResponse> createStaff(@Valid @RequestBody StaffRequest request) {
         return ApiResponse.<StaffResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -40,7 +40,7 @@ public class StaffController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update staff information")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<StaffResponse> updateStaff(@PathVariable String id, @Valid @RequestBody StaffUpdateRequest request) {
         return ApiResponse.<StaffResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -51,7 +51,7 @@ public class StaffController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get staff by ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
     public ApiResponse<StaffResponse> getStaffById(@PathVariable String id) {
         return ApiResponse.<StaffResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -62,7 +62,7 @@ public class StaffController {
 
     @GetMapping
     @Operation(summary = "Get all staff")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<List<StaffResponse>> getAllStaff() {
         return ApiResponse.<List<StaffResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -73,7 +73,7 @@ public class StaffController {
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Get staff by status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<List<StaffResponse>> getStaffByStatus(@PathVariable String status) {
         return ApiResponse.<List<StaffResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -84,7 +84,7 @@ public class StaffController {
 
     @GetMapping("/paginated")
     @Operation(summary = "Get staff with pagination")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<PageResponse<StaffResponse>> getStaffWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -97,7 +97,7 @@ public class StaffController {
 
     @GetMapping("/search")
     @Operation(summary = "Search staff by multiple criteria")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<PageResponse<StaffResponse>> searchStaff(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(defaultValue = "0") int page,
@@ -114,7 +114,7 @@ public class StaffController {
 
     @GetMapping("/email/{email}")
     @Operation(summary = "Get staff by email")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<StaffResponse> getStaffByEmail(@PathVariable String email) {
         return ApiResponse.<StaffResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -125,7 +125,7 @@ public class StaffController {
 
     @GetMapping("/phone/{phone}")
     @Operation(summary = "Get staff by phone")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<StaffResponse> getStaffByPhone(@PathVariable String phone) {
         return ApiResponse.<StaffResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -136,7 +136,7 @@ public class StaffController {
 
     @GetMapping("/department/{department}")
     @Operation(summary = "Get staff by department")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<List<StaffResponse>> getStaffByDepartment(@PathVariable String department) {
         return ApiResponse.<List<StaffResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -147,7 +147,7 @@ public class StaffController {
 
     @PatchMapping("/{id}/disable")
     @Operation(summary = "Disable staff (set INACTIVE)")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<Void> disableStaff(@PathVariable String id) {
         staffService.disableStaff(id);
         return ApiResponse.<Void>builder()
@@ -158,7 +158,7 @@ public class StaffController {
 
     @PatchMapping("/{id}/enable")
     @Operation(summary = "Enable staff (set ACTIVE)")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<Void> enableStaff(@PathVariable String id) {
         staffService.enableStaff(id);
         return ApiResponse.<Void>builder()
@@ -169,7 +169,7 @@ public class StaffController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft delete staff")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<Void> deleteStaff(@PathVariable String id) {
         staffService.deleteStaff(id);
         return ApiResponse.<Void>builder()

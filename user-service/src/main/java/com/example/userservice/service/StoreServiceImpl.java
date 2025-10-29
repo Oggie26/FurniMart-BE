@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Store;
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.entity.User;
 import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.ErrorCode;
@@ -248,6 +249,12 @@ public class StoreServiceImpl implements StoreService {
     public List<UserStoreResponse> getUsersByStoreId(String storeId) {
         List<UserStore> userStores = userStoreRepository.findByStoreIdAndIsDeletedFalse(storeId);
         return userStores.stream()
+                .filter(us -> {
+                    EnumRole role = us.getUser() != null && us.getUser().getAccount() != null
+                            ? us.getUser().getAccount().getRole()
+                            : null;
+                    return role == EnumRole.MANAGER || role == EnumRole.DELIVERY || role == EnumRole.STAFF;
+                })
                 .map(this::mapToUserStoreResponse)
                 .collect(Collectors.toList());
     }
