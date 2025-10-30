@@ -123,7 +123,7 @@ public class AuthServiceImpl implements AuthService {
 
         Map<String, Object> claims = Map.of(
                 "role", account.getRole(),
-                "userId", account.getId(),
+                "accountId", account.getId(),
                 "storeId", storeIds
         );
         String accessToken = jwtService.generateToken(claims, account.getEmail());
