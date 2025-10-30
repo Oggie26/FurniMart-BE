@@ -23,6 +23,8 @@ public class ProductResponse {
     private Double width;
     private Double length;
     private String categoryName;
+    private String userId;
+    private String fullName;
     private Long categoryId;
     private String slug;
     private EnumStatus status;

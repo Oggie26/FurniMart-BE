@@ -133,7 +133,6 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-        // Clear cart after creating pre-order
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);

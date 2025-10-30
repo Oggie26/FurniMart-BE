@@ -3,6 +3,7 @@ package com.example.productservice.service;
 import com.example.productservice.entity.*;
 import com.example.productservice.enums.EnumStatus;
 import com.example.productservice.enums.ErrorCode;
+import com.example.productservice.event.ProductCreatedEvent;
 import com.example.productservice.exception.AppException;
 import com.example.productservice.repository.*;
 import com.example.productservice.request.ProductColorRequest;
@@ -12,6 +13,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
