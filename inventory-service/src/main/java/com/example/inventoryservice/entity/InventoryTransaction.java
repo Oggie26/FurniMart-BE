@@ -34,7 +34,7 @@ public class InventoryTransaction {
     @Column(nullable = false)
     private String productColorId;
 
-    @Column
+    @Column(nullable = true)
     private String userId;
 
     @ManyToOne
