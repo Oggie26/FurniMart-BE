@@ -70,7 +70,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     }
 
     private void handleManagerAccept(Order order) {
-        // Generate QR code when manager accepts the order
         QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(order.getId());
         
         ProcessOrder process = ProcessOrder.builder()

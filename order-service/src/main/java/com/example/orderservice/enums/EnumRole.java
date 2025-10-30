@@ -6,5 +6,6 @@ public enum EnumRole {
     CUSTOMER ,
     BRANCH_MANAGER ,
     SELLER,
-    DELIVERY_STAFF
+    DELIVERY_STAFF,
+    STAFF
 }

@@ -6,5 +6,4 @@ public enum EnumRole {
     DELIVERY,
     MANAGER,
     STAFF,
-
 }
