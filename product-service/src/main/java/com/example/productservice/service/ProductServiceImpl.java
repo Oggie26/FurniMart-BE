@@ -209,8 +209,8 @@ public class ProductServiceImpl implements ProductService {
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
-                .fullName()
-                .userId()
+//                .fullName()
+//                .userId()
                 .productColors(product.getProductColors() != null ?
                         product.getProductColors().stream()
                                 .map(this::mapProductColorToDTO)
@@ -260,25 +260,25 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
-    private String getUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        String username = authentication.getName();
-        ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
-
-        if (response == null || response.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
-
-        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
-        if (userId == null || userId.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
-
-        return userId.getData().getId();
-    }
+//    private String getUserId() {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication == null || !authentication.isAuthenticated()
+//                || "anonymousUser".equals(authentication.getPrincipal())) {
+//            throw new AppException(ErrorCode.UNAUTHENTICATED);
+//        }
+//
+//        String username = authentication.getName();
+//        ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
+//
+//        if (response == null || response.getData() == null) {
+//            throw new AppException(ErrorCode.NOT_FOUND_USER);
+//        }
+//
+//        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
+//        if (userId == null || userId.getData() == null) {
+//            throw new AppException(ErrorCode.NOT_FOUND_USER);
+//        }
+//
+//        return userId.getData().getId();
+//    }
 }
