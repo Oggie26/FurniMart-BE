@@ -14,7 +14,7 @@ import java.util.Optional;
 
 /**
  * Repository for employee-specific database operations.
- * Handles queries for users with employee roles (SELLER, BRANCH_MANAGER, DELIVERER, STAFF).
+ * Handles queries for users with employee roles (MANAGER, DELIVERY, STAFF).
  * Excludes ADMIN and CUSTOMER roles from employee operations.
  */
 @Repository
@@ -23,19 +23,19 @@ public interface EmployeeRepository extends JpaRepository<User, String> {
     /**
      * Find employee by ID (excludes ADMIN and CUSTOMER roles)
      */
-    @Query("SELECT u FROM User u WHERE u.id = :id AND u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT u FROM User u WHERE u.id = :id AND u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     Optional<User> findEmployeeById(@Param("id") String id);
 
     /**
      * Find all employees (excludes ADMIN and CUSTOMER roles)
      */
-    @Query("SELECT u FROM User u WHERE u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT u FROM User u WHERE u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     List<User> findAllEmployees();
 
     /**
      * Find all employees with pagination
      */
-    @Query("SELECT u FROM User u WHERE u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT u FROM User u WHERE u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     Page<User> findAllEmployees(Pageable pageable);
 
     /**
@@ -53,7 +53,7 @@ public interface EmployeeRepository extends JpaRepository<User, String> {
     /**
      * Find employees by store ID
      */
-    @Query("SELECT u FROM User u JOIN u.userStores us WHERE us.storeId = :storeId AND u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT u FROM User u JOIN u.userStores us WHERE us.storeId = :storeId AND u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     List<User> findEmployeesByStoreId(@Param("storeId") String storeId);
 
     /**
@@ -77,7 +77,7 @@ public interface EmployeeRepository extends JpaRepository<User, String> {
     /**
      * Search employees by name, email, or phone
      */
-    @Query("SELECT u FROM User u WHERE u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false AND " +
+    @Query("SELECT u FROM User u WHERE u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false AND " +
            "(LOWER(u.fullName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(u.phone) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(u.account.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
@@ -92,19 +92,19 @@ public interface EmployeeRepository extends JpaRepository<User, String> {
     /**
      * Count all employees
      */
-    @Query("SELECT COUNT(u) FROM User u WHERE u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT COUNT(u) FROM User u WHERE u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     Long countAllEmployees();
 
     /**
      * Check if employee exists by email
      */
-    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.account.email = :email AND u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.account.email = :email AND u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     boolean existsEmployeeByEmail(@Param("email") String email);
 
     /**
      * Check if employee exists by phone
      */
-    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.phone = :phone AND u.account.role IN ('SELLER', 'BRANCH_MANAGER', 'DELIVERER', 'STAFF') AND u.isDeleted = false")
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.phone = :phone AND u.account.role IN ('MANAGER', 'DELIVERY', 'STAFF') AND u.isDeleted = false")
     boolean existsEmployeeByPhone(@Param("phone") String phone);
 }
 
