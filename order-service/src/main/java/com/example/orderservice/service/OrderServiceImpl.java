@@ -178,6 +178,11 @@ public class OrderServiceImpl implements OrderService {
                             .build())
                     .toList();
 
+            Payment payment = paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+            payment.setPaymentStatus(PaymentStatus.PAID);
+            paymentRepository.save(payment);
+
             OrderCreatedEvent event = OrderCreatedEvent.builder()
                     .email(safeGetUser(order.getUserId()).getEmail())
                     .fullName(safeGetUser(order.getUserId()).getFullName())

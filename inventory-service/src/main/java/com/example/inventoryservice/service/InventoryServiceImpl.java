@@ -237,8 +237,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .note("Release reserved stock for product " + productColorId)
                 .type(EnumTypes.RELEASE)
                 .productColorId(productColorId)
-                .userId(getUserId())
-                .warehouse(warehouse)
+                .userId(getUserId() != null ? getUserId() : null)
                 .build());
 
         return mapToResponse(inventory);
@@ -372,6 +371,6 @@ public class InventoryServiceImpl implements InventoryService {
         if (userRes == null || userRes.getData() == null)
             throw new AppException(ErrorCode.NOT_FOUND_USER);
 
-        return userRes.getData().getId();
+        return userRes.getData().getId() ;
     }
 }

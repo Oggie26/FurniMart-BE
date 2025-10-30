@@ -31,7 +31,7 @@ public class InventoryTransaction {
     @Column(name = "note")
     private String note;
 
-    @Column
+    @Column(nullable = false)
     private String productColorId;
 
     @Column
