@@ -1,376 +1,389 @@
 package com.example.inventoryservice.service;
 
+import com.example.inventoryservice.controller.InventoryController;
 import com.example.inventoryservice.entity.*;
-import com.example.inventoryservice.enums.EnumStatus;
+import com.example.inventoryservice.enums.EnumPurpose;
 import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
-import com.example.inventoryservice.feign.AuthClient;
-import com.example.inventoryservice.feign.ProductClient;
-import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.repository.*;
-import com.example.inventoryservice.response.*;
+import com.example.inventoryservice.request.InventoryItemRequest;
+import com.example.inventoryservice.request.InventoryRequest;
+import com.example.inventoryservice.request.TransferStockRequest;
+import com.example.inventoryservice.response.InventoryItemResponse;
+import com.example.inventoryservice.response.InventoryResponse;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final InventoryItemRepository inventoryItemRepository;
+    private final WarehouseRepository warehouseRepository;
     private final LocationItemRepository locationItemRepository;
     private final ZoneRepository zoneRepository;
-    private final WarehouseRepository warehouseRepository;
-    private final InventoryTransactionRepository transactionRepository;
-    private final ProductClient productClient;
-    private final UserClient userClient;
-    private final AuthClient authClient;
 
-    // ✅ UP-SERT logic fix toàn bộ
+    // ----------------- CREATE / UPDATE -----------------
+
     @Override
     @Transactional
-    public InventoryResponse upsertInventory(String productColorId, String locationItemId, int quantity, int minQuantity, int maxQuantity) {
-        log.info("🧩 Upsert inventory: productColorId={}, locationItemId={}, qty={}, min={}, max={}",
-                productColorId, locationItemId, quantity, minQuantity, maxQuantity);
+    public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
+        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        ProductColorResponse product = getProductColorById(productColorId);
-        if (product == null) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
-
-        LocationItem locationItem = locationItemRepository.findById(locationItemId)
-                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
-
-        Zone zone = locationItem.getZone();
-        if (zone == null) throw new AppException(ErrorCode.ZONE_NOT_FOUND);
-
-        Warehouse warehouse = zone.getWarehouse();
-        if (warehouse == null) throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
-
-        if (quantity < 0 || minQuantity < 0 || maxQuantity < 0)
-            throw new AppException(ErrorCode.INVALID_QUANTITY_RANGE);
-
-        // 🔹 Lấy tồn cũ trong zone & warehouse
-        Integer currentZoneTotal = inventoryRepository.sumQuantityByZoneId(zone.getId());
-        if (currentZoneTotal == null) currentZoneTotal = 0;
-
-        Integer currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
-        if (currentWarehouseTotal == null) currentWarehouseTotal = 0;
-
-        // 🔹 Kiểm tra tồn tại inventory cũ
-        Inventory existing = inventoryRepository
-                .findByLocationItem_IdAndProductColorId(locationItemId, productColorId)
-                .orElse(null);
-
-        int oldQuantity = existing != null ? existing.getQuantity() : 0;
-        int newZoneTotal = currentZoneTotal - oldQuantity + quantity;
-        int newWarehouseTotal = currentWarehouseTotal - oldQuantity + quantity;
-
-        // 🔹 Kiểm tra sức chứa zone và warehouse
-        if (newZoneTotal > zone.getQuantity())
-            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
-
-        if (newWarehouseTotal > warehouse.getCapacity())
-            throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
-
-        if (quantity < minQuantity || quantity > maxQuantity)
-            throw new AppException(ErrorCode.INVALID_QUANTITY_RANGE);
-
-        // 🔹 Cập nhật hoặc tạo mới
-        Inventory inventory = existing != null ? existing : new Inventory();
-        inventory.setProductColorId(productColorId);
-        inventory.setLocationItem(locationItem);
-        inventory.setQuantity(quantity);
-        inventory.setMinQuantity(minQuantity);
-        inventory.setMaxQuantity(maxQuantity);
-        if (inventory.getId() == null) inventory.setReservedQuantity(0);
-        inventory.setStatus(EnumStatus.ACTIVE);
-
-        inventoryRepository.save(inventory);
-
-        // 🔹 Ghi log transaction
-        InventoryTransaction transaction = InventoryTransaction.builder()
-                .quantity(quantity)
-                .dateLocal(LocalDateTime.now())
-                .note("Upsert inventory for product " + productColorId)
-                .type(EnumTypes.IN)
-                .productColorId(productColorId)
-                .userId(getUserId())
+        Inventory inventory = Inventory.builder()
+                .employeeId(request.getEmployeeId())
+                .type(request.getType())
+                .purpose(request.getPurpose())
+                .date(LocalDate.now())
+                .note(request.getNote())
                 .warehouse(warehouse)
                 .build();
-        transactionRepository.save(transaction);
 
-        return mapToResponse(inventory);
+        inventoryRepository.save(inventory);
+        return mapToInventoryResponse(inventory);
     }
 
     @Override
     @Transactional
-    public InventoryResponse increaseStock(String productColorId, String locationItemId, int amount, String warehouseId) {
-        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId(locationItemId, productColorId)
+    public InventoryItemResponse addInventoryItem(InventoryItemRequest request) {
+        Inventory inventory = inventoryRepository.findById(request.getInventoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
-        int newQuantity = inventory.getQuantity() + amount;
-        if (newQuantity > inventory.getMaxQuantity())
-            throw new AppException(ErrorCode.EXCEEDS_MAX_QUANTITY);
+        LocationItem locationItem = locationItemRepository.findById(request.getLocationItemId())
+                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-        Zone zone = inventory.getLocationItem().getZone();
-        Integer currentZoneTotal = inventoryRepository.sumQuantityByZoneId(zone.getId());
-        if (currentZoneTotal == null) currentZoneTotal = 0;
-        if (currentZoneTotal + amount > zone.getQuantity())
-            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+        InventoryItem item = InventoryItem.builder()
+                .inventory(inventory)
+                .locationItem(locationItem)
+                .productColorId(request.getProductColorId())
+                .quantity(request.getQuantity())
+                .reservedQuantity(0)
+                .build();
 
-        Warehouse warehouse = zone.getWarehouse();
-        Integer currentWarehouseTotal = inventoryRepository.sumQuantityByWarehouseId(warehouse.getId());
-        if (currentWarehouseTotal == null) currentWarehouseTotal = 0;
-        if (currentWarehouseTotal + amount > warehouse.getCapacity())
-            throw new AppException(ErrorCode.WAREHOUSE_CAPACITY_EXCEEDED);
-
-        inventory.setQuantity(newQuantity);
-        inventoryRepository.save(inventory);
-
-        transactionRepository.save(InventoryTransaction.builder()
-                .quantity(amount)
-                .dateLocal(LocalDateTime.now())
-                .note("Increase stock for product " + productColorId)
-                .type(EnumTypes.IN)
-                .productColorId(productColorId)
-                .userId(getUserId())
-                .warehouse(warehouse)
-                .build());
-
-        return mapToResponse(inventory);
+        inventoryItemRepository.save(item);
+        return mapToInventoryItemResponse(item);
     }
 
+    // ----------------- IMPORT / EXPORT -----------------
 
     @Override
     @Transactional
-    public InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount, String warehouseId) {
-        Inventory inventory = inventoryRepository.findByLocationItem_IdAndProductColorId( locationItemId, productColorId)
-                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+    public InventoryResponse importStock(InventoryItemRequest request) {
+        Inventory inventory = createInventory(
+                request.getWarehouseId(),
+                EnumTypes.IMPORT,
+                EnumPurpose.STOCK_IN,
+                "Import stock"
+        );
 
-        if (inventory.getQuantity() < amount)
-            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
-
-        int reserved = inventory.getReservedQuantity();
-        inventory.setReservedQuantity(Math.max(reserved - amount, 0));
-
-        int newQuantity = inventory.getQuantity() - amount;
-        if (newQuantity < inventory.getMinQuantity())
-            throw new AppException(ErrorCode.BELOW_MIN_QUANTITY);
-
-        inventory.setQuantity(newQuantity);
-        inventoryRepository.save(inventory);
-
-        Warehouse warehouse = inventory.getLocationItem().getZone().getWarehouse();
-        transactionRepository.save(InventoryTransaction.builder()
-                .quantity(amount)
-                .dateLocal(LocalDateTime.now())
-                .note("Decrease stock for product " + productColorId)
-                .type(EnumTypes.OUT)
-                .productColorId(productColorId)
-                .userId(getUserId())
-                .warehouse(warehouse)
-                .build());
-
-        return mapToResponse(inventory);
-    }
-
-    @Override
-    public void transferInventory(String productColorId, String locationItemId, int quantity, String warehouse1_Id, String warehouse2_Id) {
-        decreaseStock(productColorId, locationItemId, quantity, warehouse1_Id);
-        increaseStock(productColorId, locationItemId, quantity, warehouse2_Id);
+        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), request.getQuantity(), 0);
+        return mapToInventoryResponse(inventory);
     }
 
     @Override
     @Transactional
-    public InventoryResponse reserveStock(String productColorId, int amount) {
-        if (!hasSufficientGlobalStock(productColorId, amount))
-            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
+    public InventoryResponse exportStock(InventoryItemRequest request) {
+        List<InventoryItem> items = inventoryItemRepository
+                .findAllByProductColorIdAndInventory_Warehouse_Id(request.getProductColorId(), request.getWarehouseId());
 
-        Inventory inventory = inventoryRepository.findAllByProductColorId(productColorId).stream()
-                .filter(i -> (i.getQuantity() - i.getReservedQuantity()) >= amount)
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.INSUFFICIENT_STOCK));
+        if (items.isEmpty()) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
 
-        inventory.setReservedQuantity(inventory.getReservedQuantity() + amount);
-        inventoryRepository.save(inventory);
+        int remaining = request.getQuantity();
 
-        Warehouse warehouse = inventory.getLocationItem().getZone().getWarehouse();
+        for (InventoryItem item : items) {
+            int available = item.getQuantity() - item.getReservedQuantity();
+            if (available <= 0) continue;
 
-        transactionRepository.save(InventoryTransaction.builder()
-                .quantity(amount)
-                .dateLocal(LocalDateTime.now())
-                .note("Reserve stock for product " + productColorId)
-                .type(EnumTypes.RESERVE)
-                .productColorId(productColorId)
-                .userId(getUserId())
-                .warehouse(warehouse)
-                .build());
+            int toExport = Math.min(available, remaining);
+            item.setQuantity(item.getQuantity() - toExport);
+            inventoryItemRepository.save(item);
 
-        return mapToResponse(inventory);
+            remaining -= toExport;
+            if (remaining <= 0) break;
+        }
+
+        if (remaining > 0) {
+            throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+        }
+
+        Inventory inventory = createInventory(
+                request.getWarehouseId(),
+                EnumTypes.EXPORT,
+                EnumPurpose.STOCK_OUT,
+                "Export stock"
+        );
+
+        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), -request.getQuantity(), 0);
+
+        return mapToInventoryResponse(inventory);
     }
+
+
+    // ----------------- TRANSFER -----------------
 
     @Override
     @Transactional
-    public InventoryResponse releaseStock(String productColorId, int amount) {
-        Inventory inventory = inventoryRepository.findAllByProductColorId(productColorId).stream()
-                .filter(i -> i.getReservedQuantity() >= amount)
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+    public void transferStock(TransferStockRequest request) {
+        String productColorId = request.getProductColorId();
+        int quantity = request.getQuantity();
 
-        inventory.setReservedQuantity(inventory.getReservedQuantity() - amount);
-        inventoryRepository.save(inventory);
+        // 1️⃣ Lấy warehouse, zone và locationItem
+        Warehouse fromWarehouse = warehouseRepository.findById(request.getFromWarehouseId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        Warehouse toWarehouse = warehouseRepository.findById(request.getToWarehouseId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        Warehouse warehouse = inventory.getLocationItem().getZone().getWarehouse();
-
-        transactionRepository.save(InventoryTransaction.builder()
-                .quantity(amount)
-                .dateLocal(LocalDateTime.now())
-                .note("Release reserved stock for product " + productColorId)
-                .type(EnumTypes.RELEASE)
-                .productColorId(productColorId)
-                .userId(getUserId() != null ? getUserId() : null)
-                .build());
-
-        return mapToResponse(inventory);
-    }
-
-    @Override
-    public boolean hasSufficientStock(String productId, String locationItemId, int requiredQty) {
-        return inventoryRepository.findByProductColorIdAndLocationItemId(productId, locationItemId)
-                .map(inventory -> (inventory.getQuantity() - inventory.getReservedQuantity()) >= requiredQty)
-                .orElse(false);
-    }
-
-    @Override
-    public boolean hasSufficientGlobalStock(String productId, int requiredQty) {
-        int totalPhysical = inventoryRepository.getTotalQuantityByProductColorId(productId);
-        int totalReserved = inventoryRepository.getTotalReservedQuantityByProductColorId(productId);
-        return (totalPhysical - totalReserved) >= requiredQty;
-    }
-
-    @Override
-    public List<InventoryResponse> getInventoryByProduct(String productColorId) {
-        return inventoryRepository.findAllByProductColorId(productColorId).stream()
-                .map(this::mapToResponse)
-                .toList();
-    }
-
-    @Override
-    public boolean checkZoneCapacity(String zoneId) {
-        Zone zone = zoneRepository.findById(zoneId)
+        Zone fromZone = zoneRepository.findById(request.getFromZoneId())
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
-        Integer currentTotal = inventoryRepository.sumQuantityByZoneId(zone.getId());
-        if (currentTotal == null) currentTotal = 0;
-        return zone.getQuantity() - currentTotal > 0;
+        Zone toZone = zoneRepository.findById(request.getToZoneId())
+                .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
+
+        LocationItem fromLocation = locationItemRepository.findById(request.getFromLocationItemId())
+                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+        LocationItem toLocation = locationItemRepository.findById(request.getToLocationItemId())
+                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+
+        // 2️⃣ Kiểm tra tồn kho tại fromLocation
+        if (!hasSufficientStock(productColorId, fromLocation.getId(), quantity)) {
+            throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+        }
+
+        // 3️⃣ EXPORT (kho đi)
+        Inventory exportInventory = createInventory(
+                fromWarehouse.getId(),
+                EnumTypes.TRANSFER,
+                EnumPurpose.MOVE,
+                "Transfer OUT to " + toWarehouse.getWarehouseName() + " / Zone: " + toZone.getZoneName()
+        );
+        createInventoryItem(exportInventory, fromLocation.getId(), productColorId, -quantity, 0);
+
+        // 4️⃣ IMPORT (kho đến)
+        Inventory importInventory = createInventory(
+                toWarehouse.getId(),
+                EnumTypes.TRANSFER,
+                EnumPurpose.MOVE,
+                "Transfer IN from " + fromWarehouse.getWarehouseName() + " / Zone: " + fromZone.getZoneName()
+        );
+        createInventoryItem(importInventory, fromLocation.getId(), productColorId, quantity, 0);
+    }
+
+
+
+
+    // ----------------- RESERVE / RELEASE -----------------
+
+    @Override
+    @Transactional
+    public InventoryResponse reserveStock(String productColorId, int quantity) {
+        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorId(productColorId);
+
+        if (items.isEmpty()) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+
+        int remaining = quantity;
+
+        for (InventoryItem item : items) {
+            int available = item.getQuantity() - item.getReservedQuantity();
+            if (available <= 0) continue;
+
+            int toReserve = Math.min(available, remaining);
+            item.setReservedQuantity(item.getReservedQuantity() + toReserve);
+            inventoryItemRepository.save(item);
+
+            remaining -= toReserve;
+            if (remaining <= 0) break;
+        }
+
+        if (remaining > 0) {
+            throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+        }
+
+        Inventory inventory = items.getFirst().getInventory();
+        return mapToInventoryResponse(inventory);
     }
 
     @Override
-    public List<InventoryResponse> getAllInventory() {
-        return inventoryRepository.findAll().stream()
-                .filter(i -> (i.getQuantity() - i.getReservedQuantity()) > 0)
-                .map(this::mapToResponse)
-                .toList();
+    @Transactional
+    public InventoryResponse releaseReservedStock(String productColorId, int quantity) {
+        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorId(productColorId);
+        if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+
+        int remaining = quantity;
+        for (InventoryItem item : items) {
+            int reserved = item.getReservedQuantity();
+            if (reserved > 0) {
+                int toRelease = Math.min(reserved, remaining);
+                item.setReservedQuantity(reserved - toRelease);
+                inventoryItemRepository.save(item);
+                remaining -= toRelease;
+                if (remaining <= 0) break;
+            }
+        }
+
+        return mapToInventoryResponse(items.getFirst().getInventory());
+    }
+
+    // ----------------- CHECK STOCK -----------------
+
+    @Override
+    public boolean hasSufficientStock(String productColorId, String warehouseId, int requiredQty) {
+        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouseId);
+        int available = items.stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
+        return available >= requiredQty;
     }
 
     @Override
-    public List<InventoryTransactionResponse> getAllTransactions() {
-        return transactionRepository.findAll().stream()
-                .filter(t -> t.getQuantity() > 0)
-                .map(this::mapToTransactionResponse)
-                .toList();
+    public boolean hasSufficientGlobalStock(String productColorId, int requiredQty) {
+        int total = getAvailableStockByProductColorId(productColorId);
+        return total >= requiredQty;
     }
 
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
-        return inventoryRepository.getTotalQuantityByProductColorId(productColorId);
+        return inventoryItemRepository.findAllByProductColorId(productColorId)
+                .stream()
+                .mapToInt(InventoryItem::getQuantity)
+                .sum();
     }
 
     @Override
-    public int getTotalAvailableStockByProductColorId(String productColorId) {
-        int totalPhysical = inventoryRepository.getTotalQuantityByProductColorId(productColorId);
-        int totalReserved = inventoryRepository.getTotalReservedQuantityByProductColorId(productColorId);
-        return totalPhysical - totalReserved;
+    public int getAvailableStockByProductColorId(String productColorId) {
+        return inventoryItemRepository.findAllByProductColorId(productColorId)
+                .stream()
+                .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
+                .sum();
+    }
+
+    // ----------------- GET LIST -----------------
+
+    @Override
+    public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
+        return inventoryRepository.findAllByWarehouse_Id(warehouseId)
+                .stream().map(this::mapToInventoryResponse).collect(Collectors.toList());
     }
 
     @Override
-    public InventoryResponse getInventoryById(String inventoryId) {
-        Inventory inventory = inventoryRepository.findById(inventoryId)
-                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
-        return mapToResponse(inventory);
-    }
-
-    @Override
-    public List<InventoryTransactionResponse> getTransactionHistory(String productColorId, String zoneId) {
-        Zone zone = zoneRepository.findById(zoneId)
-                .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
-        String warehouseId = zone.getWarehouse().getId();
-        List<InventoryTransaction> transactions = transactionRepository.findByProductColorIddAndWarehouseId(productColorId, warehouseId);
-        return transactions.stream().map(this::mapToTransactionResponse).toList();
-    }
-
-    @Override @Transactional public List<InventoryResponse> getInventoryByZone(String zoneId) {
-        List<Inventory> inventories = inventoryRepository.findAllByLocationItem_Zone_ZoneId(zoneId);
-        return inventories.stream()
-                .map(this::mapToResponse)
+    public List<InventoryResponse> getInventoryByZone(String zoneId) {
+        return inventoryItemRepository.findAllByLocationItem_Zone_Id(zoneId)
+                .stream()
+                .map(InventoryItem::getInventory)
+                .distinct()
+                .map(this::mapToInventoryResponse)
                 .collect(Collectors.toList());
     }
 
-    private InventoryResponse mapToResponse(Inventory inventory) {
-        int availableQuantity = inventory.getQuantity() - inventory.getReservedQuantity();
+    @Override
+    public List<InventoryItemResponse> getInventoryItemsByProduct(String productColorId) {
+        return inventoryItemRepository.findAllByProductColorId(productColorId)
+                .stream().map(this::mapToInventoryItemResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InventoryItemResponse> getTransactionHistory(String productColorId, String zoneId) {
+        return inventoryItemRepository.findAllByLocationItem_Zone_Id(zoneId)
+                .stream()
+                .filter(i -> i.getProductColorId().equals(productColorId))
+                .map(this::mapToInventoryItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InventoryItemResponse> getAllInventoryItems() {
+        return inventoryItemRepository.findAll()
+                .stream().map(this::mapToInventoryItemResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InventoryResponse> getAllInventories() {
+        return inventoryRepository.findAll()
+                .stream().map(this::mapToInventoryResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public InventoryResponse getInventoryById(Long inventoryId) {
+        Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+        return mapToInventoryResponse(inventory);
+    }
+
+    @Override
+    public boolean checkZoneCapacity(String zoneId, int additionalQty) {
+        int currentQty = inventoryItemRepository.findAllByLocationItem_Zone_Id(zoneId)
+                .stream().mapToInt(InventoryItem::getQuantity).sum();
+        int maxCapacity = 10000;
+        return (currentQty + additionalQty) <= maxCapacity;
+    }
+
+    // ----------------- PRIVATE HELPERS -----------------
+
+    private Inventory createInventory(String warehouseId, EnumTypes type, EnumPurpose purpose, String note) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+        Inventory inventory = Inventory.builder()
+                .employeeId("system")
+                .type(type)
+                .purpose(purpose)
+                .date(LocalDate.now())
+                .note(note)
+                .warehouse(warehouse)
+                .build();
+
+        return inventoryRepository.save(inventory);
+    }
+
+    private void createInventoryItem(Inventory inventory, String locationItemId, String productColorId, int quantity, int reservedQty) {
+        LocationItem locationItem = null;
+        if (locationItemId != null) {
+            locationItem = locationItemRepository.findById(locationItemId)
+                    .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+        }
+
+        InventoryItem item = InventoryItem.builder()
+                .inventory(inventory)
+                .locationItem(locationItem)
+                .productColorId(productColorId)
+                .quantity(quantity)
+                .reservedQuantity(reservedQty)
+                .build();
+
+        inventoryItemRepository.save(item);
+    }
+
+    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
         return InventoryResponse.builder()
                 .id(inventory.getId())
-                .productColorId(inventory.getProductColorId())
-                .locationItemId(inventory.getLocationItem() != null ? inventory.getLocationItem().getId() : null)
-                .quantity(inventory.getQuantity())
-                .reserved_quantity(inventory.getReservedQuantity())
-                .available_quantity(availableQuantity)
-                .min_quantity(inventory.getMinQuantity())
-                .max_quantity(inventory.getMaxQuantity())
-                .status(inventory.getStatus())
+                .employeeId(inventory.getEmployeeId())
+                .type(inventory.getType())
+                .purpose(inventory.getPurpose())
+                .date(inventory.getDate())
+                .note(inventory.getNote())
+                .warehouse(inventory.getWarehouse())
                 .build();
     }
 
-    private InventoryTransactionResponse mapToTransactionResponse(InventoryTransaction transaction) {
-        return InventoryTransactionResponse.builder()
-                .transactionId(transaction.getId())
-                .quantity(transaction.getQuantity())
-                .dateLocal(transaction.getDateLocal())
-                .type(transaction.getType())
-                .note(transaction.getNote())
-                .productColorId(transaction.getProductColorId())
-                .userId(transaction.getUserId())
-                .warehouseId(transaction.getWarehouse() != null ? transaction.getWarehouse().getId() : null)
+    private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
+        return InventoryItemResponse.builder()
+                .id(item.getId())
+                .quantity(item.getQuantity())
+                .reservedQuantity(item.getReservedQuantity())
+                .productColorId(item.getProductColorId())
+                .inventory(item.getInventory())
+                .locationItem(item.getLocationItem())
                 .build();
-    }
-
-    private ProductColorResponse getProductColorById(String productColorId) {
-        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
-        if (response == null || response.getData() == null) return null;
-        return response.getData();
-    }
-
-    private String getUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal()))
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-
-        ApiResponse<AuthResponse> authRes = authClient.getUserByUsername(auth.getName());
-        if (authRes == null || authRes.getData() == null)
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-
-        ApiResponse<UserResponse> userRes = userClient.getUserByAccountId(authRes.getData().getId());
-        if (userRes == null || userRes.getData() == null)
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-
-        return userRes.getData().getId() ;
     }
 }

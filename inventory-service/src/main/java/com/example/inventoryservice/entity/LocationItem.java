@@ -36,6 +36,9 @@ public class LocationItem extends AbstractEntity {
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
 
+    @Column
+    private Integer quantity;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JsonIgnore
     @JoinColumn(name = "zone_id", nullable = false)
@@ -43,7 +46,7 @@ public class LocationItem extends AbstractEntity {
 
     @OneToMany(mappedBy = "locationItem")
     @JsonIgnore
-    private List<Inventory> inventories;
+    private List<InventoryItem> inventoryItems ;
 
     @PrePersist
     public void generateCode() {

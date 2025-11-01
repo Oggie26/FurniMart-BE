@@ -1,51 +1,50 @@
 package com.example.inventoryservice.service.inteface;
 
-
+import com.example.inventoryservice.request.InventoryItemRequest;
+import com.example.inventoryservice.request.InventoryRequest;
+import com.example.inventoryservice.request.TransferStockRequest;
+import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
-import com.example.inventoryservice.response.InventoryTransactionResponse;
 
 import java.util.List;
 
 public interface InventoryService {
 
-    InventoryResponse upsertInventory(
-            String productColorId,
-            String locationItemId,
-            int quantity,
-            int minQuantity,
-            int maxQuantity
-    );
+    InventoryResponse createOrUpdateInventory(InventoryRequest request);
 
-    InventoryResponse increaseStock(String productColorId, String locationItemId, int amount, String warehouseId);
+    InventoryItemResponse addInventoryItem(InventoryItemRequest request);
 
-    InventoryResponse decreaseStock(String productColorId, String locationItemId, int amount, String warehouseId);
+    InventoryResponse importStock(InventoryItemRequest request);
 
-    void transferInventory(String productColorId, String locationItemId, int quantity, String warehouse1_Id, String warehouse2_Id);
-    InventoryResponse reserveStock(String productColorId, int amount);
+    InventoryResponse exportStock(InventoryItemRequest request);
 
+    void transferStock(TransferStockRequest request);
 
-    InventoryResponse releaseStock(String productColorId, int amount);
+    InventoryResponse reserveStock(String productColorId, int quantity);
 
-    boolean hasSufficientStock(String productColorId, String locationItemId, int requiredQty);
+    InventoryResponse releaseReservedStock(String productColorId, int quantity);
+
+    boolean hasSufficientStock(String productColorId, String warehouseId, int requiredQty);
 
     boolean hasSufficientGlobalStock(String productColorId, int requiredQty);
 
     int getTotalStockByProductColorId(String productColorId);
 
+    int getAvailableStockByProductColorId(String productColorId);
 
-    int getTotalAvailableStockByProductColorId(String productColorId);
-
-    List<InventoryResponse> getInventoryByProduct(String productColorId);
-
-    List<InventoryTransactionResponse> getTransactionHistory(String productColorId, String zoneId);
+    List<InventoryResponse> getInventoryByWarehouse(String warehouseId);
 
     List<InventoryResponse> getInventoryByZone(String zoneId);
 
-    boolean checkZoneCapacity(String zoneId);
+    List<InventoryItemResponse> getInventoryItemsByProduct(String productColorId);
 
-    List<InventoryTransactionResponse> getAllTransactions();
+    List<InventoryItemResponse> getTransactionHistory(String productColorId, String zoneId);
 
-    List<InventoryResponse> getAllInventory();
+    List<InventoryItemResponse> getAllInventoryItems();
 
-    InventoryResponse getInventoryById(String inventoryId);
+    List<InventoryResponse> getAllInventories();
+
+    InventoryResponse getInventoryById(Long inventoryId);
+
+    boolean checkZoneCapacity(String zoneId, int additionalQty);
 }

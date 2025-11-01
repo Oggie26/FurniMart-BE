@@ -19,5 +19,6 @@ public class LocationItemResponse {
     private Integer columnNumber;
     private String code;
     private String description;
+    private Integer quantity;
     private EnumStatus status;
 }

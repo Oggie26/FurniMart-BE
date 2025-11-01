@@ -39,9 +39,12 @@ public class LocationItemServiceImpl implements LocationItemService {
             throw new AppException(ErrorCode.LOCATIONITEM_EXISTS);
         });
 
+        validateZoneCapacity(zone, request.getQuantity(), null);
+
         LocationItem locationItem = LocationItem.builder()
                 .description(request.getDescription())
                 .status(request.getStatus())
+                .quantity(request.getQuantity())
                 .rowLabel(request.getRowLabel())
                 .columnNumber(request.getColumnNumber())
                 .zone(zone)
@@ -68,9 +71,12 @@ public class LocationItemServiceImpl implements LocationItemService {
                     throw new AppException(ErrorCode.LOCATIONITEM_EXISTS);
                 });
 
+        validateZoneCapacity(zone, request.getQuantity(), locationItemId);
+
         locationItem.setRowLabel(request.getRowLabel());
         locationItem.setColumnNumber(request.getColumnNumber());
         locationItem.setDescription(request.getDescription());
+        locationItem.setQuantity(request.getQuantity());
         locationItem.setStatus(request.getStatus());
         locationItem.setZone(zone);
 
@@ -137,14 +143,30 @@ public class LocationItemServiceImpl implements LocationItemService {
         );
     }
 
-    public LocationItemResponse toLocationItemResponse(LocationItem li) {
+    private LocationItemResponse toLocationItemResponse(LocationItem li) {
         return LocationItemResponse.builder()
                 .id(li.getId())
                 .code(li.getCode())
                 .description(li.getDescription())
                 .columnNumber(li.getColumnNumber())
                 .rowLabel(li.getRowLabel())
+                .quantity(li.getQuantity())
                 .status(li.getStatus())
                 .build();
+    }
+
+    private void validateZoneCapacity(Zone zone, Integer newQuantity, String excludeLocationItemId) {
+        int totalQuantity = locationItemRepository
+                .findByZoneIdAndIsDeletedFalse(zone.getId())
+                .stream()
+                .filter(li -> excludeLocationItemId == null || !li.getId().equals(excludeLocationItemId))
+                .mapToInt(li -> li.getQuantity() == null ? 0 : li.getQuantity())
+                .sum();
+
+        int updatedTotal = totalQuantity + (newQuantity == null ? 0 : newQuantity);
+
+        if (zone.getQuantity() != null && updatedTotal > zone.getQuantity()) {
+            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+        }
     }
 }
