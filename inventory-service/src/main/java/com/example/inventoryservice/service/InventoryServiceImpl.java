@@ -62,8 +62,8 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryItemResponse addInventoryItem(InventoryItemRequest request) {
-        Inventory inventory = inventoryRepository.findById(request.getInventoryId())
+    public InventoryItemResponse addInventoryItem(InventoryItemRequest request, Long inventoryId) {
+        Inventory inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
         LocationItem locationItem = locationItemRepository.findById(request.getLocationItemId())

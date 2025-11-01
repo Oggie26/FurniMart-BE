@@ -58,11 +58,11 @@ public class InventoryController {
     }
 
     @Operation(summary = "Thêm Chi Tiết Item vào Phiếu Kho", description = "Thêm một chi tiết item vào phiếu kho đã tồn tại")
-    @PostMapping("/items")
+    @PostMapping("/inventory/{inventoryId}/items")
     public ResponseEntity<ApiResponse<InventoryItemResponse>> addInventoryItem(
-            @Valid @RequestBody(description = "Thông tin chi tiết item") InventoryItemRequest request) {
+            @Valid @RequestBody(description = "Thông tin chi tiết item") InventoryItemRequest request, @PathVariable Long inventoryId) {
         try {
-            InventoryItemResponse response = inventoryService.addInventoryItem(request);
+            InventoryItemResponse response = inventoryService.addInventoryItem(request, inventoryId);
             return ResponseEntity.ok(ApiResponse.<InventoryItemResponse>builder()
                     .status(200)
                     .message("Thêm chi tiết vào phiếu kho thành công")

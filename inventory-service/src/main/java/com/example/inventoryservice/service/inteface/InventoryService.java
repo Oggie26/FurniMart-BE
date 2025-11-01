@@ -12,7 +12,7 @@ public interface InventoryService {
 
     InventoryResponse createOrUpdateInventory(InventoryRequest request);
 
-    InventoryItemResponse addInventoryItem(InventoryItemRequest request);
+    InventoryItemResponse addInventoryItem(InventoryItemRequest request, Long inventoryId);
 
     InventoryResponse importStock(InventoryItemRequest request);
 
