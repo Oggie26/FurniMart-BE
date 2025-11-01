@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class InventoryItemRequest {
-
     private Integer quantity;
     private String productColorId;
     private String locationItemId;

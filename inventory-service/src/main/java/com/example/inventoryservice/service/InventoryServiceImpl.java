@@ -6,16 +6,19 @@ import com.example.inventoryservice.enums.EnumPurpose;
 import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
+import com.example.inventoryservice.feign.AuthClient;
+import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.repository.*;
 import com.example.inventoryservice.request.InventoryItemRequest;
 import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
-import com.example.inventoryservice.response.InventoryItemResponse;
-import com.example.inventoryservice.response.InventoryResponse;
+import com.example.inventoryservice.response.*;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,6 +35,8 @@ public class InventoryServiceImpl implements InventoryService {
     private final WarehouseRepository warehouseRepository;
     private final LocationItemRepository locationItemRepository;
     private final ZoneRepository zoneRepository;
+    private final AuthClient authClient;
+    private final UserClient userClient;
 
     // ----------------- CREATE / UPDATE -----------------
 
@@ -48,6 +53,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .date(LocalDate.now())
                 .note(request.getNote())
                 .warehouse(warehouse)
+                .employeeId(getUserId())
                 .build();
 
         inventoryRepository.save(inventory);
@@ -179,9 +185,6 @@ public class InventoryServiceImpl implements InventoryService {
         );
         createInventoryItem(importInventory, fromLocation.getId(), productColorId, quantity, 0);
     }
-
-
-
 
     // ----------------- RESERVE / RELEASE -----------------
 
@@ -335,7 +338,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         Inventory inventory = Inventory.builder()
-                .employeeId("system")
+                .employeeId(getUserId())
                 .type(type)
                 .purpose(purpose)
                 .date(LocalDate.now())
@@ -385,5 +388,25 @@ public class InventoryServiceImpl implements InventoryService {
                 .inventory(item.getInventory())
                 .locationItem(item.getLocationItem())
                 .build();
+    }
+
+    private String getUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        String username = authentication.getName();
+        ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
+
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
+        if (userId == null || userId.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+        return userId.getData().getId();
     }
 }
