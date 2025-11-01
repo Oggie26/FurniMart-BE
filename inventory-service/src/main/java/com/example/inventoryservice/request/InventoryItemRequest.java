@@ -18,7 +18,6 @@ import java.math.BigDecimal;
 public class InventoryItemRequest {
 
     private Integer quantity;
-    private String productName;
     private String productColorId;
     private Integer reservedQuantity;
     private String locationItemId;
