@@ -19,7 +19,6 @@ public class InventoryItemRequest {
 
     private Integer quantity;
     private String productColorId;
-    private Integer reservedQuantity;
     private String locationItemId;
     private Long inventoryId;
     private String warehouseId;
