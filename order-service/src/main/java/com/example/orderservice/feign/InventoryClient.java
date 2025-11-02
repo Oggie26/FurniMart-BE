@@ -2,6 +2,7 @@ package com.example.orderservice.feign;
 
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.InventoryResponse;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,4 +23,7 @@ public interface InventoryClient {
     @GetMapping("/api/inventories/{productColorId}/check-global-stock")
     ResponseEntity<ApiResponse<Boolean>> hasSufficientGlobalStock  (@PathVariable @NotBlank(message = "Product ID is required") String productColorId,
     @RequestParam @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty);
+
+    @GetMapping("/stock/total-available")
+    ResponseEntity<ApiResponse<Integer>> getAvailableStockByProductColorId(@Parameter(description = "ID sản phẩm (ProductColorId)", required = true) @RequestParam @NotBlank String productColorId);
 }
