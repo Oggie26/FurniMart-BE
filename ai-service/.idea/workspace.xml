@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service">
-      <change beforePath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/request/InventoryItemRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/request/InventoryItemRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/service/InventoryServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/service/InventoryServiceImpl.java" afterDir="false" />
-    </list>
+    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -32,7 +29,7 @@
   <component name="GithubPullRequestsUISettings"><![CDATA[{
   "selectedUrlAndAccountId": {
     "url": "https://github.com/Oggie26/FurniMart-BE",
-    "accountId": "d1e0a57e-c8ea-4337-afdb-0c77f77acad5"
+    "accountId": "999502c8-c47f-4fe9-a926-54affe51eae2"
   }
 }]]></component>
   <component name="MavenImportPreferences">
@@ -89,6 +86,14 @@
       </method>
     </configuration>
   </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-a94e463ab2e7-intellij.indexing.shared.core-IU-243.25659.59" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-IU-243.25659.59" />
+      </set>
+    </attachedChunks>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -103,6 +108,7 @@
       <workItem from="1761747410470" duration="230000" />
       <workItem from="1761757038626" duration="5872000" />
       <workItem from="1761899324574" duration="1035000" />
+      <workItem from="1762183707071" duration="251000" />
     </task>
     <task id="LOCAL-00001" summary="fix ai service">
       <option name="closed" value="true" />

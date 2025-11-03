@@ -167,15 +167,34 @@ public class CartServiceImpl implements CartService {
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
 
-        CartItem cartItem = cart.getItems().stream()
-                .filter(item -> item.getProductColorId().equals(productColorId))
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        ProductColorResponse productColor = getProductColor(productColorId);
+        int availableQuantity = getAvailableProduct(productColorId);
 
-        cartItem.setQuantity(quantity);
+        Optional<CartItem> existingItem = cart.getItems().stream()
+                .filter(item -> item.getProductColorId().equals(productColorId))
+                .findFirst();
+
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            int newQuantity = item.getQuantity() + quantity;
+
+            if (newQuantity > availableQuantity) {
+                throw new AppException(ErrorCode.INVALID_QUANTITY);
+            }
+
+            item.setQuantity(newQuantity);
+        } else {
+            if (quantity > availableQuantity) {
+                throw new AppException(ErrorCode.INVALID_QUANTITY);
+            }
+
+            addNewItemToCart(cart, productColor, quantity);
+        }
+
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
+
 
     private ProductColorResponse getProductColor(String productColorId) {
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
