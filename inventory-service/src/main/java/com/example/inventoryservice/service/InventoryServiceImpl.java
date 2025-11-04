@@ -88,10 +88,10 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse importStock(InventoryItemRequest request) {
+    public InventoryResponse importStock(InventoryItemRequest request, String warehouseId) {
 
         Inventory inventory = createInventory(
-                request.getWarehouseId(),
+                warehouseId,
                 EnumTypes.IMPORT,
                 EnumPurpose.STOCK_IN,
                 "Import stock"
@@ -103,12 +103,10 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse exportStock(InventoryItemRequest request) {
-        if (request.getWarehouseId() == null)
-            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+    public InventoryResponse exportStock(InventoryItemRequest request, String warehouseId) {
 
         List<InventoryItem> items = inventoryItemRepository
-                .findAllByProductColorIdAndInventory_Warehouse_Id(request.getProductColorId(), request.getWarehouseId());
+                .findAllByProductColorIdAndInventory_Warehouse_Id(request.getProductColorId(), warehouseId);
 
         if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
@@ -130,7 +128,7 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
         Inventory inventory = createInventory(
-                request.getWarehouseId(),
+                warehouseId,
                 EnumTypes.EXPORT,
                 EnumPurpose.STOCK_OUT,
                 "Export stock"
