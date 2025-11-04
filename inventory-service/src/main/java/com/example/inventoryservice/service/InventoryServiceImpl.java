@@ -90,6 +90,14 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse importStock(InventoryItemRequest request, String warehouseId) {
 
+        LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(request.getLocationItemId())
+                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+
+        String zoneId = location.getZone().getId();
+        if (!checkZoneCapacity(zoneId, request.getQuantity())) {
+            throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+        }
+
         Inventory inventory = createInventory(
                 warehouseId,
                 EnumTypes.IMPORT,
@@ -100,6 +108,7 @@ public class InventoryServiceImpl implements InventoryService {
         createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), request.getQuantity());
         return mapToInventoryResponse(inventory);
     }
+
 
     @Override
     @Transactional
