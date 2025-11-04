@@ -42,8 +42,6 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
-        if (request.getWarehouseId() == null)
-            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
 
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
