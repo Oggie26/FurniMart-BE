@@ -54,6 +54,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .note(request.getNote())
                 .warehouse(warehouse)
                 .build();
+        log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
 
         inventoryRepository.save(inventory);
         return mapToInventoryResponse(inventory);
