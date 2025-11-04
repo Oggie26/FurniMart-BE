@@ -34,14 +34,6 @@ public class ZoneServiceImpl implements ZoneService {
         Warehouse warehouse = warehouseRepository.findById(zoneRequest.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        if (zoneRepository.findByZoneCodeAndIsDeletedFalse(zoneRequest.getZoneCode()).isPresent()) {
-            throw new AppException(ErrorCode.ZONE_CODE_EXISTS);
-        }
-
-        if (zoneRepository.findByZoneNameAndIsDeletedFalse(zoneRequest.getZoneName()).isPresent()) {
-            throw new AppException(ErrorCode.ZONE_NAME_EXISTS);
-        }
-
         List<Zone> activeZones = zoneRepository.findByWarehouseIdAndIsDeletedFalse(warehouse.getId());
 
         int totalQuantity = activeZones.stream()
