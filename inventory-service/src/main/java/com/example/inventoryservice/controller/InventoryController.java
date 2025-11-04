@@ -82,11 +82,11 @@ public class InventoryController {
     // =================================================================
 
     @Operation(summary = "Nhập kho (Tạo phiếu IMPORT)", description = "Tạo phiếu nhập kho và chi tiết item từ request")
-    @PostMapping("/import")
+    @PostMapping("/{warehouseId}/import")
     public ResponseEntity<ApiResponse<InventoryResponse>> importStock(
-            @Valid @RequestBody InventoryItemRequest request) {
+            @Valid @RequestBody InventoryItemRequest request, @PathVariable String warehouseId) {
         try {
-            InventoryResponse response = inventoryService.importStock(request);
+            InventoryResponse response = inventoryService.importStock(request,warehouseId);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Nhập kho thành công")
@@ -102,11 +102,12 @@ public class InventoryController {
     }
 
     @Operation(summary = "Xuất kho (Tạo phiếu EXPORT)", description = "Tạo phiếu xuất kho và chi tiết item từ request")
-    @PostMapping("/export")
+    @PostMapping("/{warehouseId}/export")
     public ResponseEntity<ApiResponse<InventoryResponse>> exportStock(
-            @Valid @RequestBody(description = "Thông tin item xuất kho") InventoryItemRequest request) {
+            @Valid @RequestBody(description = "Thông tin item xuất kho") InventoryItemRequest request
+            , @PathVariable String warehouseId) {
         try {
-            InventoryResponse response = inventoryService.exportStock(request);
+            InventoryResponse response = inventoryService.exportStock(request,warehouseId);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Xuất kho thành công")

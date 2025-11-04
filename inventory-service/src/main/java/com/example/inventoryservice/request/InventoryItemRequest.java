@@ -22,6 +22,4 @@ public class InventoryItemRequest {
     @NotBlank(message = "LocationItemId là bắt buộc")
     private String locationItemId;
 
-    @NotBlank(message = "WarehouseId là bắt buộc")
-    private String warehouseId;
 }

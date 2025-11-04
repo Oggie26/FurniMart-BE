@@ -14,9 +14,9 @@ public interface InventoryService {
 
     InventoryItemResponse addInventoryItem(InventoryItemRequest request, Long inventoryId);
 
-    InventoryResponse importStock(InventoryItemRequest request);
+    InventoryResponse importStock(InventoryItemRequest request, String warehouseId);
 
-    InventoryResponse exportStock(InventoryItemRequest request);
+    InventoryResponse exportStock(InventoryItemRequest request, String warehouseId);
 
     void transferStock(TransferStockRequest request);
 
