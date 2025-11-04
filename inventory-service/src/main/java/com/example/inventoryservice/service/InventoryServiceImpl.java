@@ -325,11 +325,18 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public boolean checkZoneCapacity(String zoneId, int additionalQty) {
+        Zone zone = zoneRepository.findByIdAndIsDeletedFalse(zoneId)
+                .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
+
         int currentQty = inventoryItemRepository.findAllByLocationItem_Zone_Id(zoneId)
-                .stream().mapToInt(InventoryItem::getQuantity).sum();
-        int maxCapacity = 10000;
+                .stream()
+                .mapToInt(InventoryItem::getQuantity)
+                .sum();
+
+        int maxCapacity = zone.getQuantity();
         return (currentQty + additionalQty) <= maxCapacity;
     }
+
 
     // ----------------- PRIVATE HELPERS -----------------
 
