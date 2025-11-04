@@ -1,14 +1,9 @@
 package com.example.inventoryservice.request;
 
-import com.example.inventoryservice.entity.Inventory;
-import com.example.inventoryservice.entity.LocationItem;
-import com.example.inventoryservice.enums.EnumPurpose;
-import com.example.inventoryservice.enums.EnumStatus;
-import com.example.inventoryservice.enums.EnumTypes;
-import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
-import jakarta.validation.constraints.*;
-import java.math.BigDecimal;
 
 @Getter
 @Setter
@@ -16,8 +11,17 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class InventoryItemRequest {
+
+    @NotNull(message = "Số lượng không được để trống")
+    @Min(value = 1, message = "Số lượng phải lớn hơn 0")
     private Integer quantity;
+
+    @NotBlank(message = "ProductColorId là bắt buộc")
     private String productColorId;
+
+    @NotBlank(message = "LocationItemId là bắt buộc")
     private String locationItemId;
+
+    @NotBlank(message = "WarehouseId là bắt buộc")
     private String warehouseId;
 }
