@@ -42,17 +42,19 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+        if (request.getWarehouseId() == null)
+            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+
+        Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         Inventory inventory = Inventory.builder()
-                .employeeId(request.getEmployeeId())
+                .employeeId(getUserId())
                 .type(request.getType())
                 .purpose(request.getPurpose())
                 .date(LocalDate.now())
                 .note(request.getNote())
                 .warehouse(warehouse)
-                .employeeId(getUserId())
                 .build();
 
         inventoryRepository.save(inventory);
@@ -62,6 +64,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryItemResponse addInventoryItem(InventoryItemRequest request, Long inventoryId) {
+        if (inventoryId == null)
+            throw new AppException(ErrorCode.INVENTORY_NOT_FOUND);
+
         Inventory inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
@@ -85,6 +90,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse importStock(InventoryItemRequest request) {
+        if (request.getWarehouseId() == null)
+            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+
         Inventory inventory = createInventory(
                 request.getWarehouseId(),
                 EnumTypes.IMPORT,
@@ -99,12 +107,13 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse exportStock(InventoryItemRequest request) {
+        if (request.getWarehouseId() == null)
+            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+
         List<InventoryItem> items = inventoryItemRepository
                 .findAllByProductColorIdAndInventory_Warehouse_Id(request.getProductColorId(), request.getWarehouseId());
 
-        if (items.isEmpty()) {
-            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
-        }
+        if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
         int remaining = request.getQuantity();
 
@@ -120,9 +129,8 @@ public class InventoryServiceImpl implements InventoryService {
             if (remaining <= 0) break;
         }
 
-        if (remaining > 0) {
+        if (remaining > 0)
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-        }
 
         Inventory inventory = createInventory(
                 request.getWarehouseId(),
@@ -136,33 +144,40 @@ public class InventoryServiceImpl implements InventoryService {
         return mapToInventoryResponse(inventory);
     }
 
-
     // ----------------- TRANSFER -----------------
 
     @Override
     @Transactional
     public void transferStock(TransferStockRequest request) {
+        if (request.getFromWarehouseId() == null || request.getToWarehouseId() == null)
+            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+        if (request.getFromZoneId() == null || request.getToZoneId() == null)
+            throw new AppException(ErrorCode.ZONE_NOT_FOUND);
+        if (request.getFromLocationItemId() == null || request.getToLocationItemId() == null)
+            throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
+
         String productColorId = request.getProductColorId();
         int quantity = request.getQuantity();
 
-        // 1️⃣ Lấy warehouse, zone và locationItem
-        Warehouse fromWarehouse = warehouseRepository.findById(request.getFromWarehouseId())
+        Warehouse fromWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getFromWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
-        Warehouse toWarehouse = warehouseRepository.findById(request.getToWarehouseId())
+        Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        Zone fromZone = zoneRepository.findById(request.getFromZoneId())
+        Zone fromZone = zoneRepository.findByIdAndIsDeletedFalse(request.getFromZoneId())
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
-        Zone toZone = zoneRepository.findById(request.getToZoneId())
+        Zone toZone = zoneRepository.findByIdAndIsDeletedFalse(request.getToZoneId())
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
 
-        LocationItem fromLocation = locationItemRepository.findById(request.getFromLocationItemId())
+        LocationItem fromLocation = locationItemRepository.findByIdAndIsDeletedFalse(request.getFromLocationItemId())
+                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+        LocationItem toLocation = locationItemRepository.findByIdAndIsDeletedFalse(request.getToLocationItemId())
                 .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-        if (!hasSufficientStock(productColorId, fromWarehouse.getId(), quantity)) {
+        if (!hasSufficientStock(productColorId, fromWarehouse.getId(), quantity))
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-        }
 
+        // Xuất khỏi kho nguồn
         Inventory exportInventory = createInventory(
                 fromWarehouse.getId(),
                 EnumTypes.TRANSFER,
@@ -171,13 +186,14 @@ public class InventoryServiceImpl implements InventoryService {
         );
         createInventoryItem(exportInventory, fromLocation.getId(), productColorId, -quantity);
 
+        // Nhập vào kho đích
         Inventory importInventory = createInventory(
                 toWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
                 "Transfer IN from " + fromWarehouse.getWarehouseName() + " / Zone: " + fromZone.getZoneName()
         );
-        createInventoryItem(importInventory, fromLocation.getId(), productColorId, quantity);
+        createInventoryItem(importInventory, toLocation.getId(), productColorId, quantity);
     }
 
     // ----------------- RESERVE / RELEASE -----------------
@@ -186,13 +202,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse reserveStock(String productColorId, int quantity) {
         List<InventoryItem> items = inventoryItemRepository.findAllByProductColorId(productColorId);
-
-        if (items.isEmpty()) {
-            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
-        }
+        if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
         int remaining = quantity;
-
         for (InventoryItem item : items) {
             int available = item.getQuantity() - item.getReservedQuantity();
             if (available <= 0) continue;
@@ -205,12 +217,10 @@ public class InventoryServiceImpl implements InventoryService {
             if (remaining <= 0) break;
         }
 
-        if (remaining > 0) {
+        if (remaining > 0)
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-        }
 
-        Inventory inventory = items.getFirst().getInventory();
-        return mapToInventoryResponse(inventory);
+        return mapToInventoryResponse(items.get(0).getInventory());
     }
 
     @Override
@@ -231,14 +241,15 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
 
-        return mapToInventoryResponse(items.getFirst().getInventory());
+        return mapToInventoryResponse(items.get(0).getInventory());
     }
 
     // ----------------- CHECK STOCK -----------------
 
     @Override
     public boolean hasSufficientStock(String productColorId, String warehouseId, int requiredQty) {
-        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouseId);
+        List<InventoryItem> items =
+                inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouseId);
         int available = items.stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
         return available >= requiredQty;
     }
@@ -252,17 +263,13 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
         return inventoryItemRepository.findAllByProductColorId(productColorId)
-                .stream()
-                .mapToInt(InventoryItem::getQuantity)
-                .sum();
+                .stream().mapToInt(InventoryItem::getQuantity).sum();
     }
 
     @Override
     public int getAvailableStockByProductColorId(String productColorId) {
         return inventoryItemRepository.findAllByProductColorId(productColorId)
-                .stream()
-                .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
-                .sum();
+                .stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
     }
 
     // ----------------- GET LIST -----------------
@@ -276,11 +283,8 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
         return inventoryItemRepository.findAllByLocationItem_Zone_Id(zoneId)
-                .stream()
-                .map(InventoryItem::getInventory)
-                .distinct()
-                .map(this::mapToInventoryResponse)
-                .collect(Collectors.toList());
+                .stream().map(InventoryItem::getInventory).distinct()
+                .map(this::mapToInventoryResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -292,10 +296,8 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public List<InventoryItemResponse> getTransactionHistory(String productColorId, String zoneId) {
         return inventoryItemRepository.findAllByLocationItem_Zone_Id(zoneId)
-                .stream()
-                .filter(i -> i.getProductColorId().equals(productColorId))
-                .map(this::mapToInventoryItemResponse)
-                .collect(Collectors.toList());
+                .stream().filter(i -> i.getProductColorId().equals(productColorId))
+                .map(this::mapToInventoryItemResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -328,7 +330,7 @@ public class InventoryServiceImpl implements InventoryService {
     // ----------------- PRIVATE HELPERS -----------------
 
     private Inventory createInventory(String warehouseId, EnumTypes type, EnumPurpose purpose, String note) {
-        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+        Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(warehouseId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         Inventory inventory = Inventory.builder()
@@ -344,9 +346,12 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private void createInventoryItem(Inventory inventory, String locationItemId, String productColorId, int quantity) {
+        if (inventory == null)
+            throw new AppException(ErrorCode.INVENTORY_NOT_FOUND);
+
         LocationItem locationItem = null;
         if (locationItemId != null) {
-            locationItem = locationItemRepository.findById(locationItemId)
+            locationItem = locationItemRepository.findByIdAndIsDeletedFalse(locationItemId)
                     .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
         }
 
@@ -394,13 +399,13 @@ public class InventoryServiceImpl implements InventoryService {
         String username = authentication.getName();
         ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
 
-        if (response == null || response.getData() == null) {
+        if (response == null || response.getData() == null)
             throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
+
         ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
-        if (userId == null || userId.getData() == null) {
+        if (userId == null || userId.getData() == null)
             throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
+
         return userId.getData().getId();
     }
 }
