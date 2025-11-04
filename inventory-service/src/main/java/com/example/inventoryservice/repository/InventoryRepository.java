@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
-    // 🔹 Lấy tất cả phiếu theo kho
     List<Inventory> findAllByWarehouse_Id(String warehouseId);
 }

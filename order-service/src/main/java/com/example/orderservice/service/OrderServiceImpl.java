@@ -210,6 +210,50 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
+    public OrderResponse handlePaymentCOD(Long orderId){
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        assignOrderService.assignOrderToStore(orderId);
+
+        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                        .price(detail.getPrice())
+                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                        .build())
+                .toList();
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(safeGetUser(order.getUserId()).getEmail())
+                .fullName(safeGetUser(order.getUserId()).getFullName())
+                .orderDate(order.getOrderDate())
+                .totalPrice(order.getTotal())
+                .orderId(order.getId())
+                .storeId(order.getStoreId())
+                .addressLine(getAddress(order.getAddressId()))
+                .paymentMethod(order.getPayment().getPaymentMethod())
+                .items(orderItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("order-created-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                        } else {
+                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         String userId = getUserId();

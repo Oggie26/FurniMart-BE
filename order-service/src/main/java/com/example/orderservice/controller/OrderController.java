@@ -70,7 +70,9 @@ public class OrderController {
                     .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getTotal(), clientIp))
                     .build();
         } else {
-            orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            cartService.clearCart();
+
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
