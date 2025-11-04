@@ -28,7 +28,7 @@ public interface InventoryClient {
             @RequestParam(name = "requiredQty") @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty
     );
 
-    @GetMapping("/api/stock/total-available")
+    @GetMapping("/api/inventories/stock/total-available")
     ApiResponse<Integer> getAvailableStockByProductColorId(
             @RequestParam(name = "productColorId") @NotBlank(message = "ProductColor ID is required") String productColorId
     );
