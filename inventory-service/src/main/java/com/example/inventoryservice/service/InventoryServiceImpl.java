@@ -88,8 +88,6 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse importStock(InventoryItemRequest request) {
-        if (request.getWarehouseId() == null)
-            throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
 
         Inventory inventory = createInventory(
                 request.getWarehouseId(),
