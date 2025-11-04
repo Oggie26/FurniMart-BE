@@ -107,8 +107,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     }
 
     private List<InventoryResponse> getInventoryResponse(String productId) {
-        ResponseEntity<ApiResponse<List<InventoryResponse>>> response =  inventoryClient.getInventoryByProduct(productId);
-        return response.getBody().getData();
+        ApiResponse<List<InventoryResponse>>response =  inventoryClient.getInventoryByProduct(productId);
+        return response.getData();
     }
 
     private String getStoreById(String storeId) {

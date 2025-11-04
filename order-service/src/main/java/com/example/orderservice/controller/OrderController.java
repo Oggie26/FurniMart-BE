@@ -52,10 +52,10 @@ public class OrderController {
         List<CartItemResponse> cartItems = cartResponse.getItems();
 
         for (CartItemResponse item : cartItems) {
-            ResponseEntity<ApiResponse<Boolean>> response =
+            ApiResponse<Boolean> response =
                     inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
 
-            boolean available = response.getBody() != null ? response.getBody().getData() : false;
+            boolean available = response.getData();
 
             if (!available) {
                 throw new AppException(ErrorCode.OUT_OF_STOCK);

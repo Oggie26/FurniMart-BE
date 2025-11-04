@@ -18,12 +18,18 @@ import java.util.List;
 public interface InventoryClient {
 
     @GetMapping("/api/inventories/product/{productId}")
-    ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventoryByProduct(@PathVariable @NotBlank(message = "Product ID is required") String productId);
+    ApiResponse<List<InventoryResponse>> getInventoryByProduct(
+            @PathVariable("productId") @NotBlank(message = "Product ID is required") String productId
+    );
 
     @GetMapping("/api/inventories/{productColorId}/check-global-stock")
-    ResponseEntity<ApiResponse<Boolean>> hasSufficientGlobalStock  (@PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-    @RequestParam @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty);
+    ApiResponse<Boolean> hasSufficientGlobalStock(
+            @PathVariable("productColorId") @NotBlank(message = "ProductColor ID is required") String productColorId,
+            @RequestParam(name = "requiredQty") @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty
+    );
 
-    @GetMapping("/stock/total-available")
-    ResponseEntity<ApiResponse<Integer>> getAvailableStockByProductColorId(@Parameter(description = "ID sản phẩm (ProductColorId)", required = true) @RequestParam @NotBlank String productColorId);
+    @GetMapping("/api/stock/total-available")
+    ApiResponse<Integer> getAvailableStockByProductColorId(
+            @RequestParam(name = "productColorId") @NotBlank(message = "ProductColor ID is required") String productColorId
+    );
 }

@@ -290,7 +290,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private Integer getAvailableProduct(String productColorId){
-        ResponseEntity<ApiResponse<Integer>> response = inventoryClient.getAvailableStockByProductColorId(productColorId);
-        return Objects.requireNonNull(response.getBody()).getData();
+        ApiResponse<Integer> response = inventoryClient.getAvailableStockByProductColorId(productColorId);
+        return Objects.requireNonNull(response.getData());
     }
 }
