@@ -1,6 +1,5 @@
 package com.example.inventoryservice.service;
 
-import com.example.inventoryservice.controller.InventoryController;
 import com.example.inventoryservice.entity.*;
 import com.example.inventoryservice.enums.EnumPurpose;
 import com.example.inventoryservice.enums.EnumTypes;
@@ -93,7 +92,7 @@ public class InventoryServiceImpl implements InventoryService {
                 "Import stock"
         );
 
-        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), request.getQuantity(), 0);
+        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), request.getQuantity());
         return mapToInventoryResponse(inventory);
     }
 
@@ -132,7 +131,7 @@ public class InventoryServiceImpl implements InventoryService {
                 "Export stock"
         );
 
-        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), -request.getQuantity(), 0);
+        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), -request.getQuantity());
 
         return mapToInventoryResponse(inventory);
     }
@@ -159,31 +158,26 @@ public class InventoryServiceImpl implements InventoryService {
 
         LocationItem fromLocation = locationItemRepository.findById(request.getFromLocationItemId())
                 .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
-        LocationItem toLocation = locationItemRepository.findById(request.getToLocationItemId())
-                .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-        // 2️⃣ Kiểm tra tồn kho tại fromLocation
-        if (!hasSufficientStock(productColorId, fromLocation.getId(), quantity)) {
+        if (!hasSufficientStock(productColorId, fromWarehouse.getId(), quantity)) {
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
         }
 
-        // 3️⃣ EXPORT (kho đi)
         Inventory exportInventory = createInventory(
                 fromWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
                 "Transfer OUT to " + toWarehouse.getWarehouseName() + " / Zone: " + toZone.getZoneName()
         );
-        createInventoryItem(exportInventory, fromLocation.getId(), productColorId, -quantity, 0);
+        createInventoryItem(exportInventory, fromLocation.getId(), productColorId, -quantity);
 
-        // 4️⃣ IMPORT (kho đến)
         Inventory importInventory = createInventory(
                 toWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
                 "Transfer IN from " + fromWarehouse.getWarehouseName() + " / Zone: " + fromZone.getZoneName()
         );
-        createInventoryItem(importInventory, fromLocation.getId(), productColorId, quantity, 0);
+        createInventoryItem(importInventory, fromLocation.getId(), productColorId, quantity);
     }
 
     // ----------------- RESERVE / RELEASE -----------------
@@ -349,7 +343,7 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository.save(inventory);
     }
 
-    private void createInventoryItem(Inventory inventory, String locationItemId, String productColorId, int quantity, int reservedQty) {
+    private void createInventoryItem(Inventory inventory, String locationItemId, String productColorId, int quantity) {
         LocationItem locationItem = null;
         if (locationItemId != null) {
             locationItem = locationItemRepository.findById(locationItemId)
@@ -361,7 +355,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .locationItem(locationItem)
                 .productColorId(productColorId)
                 .quantity(quantity)
-                .reservedQuantity(reservedQty)
+                .reservedQuantity(0)
                 .build();
 
         inventoryItemRepository.save(item);

@@ -52,6 +52,7 @@ public enum ErrorCode {
     INVALID_QUANTITY_RANGE(1168, "Invalid quantity range", HttpStatus.BAD_REQUEST),
     BAD_REQUEST(1169, "Bad Request", HttpStatus.BAD_REQUEST),
     NOT_FOUND(1170, "Not Found", HttpStatus.NOT_FOUND),
+    STORE_ALREADY_HAS_WAREHOUSE(1171,"Store already has warehouse", HttpStatus.CONFLICT),
     //12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_FOUND_USER(1202, "User not found", HttpStatus.NOT_FOUND),
