@@ -46,24 +46,31 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCartEntity(userId);
 
         ProductColorResponse productColor = getProductColor(productColorId);
-        getAvailableProduct(productColorId);
+        int availableStock = getAvailableProduct(productColorId); // Lấy 1 lần thôi
 
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(item -> item.getProductColorId().equals(productColorId))
                 .findFirst();
 
         if (existingItem.isPresent()) {
-            if (getAvailableProduct(productColorId) < existingItem.get().getQuantity()){
-                throw new AppException(ErrorCode.INVALID_QUANTITY);
+            int totalQuantity = existingItem.get().getQuantity() + quantity;
+
+            if (totalQuantity > availableStock) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
             }
-            existingItem.get().setQuantity(existingItem.get().getQuantity() + quantity);
+
+            existingItem.get().setQuantity(totalQuantity);
         } else {
+            if (quantity > availableStock) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
             addNewItemToCart(cart, productColor, quantity);
         }
 
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
+
 
     @Override
     @Transactional
