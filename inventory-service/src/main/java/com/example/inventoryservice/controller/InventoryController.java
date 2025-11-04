@@ -21,7 +21,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
 @RestController
 @RequestMapping("/api/inventories")
 @RequiredArgsConstructor
@@ -37,42 +36,40 @@ public class InventoryController {
 
     @Operation(summary = "Tạo hoặc Cập nhật phiếu kho")
     @PostMapping
-    public ResponseEntity<ApiResponse<InventoryResponse>> createOrUpdateInventory(
+    public ApiResponse<InventoryResponse> createOrUpdateInventory(
             @Valid @RequestBody InventoryRequest request) {
         try {
             InventoryResponse response = inventoryService.createOrUpdateInventory(request);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
+            return ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Tạo/Cập nhật phiếu kho thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
     @Operation(summary = "Thêm Chi Tiết Item vào Phiếu Kho")
     @PostMapping("/inventory/{inventoryId}/items")
-    public ResponseEntity<ApiResponse<InventoryItemResponse>> addInventoryItem(
+    public ApiResponse<InventoryItemResponse> addInventoryItem(
             @PathVariable Long inventoryId,
             @Valid @RequestBody InventoryItemRequest request) {
         try {
             InventoryItemResponse response = inventoryService.addInventoryItem(request, inventoryId);
-            return ResponseEntity.ok(ApiResponse.<InventoryItemResponse>builder()
+            return ApiResponse.<InventoryItemResponse>builder()
                     .status(200)
                     .message("Thêm chi tiết vào phiếu kho thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryItemResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryItemResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
@@ -82,108 +79,103 @@ public class InventoryController {
 
     @Operation(summary = "Nhập kho (Tạo phiếu IMPORT)")
     @PostMapping("/{warehouseId}/import")
-    public ResponseEntity<ApiResponse<InventoryResponse>> importStock(
+    public ApiResponse<InventoryResponse> importStock(
             @PathVariable String warehouseId,
             @Valid @RequestBody InventoryItemRequest request) {
         try {
             InventoryResponse response = inventoryService.importStock(request, warehouseId);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
+            return ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Nhập kho thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
     @Operation(summary = "Xuất kho (Tạo phiếu EXPORT)")
     @PostMapping("/{warehouseId}/export")
-    public ResponseEntity<ApiResponse<InventoryResponse>> exportStock(
+    public ApiResponse<InventoryResponse> exportStock(
             @PathVariable String warehouseId,
             @Valid @RequestBody InventoryItemRequest request) {
         try {
             InventoryResponse response = inventoryService.exportStock(request, warehouseId);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
+            return ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Xuất kho thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
     @Operation(summary = "Giữ hàng (Tạo phiếu RESERVE)")
     @PostMapping("/reserve")
-    public ResponseEntity<ApiResponse<InventoryResponse>> reserveStock(
+    public ApiResponse<InventoryResponse> reserveStock(
             @Valid @RequestBody InventoryItemRequest request) {
         try {
             InventoryResponse response = inventoryService.reserveStock(
                     request.getProductColorId(),
                     request.getQuantity()
             );
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
+            return ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Giữ hàng thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
     @Operation(summary = "Bỏ giữ hàng (Tạo phiếu RELEASE)")
     @PostMapping("/release")
-    public ResponseEntity<ApiResponse<InventoryResponse>> releaseReservedStock(
+    public ApiResponse<InventoryResponse> releaseReservedStock(
             @Valid @RequestBody InventoryItemRequest request) {
         try {
             InventoryResponse response = inventoryService.releaseReservedStock(
                     request.getProductColorId(),
                     request.getQuantity()
             );
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
+            return ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Bỏ giữ hàng thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
     @Operation(summary = "Chuyển kho (Tạo phiếu TRANSFER)")
     @PostMapping("/transfer")
-    public ResponseEntity<ApiResponse<Void>> transferStock(
+    public ApiResponse<Void> transferStock(
             @Valid @RequestBody TransferStockRequest request) {
         try {
             inventoryService.transferStock(request);
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
+            return ApiResponse.<Void>builder()
                     .status(200)
                     .message("Chuyển kho thành công")
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<Void>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<Void>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
@@ -193,71 +185,70 @@ public class InventoryController {
 
     @Operation(summary = "Kiểm tra tồn kho theo kho")
     @GetMapping("/stock/check-warehouse")
-    public ResponseEntity<ApiResponse<Boolean>> hasSufficientStock(
+    public ApiResponse<Boolean> hasSufficientStock(
             @RequestParam @NotBlank String productColorId,
             @RequestParam @NotBlank String warehouseId,
             @RequestParam @Min(1) int requiredQty) {
         boolean response = inventoryService.hasSufficientStock(productColorId, warehouseId, requiredQty);
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
+        return ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho kho thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Kiểm tra tồn kho toàn hệ thống")
     @GetMapping("/stock/check-global")
-    public ResponseEntity<ApiResponse<Boolean>> hasSufficientGlobalStock(
+    public ApiResponse<Boolean> hasSufficientGlobalStock(
             @RequestParam @NotBlank String productColorId,
             @RequestParam @Min(1) int requiredQty) {
         boolean response = inventoryService.hasSufficientGlobalStock(productColorId, requiredQty);
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
+        return ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho toàn cục thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy tổng tồn kho vật lý")
     @GetMapping("/stock/total-physical")
-    public ResponseEntity<ApiResponse<Integer>> getTotalStockByProductColorId(
+    public ApiResponse<Integer> getTotalStockByProductColorId(
             @RequestParam @NotBlank String productColorId) {
-        return ResponseEntity.ok(ApiResponse.<Integer>builder()
+        return ApiResponse.<Integer>builder()
                 .status(200)
                 .message("Lấy tổng tồn kho vật lý thành công")
                 .data(inventoryService.getTotalStockByProductColorId(productColorId))
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy tổng tồn kho khả dụng")
     @GetMapping("/stock/total-available")
-    public ResponseEntity<ApiResponse<Integer>> getAvailableStockByProductColorId(
+    public ApiResponse<Integer> getAvailableStockByProductColorId(
             @RequestParam @NotBlank String productColorId) {
-        return ResponseEntity.ok(ApiResponse.<Integer>builder()
+        return ApiResponse.<Integer>builder()
                 .status(200)
                 .message("Lấy tổng tồn kho khả dụng thành công")
                 .data(inventoryService.getAvailableStockByProductColorId(productColorId))
-                .build());
+                .build();
     }
 
     @Operation(summary = "Kiểm tra sức chứa Zone")
     @GetMapping("/zone/{zoneId}/check-capacity")
-    public ResponseEntity<ApiResponse<Boolean>> checkZoneCapacity(
+    public ApiResponse<Boolean> checkZoneCapacity(
             @PathVariable @NotBlank String zoneId,
             @RequestParam @Min(1) int additionalQty) {
         try {
             boolean response = inventoryService.checkZoneCapacity(zoneId, additionalQty);
-            return ResponseEntity.ok(ApiResponse.<Boolean>builder()
+            return ApiResponse.<Boolean>builder()
                     .status(200)
                     .message("Kiểm tra sức chứa Zone thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<Boolean>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<Boolean>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
@@ -267,96 +258,94 @@ public class InventoryController {
 
     @Operation(summary = "Lấy tất cả Phiếu Kho")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getAllInventories() {
+    public ApiResponse<List<InventoryResponse>> getAllInventories() {
         List<InventoryResponse> inventories = inventoryService.getAllInventories();
-        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
+        return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy tất cả phiếu kho thành công")
                 .data(inventories)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy Phiếu Kho theo ID")
     @GetMapping("/{inventoryId}")
-    public ResponseEntity<ApiResponse<InventoryResponse>> getInventoryById(@PathVariable Long inventoryId) {
+    public ApiResponse<InventoryResponse> getInventoryById(@PathVariable Long inventoryId) {
         try {
             InventoryResponse response = inventoryService.getInventoryById(inventoryId);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
+            return ApiResponse.<InventoryResponse>builder()
                     .status(200)
                     .message("Lấy phiếu kho thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 
     @Operation(summary = "Lấy danh sách Phiếu Kho theo Warehouse ID")
     @GetMapping("/warehouse/{warehouseId}")
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventoryByWarehouse(@PathVariable String warehouseId) {
+    public ApiResponse<List<InventoryResponse>> getInventoryByWarehouse(@PathVariable String warehouseId) {
         List<InventoryResponse> response = inventoryService.getInventoryByWarehouse(warehouseId);
-        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
+        return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách phiếu kho theo kho thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy danh sách Phiếu Kho theo Zone ID")
     @GetMapping("/zone/{zoneId}")
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventoryByZone(@PathVariable String zoneId) {
+    public ApiResponse<List<InventoryResponse>> getInventoryByZone(@PathVariable String zoneId) {
         List<InventoryResponse> response = inventoryService.getInventoryByZone(zoneId);
-        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
+        return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách phiếu kho theo Zone thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy tất cả Chi Tiết Phiếu Kho")
     @GetMapping("/items")
-    public ResponseEntity<ApiResponse<List<InventoryItemResponse>>> getAllInventoryItems() {
+    public ApiResponse<List<InventoryItemResponse>> getAllInventoryItems() {
         List<InventoryItemResponse> items = inventoryService.getAllInventoryItems();
-        return ResponseEntity.ok(ApiResponse.<List<InventoryItemResponse>>builder()
+        return ApiResponse.<List<InventoryItemResponse>>builder()
                 .status(200)
                 .message("Lấy tất cả lịch sử giao dịch thành công")
                 .data(items)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy Chi Tiết Giao Dịch theo Product ID")
     @GetMapping("/items/product/{productColorId}")
-    public ResponseEntity<ApiResponse<List<InventoryItemResponse>>> getInventoryItemsByProduct(@PathVariable String productColorId) {
+    public ApiResponse<List<InventoryItemResponse>> getInventoryItemsByProduct(@PathVariable String productColorId) {
         List<InventoryItemResponse> response = inventoryService.getInventoryItemsByProduct(productColorId);
-        return ResponseEntity.ok(ApiResponse.<List<InventoryItemResponse>>builder()
+        return ApiResponse.<List<InventoryItemResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách giao dịch theo sản phẩm thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
     @Operation(summary = "Lấy lịch sử giao dịch theo sản phẩm (tùy chọn Zone)")
     @GetMapping("/items/history")
-    public ResponseEntity<ApiResponse<List<InventoryItemResponse>>> getTransactionHistory(
+    public ApiResponse<List<InventoryItemResponse>> getTransactionHistory(
             @RequestParam @NotBlank String productColorId,
             @RequestParam(required = false) String zoneId) {
         try {
             List<InventoryItemResponse> response = inventoryService.getTransactionHistory(productColorId, zoneId);
-            return ResponseEntity.ok(ApiResponse.<List<InventoryItemResponse>>builder()
+            return ApiResponse.<List<InventoryItemResponse>>builder()
                     .status(200)
                     .message("Lấy lịch sử giao dịch thành công")
                     .data(response)
-                    .build());
+                    .build();
         } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<List<InventoryItemResponse>>builder()
-                            .status(e.getErrorCode().getCode())
-                            .message(e.getErrorCode().getMessage())
-                            .build());
+            return ApiResponse.<List<InventoryItemResponse>>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
         }
     }
 }

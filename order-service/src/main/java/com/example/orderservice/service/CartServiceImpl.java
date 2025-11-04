@@ -46,7 +46,7 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCartEntity(userId);
 
         ProductColorResponse productColor = getProductColor(productColorId);
-        int availableStock = getAvailableProduct(productColorId); // Lấy 1 lần thôi
+        int availableStock = getAvailableProduct(productColorId);
 
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(item -> item.getProductColorId().equals(productColorId))
