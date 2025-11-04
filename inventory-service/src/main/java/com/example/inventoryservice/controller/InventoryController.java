@@ -84,7 +84,7 @@ public class InventoryController {
     @Operation(summary = "Nhập kho (Tạo phiếu IMPORT)", description = "Tạo phiếu nhập kho và chi tiết item từ request")
     @PostMapping("/import")
     public ResponseEntity<ApiResponse<InventoryResponse>> importStock(
-            @Valid @RequestBody(description = "Thông tin item nhập kho") InventoryItemRequest request) {
+            @Valid @RequestBody InventoryItemRequest request) {
         try {
             InventoryResponse response = inventoryService.importStock(request);
             return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()

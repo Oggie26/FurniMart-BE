@@ -43,8 +43,8 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
 
-//        Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
-//                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         Inventory inventory = Inventory.builder()
                 .employeeId(getUserId())
@@ -52,7 +52,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .purpose(request.getPurpose())
                 .date(LocalDate.now())
                 .note(request.getNote())
-//                .warehouse(warehouse)
+                .warehouse(warehouse)
                 .build();
         log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
 
