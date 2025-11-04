@@ -43,7 +43,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
 
-        Warehouse warehouse = warehouseRepository.findByWarehouseIdAndIsDeletedFalse(request.getWarehouseId())
+        Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         Inventory inventory = Inventory.builder()
