@@ -254,6 +254,18 @@ public class UserServiceImpl implements UserService {
         
     }
 
+    public String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        
+        String email = authentication.getName();
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return user.getId();
+    }
+
     @Override
     public UserResponse getProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
