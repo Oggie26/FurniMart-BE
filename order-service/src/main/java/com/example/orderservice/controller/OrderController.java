@@ -71,6 +71,7 @@ public class OrderController {
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
 
             return ApiResponse.<Void>builder()

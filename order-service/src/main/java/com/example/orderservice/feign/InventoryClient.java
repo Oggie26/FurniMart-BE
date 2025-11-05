@@ -22,9 +22,9 @@ public interface InventoryClient {
             @PathVariable("productId") @NotBlank(message = "Product ID is required") String productId
     );
 
-    @GetMapping("/api/inventories/{productColorId}/check-global-stock")
+    @GetMapping("/api/inventories/stock/check-global")
     ApiResponse<Boolean> hasSufficientGlobalStock(
-            @PathVariable("productColorId") @NotBlank(message = "ProductColor ID is required") String productColorId,
+            @RequestParam("productColorId") @NotBlank(message = "ProductColor ID is required") String productColorId,
             @RequestParam(name = "requiredQty") @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty
     );
 
