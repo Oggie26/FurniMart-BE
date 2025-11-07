@@ -57,6 +57,13 @@ public enum ErrorCode {
     CANNOT_UPDATE_CUSTOMER_ROLE(1230, "Cannot update customer role", HttpStatus.FORBIDDEN),
     CANNOT_CREATE_ADMIN_ROLE(1231, "Cannot create ADMIN role through employee API", HttpStatus.FORBIDDEN),
     CANNOT_CREATE_CUSTOMER_THROUGH_EMPLOYEE_API(1232, "Cannot create CUSTOMER role through employee API", HttpStatus.FORBIDDEN),
+    
+    // Address related errors
+    DUPLICATE_ADDRESS(1233, "Address already exists", HttpStatus.BAD_REQUEST),
+    
+    // Favorite product related errors
+    PRODUCT_ALREADY_FAVORITE(1234, "Product is already in favorites", HttpStatus.BAD_REQUEST),
+    FAVORITE_PRODUCT_NOT_FOUND(1235, "Favorite product not found", HttpStatus.NOT_FOUND),
 
     ;
 

@@ -11,7 +11,8 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Address
+@Table(name = "addresses")
+public class Address extends AbstractEntity
 {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

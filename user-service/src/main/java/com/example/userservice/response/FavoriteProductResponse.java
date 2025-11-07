@@ -7,16 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
 @Builder
-public class UserStoreResponse {
-    
+@NoArgsConstructor
+@AllArgsConstructor
+public class FavoriteProductResponse {
+    private Long id;
     private String userId;
-    private String storeId;
-    private UserResponse user;
-    private StoreResponse store;
+    private String productId;
     private Date createdAt;
-    private Date updatedAt;
 }
+

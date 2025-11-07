@@ -3,7 +3,6 @@ package com.example.userservice.service;
 import com.example.userservice.config.JwtService;
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
-import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
@@ -11,7 +10,6 @@ import com.example.userservice.event.AccountCreatedEvent;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.AuthRequest;
 import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.AuthResponse;
@@ -40,7 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
-    private final UserStoreRepository userStoreRepository;
+    // Note: employeeStoreRepository removed - not used in AuthService (only creates CUSTOMER users)
     private final KafkaTemplate<String, AccountCreatedEvent> kafkaTemplate;
 
     @Override
@@ -115,11 +113,9 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.USER_DELETED);
         }
 
-        List<UserStore> userStores = userStoreRepository.findByUserId(account.getUser().getId());
-
-        List<String> storeIds = userStores.stream()
-                .map(us -> us.getStore().getId())
-                .toList();
+        // Note: Only employees have store relationships
+        // For customers, storeIds will be empty
+        List<String> storeIds = List.of();
 
         Map<String, Object> claims = Map.of(
                 "role", account.getRole(),

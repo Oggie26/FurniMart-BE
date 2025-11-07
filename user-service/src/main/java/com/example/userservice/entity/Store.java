@@ -48,5 +48,5 @@ public class Store extends AbstractEntity {
     private EnumStatus status;
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<UserStore> userStores;
+    private List<EmployeeStore> employeeStores;
 }

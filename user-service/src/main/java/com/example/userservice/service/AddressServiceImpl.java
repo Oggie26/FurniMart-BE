@@ -38,6 +38,16 @@ public class AddressServiceImpl implements AddressService {
         User user = userRepository.findByIdAndIsDeletedFalse(addressRequest.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // Check for duplicate address (excluding deleted ones)
+        List<Address> existingAddresses = addressRepository.findAllByUserId(addressRequest.getUserId());
+        boolean isDuplicate = existingAddresses.stream()
+                .filter(addr -> !Boolean.TRUE.equals(addr.getIsDeleted()))
+                .anyMatch(addr -> isAddressDuplicate(addr, addressRequest));
+
+        if (isDuplicate) {
+            throw new AppException(ErrorCode.DUPLICATE_ADDRESS);
+        }
+
         // If this is set as default, unset other default addresses for this user
         if (addressRequest.getIsDefault()) {
             addressRepository.findByUserAndIsDefaultTrue(user)
@@ -65,6 +75,16 @@ public class AddressServiceImpl implements AddressService {
         log.info("Address created successfully with ID: {}", savedAddress.getId());
         
         return toAddressResponse(savedAddress);
+    }
+
+    private boolean isAddressDuplicate(Address existing, AddressRequest newAddress) {
+        return existing.getName().equals(newAddress.getName()) &&
+               existing.getPhone().equals(newAddress.getPhone()) &&
+               existing.getCity().equals(newAddress.getCity()) &&
+               existing.getDistrict().equals(newAddress.getDistrict()) &&
+               existing.getWard().equals(newAddress.getWard()) &&
+               (existing.getStreet() == null ? newAddress.getStreet() == null : existing.getStreet().equals(newAddress.getStreet())) &&
+               (existing.getAddressLine() == null ? newAddress.getAddressLine() == null : existing.getAddressLine().equals(newAddress.getAddressLine()));
     }
 
     @Override
@@ -193,14 +213,16 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public void deleteAddress(Long id) {
-        log.info("Deleting address with ID: {}", id);
+        log.info("Soft deleting address with ID: {}", id);
         
         Address address = addressRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ADDRESS_NOT_FOUND));
 
-        addressRepository.delete(address);
+        // Soft delete instead of hard delete
+        address.setIsDeleted(true);
+        addressRepository.save(address);
         
-        log.info("Address deleted successfully with ID: {}", id);
+        log.info("Address soft deleted successfully with ID: {}", id);
     }
 
     @Override
