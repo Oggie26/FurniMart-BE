@@ -81,6 +81,49 @@ public class OrderController {
         }
     }
 
+    @PostMapping("/mobile/checkout")
+    public ApiResponse<Void> checkoutMobile(
+            @RequestParam Long addressId,
+            @RequestParam Long cartId,
+            @RequestParam(required = false) String voucherCode,
+            @RequestParam PaymentMethod paymentMethod,
+            HttpServletRequest request
+    ) throws UnsupportedEncodingException {
+        String clientIp = getClientIp(request);
+
+        CartResponse cartResponse = cartService.getCartById(cartId);
+        List<CartItemResponse> cartItems = cartResponse.getItems();
+
+        for (CartItemResponse item : cartItems) {
+            ApiResponse<Boolean> response =
+                    inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
+
+            boolean available = response.getData();
+
+            if (!available) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
+        }
+
+        if (paymentMethod == PaymentMethod.VNPAY) {
+            OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            return ApiResponse.<Void>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Chuyển hướng sang VNPay")
+                    .redirectUrl(vnPayService.createPaymentUrlByMobile(orderResponse.getId(), orderResponse.getTotal(), clientIp))
+                    .build();
+        } else {
+            OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            orderService.handlePaymentCOD(orderResponse.getId());
+            cartService.clearCart();
+
+            return ApiResponse.<Void>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Đặt hàng thành công")
+                    .build();
+        }
+    }
+
     @PostMapping("/pre-order")
     public ApiResponse<OrderResponse> createPreOrder(
             @RequestParam Long addressId,
