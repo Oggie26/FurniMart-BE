@@ -234,7 +234,58 @@ public class StoreServiceImpl implements StoreService {
             savedEmployeeStore.setStore(store);
             
             log.info("Employee-store relationship successfully persisted");
-            return mapToEmployeeStoreResponse(savedEmployeeStore);
+            
+            // Build response directly without calling mapToEmployeeStoreResponse
+            // to avoid potential lazy loading issues in mapToStoreResponse
+            // Get storeIds for the employee (using already loaded employee)
+            List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
+                    .stream()
+                    .map(EmployeeStore::getStoreId)
+                    .collect(Collectors.toList());
+            
+            // Build employee response directly
+            UserResponse employeeResponse = UserResponse.builder()
+                    .id(employee.getId())
+                    .fullName(employee.getFullName())
+                    .email(employee.getAccount().getEmail())
+                    .phone(employee.getPhone())
+                    .gender(employee.getGender())
+                    .birthday(employee.getBirthday())
+                    .avatar(employee.getAvatar())
+                    .cccd(employee.getCccd())
+                    .point(null) // Employees don't have points
+                    .role(employee.getAccount().getRole())
+                    .status(employee.getStatus())
+                    .createdAt(employee.getCreatedAt())
+                    .updatedAt(employee.getUpdatedAt())
+                    .storeIds(storeIds)
+                    .build();
+            
+            // Create a simple store response without loading all employees
+            StoreResponse storeResponse = StoreResponse.builder()
+                    .id(store.getId())
+                    .name(store.getName())
+                    .city(store.getCity() != null ? store.getCity() : "")
+                    .district(store.getDistrict() != null ? store.getDistrict() : "")
+                    .ward(store.getWard() != null ? store.getWard() : "")
+                    .street(store.getStreet() != null ? store.getStreet() : "")
+                    .addressLine(store.getAddressLine() != null ? store.getAddressLine() : "")
+                    .latitude(store.getLatitude())
+                    .longitude(store.getLongitude())
+                    .status(store.getStatus())
+                    .users(null) // Don't load all employees to avoid lazy loading issues
+                    .createdAt(store.getCreatedAt())
+                    .updatedAt(store.getUpdatedAt())
+                    .build();
+            
+            return EmployeeStoreResponse.builder()
+                    .employeeId(savedEmployeeStore.getEmployeeId())
+                    .storeId(savedEmployeeStore.getStoreId())
+                    .employee(employeeResponse)
+                    .store(storeResponse)
+                    .createdAt(savedEmployeeStore.getCreatedAt())
+                    .updatedAt(savedEmployeeStore.getUpdatedAt())
+                    .build();
             
         } catch (AppException e) {
             log.error("Application error adding employee {} to store {}: {}", 
