@@ -41,32 +41,79 @@ public class VNPayController {
         return vnPayService.createPaymentUrl(orderId, amount, returnUrl);
     }
 
+//    @GetMapping("/vnpay-return")
+//    public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
+//                            HttpServletResponse response) throws IOException {
+//
+//        String secureHash = vnpParams.remove("vnp_SecureHash");
+//        vnpParams.remove("vnp_SecureHashType");
+//
+//        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+//
+//        String frontendUrl = "http://localhost:5173/payment-success";
+//
+//        if (signValue.equalsIgnoreCase(secureHash)) {
+//            String responseCode = vnpParams.get("vnp_ResponseCode");
+//            String orderId = vnpParams.get("vnp_TxnRef");
+//
+//            if ("00".equals(responseCode)) {
+//                Order order = orderRepository.findById(Long.parseLong(orderId))
+//                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+//                response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+//            } else {
+//                response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
+//            }
+//        } else {
+//            response.sendRedirect(frontendUrl + "?status=invalid");
+//        }
+//    }
+
     @GetMapping("/vnpay-return")
     public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
+                            @RequestHeader(value = "User-Agent", required = false) String userAgent,
                             HttpServletResponse response) throws IOException {
 
         String secureHash = vnpParams.remove("vnp_SecureHash");
         vnpParams.remove("vnp_SecureHashType");
 
         String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+        String orderId = vnpParams.get("vnp_TxnRef");
+        String responseCode = vnpParams.get("vnp_ResponseCode");
 
-        String frontendUrl = "http://localhost:5173/payment-success";
+        // Web URL và Mobile deep link
+        String webUrl = "http://localhost:5173/payment-success";
+        String mobileDeepLink = "furnimartmobileapp://order-success";
+
+        // Xác định thiết bị gọi (User-Agent)
+        boolean isMobile = userAgent != null && (
+                userAgent.toLowerCase().contains("android") ||
+                        userAgent.toLowerCase().contains("iphone") ||
+                        userAgent.toLowerCase().contains("mobile")
+        );
 
         if (signValue.equalsIgnoreCase(secureHash)) {
-            String responseCode = vnpParams.get("vnp_ResponseCode");
-            String orderId = vnpParams.get("vnp_TxnRef");
-
             if ("00".equals(responseCode)) {
-                Order order = orderRepository.findById(Long.parseLong(orderId))
-                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-                response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+                if (isMobile) {
+                    response.sendRedirect(mobileDeepLink + "?status=success&orderId=" + orderId);
+                } else {
+                    response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+                }
             } else {
-                response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
+                if (isMobile) {
+                    response.sendRedirect(mobileDeepLink + "?status=failed&code=" + responseCode);
+                } else {
+                    response.sendRedirect(webUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
+                }
             }
         } else {
-            response.sendRedirect(frontendUrl + "?status=invalid");
+            if (isMobile) {
+                response.sendRedirect(mobileDeepLink + "?status=invalid");
+            } else {
+                response.sendRedirect(webUrl + "?status=invalid");
+            }
         }
     }
+
 
     @GetMapping("/vnpay-mobile")
     public String createPaymentForMobile(@RequestParam Double amount,
