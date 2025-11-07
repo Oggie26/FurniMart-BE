@@ -58,7 +58,18 @@ public class EmployeeServiceImpl implements EmployeeService {
     public UserResponse createEmployee(UserRequest userRequest) {
         log.info("Creating employee with role: {}", userRequest.getRole());
         
+        // Check if role is provided
+        if (userRequest.getRole() == null) {
+            log.error("Role is required for employee creation");
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
+        // Validate that role is an employee role (allow ADMIN, BRANCH_MANAGER, DELIVERY, STAFF - block CUSTOMER)
+        // This method allows creating any employee role except CUSTOMER
+        // Note: SELLER role has been replaced by STAFF
         validateEmployeeRole(userRequest.getRole());
+        
+        log.info("Role validation passed for: {}", userRequest.getRole());
 
         // Check if email already exists
         if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
@@ -103,11 +114,18 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .build();
 
         Employee savedEmployee = employeeRepository.save(employee);
+        // Flush to ensure employee is persisted before assigning to store
+        employeeRepository.flush();
         log.info("Created employee: {} with role: {}", savedEmployee.getId(), userRequest.getRole());
 
         // Assign to store if storeId is provided
         if (userRequest.getStoreId() != null && !userRequest.getStoreId().isEmpty()) {
-            assignEmployeeToStore(savedEmployee.getId(), userRequest.getStoreId());
+            try {
+                assignEmployeeToStore(savedEmployee.getId(), userRequest.getStoreId());
+            } catch (AppException e) {
+                log.error("Error assigning employee {} to store {}: {}", savedEmployee.getId(), userRequest.getStoreId(), e.getMessage());
+                throw e;
+            }
         }
 
         return toEmployeeResponse(savedEmployee);
@@ -563,22 +581,34 @@ public class EmployeeServiceImpl implements EmployeeService {
      * Validate that the role is an employee role (allow ADMIN, block CUSTOMER)
      */
     private void validateEmployeeRole(EnumRole role) {
+        if (role == null) {
+            log.error("Role cannot be null");
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
         if (role == EnumRole.CUSTOMER) {
             log.error("CUSTOMER role is not allowed in employee operations");
             throw new AppException(ErrorCode.CANNOT_CREATE_CUSTOMER_THROUGH_EMPLOYEE_API);
         }
         
         if (!isEmployeeRole(role)) {
-            log.error("Invalid role for employee operations: {}", role);
+            log.error("Invalid role for employee operations: {}. Allowed roles: {}", role, EMPLOYEE_ROLES);
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
+        
+        log.debug("Role {} is valid for employee operations", role);
     }
 
     /**
      * Check if the role is an employee role
      */
     private boolean isEmployeeRole(EnumRole role) {
-        return EMPLOYEE_ROLES.contains(role);
+        if (role == null) {
+            return false;
+        }
+        boolean isValid = EMPLOYEE_ROLES.contains(role);
+        log.debug("Checking if role {} is employee role: {}", role, isValid);
+        return isValid;
     }
 
     /**

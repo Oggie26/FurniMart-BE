@@ -468,7 +468,7 @@ public class StoreServiceImpl implements StoreService {
                     .employeeId(employeeStore.getEmployeeId())
                     .storeId(employeeStore.getStoreId())
                     .employee(mapEmployeeToUserResponse(employee))
-                    .store(mapToStoreResponse(store))
+                    .store(mapToStoreResponseWithoutUsers(store))  // Use simplified version to avoid circular reference
                     .createdAt(employeeStore.getCreatedAt())
                     .updatedAt(employeeStore.getUpdatedAt())
                     .build();
@@ -479,5 +479,27 @@ public class StoreServiceImpl implements StoreService {
                     employeeStore.getEmployeeId(), employeeStore.getStoreId(), e.getMessage());
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Map Store to StoreResponse without including users list to avoid circular reference
+     * when used in EmployeeStoreResponse
+     */
+    private StoreResponse mapToStoreResponseWithoutUsers(Store store) {
+        return StoreResponse.builder()
+                .id(store.getId())
+                .name(store.getName())
+                .city(store.getCity())
+                .district(store.getDistrict())
+                .ward(store.getWard())
+                .street(store.getStreet())
+                .addressLine(store.getAddressLine())
+                .latitude(store.getLatitude())
+                .longitude(store.getLongitude())
+                .status(store.getStatus())
+                .users(null)  // Don't include users to avoid circular reference
+                .createdAt(store.getCreatedAt())
+                .updatedAt(store.getUpdatedAt())
+                .build();
     }
 }
