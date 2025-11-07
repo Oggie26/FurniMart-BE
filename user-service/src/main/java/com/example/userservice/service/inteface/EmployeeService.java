@@ -48,6 +48,14 @@ public interface EmployeeService {
     UserResponse getEmployeeById(String id);
 
     /**
+     * Get employee by account ID
+     * 
+     * @param accountId Account ID
+     * @return Employee response
+     */
+    UserResponse getEmployeeByAccountId(String accountId);
+
+    /**
      * Get all employees (all employee roles)
      * 
      * @return List of all employees

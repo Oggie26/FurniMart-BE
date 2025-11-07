@@ -1,6 +1,5 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.entity.Store;
 import com.example.userservice.request.StoreDistance;
 import com.example.userservice.request.StoreRequest;
 import com.example.userservice.request.EmployeeStoreRequest;
@@ -22,9 +21,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/stores")
 @Tag(name = "Store Controller")
-@SecurityRequirement(name = "api")
-@RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class StoreController {
     
     private final StoreService storeService;
@@ -144,7 +142,6 @@ public class StoreController {
                 .build();
     }
 
-    // Many-to-many relationship endpoints
     @PostMapping("/users")
     @Operation(summary = "Add user to store")
     @ResponseStatus(HttpStatus.CREATED)
@@ -187,18 +184,6 @@ public class StoreController {
                 .build();
     }
 
-//    @GetMapping("/nearest")
-//    @Operation(summary = "Lấy cửa hàng gần nhất theo vị trí (lat, lon)")
-//    public ApiResponse<Store> getNearestStore(
-//            @RequestParam double lat,
-//            @RequestParam double lon) {
-//        return ApiResponse.<Store>builder()
-//                .status(HttpStatus.OK.value())
-//                .message("Lấy cửa hàng gần nhất thành công")
-//                .data(storeService.getNearestStore(lat, lon))
-//                .build();
-//    }
-
     @GetMapping("/nearest/list")
     @Operation(summary = "Lấy danh sách cửa hàng gần nhất theo vị trí (lat, lon)")
     public ApiResponse<List<StoreDistance>> getNearestStores(
@@ -214,6 +199,4 @@ public class StoreController {
                 .data(nearestStores)
                 .build();
     }
-
-
 }

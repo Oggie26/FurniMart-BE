@@ -113,5 +113,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
      */
     @Query("SELECT e FROM Employee e WHERE e.account.email = :email AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     Optional<Employee> findByEmailAndIsDeletedFalse(@Param("email") String email);
+
+    /**
+     * Find employee by account ID (excludes CUSTOMER roles)
+     */
+    @Query("SELECT e FROM Employee e WHERE e.account.id = :accountId AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
+    Optional<Employee> findByAccountIdAndIsDeletedFalse(@Param("accountId") String accountId);
 }
 

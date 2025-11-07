@@ -109,7 +109,6 @@ public class WalletController {
                 .build();
     }
 
-    // Transaction endpoints
     @PostMapping("/transactions")
     @Operation(summary = "Create wallet transaction")
     @ResponseStatus(HttpStatus.CREATED)
@@ -172,7 +171,6 @@ public class WalletController {
                 .build();
     }
 
-    // Wallet operation endpoints
     @PostMapping("/{walletId}/deposit")
     @Operation(summary = "Deposit to wallet")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")

@@ -82,6 +82,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public StoreResponse getStoreById(String id) {
         Store store = storeRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
@@ -90,6 +91,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getAllStores() {
         List<Store> stores = storeRepository.findByIsDeletedFalse();
         return stores.stream()
@@ -98,6 +100,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<StoreResponse> getStoresWithPagination(Pageable pageable) {
         Page<Store> storePage = storeRepository.findByIsDeletedFalse(pageable);
         List<StoreResponse> storeResponses = storePage.getContent().stream()
@@ -116,6 +119,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<StoreResponse> searchStores(String searchTerm, Pageable pageable) {
         Page<Store> storePage = storeRepository.searchStores(searchTerm, pageable);
         List<StoreResponse> storeResponses = storePage.getContent().stream()
@@ -134,6 +138,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getStoresByCity(String city) {
         List<Store> stores = storeRepository.findByCityAndIsDeletedFalse(city);
         return stores.stream()
@@ -142,6 +147,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getStoresByDistrict(String district) {
         List<Store> stores = storeRepository.findByDistrictAndIsDeletedFalse(district);
         return stores.stream()
@@ -236,6 +242,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getStoresByUserId(String userId) {
         // userId is actually employeeId in this context
         List<Store> stores = storeRepository.findStoresByEmployeeId(userId);
@@ -245,6 +252,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EmployeeStoreResponse> getUsersByStoreId(String storeId) {
         List<EmployeeStore> employeeStores = employeeStoreRepository.findByStoreIdAndIsDeletedFalse(storeId);
         return employeeStores.stream()
@@ -253,16 +261,20 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Store getNearestStore(double lat, double lon) {
         return storeRepository.findNearestStore(lat, lon);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Store> getNearestStores(double lat, double lon, int limit) {
         Pageable pageable = PageRequest.of(0, limit);
         return storeRepository.findNearestStores(lat, lon, pageable);
     }
 
+    @Override
+    @Transactional(readOnly = true)
     public List<StoreDistance> findNearestStores(double lat, double lon, int limit) {
         List<Store> stores = storeRepository.findAllWithCoordinates();
 

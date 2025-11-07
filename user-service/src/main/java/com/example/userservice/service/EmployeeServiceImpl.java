@@ -281,6 +281,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    public UserResponse getEmployeeByAccountId(String accountId) {
+        log.info("Fetching employee by account ID: {}", accountId);
+        
+        Employee employee = employeeRepository.findByAccountIdAndIsDeletedFalse(accountId)
+                .orElseThrow(() -> {
+                    log.error("Employee not found for account ID: {}", accountId);
+                    return new AppException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        return toEmployeeResponse(employee);
+    }
+
+    @Override
     public List<UserResponse> getAllEmployees() {
         log.info("Fetching all employees");
         

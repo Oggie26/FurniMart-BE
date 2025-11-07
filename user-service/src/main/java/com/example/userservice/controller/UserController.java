@@ -18,9 +18,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "User Controller")
-@SecurityRequirement(name = "api")
-@RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
 
@@ -135,7 +134,6 @@ public class UserController {
                 .message("Profile retrieved successfully")
                 .build();
     }
-
 
     @GetMapping("/account/{accountId}")
     @Operation(summary = "Lấy thông tin User bằng AccountId")

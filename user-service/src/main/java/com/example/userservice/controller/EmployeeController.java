@@ -7,6 +7,10 @@ import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.UserResponse;
+import com.example.userservice.entity.Account;
+import com.example.userservice.enums.ErrorCode;
+import com.example.userservice.exception.AppException;
+import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.service.inteface.EmployeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,6 +19,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,15 +32,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EmployeeController {
     private final EmployeeService employeeService;
+    private final AccountRepository accountRepository;
 
-    // ========== ADMIN ONLY CRUD OPERATIONS ==========
-    
     @PostMapping
     @Operation(summary = "Create new employee (Admin only) - Can create ADMIN, BRANCH_MANAGER, DELIVERY, STAFF roles")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
-        // Validation is now handled in EmployeeService - allows ADMIN and employee roles, blocks CUSTOMER
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Employee created successfully")
@@ -47,7 +51,6 @@ public class EmployeeController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createAdmin(@Valid @RequestBody UserRequest request) {
-        // Force ADMIN role and validate admin creation
         request.setRole(EnumRole.ADMIN);
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -111,8 +114,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET OPERATIONS ==========
-    
     @GetMapping("/{id}")
     @Operation(summary = "Get employee by ID")
     @PreAuthorize("hasRole('ADMIN')")
@@ -121,6 +122,34 @@ public class EmployeeController {
                 .status(HttpStatus.OK.value())
                 .message("Employee retrieved successfully")
                 .data(employeeService.getEmployeeById(id))
+                .build();
+    }
+
+    @GetMapping("/account/{accountId}")
+    @Operation(summary = "Get employee by account ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
+    public ApiResponse<UserResponse> getEmployeeByAccountId(@PathVariable String accountId) {
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee retrieved successfully")
+                .data(employeeService.getEmployeeByAccountId(accountId))
+                .build();
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "Get current employee profile")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
+    public ApiResponse<UserResponse> getEmployeeProfile() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
+        
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee profile retrieved successfully")
+                .data(employeeService.getEmployeeByAccountId(account.getId()))
                 .build();
     }
     
@@ -162,8 +191,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET BY ROLE ==========
-
     @GetMapping("/role/manager")
     @Operation(summary = "Get all branch managers")
     @PreAuthorize("hasRole('ADMIN')")
@@ -197,8 +224,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET BY STORE ==========
-    
     @GetMapping("/store/{storeId}")
     @Operation(summary = "Get all employees by store ID")
     @PreAuthorize("hasRole('ADMIN')")
@@ -243,8 +268,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET BY ROLE WITH PAGINATION ==========
-
     @GetMapping("/role/manager/paginated")
     @Operation(summary = "Get branch managers with pagination")
     @PreAuthorize("hasRole('ADMIN')")
@@ -284,8 +307,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== EMPLOYEE STATISTICS ==========
-    
     @GetMapping("/count")
     @Operation(summary = "Get total employee count")
     @PreAuthorize("hasRole('ADMIN')")
@@ -308,8 +329,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== STORE ASSIGNMENT ==========
-    
     @PostMapping("/{employeeId}/store/{storeId}")
     @Operation(summary = "Assign employee to store")
     @PreAuthorize("hasRole('ADMIN')")
