@@ -68,5 +68,36 @@ public class VNPayController {
         }
     }
 
+    @GetMapping("/vnpay-mobile")
+    public String createPaymentForMobile(@RequestParam Double amount,
+                                         @RequestParam Long orderId) throws Exception {
+        String returnUrl = "https://your-domain.com/api/v1/payment/vnpay-return-mobile";
+        return vnPayService.createPaymentUrl(orderId, amount, returnUrl);
+    }
+
+    @GetMapping("/vnpay-return-mobile")
+    public void vnpayReturnMobile(@RequestParam Map<String, String> vnpParams,
+                                  HttpServletResponse response) throws IOException {
+        String secureHash = vnpParams.remove("vnp_SecureHash");
+        vnpParams.remove("vnp_SecureHashType");
+
+        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
+        String orderId = vnpParams.get("vnp_TxnRef");
+        String responseCode = vnpParams.get("vnp_ResponseCode");
+
+        String deepLink = "myapp://payment-result";
+
+        if (signValue.equalsIgnoreCase(secureHash)) {
+            if ("00".equals(responseCode)) {
+                response.sendRedirect(deepLink + "?status=success&orderId=" + orderId);
+            } else {
+                response.sendRedirect(deepLink + "?status=failed&code=" + responseCode);
+            }
+        } else {
+            response.sendRedirect(deepLink + "?status=invalid");
+        }
+    }
+
+
 
 }
