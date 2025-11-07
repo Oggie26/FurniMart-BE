@@ -3,8 +3,7 @@ package com.example.aiservice.enums;
 public enum EnumRole {
     ADMIN ,
     CUSTOMER ,
-    SELLER ,
-    DELIVERER,
+    DELIVERY,
     BRANCH_MANAGER,
     STAFF,
 
