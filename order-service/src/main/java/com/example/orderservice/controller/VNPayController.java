@@ -85,7 +85,7 @@ public class VNPayController {
         String orderId = vnpParams.get("vnp_TxnRef");
         String responseCode = vnpParams.get("vnp_ResponseCode");
 
-        String deepLink = "myapp://payment-result";
+        String deepLink = "furnimartmobileapp://order-success";
 
         if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
