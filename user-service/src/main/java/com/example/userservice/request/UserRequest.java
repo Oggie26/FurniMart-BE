@@ -2,6 +2,7 @@ package com.example.userservice.request;
 
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Email;
@@ -35,6 +36,7 @@ public class UserRequest {
     private Boolean gender;
 
     @Past(message = "Ngày sinh phải là quá khứ")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private Date birthday;
 
     @NotNull(message = "Vai trò không được để trống")

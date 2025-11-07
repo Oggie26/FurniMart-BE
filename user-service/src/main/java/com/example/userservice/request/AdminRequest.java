@@ -1,6 +1,7 @@
 package com.example.userservice.request;
 
 import com.example.userservice.enums.EnumStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -41,6 +42,7 @@ public class AdminRequest {
     private Boolean gender;
 
     @Past(message = "Ngày sinh phải là quá khứ")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private Date birthday;
 
     @NotNull(message = "Trạng thái không được để trống")

@@ -1,5 +1,6 @@
 package com.example.userservice.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -35,6 +36,7 @@ public class RegisterRequest {
     private String fullName;
 
     @Past(message = "BirthDay must be a past date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private Date birthDay;
 
 

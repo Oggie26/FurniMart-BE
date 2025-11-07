@@ -18,49 +18,30 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    private static final String MIN_ATTRIBUTE = "min";
-
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handlingValidation(MethodArgumentNotValidException exception) {
-        String enumKey = exception.getFieldError() != null
-                ? exception.getFieldError().getDefaultMessage()
-                : ErrorCode.INVALID_KEY.name();  // Nếu không có message mặc định, gán mã lỗi mặc định.
-
-        ErrorCode errorCode = ErrorCode.INVALID_KEY;
-        Map<String, Object> attributes = null;
-
-        try {
-            // Tìm mã lỗi trong enum ErrorCode, nếu không tồn tại thì trả về INVALID_KEY
-            errorCode = ErrorCode.valueOf(enumKey);
-
-            // Lấy lỗi đầu tiên từ danh sách lỗi
-            if (!exception.getBindingResult().getAllErrors().isEmpty()) {
-                var constraintViolation = exception.getBindingResult()
-                        .getAllErrors()
-                        .get(0)
-                        .unwrap(jakarta.validation.ConstraintViolation.class);
-
-                @SuppressWarnings("unchecked")
-                Map<String, Object> constraintAttributes = (Map<String, Object>) constraintViolation.getConstraintDescriptor().getAttributes();
-                attributes = new HashMap<>(constraintAttributes);
-                log.info("Validation attributes: {}", attributes);
-            }
-        } catch (IllegalArgumentException e) {
-            // Nếu không tìm thấy mã lỗi hợp lệ, trả về mã lỗi mặc định
-            log.warn("Không tìm thấy ErrorCode tương ứng với key: {}", enumKey);
-        } catch (Exception ex) {
-            log.error("Lỗi khi phân tích validation exception", ex);
-        }
-
-        // Tạo ApiResponse với thông điệp và mã lỗi hợp lệ
-        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
-                .status(errorCode.getCode())
-                .message((attributes != null)
-                        ? mapAttribute(errorCode.getMessage(), attributes)
-                        : errorCode.getMessage())
-                .build();
-
-        return ResponseEntity.badRequest().body(apiResponse);
+    public ResponseEntity<ApiResponse<Map<String, String>>> handlingValidation(MethodArgumentNotValidException exception) {
+        Map<String, String> errors = new HashMap<>();
+        
+        exception.getBindingResult().getFieldErrors().forEach(error -> {
+            String fieldName = error.getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage != null ? errorMessage : "Validation failed");
+        });
+        
+        // Log all validation errors
+        log.warn("Validation errors: {}", errors);
+        
+        // Get first error message for main message
+        String mainMessage = errors.isEmpty() 
+            ? "Validation failed" 
+            : errors.values().iterator().next();
+        
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.<Map<String, String>>builder()
+                        .status(HttpStatus.BAD_REQUEST.value())
+                        .message(mainMessage)
+                        .data(errors)
+                        .build());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -114,10 +95,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(DataIntegrityViolationException exception) {
         log.warn("Data violation: {}", exception.getMessage());
+        
+        String errorMessage = "Data input invalid";
+        String rootCause = "";
+        
+        try {
+            Throwable rootCauseException = exception.getRootCause();
+            if (rootCauseException != null && rootCauseException.getMessage() != null) {
+                rootCause = rootCauseException.getMessage();
+            }
+        } catch (Exception e) {
+            log.warn("Could not extract root cause: {}", e.getMessage());
+        }
+        
+        // Provide more specific error messages based on constraint violations
+        if (!rootCause.isEmpty()) {
+            if (rootCause.contains("unique") || rootCause.contains("duplicate")) {
+                if (rootCause.contains("email") || rootCause.contains("accounts_email_key")) {
+                    errorMessage = "Email đã tồn tại";
+                } else if (rootCause.contains("phone") || rootCause.contains("employees_phone_key")) {
+                    errorMessage = "Số điện thoại đã tồn tại";
+                } else if (rootCause.contains("cccd") || rootCause.contains("employees_cccd_key")) {
+                    errorMessage = "CCCD đã tồn tại";
+                } else {
+                    errorMessage = "Dữ liệu đã tồn tại: " + rootCause;
+                }
+            } else if (rootCause.contains("not null") || rootCause.contains("null value")) {
+                errorMessage = "Thiếu dữ liệu bắt buộc";
+            } else {
+                errorMessage = "Lỗi ràng buộc dữ liệu: " + rootCause;
+            }
+        }
+        
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.<Void>builder()
                         .status(HttpStatus.BAD_REQUEST.value())
-                        .message("Data input invalid")
+                        .message(errorMessage)
                         .build());
     }
 
@@ -157,12 +170,6 @@ public class GlobalExceptionHandler {
                         .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
                         .message(errorMessage)
                         .build());
-    }
-
-    private String mapAttribute(String message, Map<String, Object> attributes) {
-        String minValue = String.valueOf(attributes.get(MIN_ATTRIBUTE));
-
-        return message.replace("{" + MIN_ATTRIBUTE + "}", minValue);
     }
 
 }

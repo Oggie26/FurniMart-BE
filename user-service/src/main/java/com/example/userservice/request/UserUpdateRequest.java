@@ -2,6 +2,7 @@ package com.example.userservice.request;
 
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Past;
@@ -25,6 +26,7 @@ public class UserUpdateRequest {
     private Boolean gender;
     
     @Past(message = "Birthday must be in the past")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private Date birthday;
     
     private EnumStatus status;
