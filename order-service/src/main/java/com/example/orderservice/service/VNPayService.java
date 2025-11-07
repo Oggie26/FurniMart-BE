@@ -84,12 +84,11 @@ public class VNPayService {
         String paymentUrl = vnpUrl + "?" + query;
         return paymentUrl;
     }
-    String returnUrl = "http://152.53.227.115:8080/api/v1/payment/vnpay-return-mobile";
 
     public String createPaymentUrlByMobile(Long orderId, Double amount, String ipAddress) throws UnsupportedEncodingException {
         Map<String, String> params = new HashMap<>();
 //        String returnUrl = "myapp://payment-success?orderId=" + orderId;
-        String returnUrl = "http://152.53.227.115:8080/api/v1/payment/vnpay-return";
+        String returnUrl = "http://152.53.227.115:8080/api/v1/payment/vnpay-return-mobile";
 
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
