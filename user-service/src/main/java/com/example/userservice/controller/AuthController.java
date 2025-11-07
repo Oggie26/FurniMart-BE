@@ -2,12 +2,14 @@ package com.example.userservice.controller;
 
 import com.example.userservice.config.JwtService;
 import com.example.userservice.request.AuthRequest;
+import com.example.userservice.request.GoogleLoginRequest;
 import com.example.userservice.request.RefreshTokenRequest;
 import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.request.TokenRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
+import com.example.userservice.service.GoogleOAuth2Service;
 import com.example.userservice.service.inteface.AuthService;
 import io.jsonwebtoken.JwtException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtService jwtService;
+    private final GoogleOAuth2Service googleOAuth2Service;
 
     @PostMapping("/login")
     @ResponseStatus(HttpStatus.OK)
@@ -108,6 +111,18 @@ public class AuthController {
         } catch (JwtException | IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+    }
+
+    @PostMapping("/google/login")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Đăng nhập với Google", description = "API đăng nhập bằng Google OAuth2")
+    public ResponseEntity<ApiResponse<LoginResponse>> googleLogin(@RequestBody @Valid GoogleLoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đăng nhập với Google thành công")
+                .data(googleOAuth2Service.authenticateWithGoogle(request.getAccessToken()))
+                .timestamp(LocalDateTime.now())
+                .build());
     }
 
 }

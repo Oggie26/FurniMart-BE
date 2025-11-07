@@ -1,18 +1,18 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
+import com.example.userservice.entity.Employee;
+import com.example.userservice.entity.EmployeeStore;
 import com.example.userservice.entity.Store;
-import com.example.userservice.entity.User;
-import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.EmployeeRepository;
+import com.example.userservice.repository.EmployeeStoreRepository;
 import com.example.userservice.repository.StoreRepository;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.PageResponse;
@@ -35,9 +35,10 @@ import java.util.stream.Collectors;
 
 /**
  * Implementation of EmployeeService for managing employee operations.
- * This service ensures that only employee roles (MANAGER, DELIVERY, STAFF) 
+ * This service ensures that only employee roles (BRANCH_MANAGER, DELIVERY, STAFF) 
  * can be created and managed through employee endpoints.
  * ADMIN and CUSTOMER roles are explicitly blocked from these operations.
+ * Note: SELLER role has been replaced by STAFF.
  */
 @Service
 @Slf4j
@@ -47,16 +48,16 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
-    private final UserStoreRepository userStoreRepository;
+    private final EmployeeStoreRepository employeeStoreRepository;
     private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
 
     // Define employee roles as constants
     private static final List<EnumRole> EMPLOYEE_ROLES = Arrays.asList(
         EnumRole.ADMIN,           // Allow ADMIN creation
-        EnumRole.MANAGER,
-        EnumRole.DELIVERY,
-        EnumRole.STAFF
+        EnumRole.BRANCH_MANAGER, 
+        EnumRole.DELIVERY, 
+        EnumRole.STAFF            // STAFF replaces SELLER
     );
 
     @Override
@@ -64,14 +65,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     public UserResponse createEmployee(UserRequest userRequest) {
         log.info("Creating employee with role: {}", userRequest.getRole());
         
-        // Validate that role is an employee role (allow ADMIN, block CUSTOMER)
+        // Validate that role is an employee role (allow ADMIN, BRANCH_MANAGER, DELIVERY, STAFF - block CUSTOMER)
+        // This method allows creating any employee role except CUSTOMER
+        // Note: SELLER role has been replaced by STAFF
         validateEmployeeRole(userRequest.getRole());
-        
-        // Check if CUSTOMER role is being created - explicitly block it
-        if (userRequest.getRole() == EnumRole.CUSTOMER) {
-            log.error("Attempt to create CUSTOMER role through employee API");
-            throw new AppException(ErrorCode.CANNOT_CREATE_CUSTOMER_THROUGH_EMPLOYEE_API);
-        }
 
         // Check if email already exists
         if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
@@ -100,27 +97,30 @@ public class EmployeeServiceImpl implements EmployeeService {
         Account savedAccount = accountRepository.save(account);
         log.info("Created account for employee: {}", savedAccount.getId());
 
-        // Create user
-        User user = User.builder()
+        // Generate employee code
+        String employeeCode = generateEmployeeCode(userRequest.getRole());
+
+        // Create employee
+        Employee employee = Employee.builder()
+                .code(employeeCode)
                 .fullName(userRequest.getFullName())
                 .phone(userRequest.getPhone())
                 .birthday(userRequest.getBirthday())
                 .gender(userRequest.getGender())
                 .status(userRequest.getStatus())
                 .avatar(userRequest.getAvatar())
-                .point(0)
                 .account(savedAccount)
                 .build();
 
-        User savedUser = employeeRepository.save(user);
-        log.info("Created employee: {} with role: {}", savedUser.getId(), userRequest.getRole());
+        Employee savedEmployee = employeeRepository.save(employee);
+        log.info("Created employee: {} with role: {}", savedEmployee.getId(), userRequest.getRole());
 
         // Assign to store if storeId is provided
         if (userRequest.getStoreId() != null && !userRequest.getStoreId().isEmpty()) {
-            assignEmployeeToStore(savedUser.getId(), userRequest.getStoreId());
+            assignEmployeeToStore(savedEmployee.getId(), userRequest.getStoreId());
         }
 
-        return toUserResponse(savedUser);
+        return toEmployeeResponse(savedEmployee);
     }
 
     @Override
@@ -158,22 +158,25 @@ public class EmployeeServiceImpl implements EmployeeService {
         Account savedAccount = accountRepository.save(account);
         log.info("Created admin account: {}", savedAccount.getId());
 
-        // Create user
-        User user = User.builder()
+        // Generate employee code for admin
+        String employeeCode = generateEmployeeCode(EnumRole.ADMIN);
+
+        // Create employee
+        Employee employee = Employee.builder()
+                .code(employeeCode)
                 .fullName(userRequest.getFullName())
                 .phone(userRequest.getPhone())
                 .birthday(userRequest.getBirthday())
                 .gender(userRequest.getGender())
                 .status(userRequest.getStatus())
                 .avatar(userRequest.getAvatar())
-                .point(0)
                 .account(savedAccount)
                 .build();
 
-        User savedUser = userRepository.save(user);
-        log.info("Created admin user: {} with email: {}", savedUser.getId(), userRequest.getEmail());
+        Employee savedEmployee = employeeRepository.save(employee);
+        log.info("Created admin employee: {} with email: {}", savedEmployee.getId(), userRequest.getEmail());
 
-        return toUserResponse(savedUser);
+        return toEmployeeResponse(savedEmployee);
     }
 
     @Override
@@ -181,15 +184,15 @@ public class EmployeeServiceImpl implements EmployeeService {
     public UserResponse updateEmployee(String id, UserUpdateRequest userRequest) {
         log.info("Updating employee: {}", id);
         
-        User existingEmployee = employeeRepository.findEmployeeById(id)
+        Employee existingEmployee = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> {
                     log.error("Employee not found: {}", id);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        // Validate that the user is still an employee
+        // Validate that the employee is still an employee
         if (!isEmployeeRole(existingEmployee.getAccount().getRole())) {
-            log.error("User {} is not an employee", id);
+            log.error("Employee {} is not an employee", id);
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
 
@@ -245,25 +248,25 @@ public class EmployeeServiceImpl implements EmployeeService {
                     });
 
             // Check if employee is already assigned to this store
-            Optional<UserStore> existingUserStore = userStoreRepository.findByUserIdAndStoreId(id, userRequest.getStoreId());
+            Optional<EmployeeStore> existingEmployeeStore = employeeStoreRepository.findByEmployeeIdAndStoreId(id, userRequest.getStoreId());
             
-            if (existingUserStore.isEmpty()) {
+            if (existingEmployeeStore.isEmpty()) {
                 // Remove from all other stores first
-                userStoreRepository.deleteByUserId(id);
+                employeeStoreRepository.deleteByEmployeeId(id);
                 
                 // Assign to new store
-                UserStore userStore = UserStore.builder()
-                        .user(existingEmployee)
-                        .store(store)
+                EmployeeStore employeeStore = EmployeeStore.builder()
+                        .employeeId(id)
+                        .storeId(store.getId())
                         .build();
-                userStoreRepository.save(userStore);
+                employeeStoreRepository.save(employeeStore);
                 log.info("Assigned employee {} to store {}", id, userRequest.getStoreId());
             } else {
                 log.info("Employee {} is already assigned to store {}", id, userRequest.getStoreId());
             }
         }
 
-        User updatedEmployee = employeeRepository.save(existingEmployee);
+        Employee updatedEmployee = employeeRepository.save(existingEmployee);
         
         if (userRequest.getStatus() != null || userRequest.getRole() != null) {
             accountRepository.save(existingEmployee.getAccount());
@@ -271,30 +274,30 @@ public class EmployeeServiceImpl implements EmployeeService {
         
         log.info("Updated employee: {}", updatedEmployee.getId());
 
-        return toUserResponse(updatedEmployee);
+        return toEmployeeResponse(updatedEmployee);
     }
 
     @Override
     public UserResponse getEmployeeById(String id) {
         log.info("Fetching employee by ID: {}", id);
         
-        User employee = employeeRepository.findEmployeeById(id)
+        Employee employee = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> {
                     log.error("Employee not found: {}", id);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        return toUserResponse(employee);
+        return toEmployeeResponse(employee);
     }
 
     @Override
     public List<UserResponse> getAllEmployees() {
         log.info("Fetching all employees");
         
-        List<User> employees = employeeRepository.findAllEmployees();
+        List<Employee> employees = employeeRepository.findAllEmployees();
         
         return employees.stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
     }
 
@@ -305,10 +308,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Validate that role is an employee role
         validateEmployeeRole(role);
 
-        List<User> employees = employeeRepository.findEmployeesByRole(role);
+        List<Employee> employees = employeeRepository.findEmployeesByRole(role);
         
         return employees.stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
     }
 
@@ -316,10 +319,10 @@ public class EmployeeServiceImpl implements EmployeeService {
     public List<UserResponse> getEmployeesByStoreId(String storeId) {
         log.info("Fetching employees by store ID: {}", storeId);
         
-        List<User> employees = employeeRepository.findEmployeesByStoreId(storeId);
+        List<Employee> employees = employeeRepository.findEmployeesByStoreId(storeId);
         
         return employees.stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
     }
 
@@ -330,10 +333,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Validate that role is an employee role
         validateEmployeeRole(role);
 
-        List<User> employees = employeeRepository.findEmployeesByStoreIdAndRole(storeId, role);
+        List<Employee> employees = employeeRepository.findEmployeesByStoreIdAndRole(storeId, role);
         
         return employees.stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
     }
 
@@ -342,10 +345,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("Fetching employees with pagination - page: {}, size: {}", page, size);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> employeePage = employeeRepository.findAllEmployees(pageable);
+        Page<Employee> employeePage = employeeRepository.findAllEmployees(pageable);
         
         List<UserResponse> employeeResponses = employeePage.getContent().stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<UserResponse>builder()
@@ -367,10 +370,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         validateEmployeeRole(role);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> employeePage = employeeRepository.findEmployeesByRole(role, pageable);
+        Page<Employee> employeePage = employeeRepository.findEmployeesByRole(role, pageable);
         
         List<UserResponse> employeeResponses = employeePage.getContent().stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<UserResponse>builder()
@@ -389,10 +392,10 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("Searching employees with term: {} - page: {}, size: {}", searchTerm, page, size);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> employeePage = employeeRepository.searchEmployees(searchTerm, pageable);
+        Page<Employee> employeePage = employeeRepository.searchEmployees(searchTerm, pageable);
         
         List<UserResponse> employeeResponses = employeePage.getContent().stream()
-                .map(this::toUserResponse)
+                .map(this::toEmployeeResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<UserResponse>builder()
@@ -414,7 +417,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         // Validate that new role is an employee role
         validateEmployeeRole(newRole);
         
-        User employee = employeeRepository.findEmployeeById(userId)
+        Employee employee = employeeRepository.findEmployeeById(userId)
                 .orElseThrow(() -> {
                     log.error("Employee not found: {}", userId);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
@@ -426,7 +429,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         
         log.info("Updated employee role for user: {} to role: {}", userId, newRole);
 
-        return toUserResponse(employee);
+        return toEmployeeResponse(employee);
     }
 
     @Override
@@ -434,7 +437,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void deleteEmployee(String id) {
         log.info("Deleting employee: {}", id);
         
-        User employee = employeeRepository.findEmployeeById(id)
+        Employee employee = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> {
                     log.error("Employee not found: {}", id);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
@@ -456,7 +459,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void disableEmployee(String id) {
         log.info("Disabling employee: {}", id);
         
-        User employee = employeeRepository.findEmployeeById(id)
+        Employee employee = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> {
                     log.error("Employee not found: {}", id);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
@@ -476,7 +479,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void enableEmployee(String id) {
         log.info("Enabling employee: {}", id);
         
-        User employee = employeeRepository.findEmployeeById(id)
+        Employee employee = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> {
                     log.error("Employee not found: {}", id);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
@@ -504,18 +507,18 @@ public class EmployeeServiceImpl implements EmployeeService {
                 });
 
         // Check if relationship already exists
-        if (userStoreRepository.findByUserIdAndStoreIdAndIsDeletedFalse(employeeId, storeId).isPresent()) {
+        if (employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, storeId).isPresent()) {
             log.warn("Employee {} is already assigned to store {}", employeeId, storeId);
             throw new AppException(ErrorCode.USER_STORE_RELATIONSHIP_EXISTS);
         }
 
-        // Create user-store relationship
-        UserStore userStore = UserStore.builder()
-                .userId(employeeId)
+        // Create employee-store relationship
+        EmployeeStore employeeStore = EmployeeStore.builder()
+                .employeeId(employeeId)
                 .storeId(storeId)
                 .build();
 
-        userStoreRepository.save(userStore);
+        employeeStoreRepository.save(employeeStore);
         
         log.info("Assigned employee {} to store {}", employeeId, storeId);
     }
@@ -525,14 +528,14 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void removeEmployeeFromStore(String employeeId, String storeId) {
         log.info("Removing employee {} from store {}", employeeId, storeId);
         
-        UserStore userStore = userStoreRepository.findByUserIdAndStoreIdAndIsDeletedFalse(employeeId, storeId)
+        EmployeeStore employeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, storeId)
                 .orElseThrow(() -> {
-                    log.error("User-store relationship not found for employee {} and store {}", employeeId, storeId);
+                    log.error("Employee-store relationship not found for employee {} and store {}", employeeId, storeId);
                     return new AppException(ErrorCode.USER_STORE_RELATIONSHIP_NOT_FOUND);
                 });
 
-        userStore.setIsDeleted(true);
-        userStoreRepository.save(userStore);
+        employeeStore.setIsDeleted(true);
+        employeeStoreRepository.save(employeeStore);
         
         log.info("Removed employee {} from store {}", employeeId, storeId);
     }
@@ -576,29 +579,58 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
-     * Convert User entity to UserResponse DTO
+     * Generate employee code based on role
      */
-    private UserResponse toUserResponse(User user) {
-        // Load storeIds for the user
-        List<String> storeIds = userStoreRepository.findByUserIdAndIsDeletedFalse(user.getId())
+    private String generateEmployeeCode(EnumRole role) {
+        String prefix;
+        switch (role) {
+            case ADMIN:
+                prefix = "ADM";
+                break;
+            // SELLER role removed - use STAFF instead
+            case BRANCH_MANAGER:
+                prefix = "MGR";
+                break;
+            case DELIVERY:
+                prefix = "DLV";
+                break;
+            case STAFF:
+                prefix = "STF";
+                break;
+            default:
+                prefix = "EMP";
+        }
+        
+        // Generate code: PREFIX + timestamp + random number
+        long timestamp = System.currentTimeMillis();
+        int random = (int) (Math.random() * 1000);
+        return String.format("%s-%d-%03d", prefix, timestamp, random);
+    }
+
+    /**
+     * Convert Employee entity to UserResponse DTO
+     */
+    private UserResponse toEmployeeResponse(Employee employee) {
+        // Load storeIds for the employee
+        List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
                 .stream()
-                .map(UserStore::getStoreId)
+                .map(EmployeeStore::getStoreId)
                 .collect(Collectors.toList());
 
         return UserResponse.builder()
-                .id(user.getId())
-                .birthday(user.getBirthday())
-                .gender(user.getGender())
-                .fullName(user.getFullName())
-                .avatar(user.getAvatar())
-                .phone(user.getPhone())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .status(user.getStatus())
-                .cccd(user.getCccd())
-                .point(user.getPoint())
-                .email(user.getAccount() != null ? user.getAccount().getEmail() : null)
-                .role(user.getAccount() != null ? user.getAccount().getRole() : null)
+                .id(employee.getId())
+                .birthday(employee.getBirthday())
+                .gender(employee.getGender())
+                .fullName(employee.getFullName())
+                .avatar(employee.getAvatar())
+                .phone(employee.getPhone())
+                .createdAt(employee.getCreatedAt())
+                .updatedAt(employee.getUpdatedAt())
+                .status(employee.getStatus())
+                .cccd(employee.getCccd())
+                .point(null) // Employees don't have points
+                .email(employee.getAccount() != null ? employee.getAccount().getEmail() : null)
+                .role(employee.getAccount() != null ? employee.getAccount().getRole() : null)
                 .storeIds(storeIds)
                 .build();
     }

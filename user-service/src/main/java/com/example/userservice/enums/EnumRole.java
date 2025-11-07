@@ -4,6 +4,7 @@ public enum EnumRole {
     ADMIN ,
     CUSTOMER ,
     DELIVERY,
-    MANAGER,
+    BRANCH_MANAGER,
     STAFF,
+
 }

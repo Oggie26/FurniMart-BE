@@ -2,17 +2,16 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
-import com.example.userservice.entity.UserStore;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.*;
+import com.example.userservice.service.inteface.EmployeeService;
 import com.example.userservice.service.inteface.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,16 +35,26 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
-    private final UserStoreRepository userStoreRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmployeeService employeeService;
+    // Note: employeeStoreRepository removed - not used in UserService (only for Customer operations)
 
     @Override
     @Transactional
     public UserResponse createUser(UserRequest userRequest) {
-        // NOTE: For employee creation (MANAGER, DELIVERY, STAFF),
-        // it is recommended to use EmployeeService.createEmployee() for better validation
-        // and to ensure ADMIN roles cannot be created through employee endpoints.
-        // This method is primarily used for ADMIN and CUSTOMER creation.
+        // NOTE: This method ONLY creates CUSTOMER users.
+        // For employee creation (ADMIN, BRANCH_MANAGER, DELIVERY, STAFF),
+        // Note: SELLER role has been replaced by STAFF
+        // use EmployeeService.createEmployee() or EmployeeService.createAdmin().
+        
+        // Validate: Only CUSTOMER role is allowed
+        if (userRequest.getRole() != null && userRequest.getRole() != EnumRole.CUSTOMER) {
+            log.error("Attempt to create non-CUSTOMER role through UserService: {}", userRequest.getRole());
+            throw new AppException(ErrorCode.INVALID_ROLE);
+        }
+        
+        // Force CUSTOMER role
+        userRequest.setRole(EnumRole.CUSTOMER);
         
         if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
             throw new AppException(ErrorCode.EMAIL_EXISTS);
@@ -59,8 +67,12 @@ public class UserServiceImpl implements UserService {
         Account account = Account.builder()
                 .email(userRequest.getEmail())
                 .password(passwordEncoder.encode(userRequest.getPassword()))
-                .role(userRequest.getRole())
-                .status(userRequest.getStatus())
+                .role(EnumRole.CUSTOMER) // Force CUSTOMER role
+                .status(userRequest.getStatus() != null ? userRequest.getStatus() : EnumStatus.ACTIVE)
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
                 .build();
         
         Account savedAccount = accountRepository.save(account);
@@ -70,13 +82,14 @@ public class UserServiceImpl implements UserService {
                 .phone(userRequest.getPhone())
                 .birthday(userRequest.getBirthday())
                 .gender(userRequest.getGender())
-                .status(userRequest.getStatus())
+                .status(userRequest.getStatus() != null ? userRequest.getStatus() : EnumStatus.ACTIVE)
                 .avatar(userRequest.getAvatar())
                 .point(0)
                 .account(savedAccount)
                 .build();
 
         User savedUser = userRepository.save(user);
+        log.info("Created CUSTOMER user: {} with email: {}", savedUser.getId(), savedAccount.getEmail());
         return toUserResponse(savedUser);
     }
 
@@ -135,7 +148,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getAllUsers() {
-        List<User> users = userRepository.findByIsDeletedFalse();
+        // Only return CUSTOMER users (from users table)
+        log.info("Fetching all CUSTOMER users");
+        List<User> users = userRepository.findByAccountRoleAndIsDeletedFalse(EnumRole.CUSTOMER);
         return users.stream()
                 .map(this::toUserResponse)
                 .collect(Collectors.toList());
@@ -254,6 +269,18 @@ public class UserServiceImpl implements UserService {
         
     }
 
+    public String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        
+        String email = authentication.getName();
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return user.getId();
+    }
+
     @Override
     public UserResponse getProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -318,11 +345,9 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserResponse toUserResponse(User user) {
-        // Load storeIds for the user
-        List<String> storeIds = userStoreRepository.findByUserIdAndIsDeletedFalse(user.getId())
-                .stream()
-                .map(UserStore::getStoreId)
-                .collect(Collectors.toList());
+        // Note: User (Customer) does not have store relationships
+        // Store relationships are only for Employees
+        List<String> storeIds = List.of();
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -344,97 +369,46 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public List<UserResponse> getAllEmployees() {
-        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.MANAGER, EnumRole.DELIVERY, EnumRole.STAFF);
-        List<User> employees = userRepository.findEmployeesByRoles(employeeRoles);
-        return employees.stream()
-                .map(this::toUserResponse)
-                .collect(Collectors.toList());
+        // Redirect to EmployeeService to query from employees table
+        log.info("Redirecting getAllEmployees() to EmployeeService");
+        return employeeService.getAllEmployees();
     }
     
     @Override
     public List<UserResponse> getEmployeesByRole(EnumRole role) {
-        // Only allow employee roles
-        if (!isEmployeeRole(role)) {
-            throw new AppException(ErrorCode.INVALID_ROLE);
-        }
-        
-        List<User> employees = userRepository.findEmployeesByRole(role);
-        return employees.stream()
-                .map(this::toUserResponse)
-                .collect(Collectors.toList());
+        // Redirect to EmployeeService to query from employees table
+        log.info("Redirecting getEmployeesByRole({}) to EmployeeService", role);
+        return employeeService.getEmployeesByRole(role);
     }
     
     @Override
     public List<UserResponse> getEmployeesByStoreId(String storeId) {
-        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.MANAGER, EnumRole.DELIVERY, EnumRole.STAFF);
-        List<User> employees = userRepository.findEmployeesByStoreIdAndRoles(storeId, employeeRoles);
-        return employees.stream()
-                .map(this::toUserResponse)
-                .collect(Collectors.toList());
+        // Redirect to EmployeeService to query from employees table
+        log.info("Redirecting getEmployeesByStoreId({}) to EmployeeService", storeId);
+        return employeeService.getEmployeesByStoreId(storeId);
     }
     
     @Override
     public List<UserResponse> getEmployeesByStoreIdAndRole(String storeId, EnumRole role) {
-        // Only allow employee roles
-        if (!isEmployeeRole(role)) {
-            throw new AppException(ErrorCode.INVALID_ROLE);
-        }
-        
-        List<User> employees = userRepository.findEmployeesByStoreIdAndRole(storeId, role);
-        return employees.stream()
-                .map(this::toUserResponse)
-                .collect(Collectors.toList());
+        // Redirect to EmployeeService to query from employees table
+        log.info("Redirecting getEmployeesByStoreIdAndRole({}, {}) to EmployeeService", storeId, role);
+        return employeeService.getEmployeesByStoreIdAndRole(storeId, role);
     }
     
     @Override
     public PageResponse<UserResponse> getEmployeesWithPagination(int page, int size) {
-        log.info("Fetching employees with pagination - page: {}, size: {}", page, size);
-        
-        List<EnumRole> employeeRoles = Arrays.asList(EnumRole.MANAGER, EnumRole.DELIVERY, EnumRole.STAFF);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> employeePage = userRepository.findEmployeesByRoles(employeeRoles, pageable);
-        
-        List<UserResponse> employeeResponses = employeePage.getContent().stream()
-                .map(this::toUserResponse)
-                .collect(Collectors.toList());
-
-        return PageResponse.<UserResponse>builder()
-                .content(employeeResponses)
-                .totalElements(employeePage.getTotalElements())
-                .totalPages(employeePage.getTotalPages())
-                .size(employeePage.getSize())
-                .number(employeePage.getNumber())
-                .first(employeePage.isFirst())
-                .last(employeePage.isLast())
-                .build();
+        // Redirect to EmployeeService to query from employees table
+        log.info("Redirecting getEmployeesWithPagination({}, {}) to EmployeeService", page, size);
+        return employeeService.getEmployeesWithPagination(page, size);
     }
     
     @Override
     public PageResponse<UserResponse> getEmployeesByRoleWithPagination(EnumRole role, int page, int size) {
-        log.info("Fetching employees by role {} with pagination - page: {}, size: {}", role, page, size);
-        
-        // Only allow employee roles
-        if (!isEmployeeRole(role)) {
-            throw new AppException(ErrorCode.INVALID_ROLE);
-        }
-        
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> employeePage = userRepository.findEmployeesByRole(role, pageable);
-        
-        List<UserResponse> employeeResponses = employeePage.getContent().stream()
-                .map(this::toUserResponse)
-                .collect(Collectors.toList());
-
-        return PageResponse.<UserResponse>builder()
-                .content(employeeResponses)
-                .totalElements(employeePage.getTotalElements())
-                .totalPages(employeePage.getTotalPages())
-                .size(employeePage.getSize())
-                .number(employeePage.getNumber())
-                .first(employeePage.isFirst())
-                .last(employeePage.isLast())
-                .build();
+        // Redirect to EmployeeService to query from employees table
+        log.info("Redirecting getEmployeesByRoleWithPagination({}, {}, {}) to EmployeeService", role, page, size);
+        return employeeService.getEmployeesByRoleWithPagination(role, page, size);
     }
+    
     
     @Override
     @Transactional
@@ -459,7 +433,8 @@ public class UserServiceImpl implements UserService {
     }
     
     private boolean isEmployeeRole(EnumRole role) {
-        return role == EnumRole.MANAGER || 
+        // SELLER role removed - use STAFF instead
+        return role == EnumRole.BRANCH_MANAGER || 
                role == EnumRole.DELIVERY || 
                role == EnumRole.STAFF;
     }
