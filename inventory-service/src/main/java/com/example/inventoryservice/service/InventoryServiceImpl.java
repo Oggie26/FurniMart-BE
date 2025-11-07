@@ -413,7 +413,7 @@ public class InventoryServiceImpl implements InventoryService {
         if (response == null || response.getData() == null)
             throw new AppException(ErrorCode.NOT_FOUND_USER);
 
-        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
+        ApiResponse<UserResponse> userId = userClient.getEmployeeByAccountId(response.getData().getId());
         if (userId == null || userId.getData() == null)
             throw new AppException(ErrorCode.NOT_FOUND_USER);
 

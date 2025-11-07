@@ -15,7 +15,7 @@ public interface UserClient {
     ApiResponse<UserResponse> getUserById(@PathVariable String id);
 
     @GetMapping("/api/employees/account/{accountId}")
-    ApiResponse<StaffResponse> getEmployeeByAccountId(@PathVariable String accountId);
+    ApiResponse<UserResponse> getEmployeeByAccountId(@PathVariable String accountId);
 
 }
 
