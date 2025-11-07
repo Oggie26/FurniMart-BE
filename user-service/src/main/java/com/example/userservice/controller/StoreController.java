@@ -143,7 +143,10 @@ public class StoreController {
     }
 
     @PostMapping("/employees")
-    @Operation(summary = "Add employee to store")
+    @Operation(
+        summary = "Add employee to store",
+        description = "Assign an employee to a store. Requires employeeId and storeId in the request body."
+    )
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<EmployeeStoreResponse> addEmployeeToStore(@Valid @RequestBody EmployeeStoreRequest request) {
         return ApiResponse.<EmployeeStoreResponse>builder()
@@ -154,7 +157,10 @@ public class StoreController {
     }
 
     @DeleteMapping("/employees/{employeeId}/stores/{storeId}")
-    @Operation(summary = "Remove employee from store")
+    @Operation(
+        summary = "Remove employee from store",
+        description = "Remove an employee from a store. Requires employeeId and storeId as path parameters."
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ApiResponse<Void> removeEmployeeFromStore(@PathVariable String employeeId, @PathVariable String storeId) {
         storeService.removeEmployeeFromStore(employeeId, storeId);
@@ -165,7 +171,10 @@ public class StoreController {
     }
 
     @GetMapping("/employees/{employeeId}")
-    @Operation(summary = "Get stores by employee ID")
+    @Operation(
+        summary = "Get stores by employee ID",
+        description = "Retrieve all stores assigned to a specific employee. Returns a list of stores."
+    )
     public ApiResponse<List<StoreResponse>> getStoresByEmployeeId(@PathVariable String employeeId) {
         return ApiResponse.<List<StoreResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -175,7 +184,10 @@ public class StoreController {
     }
 
     @GetMapping("/{storeId}/employees")
-    @Operation(summary = "Get employees by store ID")
+    @Operation(
+        summary = "Get employees by store ID",
+        description = "Retrieve all employees assigned to a specific store. Returns a list of employee-store relationships."
+    )
     public ApiResponse<List<EmployeeStoreResponse>> getEmployeesByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<EmployeeStoreResponse>>builder()
                 .status(HttpStatus.OK.value())
