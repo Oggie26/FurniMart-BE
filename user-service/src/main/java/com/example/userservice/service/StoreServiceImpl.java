@@ -41,6 +41,8 @@ public class StoreServiceImpl implements StoreService {
     @Override
     @Transactional
     public StoreResponse createStore(StoreRequest request) {
+        // Validation is handled by @Valid annotation in controller
+        // All required fields (district, ward, city, street, addressLine) are validated via @NotBlank
         Store store = Store.builder()
                 .name(request.getName())
                 .city(request.getCity())
@@ -65,6 +67,8 @@ public class StoreServiceImpl implements StoreService {
         Store store = storeRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
 
+        // Validation is handled by @Valid annotation in controller
+        // All required fields (district, ward, city, street, addressLine) are validated via @NotBlank
         store.setName(request.getName());
         store.setCity(request.getCity());
         store.setDistrict(request.getDistrict());
@@ -325,11 +329,11 @@ public class StoreServiceImpl implements StoreService {
         return StoreResponse.builder()
                 .id(store.getId())
                 .name(store.getName())
-                .city(store.getCity())
-                .district(store.getDistrict())
-                .ward(store.getWard())
-                .street(store.getStreet())
-                .addressLine(store.getAddressLine())
+                .city(store.getCity() != null ? store.getCity() : "")
+                .district(store.getDistrict() != null ? store.getDistrict() : "")
+                .ward(store.getWard() != null ? store.getWard() : "")
+                .street(store.getStreet() != null ? store.getStreet() : "")
+                .addressLine(store.getAddressLine() != null ? store.getAddressLine() : "")
                 .latitude(store.getLatitude())
                 .longitude(store.getLongitude())
                 .status(store.getStatus())

@@ -15,14 +15,19 @@ public class StoreRequest {
     @NotBlank(message = "Tên cửa hàng không được để trống")
     private String name;
     
+    @NotBlank(message = "Thành phố không được để trống")
     private String city;
     
+    @NotBlank(message = "Quận/Huyện không được để trống")
     private String district;
     
+    @NotBlank(message = "Phường/Xã không được để trống")
     private String ward;
     
+    @NotBlank(message = "Tên đường không được để trống")
     private String street;
     
+    @NotBlank(message = "Địa chỉ chi tiết không được để trống")
     private String addressLine;
     
     private Double latitude;
