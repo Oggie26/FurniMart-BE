@@ -89,11 +89,13 @@ public class VNPayService {
         Map<String, String> params = new HashMap<>();
 //        String returnUrl = "myapp://payment-success?orderId=" + orderId;
         String returnUrl = "http://152.53.227.115:8080/api/v1/payment/vnpay-return-mobile";
+        long vnpAmount = Math.round(amount * 100); // ✅ fix chuẩn VNPay
 
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
         params.put("vnp_TmnCode", tmnCode);
-        params.put("vnp_Amount", String.valueOf(amount.longValue() * 100));
+//        params.put("vnp_Amount", String.valueOf(amount.longValue() * 100));
+        params.put("vnp_Amount", String.valueOf(vnpAmount));
         params.put("vnp_CurrCode", "VND");
         params.put("vnp_TxnRef", orderId.toString());
         params.put("vnp_OrderInfo", "Thanh toan don hang#" + orderId);
