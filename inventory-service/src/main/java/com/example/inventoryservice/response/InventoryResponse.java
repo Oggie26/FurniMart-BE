@@ -26,5 +26,6 @@ public class InventoryResponse {
     private EnumPurpose purpose;
     private LocalDate date;
     private String note;
-    private Warehouse warehouse;
+    private String warehouseName;
+    private String warehouseId;
 }

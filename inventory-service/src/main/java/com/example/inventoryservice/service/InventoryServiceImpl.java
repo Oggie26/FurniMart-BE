@@ -385,7 +385,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .purpose(inventory.getPurpose())
                 .date(inventory.getDate())
                 .note(inventory.getNote())
-                .warehouse(inventory.getWarehouse())
+                .warehouseId(inventory.getWarehouse().getId())
+                .warehouseName(inventory.getWarehouse().getWarehouseName())
                 .build();
     }
 
@@ -395,8 +396,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
-                .inventory(item.getInventory())
                 .locationItem(item.getLocationItem())
+                .inventoryId(item.getId())
                 .build();
     }
 

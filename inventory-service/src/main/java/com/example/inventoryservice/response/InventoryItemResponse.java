@@ -19,5 +19,5 @@ public class InventoryItemResponse {
     private String productName;
     private Integer reservedQuantity;
     private LocationItem locationItem;
-    private Inventory inventory;
+    private Long inventoryId;
 }
