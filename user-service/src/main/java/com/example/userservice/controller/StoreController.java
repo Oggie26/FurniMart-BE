@@ -142,10 +142,10 @@ public class StoreController {
                 .build();
     }
 
-    @PostMapping("/users")
-    @Operation(summary = "Add user to store")
+    @PostMapping("/employees")
+    @Operation(summary = "Add employee to store")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<EmployeeStoreResponse> addUserToStore(@Valid @RequestBody EmployeeStoreRequest request) {
+    public ApiResponse<EmployeeStoreResponse> addEmployeeToStore(@Valid @RequestBody EmployeeStoreRequest request) {
         return ApiResponse.<EmployeeStoreResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Employee added to store successfully")
@@ -153,34 +153,34 @@ public class StoreController {
                 .build();
     }
 
-    @DeleteMapping("/users/{userId}/stores/{storeId}")
-    @Operation(summary = "Remove user from store")
+    @DeleteMapping("/employees/{employeeId}/stores/{storeId}")
+    @Operation(summary = "Remove employee from store")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public ApiResponse<Void> removeUserFromStore(@PathVariable String userId, @PathVariable String storeId) {
-        storeService.removeUserFromStore(userId, storeId);
+    public ApiResponse<Void> removeEmployeeFromStore(@PathVariable String employeeId, @PathVariable String storeId) {
+        storeService.removeEmployeeFromStore(employeeId, storeId);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.NO_CONTENT.value())
-                .message("User removed from store successfully")
+                .message("Employee removed from store successfully")
                 .build();
     }
 
-    @GetMapping("/users/{userId}")
-    @Operation(summary = "Get stores by user ID")
-    public ApiResponse<List<StoreResponse>> getStoresByUserId(@PathVariable String userId) {
+    @GetMapping("/employees/{employeeId}")
+    @Operation(summary = "Get stores by employee ID")
+    public ApiResponse<List<StoreResponse>> getStoresByEmployeeId(@PathVariable String employeeId) {
         return ApiResponse.<List<StoreResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Stores retrieved successfully")
-                .data(storeService.getStoresByUserId(userId))
+                .data(storeService.getStoresByEmployeeId(employeeId))
                 .build();
     }
 
-    @GetMapping("/{storeId}/users")
-    @Operation(summary = "Get users by store ID")
-    public ApiResponse<List<EmployeeStoreResponse>> getUsersByStoreId(@PathVariable String storeId) {
+    @GetMapping("/{storeId}/employees")
+    @Operation(summary = "Get employees by store ID")
+    public ApiResponse<List<EmployeeStoreResponse>> getEmployeesByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<EmployeeStoreResponse>>builder()
                 .status(HttpStatus.OK.value())
-                .message("Users retrieved successfully")
-                .data(storeService.getUsersByStoreId(storeId))
+                .message("Employees retrieved successfully")
+                .data(storeService.getEmployeesByStoreId(storeId))
                 .build();
     }
 

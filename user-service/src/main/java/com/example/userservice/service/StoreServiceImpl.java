@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -174,19 +173,27 @@ public class StoreServiceImpl implements StoreService {
     @Transactional
     public EmployeeStoreResponse addUserToStore(EmployeeStoreRequest request) {
         String employeeId = request.getEmployeeId();
+        String storeId = request.getStoreId();
         
         if (employeeId == null || employeeId.trim().isEmpty()) {
             log.error("Employee ID is null or empty");
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
         
-        log.info("Attempting to add employee {} to store {}", employeeId, request.getStoreId());
+        // Additional validation: Check if employeeId looks like a valid UUID
+        // (This is a backup check, @Pattern validation should catch invalid formats earlier)
+        if (!employeeId.matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")) {
+            log.error("Invalid employee ID format: {}. Expected UUID format (e.g., ef5ec40c-198f-4dfb-84dc-5bf86db68940)", employeeId);
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        log.info("Attempting to add employee {} to store {}", employeeId, storeId);
         
         try {
             // Check if employee exists
             Employee employee = employeeRepository.findEmployeeById(employeeId)
                     .orElseThrow(() -> {
-                        log.error("Employee not found for store assignment with id: {}. Employee may not exist, be deleted, or have CUSTOMER role.", employeeId);
+                        log.error("Employee not found for store assignment with id: {}. Employee may not exist, be deleted, or have CUSTOMER role. Please verify the employee ID is correct.", employeeId);
                         return new AppException(ErrorCode.USER_NOT_FOUND);
                     });
             
@@ -204,29 +211,29 @@ public class StoreServiceImpl implements StoreService {
             log.info("Found employee: {} (email: {})", employee.getFullName(), employeeEmail);
             
             // Check if store exists
-            Store store = storeRepository.findByIdAndIsDeletedFalse(request.getStoreId())
+            Store store = storeRepository.findByIdAndIsDeletedFalse(storeId)
                     .orElseThrow(() -> {
-                        log.error("Store not found for employee assignment with id: {}", request.getStoreId());
+                        log.error("Store not found for employee assignment with id: {}", storeId);
                         return new AppException(ErrorCode.STORE_NOT_FOUND);
                     });
             
             log.info("Found store: {} (location: {})", store.getName(), store.getAddressLine());
             
             // Check if relationship already exists
-            if (employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, request.getStoreId()).isPresent()) {
+            if (employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, storeId).isPresent()) {
                 log.warn("Employee-store relationship already exists for employee {} and store {}", 
-                        employeeId, request.getStoreId());
+                        employeeId, storeId);
                 throw new AppException(ErrorCode.USER_STORE_RELATIONSHIP_EXISTS);
             }
             
             EmployeeStore employeeStore = EmployeeStore.builder()
                     .employeeId(employeeId)
-                    .storeId(request.getStoreId())
+                    .storeId(storeId)
                     .build();
             
             EmployeeStore savedEmployeeStore = employeeStoreRepository.save(employeeStore);
             log.info("Successfully added employee {} to store {} with relationship id: {}", 
-                    employeeId, request.getStoreId(), savedEmployeeStore.getEmployeeId() + "_" + savedEmployeeStore.getStoreId());
+                    employeeId, storeId, savedEmployeeStore.getEmployeeId() + "_" + savedEmployeeStore.getStoreId());
             
             // Set the relationships manually to avoid LazyInitializationException
             // We already have employee and store loaded from previous checks
@@ -289,31 +296,30 @@ public class StoreServiceImpl implements StoreService {
             
         } catch (AppException e) {
             log.error("Application error adding employee {} to store {}: {}", 
-                    employeeId, request.getStoreId(), e.getMessage());
+                    employeeId, storeId, e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error adding employee {} to store {}", 
-                    employeeId, request.getStoreId(), e);
+                    employeeId, storeId, e);
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
     @Override
     @Transactional
-    public void removeUserFromStore(String userId, String storeId) {
-        EmployeeStore employeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(userId, storeId)
+    public void removeEmployeeFromStore(String employeeId, String storeId) {
+        EmployeeStore employeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_STORE_RELATIONSHIP_NOT_FOUND));
         
         employeeStore.setIsDeleted(true);
         employeeStoreRepository.save(employeeStore);
-        log.info("Employee {} removed from store {}", userId, storeId);
+        log.info("Employee {} removed from store {}", employeeId, storeId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<StoreResponse> getStoresByUserId(String userId) {
-        // userId is actually employeeId in this context
-        List<Store> stores = storeRepository.findStoresByEmployeeId(userId);
+    public List<StoreResponse> getStoresByEmployeeId(String employeeId) {
+        List<Store> stores = storeRepository.findStoresByEmployeeId(employeeId);
         return stores.stream()
                 .map(this::mapToStoreResponse)
                 .collect(Collectors.toList());
@@ -321,7 +327,7 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EmployeeStoreResponse> getUsersByStoreId(String storeId) {
+    public List<EmployeeStoreResponse> getEmployeesByStoreId(String storeId) {
         List<EmployeeStore> employeeStores = employeeStoreRepository.findByStoreIdAndIsDeletedFalse(storeId);
         return employeeStores.stream()
                 .map(this::mapToEmployeeStoreResponse)
@@ -374,13 +380,13 @@ public class StoreServiceImpl implements StoreService {
         List<UserResponse> employees = employeeStores.stream()
                 .map(employeeStore -> {
                     try {
-                        Employee employee = employeeStore.getEmployee();
+                    Employee employee = employeeStore.getEmployee();
                         if (employee == null || employee.getIsDeleted() != null && employee.getIsDeleted()) {
                             log.warn("Employee is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
                                     employeeStore.getEmployeeId(), employeeStore.getStoreId());
                             return null;
                         }
-                        return mapEmployeeToUserResponse(employee);
+                    return mapEmployeeToUserResponse(employee);
                     } catch (Exception e) {
                         log.error("Error mapping employee to user response for EmployeeStore: employeeId={}, storeId={}, error: {}", 
                                 employeeStore.getEmployeeId(), employeeStore.getStoreId(), e.getMessage());
@@ -414,10 +420,10 @@ public class StoreServiceImpl implements StoreService {
         }
         
         try {
-            List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
-                    .stream()
-                    .map(EmployeeStore::getStoreId)
-                    .collect(Collectors.toList());
+        List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
+                .stream()
+                .map(EmployeeStore::getStoreId)
+                .collect(Collectors.toList());
 
             // Check if account exists and is not null
             if (employee.getAccount() == null) {
@@ -425,22 +431,22 @@ public class StoreServiceImpl implements StoreService {
                 return null;
             }
 
-            return UserResponse.builder()
-                    .id(employee.getId())
-                    .fullName(employee.getFullName())
-                    .email(employee.getAccount().getEmail())
-                    .phone(employee.getPhone())
-                    .gender(employee.getGender())
-                    .birthday(employee.getBirthday())
-                    .avatar(employee.getAvatar())
-                    .cccd(employee.getCccd())
-                    .point(null) // Employees don't have points
-                    .role(employee.getAccount().getRole())
-                    .status(employee.getStatus())
-                    .createdAt(employee.getCreatedAt())
-                    .updatedAt(employee.getUpdatedAt())
-                    .storeIds(storeIds)
-                    .build();
+        return UserResponse.builder()
+                .id(employee.getId())
+                .fullName(employee.getFullName())
+                .email(employee.getAccount().getEmail())
+                .phone(employee.getPhone())
+                .gender(employee.getGender())
+                .birthday(employee.getBirthday())
+                .avatar(employee.getAvatar())
+                .cccd(employee.getCccd())
+                .point(null) // Employees don't have points
+                .role(employee.getAccount().getRole())
+                .status(employee.getStatus())
+                .createdAt(employee.getCreatedAt())
+                .updatedAt(employee.getUpdatedAt())
+                .storeIds(storeIds)
+                .build();
         } catch (Exception e) {
             log.error("Error mapping employee {} to UserResponse: {}", employee.getId(), e.getMessage());
             return null;
@@ -449,8 +455,8 @@ public class StoreServiceImpl implements StoreService {
 
     private EmployeeStoreResponse mapToEmployeeStoreResponse(EmployeeStore employeeStore) {
         try {
-            Employee employee = employeeStore.getEmployee();
-            Store store = employeeStore.getStore();
+        Employee employee = employeeStore.getEmployee();
+        Store store = employeeStore.getStore();
             
             if (employee == null || (employee.getIsDeleted() != null && employee.getIsDeleted())) {
                 log.warn("Employee is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
@@ -463,14 +469,14 @@ public class StoreServiceImpl implements StoreService {
                         employeeStore.getEmployeeId(), employeeStore.getStoreId());
                 throw new AppException(ErrorCode.STORE_NOT_FOUND);
             }
-            
-            return EmployeeStoreResponse.builder()
-                    .employeeId(employeeStore.getEmployeeId())
-                    .storeId(employeeStore.getStoreId())
-                    .employee(mapEmployeeToUserResponse(employee))
+        
+        return EmployeeStoreResponse.builder()
+                .employeeId(employeeStore.getEmployeeId())
+                .storeId(employeeStore.getStoreId())
+                .employee(mapEmployeeToUserResponse(employee))
                     .store(mapToStoreResponseWithoutUsers(store))  // Use simplified version to avoid circular reference
-                    .createdAt(employeeStore.getCreatedAt())
-                    .updatedAt(employeeStore.getUpdatedAt())
+                .createdAt(employeeStore.getCreatedAt())
+                .updatedAt(employeeStore.getUpdatedAt())
                     .build();
         } catch (AppException e) {
             throw e;
