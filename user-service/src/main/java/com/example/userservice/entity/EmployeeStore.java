@@ -9,23 +9,24 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "user_stores")
-@IdClass(UserStoreId.class)
-public class UserStore extends AbstractEntity {
+@Table(name = "employee_stores")
+@IdClass(EmployeeStoreId.class)
+public class EmployeeStore extends AbstractEntity {
 
     @Id
-    @Column(name = "user_id")
-    private String userId;
+    @Column(name = "employee_id")
+    private String employeeId;
 
     @Id
     @Column(name = "store_id")
     private String storeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    @JoinColumn(name = "employee_id", insertable = false, updatable = false)
+    private Employee employee;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", insertable = false, updatable = false)
     private Store store;
 }
+

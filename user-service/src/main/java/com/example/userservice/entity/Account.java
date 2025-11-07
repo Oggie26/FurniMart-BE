@@ -54,6 +54,9 @@ public class Account extends AbstractEntity implements UserDetails {
     @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)
     private User user;
 
+    @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)
+    private Employee employee;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

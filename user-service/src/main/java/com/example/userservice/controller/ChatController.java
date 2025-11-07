@@ -28,7 +28,7 @@ public class ChatController {
     @PostMapping
     @Operation(summary = "Create new chat")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> createChat(@Valid @RequestBody ChatRequest request) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -39,7 +39,7 @@ public class ChatController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get chat by ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> getChatById(@PathVariable String id) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -50,7 +50,7 @@ public class ChatController {
 
     @GetMapping
     @Operation(summary = "Get user's chats")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<List<ChatResponse>> getUserChats() {
         return ApiResponse.<List<ChatResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -61,7 +61,7 @@ public class ChatController {
 
     @GetMapping("/paginated")
     @Operation(summary = "Get user's chats with pagination")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<PageResponse<ChatResponse>> getUserChatsWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -74,7 +74,7 @@ public class ChatController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> updateChat(@PathVariable String id, @Valid @RequestBody ChatRequest request) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -85,7 +85,7 @@ public class ChatController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<Void> deleteChat(@PathVariable String id) {
         chatService.deleteChat(id);
         return ApiResponse.<Void>builder()
@@ -96,7 +96,7 @@ public class ChatController {
 
     @PostMapping("/{id}/participants/{userId}")
     @Operation(summary = "Add participant to chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> addParticipant(@PathVariable String id, @PathVariable String userId) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -107,7 +107,7 @@ public class ChatController {
 
     @DeleteMapping("/{id}/participants/{userId}")
     @Operation(summary = "Remove participant from chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> removeParticipant(@PathVariable String id, @PathVariable String userId) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -118,7 +118,7 @@ public class ChatController {
 
     @PutMapping("/{id}/participants/{userId}/role")
     @Operation(summary = "Update participant role")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> updateParticipantRole(
             @PathVariable String id, 
             @PathVariable String userId, 
@@ -132,7 +132,7 @@ public class ChatController {
 
     @GetMapping("/search")
     @Operation(summary = "Search chats")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<List<ChatResponse>> searchChats(@RequestParam String searchTerm) {
         return ApiResponse.<List<ChatResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -143,7 +143,7 @@ public class ChatController {
 
     @PostMapping("/private/{userId}")
     @Operation(summary = "Get or create private chat with user")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> getOrCreatePrivateChat(@PathVariable String userId) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -154,7 +154,7 @@ public class ChatController {
 
     @PostMapping("/{id}/read")
     @Operation(summary = "Mark chat as read")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<Void> markChatAsRead(@PathVariable String id) {
         chatService.markChatAsRead(id);
         return ApiResponse.<Void>builder()
@@ -165,7 +165,7 @@ public class ChatController {
 
     @PatchMapping("/{id}/mute")
     @Operation(summary = "Mute/unmute chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> muteChat(@PathVariable String id, @RequestParam boolean muted) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -176,7 +176,7 @@ public class ChatController {
 
     @PatchMapping("/{id}/pin")
     @Operation(summary = "Pin/unpin chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('SELLER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
     public ApiResponse<ChatResponse> pinChat(@PathVariable String id, @RequestParam boolean pinned) {
         return ApiResponse.<ChatResponse>builder()
                 .status(HttpStatus.OK.value())

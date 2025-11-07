@@ -30,7 +30,7 @@ public class DeliveryConfirmationController {
     @PostMapping
     @Operation(summary = "Create delivery confirmation with photos (Delivery Staff only)")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('DELIVERY_STAFF') or hasRole('DELIVERER')")
+    @PreAuthorize("hasRole('DELIVERY')")
     public ApiResponse<DeliveryConfirmationResponse> createDeliveryConfirmation(@Valid @RequestBody DeliveryConfirmationRequest request) {
         return ApiResponse.<DeliveryConfirmationResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -41,7 +41,7 @@ public class DeliveryConfirmationController {
 
     @GetMapping("/staff/{deliveryStaffId}")
     @Operation(summary = "Get delivery confirmations by delivery staff ID")
-    @PreAuthorize("hasRole('DELIVERY_STAFF') or hasRole('DELIVERER') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('DELIVERY') or hasRole('ADMIN')")
     public ApiResponse<List<DeliveryConfirmationResponse>> getDeliveryConfirmationsByStaff(@PathVariable String deliveryStaffId) {
         return ApiResponse.<List<DeliveryConfirmationResponse>>builder()
                 .status(HttpStatus.OK.value())

@@ -12,6 +12,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository for User (Customer) entities only.
+ * For employee queries, use EmployeeRepository instead.
+ */
 public interface UserRepository extends JpaRepository<User, String> {
 
     Optional<User> findByIdAndIsDeletedFalse(String id);
@@ -35,24 +39,8 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     List<User> findByIsDeletedFalse();
     
-    // Employee-related queries
-    @Query("SELECT u FROM User u WHERE u.account.role IN :roles AND u.isDeleted = false")
-    List<User> findEmployeesByRoles(@Param("roles") List<EnumRole> roles);
-    
-    @Query("SELECT u FROM User u WHERE u.account.role = :role AND u.isDeleted = false")
-    List<User> findEmployeesByRole(@Param("role") EnumRole role);
-    
-    @Query("SELECT u FROM User u WHERE u.account.role IN :roles AND u.isDeleted = false")
-    Page<User> findEmployeesByRoles(@Param("roles") List<EnumRole> roles, Pageable pageable);
-    
-    @Query("SELECT u FROM User u WHERE u.account.role = :role AND u.isDeleted = false")
-    Page<User> findEmployeesByRole(@Param("role") EnumRole role, Pageable pageable);
-    
-    @Query("SELECT u FROM User u JOIN u.userStores us WHERE us.storeId = :storeId AND u.account.role IN :roles AND u.isDeleted = false")
-    List<User> findEmployeesByStoreIdAndRoles(@Param("storeId") String storeId, @Param("roles") List<EnumRole> roles);
-    
-    @Query("SELECT u FROM User u JOIN u.userStores us WHERE us.storeId = :storeId AND u.account.role = :role AND u.isDeleted = false")
-    List<User> findEmployeesByStoreIdAndRole(@Param("storeId") String storeId, @Param("role") EnumRole role);
+    // Note: Employee-related queries (findEmployeesByRoles, findEmployeesByRole) have been removed.
+    // Use EmployeeRepository.findEmployeesByRoles() and EmployeeRepository.findEmployeesByRole() instead.
     
     // Admin-related queries
     @Query("SELECT u FROM User u WHERE u.account.role = :role AND u.isDeleted = false")

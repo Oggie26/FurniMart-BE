@@ -7,10 +7,8 @@ import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
-import com.example.userservice.entity.UserStore;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.repository.UserStoreRepository;
 import com.example.userservice.response.LoginResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,7 +34,7 @@ public class GoogleOAuth2Service {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final TokenService tokenService;
-    private final UserStoreRepository userStoreRepository;
+    // Note: employeeStoreRepository removed - not used in GoogleOAuth2Service (only creates CUSTOMER users)
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
@@ -68,10 +66,8 @@ public class GoogleOAuth2Service {
             }
 
             // Generate JWT tokens
-            List<UserStore> userStores = userStoreRepository.findByUserId(account.getUser().getId());
-            List<String> storeIds = userStores.stream()
-                    .map(us -> us.getStore().getId())
-                    .toList();
+            // Note: Google OAuth creates CUSTOMER role, which doesn't have store relationships
+            List<String> storeIds = List.of();
 
             Map<String, Object> claims = Map.of(
                     "role", account.getRole(),

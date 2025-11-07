@@ -30,7 +30,7 @@ public class EmployeeController {
     // ========== ADMIN ONLY CRUD OPERATIONS ==========
     
     @PostMapping
-    @Operation(summary = "Create new employee (Admin only) - Can create ADMIN, SELLER, BRANCH_MANAGER, DELIVERER, STAFF roles")
+    @Operation(summary = "Create new employee (Admin only) - Can create ADMIN, BRANCH_MANAGER, DELIVERY, STAFF roles")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
@@ -164,16 +164,8 @@ public class EmployeeController {
 
     // ========== GET BY ROLE ==========
     
-    @GetMapping("/role/seller")
-    @Operation(summary = "Get all sellers")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<UserResponse>> getAllSellers() {
-        return ApiResponse.<List<UserResponse>>builder()
-                .status(HttpStatus.OK.value())
-                .message("Sellers retrieved successfully")
-                .data(employeeService.getEmployeesByRole(EnumRole.SELLER))
-                .build();
-    }
+    // SELLER endpoints removed - use STAFF endpoints instead
+    // @GetMapping("/role/seller") - DEPRECATED: Use /role/staff instead
 
     @GetMapping("/role/manager")
     @Operation(summary = "Get all branch managers")
@@ -193,7 +185,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Delivery staff retrieved successfully")
-                .data(employeeService.getEmployeesByRole(EnumRole.DELIVERER))
+                .data(employeeService.getEmployeesByRole(EnumRole.DELIVERY))
                 .build();
     }
 
@@ -221,16 +213,8 @@ public class EmployeeController {
                 .build();
     }
 
-    @GetMapping("/store/{storeId}/role/seller")
-    @Operation(summary = "Get sellers by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<UserResponse>> getSellersByStoreId(@PathVariable String storeId) {
-        return ApiResponse.<List<UserResponse>>builder()
-                .status(HttpStatus.OK.value())
-                .message("Store sellers retrieved successfully")
-                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.SELLER))
-                .build();
-    }
+    // SELLER endpoints removed - use STAFF endpoints instead
+    // @GetMapping("/store/{storeId}/role/seller") - DEPRECATED: Use /store/{storeId}/role/staff instead
 
     @GetMapping("/store/{storeId}/role/manager")
     @Operation(summary = "Get branch managers by store ID")
@@ -250,7 +234,7 @@ public class EmployeeController {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store delivery staff retrieved successfully")
-                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.DELIVERER))
+                .data(employeeService.getEmployeesByStoreIdAndRole(storeId, EnumRole.DELIVERY))
                 .build();
     }
 
@@ -267,18 +251,8 @@ public class EmployeeController {
 
     // ========== GET BY ROLE WITH PAGINATION ==========
     
-    @GetMapping("/role/seller/paginated")
-    @Operation(summary = "Get sellers with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<PageResponse<UserResponse>> getSellersWithPagination(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.<PageResponse<UserResponse>>builder()
-                .status(HttpStatus.OK.value())
-                .message("Sellers retrieved successfully with pagination")
-                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.SELLER, page, size))
-                .build();
-    }
+    // SELLER endpoints removed - use STAFF endpoints instead
+    // @GetMapping("/role/seller/paginated") - DEPRECATED: Use /role/staff/paginated instead
 
     @GetMapping("/role/manager/paginated")
     @Operation(summary = "Get branch managers with pagination")
@@ -302,7 +276,7 @@ public class EmployeeController {
         return ApiResponse.<PageResponse<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Delivery staff retrieved successfully with pagination")
-                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.DELIVERER, page, size))
+                .data(employeeService.getEmployeesByRoleWithPagination(EnumRole.DELIVERY, page, size))
                 .build();
     }
 

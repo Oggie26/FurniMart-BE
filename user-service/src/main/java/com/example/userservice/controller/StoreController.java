@@ -3,7 +3,7 @@ package com.example.userservice.controller;
 import com.example.userservice.entity.Store;
 import com.example.userservice.request.StoreDistance;
 import com.example.userservice.request.StoreRequest;
-import com.example.userservice.request.UserStoreRequest;
+import com.example.userservice.request.EmployeeStoreRequest;
 import com.example.userservice.response.*;
 import com.example.userservice.service.inteface.StoreService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -148,10 +148,10 @@ public class StoreController {
     @PostMapping("/users")
     @Operation(summary = "Add user to store")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<UserStoreResponse> addUserToStore(@Valid @RequestBody UserStoreRequest request) {
-        return ApiResponse.<UserStoreResponse>builder()
+    public ApiResponse<EmployeeStoreResponse> addUserToStore(@Valid @RequestBody EmployeeStoreRequest request) {
+        return ApiResponse.<EmployeeStoreResponse>builder()
                 .status(HttpStatus.CREATED.value())
-                .message("User added to store successfully")
+                .message("Employee added to store successfully")
                 .data(storeService.addUserToStore(request))
                 .build();
     }
@@ -179,8 +179,8 @@ public class StoreController {
 
     @GetMapping("/{storeId}/users")
     @Operation(summary = "Get users by store ID")
-    public ApiResponse<List<UserStoreResponse>> getUsersByStoreId(@PathVariable String storeId) {
-        return ApiResponse.<List<UserStoreResponse>>builder()
+    public ApiResponse<List<EmployeeStoreResponse>> getUsersByStoreId(@PathVariable String storeId) {
+        return ApiResponse.<List<EmployeeStoreResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Users retrieved successfully")
                 .data(storeService.getUsersByStoreId(storeId))

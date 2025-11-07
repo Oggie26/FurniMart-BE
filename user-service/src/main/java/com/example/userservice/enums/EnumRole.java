@@ -3,8 +3,7 @@ package com.example.userservice.enums;
 public enum EnumRole {
     ADMIN ,
     CUSTOMER ,
-    SELLER ,
-    DELIVERER,
+    DELIVERY,
     BRANCH_MANAGER,
     STAFF,
 

@@ -10,13 +10,15 @@ import java.util.List;
 
 /**
  * Service interface for employee management operations.
- * This service handles CRUD operations for employee roles only (SELLER, BRANCH_MANAGER, DELIVERER, STAFF).
+ * This service handles CRUD operations for employee roles only (BRANCH_MANAGER, DELIVERY, STAFF).
+ * Note: SELLER role has been replaced by STAFF.
  * ADMIN and CUSTOMER roles are explicitly excluded from these operations.
  */
 public interface EmployeeService {
 
     /**
-     * Create a new employee with employee role (SELLER, BRANCH_MANAGER, DELIVERER, STAFF).
+     * Create a new employee with employee role (BRANCH_MANAGER, DELIVERY, STAFF).
+     * Note: SELLER role has been replaced by STAFF.
      * Throws exception if attempting to create ADMIN or CUSTOMER role.
      * 
      * @param userRequest The employee data

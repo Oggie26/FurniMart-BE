@@ -2,7 +2,6 @@ package com.example.userservice.repository;
 
 import com.example.userservice.entity.Store;
 import com.example.userservice.enums.EnumStatus;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,7 +35,11 @@ public interface StoreRepository extends JpaRepository<Store, String> {
            "LOWER(s.addressLine) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     Page<Store> searchStores(@Param("searchTerm") String searchTerm, Pageable pageable);
 
-    @Query("SELECT s FROM Store s JOIN s.userStores us WHERE us.userId = :userId AND s.isDeleted = false")
+    @Query("SELECT s FROM Store s JOIN s.employeeStores es WHERE es.employeeId = :employeeId AND s.isDeleted = false")
+    List<Store> findStoresByEmployeeId(@Param("employeeId") String employeeId);
+    
+    // Legacy method - kept for backward compatibility, redirects to employee
+    @Query("SELECT s FROM Store s JOIN s.employeeStores es WHERE es.employeeId = :userId AND s.isDeleted = false")
     List<Store> findStoresByUserId(@Param("userId") String userId);
 
         @Query(value = """
