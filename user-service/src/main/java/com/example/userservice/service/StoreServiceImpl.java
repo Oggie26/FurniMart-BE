@@ -173,18 +173,26 @@ public class StoreServiceImpl implements StoreService {
     @Override
     @Transactional
     public EmployeeStoreResponse addUserToStore(EmployeeStoreRequest request) {
-        String employeeId = request.getEmployeeId() != null ? request.getEmployeeId() : request.getUserId();
+        String employeeId = request.getEmployeeId();
+        
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            log.error("Employee ID is null or empty");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
         log.info("Attempting to add employee {} to store {}", employeeId, request.getStoreId());
         
         try {
             // Check if employee exists
             Employee employee = employeeRepository.findEmployeeById(employeeId)
                     .orElseThrow(() -> {
-                        log.error("Employee not found for store assignment with id: {}", employeeId);
+                        log.error("Employee not found for store assignment with id: {}. Employee may not exist, be deleted, or have CUSTOMER role.", employeeId);
                         return new AppException(ErrorCode.USER_NOT_FOUND);
                     });
             
-            log.info("Found employee: {} (email: {})", employee.getFullName(), employee.getAccount().getEmail());
+            // Log employee info safely
+            String employeeEmail = employee.getAccount() != null ? employee.getAccount().getEmail() : "N/A";
+            log.info("Found employee: {} (email: {})", employee.getFullName(), employeeEmail);
             
             // Check if store exists
             Store store = storeRepository.findByIdAndIsDeletedFalse(request.getStoreId())
@@ -211,17 +219,17 @@ public class StoreServiceImpl implements StoreService {
             log.info("Successfully added employee {} to store {} with relationship id: {}", 
                     employeeId, request.getStoreId(), savedEmployeeStore.getEmployeeId() + "_" + savedEmployeeStore.getStoreId());
             
-            // Verify the relationship was actually saved
-            Optional<EmployeeStore> verification = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(
-                    employeeId, request.getStoreId());
-            if (verification.isEmpty()) {
-                log.error("CRITICAL: Employee-store relationship was not persisted! Employee: {}, Store: {}", 
-                        employeeId, request.getStoreId());
-                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
-            }
+            // Reload EmployeeStore with all relationships eagerly fetched to avoid LazyInitializationException
+            EmployeeStore loadedEmployeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdWithDetails(
+                    employeeId, request.getStoreId())
+                    .orElseThrow(() -> {
+                        log.error("CRITICAL: Employee-store relationship was not persisted! Employee: {}, Store: {}", 
+                                employeeId, request.getStoreId());
+                        return new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+                    });
             
-            log.info("Verified: Employee-store relationship successfully persisted");
-            return mapToEmployeeStoreResponse(savedEmployeeStore);
+            log.info("Verified: Employee-store relationship successfully persisted and loaded");
+            return mapToEmployeeStoreResponse(loadedEmployeeStore);
             
         } catch (AppException e) {
             log.error("Application error adding employee {} to store {}: {}", 
