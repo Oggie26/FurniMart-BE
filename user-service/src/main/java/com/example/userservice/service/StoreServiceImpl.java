@@ -305,9 +305,21 @@ public class StoreServiceImpl implements StoreService {
         List<EmployeeStore> employeeStores = employeeStoreRepository.findByStoreIdAndIsDeletedFalse(store.getId());
         List<UserResponse> employees = employeeStores.stream()
                 .map(employeeStore -> {
-                    Employee employee = employeeStore.getEmployee();
-                    return mapEmployeeToUserResponse(employee);
+                    try {
+                        Employee employee = employeeStore.getEmployee();
+                        if (employee == null || employee.getIsDeleted() != null && employee.getIsDeleted()) {
+                            log.warn("Employee is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
+                                    employeeStore.getEmployeeId(), employeeStore.getStoreId());
+                            return null;
+                        }
+                        return mapEmployeeToUserResponse(employee);
+                    } catch (Exception e) {
+                        log.error("Error mapping employee to user response for EmployeeStore: employeeId={}, storeId={}, error: {}", 
+                                employeeStore.getEmployeeId(), employeeStore.getStoreId(), e.getMessage());
+                        return null;
+                    }
                 })
+                .filter(employee -> employee != null)  // Filter out null employees
                 .collect(Collectors.toList());
         
         return StoreResponse.builder()
@@ -328,40 +340,76 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private UserResponse mapEmployeeToUserResponse(Employee employee) {
-        List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
-                .stream()
-                .map(EmployeeStore::getStoreId)
-                .collect(Collectors.toList());
+        if (employee == null) {
+            log.warn("Attempting to map null employee to UserResponse");
+            return null;
+        }
+        
+        try {
+            List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
+                    .stream()
+                    .map(EmployeeStore::getStoreId)
+                    .collect(Collectors.toList());
 
-        return UserResponse.builder()
-                .id(employee.getId())
-                .fullName(employee.getFullName())
-                .email(employee.getAccount().getEmail())
-                .phone(employee.getPhone())
-                .gender(employee.getGender())
-                .birthday(employee.getBirthday())
-                .avatar(employee.getAvatar())
-                .cccd(employee.getCccd())
-                .point(null) // Employees don't have points
-                .role(employee.getAccount().getRole())
-                .status(employee.getStatus())
-                .createdAt(employee.getCreatedAt())
-                .updatedAt(employee.getUpdatedAt())
-                .storeIds(storeIds)
-                .build();
+            // Check if account exists and is not null
+            if (employee.getAccount() == null) {
+                log.warn("Employee {} has null account", employee.getId());
+                return null;
+            }
+
+            return UserResponse.builder()
+                    .id(employee.getId())
+                    .fullName(employee.getFullName())
+                    .email(employee.getAccount().getEmail())
+                    .phone(employee.getPhone())
+                    .gender(employee.getGender())
+                    .birthday(employee.getBirthday())
+                    .avatar(employee.getAvatar())
+                    .cccd(employee.getCccd())
+                    .point(null) // Employees don't have points
+                    .role(employee.getAccount().getRole())
+                    .status(employee.getStatus())
+                    .createdAt(employee.getCreatedAt())
+                    .updatedAt(employee.getUpdatedAt())
+                    .storeIds(storeIds)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error mapping employee {} to UserResponse: {}", employee.getId(), e.getMessage());
+            return null;
+        }
     }
 
     private EmployeeStoreResponse mapToEmployeeStoreResponse(EmployeeStore employeeStore) {
-        Employee employee = employeeStore.getEmployee();
-        Store store = employeeStore.getStore();
-        
-        return EmployeeStoreResponse.builder()
-                .employeeId(employeeStore.getEmployeeId())
-                .storeId(employeeStore.getStoreId())
-                .employee(mapEmployeeToUserResponse(employee))
-                .store(mapToStoreResponse(store))
-                .createdAt(employeeStore.getCreatedAt())
-                .updatedAt(employeeStore.getUpdatedAt())
-                .build();
+        try {
+            Employee employee = employeeStore.getEmployee();
+            Store store = employeeStore.getStore();
+            
+            if (employee == null || (employee.getIsDeleted() != null && employee.getIsDeleted())) {
+                log.warn("Employee is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
+                        employeeStore.getEmployeeId(), employeeStore.getStoreId());
+                throw new AppException(ErrorCode.USER_NOT_FOUND);
+            }
+            
+            if (store == null || (store.getIsDeleted() != null && store.getIsDeleted())) {
+                log.warn("Store is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
+                        employeeStore.getEmployeeId(), employeeStore.getStoreId());
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+            
+            return EmployeeStoreResponse.builder()
+                    .employeeId(employeeStore.getEmployeeId())
+                    .storeId(employeeStore.getStoreId())
+                    .employee(mapEmployeeToUserResponse(employee))
+                    .store(mapToStoreResponse(store))
+                    .createdAt(employeeStore.getCreatedAt())
+                    .updatedAt(employeeStore.getUpdatedAt())
+                    .build();
+        } catch (AppException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error mapping EmployeeStore to response: employeeId={}, storeId={}, error: {}", 
+                    employeeStore.getEmployeeId(), employeeStore.getStoreId(), e.getMessage());
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 }
