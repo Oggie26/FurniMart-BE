@@ -190,8 +190,17 @@ public class StoreServiceImpl implements StoreService {
                         return new AppException(ErrorCode.USER_NOT_FOUND);
                     });
             
+            // Ensure account is loaded (access it to trigger lazy loading within transaction)
+            if (employee.getAccount() == null) {
+                log.error("Employee {} has null account", employeeId);
+                throw new AppException(ErrorCode.USER_NOT_FOUND);
+            }
+            // Access account fields to ensure lazy loading happens within transaction
+            employee.getAccount().getEmail();
+            employee.getAccount().getRole();
+            
             // Log employee info safely
-            String employeeEmail = employee.getAccount() != null ? employee.getAccount().getEmail() : "N/A";
+            String employeeEmail = employee.getAccount().getEmail();
             log.info("Found employee: {} (email: {})", employee.getFullName(), employeeEmail);
             
             // Check if store exists
@@ -219,17 +228,13 @@ public class StoreServiceImpl implements StoreService {
             log.info("Successfully added employee {} to store {} with relationship id: {}", 
                     employeeId, request.getStoreId(), savedEmployeeStore.getEmployeeId() + "_" + savedEmployeeStore.getStoreId());
             
-            // Reload EmployeeStore with all relationships eagerly fetched to avoid LazyInitializationException
-            EmployeeStore loadedEmployeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdWithDetails(
-                    employeeId, request.getStoreId())
-                    .orElseThrow(() -> {
-                        log.error("CRITICAL: Employee-store relationship was not persisted! Employee: {}, Store: {}", 
-                                employeeId, request.getStoreId());
-                        return new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
-                    });
+            // Set the relationships manually to avoid LazyInitializationException
+            // We already have employee and store loaded from previous checks
+            savedEmployeeStore.setEmployee(employee);
+            savedEmployeeStore.setStore(store);
             
-            log.info("Verified: Employee-store relationship successfully persisted and loaded");
-            return mapToEmployeeStoreResponse(loadedEmployeeStore);
+            log.info("Employee-store relationship successfully persisted");
+            return mapToEmployeeStoreResponse(savedEmployeeStore);
             
         } catch (AppException e) {
             log.error("Application error adding employee {} to store {}: {}", 
