@@ -1,0 +1,30 @@
+# Migration and database scripts
+*.sql
+*.sh
+
+# PowerShell scripts (optional - uncomment if you want to ignore these too)
+# *.ps1
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build
+target/
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
