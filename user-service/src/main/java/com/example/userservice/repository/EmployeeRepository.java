@@ -12,12 +12,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository for employee-specific database operations.
- * Handles queries for employees with employee roles (BRANCH_MANAGER, DELIVERY, STAFF, ADMIN).
- * Excludes CUSTOMER roles from employee operations.
- * Note: SELLER role has been replaced by STAFF.
- */
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, String> {
 

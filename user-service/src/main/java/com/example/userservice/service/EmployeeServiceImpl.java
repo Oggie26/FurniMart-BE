@@ -33,13 +33,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of EmployeeService for managing employee operations.
- * This service ensures that only employee roles (BRANCH_MANAGER, DELIVERY, STAFF) 
- * can be created and managed through employee endpoints.
- * ADMIN and CUSTOMER roles are explicitly blocked from these operations.
- * Note: SELLER role has been replaced by STAFF.
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -65,9 +58,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     public UserResponse createEmployee(UserRequest userRequest) {
         log.info("Creating employee with role: {}", userRequest.getRole());
         
-        // Validate that role is an employee role (allow ADMIN, BRANCH_MANAGER, DELIVERY, STAFF - block CUSTOMER)
-        // This method allows creating any employee role except CUSTOMER
-        // Note: SELLER role has been replaced by STAFF
         validateEmployeeRole(userRequest.getRole());
 
         // Check if email already exists

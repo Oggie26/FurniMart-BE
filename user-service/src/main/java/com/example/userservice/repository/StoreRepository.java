@@ -38,7 +38,6 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     @Query("SELECT s FROM Store s JOIN s.employeeStores es WHERE es.employeeId = :employeeId AND s.isDeleted = false")
     List<Store> findStoresByEmployeeId(@Param("employeeId") String employeeId);
     
-    // Legacy method - kept for backward compatibility, redirects to employee
     @Query("SELECT s FROM Store s JOIN s.employeeStores es WHERE es.employeeId = :userId AND s.isDeleted = false")
     List<Store> findStoresByUserId(@Param("userId") String userId);
 

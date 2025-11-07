@@ -163,9 +163,6 @@ public class EmployeeController {
     }
 
     // ========== GET BY ROLE ==========
-    
-    // SELLER endpoints removed - use STAFF endpoints instead
-    // @GetMapping("/role/seller") - DEPRECATED: Use /role/staff instead
 
     @GetMapping("/role/manager")
     @Operation(summary = "Get all branch managers")
@@ -213,9 +210,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // SELLER endpoints removed - use STAFF endpoints instead
-    // @GetMapping("/store/{storeId}/role/seller") - DEPRECATED: Use /store/{storeId}/role/staff instead
-
     @GetMapping("/store/{storeId}/role/manager")
     @Operation(summary = "Get branch managers by store ID")
     @PreAuthorize("hasRole('ADMIN')")
@@ -250,9 +244,6 @@ public class EmployeeController {
     }
 
     // ========== GET BY ROLE WITH PAGINATION ==========
-    
-    // SELLER endpoints removed - use STAFF endpoints instead
-    // @GetMapping("/role/seller/paginated") - DEPRECATED: Use /role/staff/paginated instead
 
     @GetMapping("/role/manager/paginated")
     @Operation(summary = "Get branch managers with pagination")

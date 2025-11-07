@@ -38,7 +38,6 @@ public class AuthServiceImpl implements AuthService {
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
-    // Note: employeeStoreRepository removed - not used in AuthService (only creates CUSTOMER users)
     private final KafkaTemplate<String, AccountCreatedEvent> kafkaTemplate;
 
     @Override
@@ -113,8 +112,6 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.USER_DELETED);
         }
 
-        // Note: Only employees have store relationships
-        // For customers, storeIds will be empty
         List<String> storeIds = List.of();
 
         Map<String, Object> claims = Map.of(

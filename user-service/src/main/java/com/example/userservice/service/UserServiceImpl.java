@@ -37,23 +37,15 @@ public class UserServiceImpl implements UserService {
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeService employeeService;
-    // Note: employeeStoreRepository removed - not used in UserService (only for Customer operations)
 
     @Override
     @Transactional
     public UserResponse createUser(UserRequest userRequest) {
-        // NOTE: This method ONLY creates CUSTOMER users.
-        // For employee creation (ADMIN, BRANCH_MANAGER, DELIVERY, STAFF),
-        // Note: SELLER role has been replaced by STAFF
-        // use EmployeeService.createEmployee() or EmployeeService.createAdmin().
-        
-        // Validate: Only CUSTOMER role is allowed
         if (userRequest.getRole() != null && userRequest.getRole() != EnumRole.CUSTOMER) {
             log.error("Attempt to create non-CUSTOMER role through UserService: {}", userRequest.getRole());
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
         
-        // Force CUSTOMER role
         userRequest.setRole(EnumRole.CUSTOMER);
         
         if (accountRepository.findByEmailAndIsDeletedFalse(userRequest.getEmail()).isPresent()) {
@@ -67,7 +59,7 @@ public class UserServiceImpl implements UserService {
         Account account = Account.builder()
                 .email(userRequest.getEmail())
                 .password(passwordEncoder.encode(userRequest.getPassword()))
-                .role(EnumRole.CUSTOMER) // Force CUSTOMER role
+                .role(EnumRole.CUSTOMER)
                 .status(userRequest.getStatus() != null ? userRequest.getStatus() : EnumStatus.ACTIVE)
                 .enabled(true)
                 .accountNonExpired(true)
@@ -148,7 +140,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getAllUsers() {
-        // Only return CUSTOMER users (from users table)
         log.info("Fetching all CUSTOMER users");
         List<User> users = userRepository.findByAccountRoleAndIsDeletedFalse(EnumRole.CUSTOMER);
         return users.stream()
@@ -345,8 +336,6 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserResponse toUserResponse(User user) {
-        // Note: User (Customer) does not have store relationships
-        // Store relationships are only for Employees
         List<String> storeIds = List.of();
 
         return UserResponse.builder()
@@ -369,42 +358,36 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public List<UserResponse> getAllEmployees() {
-        // Redirect to EmployeeService to query from employees table
         log.info("Redirecting getAllEmployees() to EmployeeService");
         return employeeService.getAllEmployees();
     }
     
     @Override
     public List<UserResponse> getEmployeesByRole(EnumRole role) {
-        // Redirect to EmployeeService to query from employees table
         log.info("Redirecting getEmployeesByRole({}) to EmployeeService", role);
         return employeeService.getEmployeesByRole(role);
     }
     
     @Override
     public List<UserResponse> getEmployeesByStoreId(String storeId) {
-        // Redirect to EmployeeService to query from employees table
         log.info("Redirecting getEmployeesByStoreId({}) to EmployeeService", storeId);
         return employeeService.getEmployeesByStoreId(storeId);
     }
     
     @Override
     public List<UserResponse> getEmployeesByStoreIdAndRole(String storeId, EnumRole role) {
-        // Redirect to EmployeeService to query from employees table
         log.info("Redirecting getEmployeesByStoreIdAndRole({}, {}) to EmployeeService", storeId, role);
         return employeeService.getEmployeesByStoreIdAndRole(storeId, role);
     }
     
     @Override
     public PageResponse<UserResponse> getEmployeesWithPagination(int page, int size) {
-        // Redirect to EmployeeService to query from employees table
         log.info("Redirecting getEmployeesWithPagination({}, {}) to EmployeeService", page, size);
         return employeeService.getEmployeesWithPagination(page, size);
     }
     
     @Override
     public PageResponse<UserResponse> getEmployeesByRoleWithPagination(EnumRole role, int page, int size) {
-        // Redirect to EmployeeService to query from employees table
         log.info("Redirecting getEmployeesByRoleWithPagination({}, {}, {}) to EmployeeService", role, page, size);
         return employeeService.getEmployeesByRoleWithPagination(role, page, size);
     }
@@ -416,12 +399,10 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
-        // Prevent updating customer roles
         if (user.getAccount().getRole() == EnumRole.CUSTOMER) {
             throw new AppException(ErrorCode.CANNOT_UPDATE_CUSTOMER_ROLE);
         }
         
-        // Only allow updating to employee roles
         if (!isEmployeeRole(newRole)) {
             throw new AppException(ErrorCode.INVALID_ROLE);
         }
@@ -433,7 +414,6 @@ public class UserServiceImpl implements UserService {
     }
     
     private boolean isEmployeeRole(EnumRole role) {
-        // SELLER role removed - use STAFF instead
         return role == EnumRole.BRANCH_MANAGER || 
                role == EnumRole.DELIVERY || 
                role == EnumRole.STAFF;

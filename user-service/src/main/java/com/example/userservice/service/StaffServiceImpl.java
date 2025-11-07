@@ -38,7 +38,6 @@ public class StaffServiceImpl implements StaffService {
 
     private final AccountRepository accountRepository;
     private final EmployeeRepository employeeRepository;
-    // Note: UserRepository removed - all staff operations now use EmployeeRepository
     private final EmployeeStoreRepository employeeStoreRepository;
     private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
@@ -465,23 +464,16 @@ public class StaffServiceImpl implements StaffService {
                 .build();
     }
     
-    // Legacy method - DEPRECATED: User entity no longer has department, position, salary
-    // This method should not be used. All staff should be in employees table.
-    // If this method is called, it means staff data hasn't been migrated yet.
-    // TODO: Remove this method after verifying all staff are migrated to employees table
     @Deprecated
     @SuppressWarnings("unused")
     private StaffResponse toStaffResponse(User staff) {
         log.warn("toStaffResponse(User) called - Staff should be in employees table. User ID: {}", staff.getId());
         
-        // Try to find employee record
         Optional<Employee> employeeOpt = employeeRepository.findById(staff.getId());
         if (employeeOpt.isPresent()) {
             return toStaffResponseFromEmployee(employeeOpt.get());
         }
         
-        // Fallback: return with null values for department, position, salary
-        // This should not happen if migration is complete
         List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(staff.getId())
                 .stream()
                 .map(EmployeeStore::getStoreId)
@@ -498,9 +490,9 @@ public class StaffServiceImpl implements StaffService {
                 .updatedAt(staff.getUpdatedAt())
                 .status(staff.getStatus())
                 .cccd(staff.getCccd())
-                .department(null) // User entity no longer has this field
-                .position(null)   // User entity no longer has this field
-                .salary(null)     // User entity no longer has this field
+                .department(null)
+                .position(null)
+                .salary(null)
                 .email(staff.getAccount() != null ? staff.getAccount().getEmail() : null)
                 .role(staff.getAccount() != null ? staff.getAccount().getRole() : null)
                 .storeIds(storeIds)

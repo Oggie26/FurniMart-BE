@@ -34,7 +34,6 @@ public class GoogleOAuth2Service {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final TokenService tokenService;
-    // Note: employeeStoreRepository removed - not used in GoogleOAuth2Service (only creates CUSTOMER users)
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
@@ -65,8 +64,6 @@ public class GoogleOAuth2Service {
                 }
             }
 
-            // Generate JWT tokens
-            // Note: Google OAuth creates CUSTOMER role, which doesn't have store relationships
             List<String> storeIds = List.of();
 
             Map<String, Object> claims = Map.of(
