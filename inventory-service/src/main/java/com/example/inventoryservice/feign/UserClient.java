@@ -13,7 +13,7 @@ public interface UserClient {
     @GetMapping("/api/users/{id}")
     ApiResponse<UserResponse> getUserById(@PathVariable String id);
 
-    @GetMapping("/api/users/account/{accountId}")
+    @GetMapping("/api/account/{accountId}")
     ApiResponse<UserResponse> getUserByAccountId(@PathVariable String accountId);
 
 }

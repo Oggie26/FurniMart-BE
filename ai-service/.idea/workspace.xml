@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service" />
+    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -26,12 +28,12 @@
     &quot;assignee&quot;: &quot;Oggie26&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/Oggie26/FurniMart-BE",
-    "accountId": "999502c8-c47f-4fe9-a926-54affe51eae2"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Oggie26/FurniMart-BE&quot;,
+    &quot;accountId&quot;: &quot;999502c8-c47f-4fe9-a926-54affe51eae2&quot;
   }
-}]]></component>
+}</component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -109,6 +111,7 @@
       <workItem from="1761757038626" duration="5872000" />
       <workItem from="1761899324574" duration="1035000" />
       <workItem from="1762183707071" duration="251000" />
+      <workItem from="1762488494852" duration="1035000" />
     </task>
     <task id="LOCAL-00001" summary="fix ai service">
       <option name="closed" value="true" />
