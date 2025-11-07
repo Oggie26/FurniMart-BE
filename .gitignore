@@ -1,9 +1,7 @@
 # Migration and database scripts
 *.sql
 *.sh
-
-# PowerShell scripts (optional - uncomment if you want to ignore these too)
-# *.ps1
+*.ps1
 
 # Environment files
 .env
