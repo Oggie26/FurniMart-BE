@@ -88,7 +88,7 @@ public class VNPayService {
     public String createPaymentUrlByMobile(Long orderId, Double amount, String ipAddress) throws UnsupportedEncodingException {
         Map<String, String> params = new HashMap<>();
 //        String returnUrl = "myapp://payment-success?orderId=" + orderId;
-        String returnUrl = "https://furnimart.click/api/v1/payment-return";
+        String returnUrl = "https://furnimart.click/api/v1/payment/vnpay-return";
         long vnpAmount = Math.round(amount * 100); // ✅ fix chuẩn VNPay
 
         params.put("vnp_Version", "2.1.0");
