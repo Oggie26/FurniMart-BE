@@ -6,12 +6,11 @@ import com.example.inventoryservice.entity.Zone;
 import com.example.inventoryservice.enums.EnumStatus;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
+import com.example.inventoryservice.feign.ProductClient;
 import com.example.inventoryservice.repository.LocationItemRepository;
 import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.LocationItemRequest;
-import com.example.inventoryservice.response.InventoryItemResponse;
-import com.example.inventoryservice.response.LocationItemResponse;
-import com.example.inventoryservice.response.PageResponse;
+import com.example.inventoryservice.response.*;
 import com.example.inventoryservice.service.inteface.LocationItemService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +30,7 @@ public class LocationItemServiceImpl implements LocationItemService {
 
     private final LocationItemRepository locationItemRepository;
     private final ZoneRepository zoneRepository;
+    private final ProductClient productClient;
 
     @Override
     @Transactional
@@ -171,7 +172,9 @@ public class LocationItemServiceImpl implements LocationItemService {
                 .id(item.getId())
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
+                .productName(getProductName(item.getProductColorId()))
                 .productColorId(item.getProductColorId())
+                .locationItem(item.getLocationItem())
                 .inventoryId(item.getInventory() != null ? item.getInventory().getId() : null)
                 .build();
     }
@@ -190,5 +193,13 @@ public class LocationItemServiceImpl implements LocationItemService {
         if (zone.getQuantity() != null && updatedTotal > zone.getQuantity()) {
             throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
         }
+    }
+
+    private String getProductName(String productColorId) {
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
+        if (response.getData() == null) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData().getProduct().getName();
     }
 }
