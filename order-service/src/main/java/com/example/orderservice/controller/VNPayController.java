@@ -82,7 +82,7 @@ public class VNPayController {
 
         // Web URL và Mobile deep link
         String webUrl = "http://localhost:5173/payment-success";
-//        String mobileDeepLink = "furnimartmobileapp://order-success";
+        String mobileDeepLink = "furnimartmobileapp://order-success";
 
         // Xác định thiết bị gọi (User-Agent)
         boolean isMobile = userAgent != null && (
@@ -91,36 +91,26 @@ public class VNPayController {
                         userAgent.toLowerCase().contains("mobile")
         );
 
-//        if (signValue.equalsIgnoreCase(secureHash)) {
-//            if ("00".equals(responseCode)) {
-//                if (isMobile) {
-//                    response.sendRedirect(mobileDeepLink + "?status=success&orderId=" + orderId);
-//                } else {
-//                    response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
-//                }
-//            } else {
-//                if (isMobile) {
-//                    response.sendRedirect(mobileDeepLink + "?status=failed&code=" + responseCode);
-//                } else {
-//                    response.sendRedirect(webUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
-//                }
-//            }
-//        } else {
-//            if (isMobile) {
-//                response.sendRedirect(mobileDeepLink + "?status=invalid");
-//            } else {
-//                response.sendRedirect(webUrl + "?status=invalid");
-//            }
-//        }
-
         if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
+                if (isMobile) {
+                    response.sendRedirect(mobileDeepLink + "?status=success&orderId=" + orderId);
+                } else {
                     response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+                }
             } else {
+                if (isMobile) {
+                    response.sendRedirect(mobileDeepLink + "?status=failed&code=" + responseCode);
+                } else {
                     response.sendRedirect(webUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
+                }
             }
         } else {
+            if (isMobile) {
+                response.sendRedirect(mobileDeepLink + "?status=invalid");
+            } else {
                 response.sendRedirect(webUrl + "?status=invalid");
+            }
         }
     }
 
