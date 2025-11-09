@@ -1,5 +1,6 @@
 package com.example.inventoryservice.service;
 
+import com.example.inventoryservice.entity.InventoryItem;
 import com.example.inventoryservice.entity.LocationItem;
 import com.example.inventoryservice.entity.Zone;
 import com.example.inventoryservice.enums.EnumStatus;
@@ -8,6 +9,7 @@ import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.repository.LocationItemRepository;
 import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.LocationItemRequest;
+import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.LocationItemResponse;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.service.inteface.LocationItemService;
@@ -18,7 +20,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -144,6 +148,8 @@ public class LocationItemServiceImpl implements LocationItemService {
     }
 
     private LocationItemResponse toLocationItemResponse(LocationItem li) {
+        List<InventoryItem> list = li.getInventoryItems();
+
         return LocationItemResponse.builder()
                 .id(li.getId())
                 .code(li.getCode())
@@ -151,9 +157,25 @@ public class LocationItemServiceImpl implements LocationItemService {
                 .columnNumber(li.getColumnNumber())
                 .rowLabel(li.getRowLabel())
                 .quantity(li.getQuantity())
+                .itemResponse(list != null
+                        ? list.stream()
+                        .map(this::mapToInventoryItemResponse)
+                        .collect(Collectors.toList())
+                        : Collections.emptyList())
                 .status(li.getStatus())
                 .build();
     }
+
+    private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
+        return InventoryItemResponse.builder()
+                .id(item.getId())
+                .quantity(item.getQuantity())
+                .reservedQuantity(item.getReservedQuantity())
+                .productColorId(item.getProductColorId())
+                .inventoryId(item.getInventory() != null ? item.getInventory().getId() : null)
+                .build();
+    }
+
 
     private void validateZoneCapacity(Zone zone, Integer newQuantity, String excludeLocationItemId) {
         int totalQuantity = locationItemRepository

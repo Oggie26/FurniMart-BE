@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -21,4 +23,5 @@ public class LocationItemResponse {
     private String description;
     private Integer quantity;
     private EnumStatus status;
+    private List<InventoryItemResponse> itemResponse;
 }
