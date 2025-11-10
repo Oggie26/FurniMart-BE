@@ -12,6 +12,7 @@ import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
+import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -146,6 +148,56 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         return mapToResponse(order);
+    }
+
+    @Override
+    public void cancelOrder(CancelOrderRequest cancelOrderRequest) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(cancelOrderRequest.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        order.setStatus(EnumProcessOrder.CANCELLED);
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.CANCELLED);
+        process.setCreatedAt(new Date());
+        order.setProcessOrders(new ArrayList<>(List.of(process)));
+
+        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                        .price(detail.getPrice())
+                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                        .build())
+                .toList();
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(safeGetUser(order.getUserId()).getEmail())
+                .fullName(safeGetUser(order.getUserId()).getFullName())
+                .orderDate(order.getOrderDate())
+                .totalPrice(order.getTotal())
+                .orderId(order.getId())
+                .storeId(order.getStoreId())
+                .addressLine(getAddress(order.getAddressId()))
+                .paymentMethod(order.getPayment().getPaymentMethod())
+                .items(orderItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("order-cancel-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                        } else {
+                            log.info("Successfully sent order cancel event for: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+        }
+
+        processOrderRepository.save(process);
+        orderRepository.save(order);
     }
 
     @Override
@@ -300,7 +352,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         String id = getStoreById(storeId);
 
         Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);

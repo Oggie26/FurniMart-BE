@@ -2,6 +2,7 @@ package com.example.orderservice.service.inteface;
 
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.PaymentMethod;
+import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.PageResponse;
 
@@ -9,6 +10,7 @@ public interface OrderService {
     OrderResponse createOrder(Long cartId, Long addressId, PaymentMethod paymentMethod, String voucherCode);
     OrderResponse createPreOrder(Long cartId, Long addressId, String voucherCode);
     OrderResponse getOrderById(Long id);
+    void cancelOrder(CancelOrderRequest cancelOrderRequest);
     OrderResponse handlePaymentCOD(Long orderId);
     OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status);
     PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size);
