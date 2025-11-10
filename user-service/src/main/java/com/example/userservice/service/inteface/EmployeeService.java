@@ -56,6 +56,14 @@ public interface EmployeeService {
     UserResponse getEmployeeByAccountId(String accountId);
 
     /**
+     * Get employee by email
+     * 
+     * @param email Employee email
+     * @return Employee response
+     */
+    UserResponse getEmployeeByEmail(String email);
+
+    /**
      * Get all employees (all employee roles)
      * 
      * @return List of all employees

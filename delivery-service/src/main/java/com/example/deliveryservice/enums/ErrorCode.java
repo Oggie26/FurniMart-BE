@@ -39,6 +39,11 @@ public enum  ErrorCode {
     MATERIAL_NAME_EXISTED(1222, "Material name has existed", HttpStatus.BAD_REQUEST),
     CODE_EXISTED(1223, "Code has existed", HttpStatus.BAD_REQUEST),
     CODE_NOT_FOUND(1224, "Code not found", HttpStatus.NOT_FOUND),
+    // Delivery-specific error codes
+    ASSIGNMENT_ALREADY_EXISTS(1231, "Order đã được assign. Assignment ID: {0}, Status: {1}", HttpStatus.BAD_REQUEST),
+    INVOICE_ALREADY_GENERATED(1232, "Invoice đã được generate cho order này. Assignment ID: {0}", HttpStatus.BAD_REQUEST),
+    PRODUCTS_ALREADY_PREPARED(1233, "Products đã được prepare cho order này. Assignment ID: {0}", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_STOCK(1234, "Stock không đủ", HttpStatus.BAD_REQUEST),
     COLOR_EXISTED(1225, "Color has existed", HttpStatus.BAD_REQUEST),
     COLOR_NOT_FOUND(1226, "Color not found", HttpStatus.NOT_FOUND),
     COLOR_NAME_EXISTED(1227, "Color name has existed", HttpStatus.BAD_REQUEST),

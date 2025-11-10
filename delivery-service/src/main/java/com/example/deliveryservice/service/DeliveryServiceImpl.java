@@ -44,7 +44,10 @@ public class DeliveryServiceImpl implements DeliveryService {
         // Check if order already assigned
         deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
                 .ifPresent(assignment -> {
-                    throw new AppException(ErrorCode.CODE_EXISTED);
+                    String errorMessage = String.format("Order đã được assign. Assignment ID: %d, Status: %s", 
+                            assignment.getId(), assignment.getStatus());
+                    log.warn(errorMessage);
+                    throw new AppException(ErrorCode.ASSIGNMENT_ALREADY_EXISTS);
                 });
 
         // Verify order exists
@@ -117,7 +120,10 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
 
         if (assignment.getInvoiceGenerated()) {
-            throw new AppException(ErrorCode.CODE_EXISTED);
+            String errorMessage = String.format("Invoice đã được generate cho order này. Assignment ID: %d", 
+                    assignment.getId());
+            log.warn(errorMessage);
+            throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
         }
 
         assignment.setInvoiceGenerated(true);
@@ -138,7 +144,10 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
 
         if (assignment.getProductsPrepared()) {
-            throw new AppException(ErrorCode.CODE_EXISTED);
+            String errorMessage = String.format("Products đã được prepare cho order này. Assignment ID: %d", 
+                    assignment.getId());
+            log.warn(errorMessage);
+            throw new AppException(ErrorCode.PRODUCTS_ALREADY_PREPARED);
         }
 
         // Verify order exists and get order details
@@ -150,16 +159,30 @@ public class DeliveryServiceImpl implements DeliveryService {
         OrderResponse order = orderResponse.getBody().getData();
         
         // Check stock availability for each product in order
+        List<String> insufficientProducts = new ArrayList<>();
         if (order.getOrderDetails() != null) {
             for (OrderDetailResponse detail : order.getOrderDetails()) {
                 ApiResponse<Integer> stockResponse = inventoryClient.getTotalAvailableStock(detail.getProductColorId());
                 if (stockResponse != null && stockResponse.getData() != null) {
                     int availableStock = stockResponse.getData();
                     if (availableStock < detail.getQuantity()) {
-                        throw new AppException(ErrorCode.INVALID_REQUEST);
+                        insufficientProducts.add(String.format(
+                            "Product %s: Required %d, Available %d, Shortage %d",
+                            detail.getProductColorId(),
+                            detail.getQuantity(),
+                            availableStock,
+                            detail.getQuantity() - availableStock
+                        ));
                     }
                 }
             }
+        }
+        
+        if (!insufficientProducts.isEmpty()) {
+            String errorMessage = "Stock không đủ cho các sản phẩm sau:\n" + 
+                    String.join("\n", insufficientProducts);
+            log.warn(errorMessage);
+            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
 
         assignment.setProductsPrepared(true);

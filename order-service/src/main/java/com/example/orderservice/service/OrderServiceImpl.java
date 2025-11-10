@@ -330,47 +330,97 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrder(String request, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        try {
+            Pageable pageable = PageRequest.of(page, size);
 
-        Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
+            Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
 
-        List<OrderResponse> responses = orders.getContent()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+            List<OrderResponse> responses = orders.getContent()
+                    .stream()
+                    .map(order -> {
+                        try {
+                            return mapToResponse(order);
+                        } catch (Exception e) {
+                            log.error("Error mapping order {} to response: {}", order.getId(), e.getMessage(), e);
+                            // Return a simplified response if mapping fails
+                            return OrderResponse.builder()
+                                    .id(order.getId())
+                                    .total(order.getTotal())
+                                    .status(order.getStatus())
+                                    .orderDate(order.getOrderDate())
+                                    .note(order.getNote())
+                                    .storeId(order.getStoreId())
+                                    .orderDetails(Collections.emptyList())
+                                    .processOrders(Collections.emptyList())
+                                    .build();
+                        }
+                    })
+                    .collect(Collectors.toList());
 
-        return new PageResponse<>(
-                responses,
-                orders.getNumber(),
-                orders.getSize(),
-                orders.getTotalElements(),
-                orders.getTotalPages(),
-                orders.isFirst(),
-                orders.isLast()
-        );
+            return new PageResponse<>(
+                    responses,
+                    orders.getNumber(),
+                    orders.getSize(),
+                    orders.getTotalElements(),
+                    orders.getTotalPages(),
+                    orders.isFirst(),
+                    orders.isLast()
+            );
+        } catch (AppException e) {
+            log.error("Application error in searchOrder: {}", e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error in searchOrder: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 
     @Override
     public PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        String id = getStoreById(storeId);
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            String id = getStoreById(storeId);
 
-        Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);
+            Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);
 
-        List<OrderResponse> responses = orders.getContent()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+            List<OrderResponse> responses = orders.getContent()
+                    .stream()
+                    .map(order -> {
+                        try {
+                            return mapToResponse(order);
+                        } catch (Exception e) {
+                            log.error("Error mapping order {} to response: {}", order.getId(), e.getMessage(), e);
+                            // Return a simplified response if mapping fails
+                            return OrderResponse.builder()
+                                    .id(order.getId())
+                                    .total(order.getTotal())
+                                    .status(order.getStatus())
+                                    .orderDate(order.getOrderDate())
+                                    .note(order.getNote())
+                                    .storeId(order.getStoreId())
+                                    .orderDetails(Collections.emptyList())
+                                    .processOrders(Collections.emptyList())
+                                    .build();
+                        }
+                    })
+                    .collect(Collectors.toList());
 
-        return new PageResponse<>(
-                responses,
-                orders.getNumber(),
-                orders.getSize(),
-                orders.getTotalElements(),
-                orders.getTotalPages(),
-                orders.isFirst(),
-                orders.isLast()
-        );
+            return new PageResponse<>(
+                    responses,
+                    orders.getNumber(),
+                    orders.getSize(),
+                    orders.getTotalElements(),
+                    orders.getTotalPages(),
+                    orders.isFirst(),
+                    orders.isLast()
+            );
+        } catch (AppException e) {
+            log.error("Application error in searchOrderByStoreId: {}", e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error in searchOrderByStoreId: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 
     @Override

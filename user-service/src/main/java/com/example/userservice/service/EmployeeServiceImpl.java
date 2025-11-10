@@ -312,6 +312,19 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    public UserResponse getEmployeeByEmail(String email) {
+        log.info("Fetching employee by email: {}", email);
+        
+        Employee employee = employeeRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> {
+                    log.error("Employee not found for email: {}", email);
+                    return new AppException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        return toEmployeeResponse(employee);
+    }
+
+    @Override
     public List<UserResponse> getAllEmployees() {
         log.info("Fetching all employees");
         

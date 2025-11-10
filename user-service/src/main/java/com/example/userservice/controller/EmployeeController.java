@@ -136,6 +136,17 @@ public class EmployeeController {
                 .build();
     }
 
+    @GetMapping("/email/{email}")
+    @Operation(summary = "Get employee by email")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
+    public ApiResponse<UserResponse> getEmployeeByEmail(@PathVariable String email) {
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee retrieved successfully")
+                .data(employeeService.getEmployeeByEmail(email))
+                .build();
+    }
+
     @GetMapping("/profile")
     @Operation(summary = "Get current employee profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
