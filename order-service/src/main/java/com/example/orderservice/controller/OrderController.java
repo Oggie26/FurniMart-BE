@@ -151,7 +151,7 @@ public class OrderController {
     public ApiResponse<PageResponse<OrderResponse>> searchOrderByCustomer(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "100") int size
     ) {
         return ApiResponse.<PageResponse<OrderResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -190,7 +190,7 @@ public class OrderController {
     public ApiResponse<PageResponse<OrderResponse>> searchOrder(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "100") int size
     ) {
         return ApiResponse.<PageResponse<OrderResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -204,7 +204,7 @@ public class OrderController {
             @PathVariable String storeId,
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "100") int size
     ) {
         return ApiResponse.<PageResponse<OrderResponse>>builder()
                 .status(HttpStatus.OK.value())
