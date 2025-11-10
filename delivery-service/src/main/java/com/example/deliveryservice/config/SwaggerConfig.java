@@ -17,8 +17,10 @@ public class SwaggerConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Product Service API")
-                        .description("API documentation for the Product Service microservice")
+                        .title("Delivery Service API")
+                        .description("API documentation for the Delivery Service microservice. " +
+                                "Includes endpoints for assigning orders to delivery, viewing store branch information, " +
+                                "generating invoices, preparing products, and monitoring delivery progress.")
                         .version("1.0"))
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
                 .components(new Components()
