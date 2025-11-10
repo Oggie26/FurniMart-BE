@@ -235,7 +235,7 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(order.getId())
                 .storeId(order.getStoreId())
                 .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(order.getPayment().getPaymentMethod())
+                .paymentMethod(PaymentMethod.COD)
                 .items(orderItems)
                 .build();
 
