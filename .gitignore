@@ -1,7 +1,19 @@
-# Migration and database scripts
-*.sql
+# Documentation files (May contain sensitive info or deployment details)
+*.md
+README.md
+CHANGELOG.md
+*.mdx
+
+# Scripts (May contain sensitive info, credentials, or server details)
 *.sh
 *.ps1
+*.bat
+*.cmd
+
+# Database scripts and migrations
+*.sql
+*.sqlite
+*.db
 
 # Environment files
 .env
