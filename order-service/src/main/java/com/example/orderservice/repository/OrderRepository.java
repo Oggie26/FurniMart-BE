@@ -49,31 +49,33 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // 🔍 Search theo storeId + keyword
     @Query(value = """
-            SELECT * FROM orders 
-            WHERE is_deleted = false 
-              AND store_id = :storeId
-              AND (
-                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
-              )
-            """,
+        SELECT * FROM orders 
+        WHERE is_deleted = false 
+          AND store_id = :storeId
+          AND (
+               LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
+        ORDER BY created_at DESC
+        """,
             countQuery = """
-            SELECT COUNT(*) FROM orders 
-            WHERE is_deleted = false 
-              AND store_id = :storeId
-              AND (
-                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
-              )
-            """,
+        SELECT COUNT(*) FROM orders 
+        WHERE is_deleted = false 
+          AND store_id = :storeId
+          AND (
+               LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
+          )
+        """,
             nativeQuery = true)
     Page<Order> searchByStoreIdAndKeyword(
             @Param("storeId") String storeId,
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
 
     // 🔍 Search chung (không ràng buộc userId/storeId)
     @Query(value = """
