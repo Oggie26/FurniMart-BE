@@ -111,12 +111,6 @@ public class AuthServiceImpl implements AuthService {
         Account account = accountRepository.findByEmailAndIsDeletedFalse(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 
-        Employee employee = employeeRepository.findByAccountIdAndIsDeletedFalse(account.getId())
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
-
-        List<EmployeeStore> employeeStore = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId());
-
-
         if (EnumStatus.INACTIVE.equals(account.getStatus())) {
             throw new AppException(ErrorCode.USER_BLOCKED);
         }
@@ -124,24 +118,41 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.USER_DELETED);
         }
 
-        List<EmployeeStore> employeeStores = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId());
-        String storeId = employeeStores.isEmpty() ? null : employeeStores.getFirst().getStoreId();
+        Map<String, Object> claims;
+        String storeId = "";
 
-        Map<String, Object> claims = Map.of(
-                "role", account.getRole(),
-                "accountId", account.getId(),
-                "storeId", storeId != null ? storeId : ""
-        );
+        if (!account.getRole().equals(EnumRole.CUSTOMER)) {
+            Employee employee = employeeRepository.findByAccountIdAndIsDeletedFalse(account.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
+
+            List<EmployeeStore> employeeStores = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId());
+            storeId = employeeStores.isEmpty() ? "" : employeeStores.getFirst().getStoreId();
+
+            claims = Map.of(
+                    "role", account.getRole(),
+                    "accountId", account.getId(),
+                    "storeId", storeId
+            );
+        } else {
+            // Customer login
+            claims = Map.of(
+                    "role", account.getRole(),
+                    "accountId", account.getId()
+            );
+        }
+
         String accessToken = jwtService.generateToken(claims, account.getEmail());
-        String refreshToken = jwtService.generateRefreshToken(claims,account.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(claims, account.getEmail());
 
         tokenService.saveToken(account.getEmail(), accessToken, jwtService.getJwtExpiration());
         tokenService.saveRefreshToken(account.getEmail(), refreshToken, jwtService.getRefreshExpiration());
+
         return LoginResponse.builder()
                 .token(accessToken)
                 .refreshToken(refreshToken)
                 .build();
     }
+
 
     @Override
     public AuthResponse getUserByUsername(String email) {

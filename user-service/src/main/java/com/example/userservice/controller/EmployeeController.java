@@ -49,7 +49,7 @@ public class EmployeeController {
     @PostMapping("/admins")
     @Operation(summary = "Create new admin user (Admin only) - Only existing admin users can create other admin accounts")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ApiResponse<UserResponse> createAdmin(@Valid @RequestBody UserRequest request) {
         request.setRole(EnumRole.ADMIN);
         return ApiResponse.<UserResponse>builder()
