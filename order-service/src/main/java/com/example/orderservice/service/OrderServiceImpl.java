@@ -382,7 +382,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId) {
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            Pageable pageable = PageRequest.of(page, size);
             String id = getStoreById(storeId);
 
             Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);

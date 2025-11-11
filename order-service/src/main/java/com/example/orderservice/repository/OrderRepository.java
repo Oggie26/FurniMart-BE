@@ -48,30 +48,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     // 🔍 Search theo storeId + keyword
-    @Query(
-            value = """
-        SELECT * FROM orders
-        WHERE is_deleted = false
-          AND store_id = :storeId
-          AND (
-               LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
-          )
-        ORDER BY created_at DESC
-        """,
-            countQuery = """
-        SELECT COUNT(*) FROM orders
-        WHERE is_deleted = false
-          AND store_id = :storeId
-          AND (
-               LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
-          )
-        """,
-            nativeQuery = true
-    )
+    @Query("""
+    SELECT o FROM Order o 
+    WHERE o.isDeleted = false AND o.storeId = :storeId
+      AND (
+           LOWER(o.note) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+        OR LOWER(o.userId) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR CAST(o.total AS string) LIKE LOWER(CONCAT('%', :keyword, '%'))
+      )
+    ORDER BY o.createdAt DESC
+""")
     Page<Order> searchByStoreIdAndKeyword(
             @Param("storeId") String storeId,
             @Param("keyword") String keyword,
