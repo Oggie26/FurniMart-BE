@@ -61,7 +61,4 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     @Query("SELECT s FROM Store s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL")
     List<Store> findAllWithCoordinates();
 
-
-
-
 }
