@@ -130,7 +130,7 @@ public class AuthServiceImpl implements AuthService {
         Map<String, Object> claims = Map.of(
                 "role", account.getRole(),
                 "accountId", account.getId(),
-                "storeId", storeId
+                "storeId", storeId != null ? storeId : ""
         );
         String accessToken = jwtService.generateToken(claims, account.getEmail());
         String refreshToken = jwtService.generateRefreshToken(claims,account.getEmail());
