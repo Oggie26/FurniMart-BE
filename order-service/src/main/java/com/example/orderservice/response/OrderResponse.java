@@ -25,5 +25,6 @@ public class OrderResponse {
     private List<ProcessOrderResponse> processOrders;
     private PaymentResponse payment;
     private String qrCode;
+    private Double depositPrice;
     private Date qrCodeGeneratedAt;
 }

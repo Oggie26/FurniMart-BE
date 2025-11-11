@@ -218,7 +218,6 @@ public class OrderServiceImpl implements OrderService {
         }
         order.getProcessOrders().add(process);
         orderRepository.save(order);
-        assignOrderService.assignOrderToStore(orderId);
         if(status.equals(EnumProcessOrder.PAYMENT)){
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
@@ -231,8 +230,14 @@ public class OrderServiceImpl implements OrderService {
                     .toList();
             Payment payment = paymentRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-            payment.setPaymentStatus(PaymentStatus.PAID);
+            if (payment.getPaymentMethod().equals(PaymentMethod.COD)){
+                payment.setPaymentStatus(PaymentStatus.DEPOSITED);
+            }else{
+                payment.setPaymentStatus(PaymentStatus.PAID);
+            }
             paymentRepository.save(payment);
+
+            assignOrderService.assignOrderToStore(orderId);
 
             OrderCreatedEvent event = OrderCreatedEvent.builder()
                     .email(safeGetUser(order.getUserId()).getEmail())
@@ -263,7 +268,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse handlePaymentCOD(Long orderId){
+    public void handlePaymentCOD(Long orderId){
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
@@ -293,7 +298,8 @@ public class OrderServiceImpl implements OrderService {
 
         try {
             kafkaTemplate.send("order-created-topic", event)
-                    .whenComplete((result, ex) -> {
+                    .whenComplete((
+                            result, ex) -> {
                         if (ex != null) {
                         } else {
                             log.info("Successfully sent order creation event for: {}", event.getOrderId());
@@ -302,7 +308,6 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
         }
-        return null;
     }
 
     @Override
@@ -342,7 +347,6 @@ public class OrderServiceImpl implements OrderService {
                             return mapToResponse(order);
                         } catch (Exception e) {
                             log.error("Error mapping order {} to response: {}", order.getId(), e.getMessage(), e);
-                            // Return a simplified response if mapping fails
                             return OrderResponse.builder()
                                     .id(order.getId())
                                     .total(order.getTotal())
@@ -390,7 +394,6 @@ public class OrderServiceImpl implements OrderService {
                             return mapToResponse(order);
                         } catch (Exception e) {
                             log.error("Error mapping order {} to response: {}", order.getId(), e.getMessage(), e);
-                            // Return a simplified response if mapping fails
                             return OrderResponse.builder()
                                     .id(order.getId())
                                     .total(order.getTotal())
@@ -466,6 +469,7 @@ public class OrderServiceImpl implements OrderService {
                 .total(order.getTotal())
                 .note(order.getNote())
                 .status(order.getStatus())
+                .depositPrice(order.getDepositPrice())
                 .reason(order.getReason())
                 .orderDate(order.getOrderDate())
                 .orderDetails(
@@ -511,6 +515,7 @@ public class OrderServiceImpl implements OrderService {
                 .total(total)
                 .userId(getUserId())
                 .addressId(getAddressById(addressId))
+                .depositPrice(0.0)
                 .orderDate(new Date())
                 .build();
         return order;

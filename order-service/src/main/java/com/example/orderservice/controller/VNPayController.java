@@ -2,6 +2,7 @@ package com.example.orderservice.controller;
 
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.enums.ErrorCode;
+import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.UserClient;
@@ -80,11 +81,9 @@ public class VNPayController {
         String orderId = vnpParams.get("vnp_TxnRef");
         String responseCode = vnpParams.get("vnp_ResponseCode");
 
-        // Web URL và Mobile deep link
         String webUrl = "http://localhost:5173/payment-success";
         String mobileDeepLink = "furnimartmobileapp://order-success";
 
-        // Xác định thiết bị gọi (User-Agent)
         boolean isMobile = userAgent != null && (
                 userAgent.toLowerCase().contains("android") ||
                         userAgent.toLowerCase().contains("iphone") ||

@@ -42,6 +42,9 @@ public class Order extends AbstractEntity {
     @Column
     private String note;
 
+    @Column
+    private Double depositPrice;
+
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date orderDate;

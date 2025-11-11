@@ -1,10 +1,12 @@
 package com.example.orderservice.controller;
 
+import com.example.orderservice.entity.Order;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.service.inteface.AssignOrderService;
@@ -35,6 +37,7 @@ public class OrderController {
     private final OrderService orderService;
     private final VNPayService vnPayService;
     private final CartService cartService;
+    private final OrderRepository orderRepository;
     private final AssignOrderService assignOrderService;
     private final InventoryClient inventoryClient;
 
@@ -71,12 +74,19 @@ public class OrderController {
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
-            orderService.handlePaymentCOD(orderResponse.getId());
-            cartService.clearCart();
+            Double orderTotal = ((orderResponse.getTotal() * 30)/100);
 
+            Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+            orderResponse.setDepositPrice(orderTotal);
+            orderRepository.save(order);
+//            orderService.handlePaymentCOD(orderResponse.getId());
+            cartService.clearCart();
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderTotal, clientIp))
                     .build();
         }
     }
