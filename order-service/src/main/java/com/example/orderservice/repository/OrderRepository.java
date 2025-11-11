@@ -48,9 +48,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     // 🔍 Search theo storeId + keyword
-    @Query(value = """
-        SELECT * FROM orders 
-        WHERE is_deleted = false 
+    @Query(
+            value = """
+        SELECT * FROM orders
+        WHERE is_deleted = false
           AND store_id = :storeId
           AND (
                LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -60,8 +61,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         ORDER BY created_at DESC
         """,
             countQuery = """
-        SELECT COUNT(*) FROM orders 
-        WHERE is_deleted = false 
+        SELECT COUNT(*) FROM orders
+        WHERE is_deleted = false
           AND store_id = :storeId
           AND (
                LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -69,12 +70,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
           )
         """,
-            nativeQuery = true)
+            nativeQuery = true
+    )
     Page<Order> searchByStoreIdAndKeyword(
             @Param("storeId") String storeId,
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
 
 
     // 🔍 Search chung (không ràng buộc userId/storeId)
