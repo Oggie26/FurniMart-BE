@@ -42,7 +42,7 @@ public class Order extends AbstractEntity {
     @Column
     private String note;
 
-    @Column
+    @Column(name = "deposit_price")
     private Double depositPrice;
 
     @Column(nullable = false)

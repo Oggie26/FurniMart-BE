@@ -74,19 +74,19 @@ public class OrderController {
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
-            Double orderTotal = ((orderResponse.getTotal() * 30)/100);
+            double deposit = Math.round((orderResponse.getTotal() * 0.3) * 100.0) / 100.0; // Làm tròn 2 số thập phân
 
             Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                             .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-            orderResponse.setDepositPrice(orderTotal);
+            orderResponse.setDepositPrice(deposit);
             orderRepository.save(order);
 //            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
-                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderTotal, clientIp))
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
                     .build();
         }
     }
