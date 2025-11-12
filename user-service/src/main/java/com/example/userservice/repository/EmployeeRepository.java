@@ -47,14 +47,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     /**
      * Find employees by store ID
+     * JOIN FETCH account to avoid LazyInitializationException
      */
-    @Query("SELECT e FROM Employee e JOIN e.employeeStores es WHERE es.storeId = :storeId AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
+    @Query("SELECT DISTINCT e FROM Employee e " +
+           "JOIN FETCH e.account a " +
+           "JOIN e.employeeStores es " +
+           "WHERE es.storeId = :storeId AND a.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     List<Employee> findEmployeesByStoreId(@Param("storeId") String storeId);
 
     /**
      * Find employees by store ID and role
+     * JOIN FETCH account to avoid LazyInitializationException
      */
-    @Query("SELECT e FROM Employee e JOIN e.employeeStores es WHERE es.storeId = :storeId AND e.account.role = :role AND e.isDeleted = false")
+    @Query("SELECT DISTINCT e FROM Employee e " +
+           "JOIN FETCH e.account a " +
+           "JOIN e.employeeStores es " +
+           "WHERE es.storeId = :storeId AND a.role = :role AND e.isDeleted = false")
     List<Employee> findEmployeesByStoreIdAndRole(@Param("storeId") String storeId, @Param("role") EnumRole role);
 
     /**

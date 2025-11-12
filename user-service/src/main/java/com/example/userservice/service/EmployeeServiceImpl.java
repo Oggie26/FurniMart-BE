@@ -24,6 +24,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,6 +70,15 @@ public class EmployeeServiceImpl implements EmployeeService {
         // This method allows creating any employee role except CUSTOMER
         // Note: SELLER role has been replaced by STAFF
         validateEmployeeRole(userRequest.getRole());
+        
+        // Check if current user is BRANCH_MANAGER - can only create STAFF and DELIVERY
+        EnumRole currentUserRole = getCurrentUserRole();
+        if (currentUserRole == EnumRole.BRANCH_MANAGER) {
+            if (userRequest.getRole() != EnumRole.STAFF && userRequest.getRole() != EnumRole.DELIVERY) {
+                log.error("Branch Manager can only create STAFF and DELIVERY roles. Attempted to create: {}", userRequest.getRole());
+                throw new AppException(ErrorCode.INVALID_ROLE);
+            }
+        }
         
         log.info("Role validation passed for: {}", userRequest.getRole());
 
@@ -241,6 +252,21 @@ public class EmployeeServiceImpl implements EmployeeService {
             // Validate new role
             validateEmployeeRole(userRequest.getRole());
             
+            // Check if current user is BRANCH_MANAGER - can only update to STAFF and DELIVERY
+            EnumRole currentUserRole = getCurrentUserRole();
+            if (currentUserRole == EnumRole.BRANCH_MANAGER) {
+                if (userRequest.getRole() != EnumRole.STAFF && userRequest.getRole() != EnumRole.DELIVERY) {
+                    log.error("Branch Manager can only update employees to STAFF and DELIVERY roles. Attempted to update to: {}", userRequest.getRole());
+                    throw new AppException(ErrorCode.INVALID_ROLE);
+                }
+                // Also check if existing employee is not ADMIN or BRANCH_MANAGER
+                if (existingEmployee.getAccount().getRole() == EnumRole.ADMIN || 
+                    existingEmployee.getAccount().getRole() == EnumRole.BRANCH_MANAGER) {
+                    log.error("Branch Manager cannot update ADMIN or BRANCH_MANAGER employees");
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+            }
+            
             // Update account role
             existingEmployee.getAccount().setRole(userRequest.getRole());
             log.info("Updated employee role to: {}", userRequest.getRole());
@@ -350,28 +376,84 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> getEmployeesByStoreId(String storeId) {
         log.info("Fetching employees by store ID: {}", storeId);
         
-        List<Employee> employees = employeeRepository.findEmployeesByStoreId(storeId);
-        
-        return employees.stream()
-                .map(this::toEmployeeResponse)
-                .collect(Collectors.toList());
+        try {
+            // Validate storeId
+            if (storeId == null || storeId.trim().isEmpty()) {
+                log.error("Store ID is null or empty");
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+            
+            List<Employee> employees = employeeRepository.findEmployeesByStoreId(storeId);
+            
+            log.info("Found {} employees for store ID: {}", employees.size(), storeId);
+            
+            return employees.stream()
+                    .map(employee -> {
+                        try {
+                            return toEmployeeResponse(employee);
+                        } catch (Exception e) {
+                            log.error("Error mapping employee {} to response: {}", 
+                                    employee != null ? employee.getId() : "null", e.getMessage(), e);
+                            // Return null and filter out later
+                            return null;
+                        }
+                    })
+                    .filter(response -> response != null)
+                    .collect(Collectors.toList());
+        } catch (AppException e) {
+            log.error("Application error fetching employees by store ID {}: {}", storeId, e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error fetching employees by store ID {}: {}", storeId, e.getMessage(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> getEmployeesByStoreIdAndRole(String storeId, EnumRole role) {
         log.info("Fetching employees by store ID: {} and role: {}", storeId, role);
         
-        // Validate that role is an employee role
-        validateEmployeeRole(role);
+        try {
+            // Validate that role is an employee role
+            validateEmployeeRole(role);
+            
+            // Validate storeId
+            if (storeId == null || storeId.trim().isEmpty()) {
+                log.error("Store ID is null or empty");
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
 
-        List<Employee> employees = employeeRepository.findEmployeesByStoreIdAndRole(storeId, role);
-        
-        return employees.stream()
-                .map(this::toEmployeeResponse)
-                .collect(Collectors.toList());
+            List<Employee> employees = employeeRepository.findEmployeesByStoreIdAndRole(storeId, role);
+            
+            log.info("Found {} employees for store ID: {} and role: {}", employees.size(), storeId, role);
+            
+            return employees.stream()
+                    .map(employee -> {
+                        try {
+                            return toEmployeeResponse(employee);
+                        } catch (Exception e) {
+                            log.error("Error mapping employee {} to response: {}", 
+                                    employee != null ? employee.getId() : "null", e.getMessage(), e);
+                            // Return null and filter out later
+                            return null;
+                        }
+                    })
+                    .filter(response -> response != null)
+                    .collect(Collectors.toList());
+        } catch (AppException e) {
+            log.error("Application error fetching employees by store ID {} and role {}: {}", 
+                    storeId, role, e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error fetching employees by store ID {} and role {}: {}", 
+                    storeId, role, e.getMessage(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 
     @Override
@@ -591,6 +673,33 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     /**
+     * Get current user role from SecurityContext
+     */
+    private EnumRole getCurrentUserRole() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                log.warn("No authenticated user found");
+                return null;
+            }
+            
+            String email = authentication.getName();
+            Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                    .orElse(null);
+            
+            if (account == null) {
+                log.warn("Account not found for email: {}", email);
+                return null;
+            }
+            
+            return account.getRole();
+        } catch (Exception e) {
+            log.error("Error getting current user role: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * Validate that the role is an employee role (allow ADMIN, block CUSTOMER)
      */
     private void validateEmployeeRole(EnumRole role) {
@@ -657,28 +766,47 @@ public class EmployeeServiceImpl implements EmployeeService {
      * Convert Employee entity to UserResponse DTO
      */
     private UserResponse toEmployeeResponse(Employee employee) {
-        // Load storeIds for the employee
-        List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
-                .stream()
-                .map(EmployeeStore::getStoreId)
-                .collect(Collectors.toList());
+        if (employee == null) {
+            log.warn("Attempting to convert null employee to UserResponse");
+            return null;
+        }
+        
+        try {
+            // Validate account exists
+            if (employee.getAccount() == null) {
+                log.error("Employee {} has null account", employee.getId());
+                throw new AppException(ErrorCode.USER_NOT_FOUND);
+            }
+            
+            // Load storeIds for the employee
+            List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
+                    .stream()
+                    .map(EmployeeStore::getStoreId)
+                    .collect(Collectors.toList());
 
-        return UserResponse.builder()
-                .id(employee.getId())
-                .birthday(employee.getBirthday())
-                .gender(employee.getGender())
-                .fullName(employee.getFullName())
-                .avatar(employee.getAvatar())
-                .phone(employee.getPhone())
-                .createdAt(employee.getCreatedAt())
-                .updatedAt(employee.getUpdatedAt())
-                .status(employee.getStatus())
-                .cccd(employee.getCccd())
-                .point(null) // Employees don't have points
-                .email(employee.getAccount() != null ? employee.getAccount().getEmail() : null)
-                .role(employee.getAccount() != null ? employee.getAccount().getRole() : null)
-                .storeIds(storeIds)
-                .build();
+            return UserResponse.builder()
+                    .id(employee.getId())
+                    .birthday(employee.getBirthday())
+                    .gender(employee.getGender())
+                    .fullName(employee.getFullName())
+                    .avatar(employee.getAvatar())
+                    .phone(employee.getPhone())
+                    .createdAt(employee.getCreatedAt())
+                    .updatedAt(employee.getUpdatedAt())
+                    .status(employee.getStatus())
+                    .cccd(employee.getCccd())
+                    .point(null) // Employees don't have points
+                    .email(employee.getAccount().getEmail())
+                    .role(employee.getAccount().getRole())
+                    .storeIds(storeIds)
+                    .build();
+        } catch (AppException e) {
+            log.error("Application error converting employee {} to response: {}", employee.getId(), e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error converting employee {} to response: {}", employee.getId(), e.getMessage(), e);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
     }
 }
 
