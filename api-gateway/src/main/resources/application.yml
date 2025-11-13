@@ -58,6 +58,13 @@ spring:
                         - Path=/api/inventories/**, /api/warehouses/**,/api/location-items/**, /api/zones/**
                       filters: []
 
+                    # DELIVERY SERVICE
+                    - id: delivery-service
+                      uri: lb://delivery-service
+                      predicates:
+                        - Path=/api/delivery/**
+                      filters: []
+
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
   expiration: 3600000
