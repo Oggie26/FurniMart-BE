@@ -8,6 +8,7 @@ import com.example.deliveryservice.response.DeliveryProgressResponse;
 import com.example.deliveryservice.response.StoreBranchInfoResponse;
 import com.example.deliveryservice.service.inteface.DeliveryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,7 +31,14 @@ public class DeliveryController {
     // ========== GUEST ENDPOINTS (Public) ==========
 
     @GetMapping("/stores/{storeId}/branch-info")
-    @Operation(summary = "Get store branch information with stock availability (Public - Guests can view)")
+    @Operation(
+            summary = "Get store branch information with stock availability",
+            description = "Retrieve detailed store information including warehouse details and stock availability. This is a public API that does not require authentication."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Store information retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Store not found with storeId: {storeId}")
+    })
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<StoreBranchInfoResponse> getStoreBranchInfo(@PathVariable String storeId) {
         return ApiResponse.<StoreBranchInfoResponse>builder()
@@ -43,7 +51,19 @@ public class DeliveryController {
     // ========== STAFF ENDPOINTS ==========
 
     @PostMapping("/assign")
-    @Operation(summary = "Assign order to delivery staff (Staff/Branch Manager only)")
+    @Operation(
+            summary = "Assign order to delivery staff",
+            description = "Assign an order to a delivery staff member. Only STAFF and BRANCH_MANAGER roles can use this API. " +
+                    "The order will be assigned to the specified deliveryStaffId, with estimated delivery date and notes (if provided). " +
+                    "After successful assignment, the assignment status will be ASSIGNED."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Order assigned to delivery staff successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Order already assigned - Assignment ID and Status will be returned in the message"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Order not found with orderId: {orderId} OR Store not found with storeId: {storeId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
+    })
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryAssignmentResponse> assignOrderToDelivery(@Valid @RequestBody AssignOrderRequest request) {
@@ -55,7 +75,18 @@ public class DeliveryController {
     }
 
     @PostMapping("/generate-invoice/{orderId}")
-    @Operation(summary = "Generate invoice for order (Staff only)")
+    @Operation(
+            summary = "Generate invoice for order",
+            description = "Generate an invoice for an order. Only STAFF role can use this API. " +
+                    "Each order can only have an invoice generated once. After successful generation, invoiceGenerated will be set to true."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invoice generated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invoice already generated for this order"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery assignment not found with orderId: {orderId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF role is allowed")
+    })
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasRole('STAFF')")
     public ApiResponse<DeliveryAssignmentResponse> generateInvoice(@PathVariable Long orderId) {
@@ -67,7 +98,19 @@ public class DeliveryController {
     }
 
     @PostMapping("/prepare-products")
-    @Operation(summary = "Prepare products for delivery (Staff only)")
+    @Operation(
+            summary = "Prepare products for delivery",
+            description = "Prepare products for delivery. Only STAFF role can use this API. " +
+                    "The system will check stock availability for each product in the order. If stock is insufficient, it will return INSUFFICIENT_STOCK error. " +
+                    "After successful preparation, productsPrepared will be set to true and status will change to READY."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Products prepared successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Products already prepared OR Insufficient stock - Details of missing products will be returned in the message"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery assignment not found with orderId: {orderId} OR Order not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF role is allowed")
+    })
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasRole('STAFF')")
     public ApiResponse<DeliveryAssignmentResponse> prepareProducts(@Valid @RequestBody PrepareProductsRequest request) {
@@ -79,7 +122,15 @@ public class DeliveryController {
     }
 
     @GetMapping("/assignments/store/{storeId}")
-    @Operation(summary = "Get delivery assignments by store (Staff/Branch Manager only)")
+    @Operation(
+            summary = "Get delivery assignments by store",
+            description = "Retrieve all delivery assignments for a specific store. Only STAFF and BRANCH_MANAGER roles can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery assignments retrieved successfully (may return empty list if no assignments exist)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
+    })
     @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<List<DeliveryAssignmentResponse>> getDeliveryAssignmentsByStore(@PathVariable String storeId) {
         return ApiResponse.<List<DeliveryAssignmentResponse>>builder()
@@ -90,7 +141,16 @@ public class DeliveryController {
     }
 
     @GetMapping("/assignments/order/{orderId}")
-    @Operation(summary = "Get delivery assignment by order ID (Staff/Branch Manager only)")
+    @Operation(
+            summary = "Get delivery assignment by order ID",
+            description = "Retrieve delivery assignment information for a specific order. Only STAFF and BRANCH_MANAGER roles can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery assignment retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery assignment not found with orderId: {orderId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
+    })
     @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryAssignmentResponse> getDeliveryAssignmentByOrderId(@PathVariable Long orderId) {
         return ApiResponse.<DeliveryAssignmentResponse>builder()
@@ -103,7 +163,17 @@ public class DeliveryController {
     // ========== BRANCH MANAGER ENDPOINTS ==========
 
     @GetMapping("/progress/store/{storeId}")
-    @Operation(summary = "Monitor delivery progress within branch (Branch Manager only)")
+    @Operation(
+            summary = "Monitor delivery progress within branch",
+            description = "Monitor delivery progress for a store. Only BRANCH_MANAGER role can use this API. " +
+                    "Returns statistics of order counts by status: ASSIGNED, PREPARING, READY, IN_TRANSIT, DELIVERED."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery progress retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Store not found with storeId: {storeId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only BRANCH_MANAGER role is allowed")
+    })
     @PreAuthorize("hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryProgressResponse> getDeliveryProgressByStore(@PathVariable String storeId) {
         return ApiResponse.<DeliveryProgressResponse>builder()
@@ -114,7 +184,20 @@ public class DeliveryController {
     }
 
     @PutMapping("/assignments/{assignmentId}/status")
-    @Operation(summary = "Update delivery status (Branch Manager/Delivery Staff only)")
+    @Operation(
+            summary = "Update delivery status",
+            description = "Update delivery status. Only BRANCH_MANAGER and DELIVERY roles can use this API. " +
+                    "Valid status values: ASSIGNED (Assigned), PREPARING (Preparing), READY (Ready for delivery), " +
+                    "IN_TRANSIT (In transit), DELIVERED (Delivered), CANCELLED (Cancelled). " +
+                    "Status must be sent as a string (e.g., 'ASSIGNED', 'IN_TRANSIT')."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery status updated successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid Status - Status must be one of: ASSIGNED, PREPARING, READY, IN_TRANSIT, DELIVERED, CANCELLED"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery assignment not found with assignmentId: {assignmentId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only BRANCH_MANAGER and DELIVERY roles are allowed")
+    })
     @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('DELIVERY')")
     public ApiResponse<DeliveryAssignmentResponse> updateDeliveryStatus(
             @PathVariable Long assignmentId,
@@ -129,7 +212,15 @@ public class DeliveryController {
     // ========== DELIVERY STAFF ENDPOINTS ==========
 
     @GetMapping("/assignments/staff/{deliveryStaffId}")
-    @Operation(summary = "Get delivery assignments by delivery staff (Delivery Staff only)")
+    @Operation(
+            summary = "Get delivery assignments by delivery staff",
+            description = "Retrieve all delivery assignments for a specific delivery staff member. Only DELIVERY role can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery assignments retrieved successfully (may return empty list if no assignments exist)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only DELIVERY role is allowed")
+    })
     @PreAuthorize("hasRole('DELIVERY')")
     public ApiResponse<List<DeliveryAssignmentResponse>> getDeliveryAssignmentsByStaff(@PathVariable String deliveryStaffId) {
         return ApiResponse.<List<DeliveryAssignmentResponse>>builder()

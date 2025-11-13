@@ -35,9 +35,9 @@ public class EmployeeController {
     private final AccountRepository accountRepository;
 
     @PostMapping
-    @Operation(summary = "Create new employee (Admin only) - Can create ADMIN, BRANCH_MANAGER, DELIVERY, STAFF roles")
+    @Operation(summary = "Create new employee - Admin can create all roles, Branch Manager can only create STAFF and DELIVERY")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -60,8 +60,8 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update employee information (Admin only) - Supports updating role and store assignment")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update employee information - Admin can update all, Branch Manager can only update STAFF and DELIVERY")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<UserResponse> updateEmployee(@PathVariable String id, @Valid @RequestBody UserUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -116,7 +116,7 @@ public class EmployeeController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get employee by ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<UserResponse> getEmployeeById(@PathVariable String id) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -166,7 +166,7 @@ public class EmployeeController {
     
     @GetMapping
     @Operation(summary = "Get all employees")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllEmployees() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -177,7 +177,7 @@ public class EmployeeController {
 
     @GetMapping("/paginated")
     @Operation(summary = "Get employees with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getEmployeesWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -190,7 +190,7 @@ public class EmployeeController {
     
     @GetMapping("/search")
     @Operation(summary = "Search employees by name, email, or phone")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> searchEmployees(
             @RequestParam String searchTerm,
             @RequestParam(defaultValue = "0") int page,
@@ -204,7 +204,7 @@ public class EmployeeController {
 
     @GetMapping("/role/manager")
     @Operation(summary = "Get all branch managers")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllManagers() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -215,7 +215,7 @@ public class EmployeeController {
 
     @GetMapping("/role/delivery")
     @Operation(summary = "Get all delivery staff")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllDeliveryStaff() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -226,7 +226,7 @@ public class EmployeeController {
 
     @GetMapping("/role/staff")
     @Operation(summary = "Get all general staff")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllStaff() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -237,7 +237,7 @@ public class EmployeeController {
 
     @GetMapping("/store/{storeId}")
     @Operation(summary = "Get all employees by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getEmployeesByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -248,7 +248,7 @@ public class EmployeeController {
 
     @GetMapping("/store/{storeId}/role/manager")
     @Operation(summary = "Get branch managers by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getManagersByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -259,7 +259,7 @@ public class EmployeeController {
 
     @GetMapping("/store/{storeId}/role/delivery")
     @Operation(summary = "Get delivery staff by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getDeliveryStaffByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -270,7 +270,7 @@ public class EmployeeController {
 
     @GetMapping("/store/{storeId}/role/staff")
     @Operation(summary = "Get general staff by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getStaffByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -281,7 +281,7 @@ public class EmployeeController {
 
     @GetMapping("/role/manager/paginated")
     @Operation(summary = "Get branch managers with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getManagersWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -294,7 +294,7 @@ public class EmployeeController {
 
     @GetMapping("/role/delivery/paginated")
     @Operation(summary = "Get delivery staff with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getDeliveryStaffWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -307,7 +307,7 @@ public class EmployeeController {
 
     @GetMapping("/role/staff/paginated")
     @Operation(summary = "Get general staff with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getStaffWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -342,7 +342,7 @@ public class EmployeeController {
 
     @PostMapping("/{employeeId}/store/{storeId}")
     @Operation(summary = "Assign employee to store")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<Void> assignEmployeeToStore(
             @PathVariable String employeeId,
             @PathVariable String storeId) {
@@ -355,7 +355,7 @@ public class EmployeeController {
 
     @DeleteMapping("/{employeeId}/store/{storeId}")
     @Operation(summary = "Remove employee from store")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<Void> removeEmployeeFromStore(
             @PathVariable String employeeId,
             @PathVariable String storeId) {
