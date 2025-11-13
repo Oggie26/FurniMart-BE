@@ -20,7 +20,7 @@ spring:
                     - id: user-service
                       uri: lb://user-service
                       predicates:
-                        - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile , /api/employees/**
+                        - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**
                       filters: []
 
                     # PRODUCT SERVICE
@@ -48,7 +48,7 @@ spring:
                     - id: order-service
                       uri: lb://order-service
                       predicates:
-                        - Path=/api/orders/**, /api/vouchers/**, /api/v1/** , /api/carts/**
+                        - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/warranties/**
                       filters: []
 
                     # INVENTORY SERVICE
@@ -56,13 +56,6 @@ spring:
                       uri: lb://inventory-service
                       predicates:
                         - Path=/api/inventories/**, /api/warehouses/**,/api/location-items/**, /api/zones/**
-                      filters: []
-
-                    # DELIVERY SERVICE
-                    - id: delivery-service
-                      uri: lb://delivery-service
-                      predicates:
-                        - Path=/api/delivery/**
                       filters: []
 
 jwt:

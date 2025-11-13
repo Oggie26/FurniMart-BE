@@ -53,13 +53,13 @@ public class DeliveryServiceImpl implements DeliveryService {
         // Verify order exists
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
         if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
-            throw new AppException(ErrorCode.CODE_NOT_FOUND);
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
 
         // Verify store exists
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
         if (storeResponse == null || storeResponse.getData() == null) {
-            throw new AppException(ErrorCode.CODE_NOT_FOUND);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -92,7 +92,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         // Get store information
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(storeId);
         if (storeResponse == null || storeResponse.getData() == null) {
-            throw new AppException(ErrorCode.CODE_NOT_FOUND);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         StoreResponse store = storeResponse.getData();
 
@@ -117,7 +117,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         log.info("Generating invoice for order: {}", orderId);
 
         DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
 
         if (assignment.getInvoiceGenerated()) {
             String errorMessage = String.format("Invoice đã được generate cho order này. Assignment ID: %d", 
@@ -141,7 +141,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         log.info("Preparing products for order: {}", request.getOrderId());
 
         DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
 
         if (assignment.getProductsPrepared()) {
             String errorMessage = String.format("Products đã được prepare cho order này. Assignment ID: %d", 
@@ -153,7 +153,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         // Verify order exists and get order details
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
         if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
-            throw new AppException(ErrorCode.CODE_NOT_FOUND);
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
 
         OrderResponse order = orderResponse.getBody().getData();
@@ -203,7 +203,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         // Verify store exists
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(storeId);
         if (storeResponse == null || storeResponse.getData() == null) {
-            throw new AppException(ErrorCode.CODE_NOT_FOUND);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         StoreResponse store = storeResponse.getData();
 
@@ -264,7 +264,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Transactional(readOnly = true)
     public DeliveryAssignmentResponse getDeliveryAssignmentByOrderId(Long orderId) {
         DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
         return mapToResponse(assignment);
     }
 
@@ -272,7 +272,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Transactional
     public DeliveryAssignmentResponse updateDeliveryStatus(Long assignmentId, String status) {
         DeliveryAssignment assignment = deliveryAssignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
 
         try {
             DeliveryStatus deliveryStatus = DeliveryStatus.valueOf(status.toUpperCase());
