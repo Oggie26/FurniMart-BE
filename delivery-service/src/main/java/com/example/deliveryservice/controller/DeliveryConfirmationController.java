@@ -6,6 +6,7 @@ import com.example.deliveryservice.response.ApiResponse;
 import com.example.deliveryservice.response.DeliveryConfirmationResponse;
 import com.example.deliveryservice.service.inteface.DeliveryConfirmationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,7 +29,18 @@ public class DeliveryConfirmationController {
     // ========== DELIVERY STAFF ENDPOINTS ==========
 
     @PostMapping
-    @Operation(summary = "Create delivery confirmation with photos (Delivery Staff only)")
+    @Operation(
+            summary = "Create delivery confirmation with photos",
+            description = "Create a delivery confirmation with photos. Only DELIVERY role can use this API. " +
+                    "This API will automatically retrieve the QR code from Order Service, create a delivery confirmation with status DELIVERED, " +
+                    "and update the order status to DELIVERED. The system will also automatically generate warranties for the order."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Delivery confirmation created successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Order not found with orderId: {orderId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only DELIVERY role is allowed")
+    })
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('DELIVERY')")
     public ApiResponse<DeliveryConfirmationResponse> createDeliveryConfirmation(@Valid @RequestBody DeliveryConfirmationRequest request) {
@@ -40,7 +52,15 @@ public class DeliveryConfirmationController {
     }
 
     @GetMapping("/staff/{deliveryStaffId}")
-    @Operation(summary = "Get delivery confirmations by delivery staff ID")
+    @Operation(
+            summary = "Get delivery confirmations by delivery staff ID",
+            description = "Retrieve all delivery confirmations for a specific delivery staff member. Only DELIVERY and ADMIN roles can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery confirmations retrieved successfully (may return empty list if no confirmations exist)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only DELIVERY and ADMIN roles are allowed")
+    })
     @PreAuthorize("hasRole('DELIVERY') or hasRole('ADMIN')")
     public ApiResponse<List<DeliveryConfirmationResponse>> getDeliveryConfirmationsByStaff(@PathVariable String deliveryStaffId) {
         return ApiResponse.<List<DeliveryConfirmationResponse>>builder()
@@ -53,7 +73,16 @@ public class DeliveryConfirmationController {
     // ========== CUSTOMER ENDPOINTS ==========
 
     @GetMapping("/order/{orderId}")
-    @Operation(summary = "Get delivery confirmation by order ID")
+    @Operation(
+            summary = "Get delivery confirmation by order ID",
+            description = "Retrieve delivery confirmation information for a specific order. Only CUSTOMER (order owner) and ADMIN roles can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery confirmation retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery confirmation not found with orderId: {orderId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only CUSTOMER and ADMIN roles are allowed")
+    })
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<DeliveryConfirmationResponse> getDeliveryConfirmationByOrderId(@PathVariable Long orderId) {
         return ApiResponse.<DeliveryConfirmationResponse>builder()
@@ -64,7 +93,15 @@ public class DeliveryConfirmationController {
     }
 
     @GetMapping("/customer/{customerId}")
-    @Operation(summary = "Get delivery confirmations by customer ID")
+    @Operation(
+            summary = "Get delivery confirmations by customer ID",
+            description = "Retrieve all delivery confirmations for a specific customer. Only CUSTOMER (themselves) and ADMIN roles can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery confirmations retrieved successfully (may return empty list if no confirmations exist)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only CUSTOMER and ADMIN roles are allowed")
+    })
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<List<DeliveryConfirmationResponse>> getDeliveryConfirmationsByCustomer(@PathVariable String customerId) {
         return ApiResponse.<List<DeliveryConfirmationResponse>>builder()
@@ -75,7 +112,19 @@ public class DeliveryConfirmationController {
     }
 
     @PostMapping("/scan-qr")
-    @Operation(summary = "Scan QR code to confirm delivery receipt")
+    @Operation(
+            summary = "Scan QR code to confirm delivery receipt",
+            description = "Scan QR code to confirm delivery receipt. Only CUSTOMER role can use this API. " +
+                    "Each QR code can only be scanned once. After successful scan, status will change to CONFIRMED, " +
+                    "qrCodeScannedAt will be set, and the order status will be updated to FINISHED."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "QR code scanned successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "QR code already scanned - Each QR code can only be scanned once"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery confirmation not found with qrCode: {qrCode}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only CUSTOMER role is allowed")
+    })
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<DeliveryConfirmationResponse> scanQRCode(@Valid @RequestBody QRCodeScanRequest request) {
         return ApiResponse.<DeliveryConfirmationResponse>builder()
@@ -86,7 +135,16 @@ public class DeliveryConfirmationController {
     }
 
     @GetMapping("/qr/{qrCode}")
-    @Operation(summary = "Get delivery confirmation by QR code")
+    @Operation(
+            summary = "Get delivery confirmation by QR code",
+            description = "Retrieve delivery confirmation information by QR code. Only CUSTOMER and ADMIN roles can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Delivery confirmation retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery confirmation not found with qrCode: {qrCode}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only CUSTOMER and ADMIN roles are allowed")
+    })
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<DeliveryConfirmationResponse> getDeliveryConfirmationByQRCode(@PathVariable String qrCode) {
         return ApiResponse.<DeliveryConfirmationResponse>builder()
@@ -99,7 +157,15 @@ public class DeliveryConfirmationController {
     // ========== ADMIN ENDPOINTS ==========
 
     @GetMapping
-    @Operation(summary = "Get all delivery confirmations (Admin only)")
+    @Operation(
+            summary = "Get all delivery confirmations",
+            description = "Retrieve all delivery confirmations in the system. Only ADMIN role can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "All delivery confirmations retrieved successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only ADMIN role is allowed")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<DeliveryConfirmationResponse>> getAllDeliveryConfirmations() {
         return ApiResponse.<List<DeliveryConfirmationResponse>>builder()
@@ -110,7 +176,15 @@ public class DeliveryConfirmationController {
     }
 
     @GetMapping("/scanned")
-    @Operation(summary = "Get scanned delivery confirmations (Admin only)")
+    @Operation(
+            summary = "Get scanned delivery confirmations",
+            description = "Retrieve all delivery confirmations that have been scanned (delivery receipt confirmed). Only ADMIN role can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Scanned delivery confirmations retrieved successfully (may return empty list)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only ADMIN role is allowed")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<DeliveryConfirmationResponse>> getScannedConfirmations() {
         return ApiResponse.<List<DeliveryConfirmationResponse>>builder()
@@ -121,7 +195,15 @@ public class DeliveryConfirmationController {
     }
 
     @GetMapping("/unscanned")
-    @Operation(summary = "Get unscanned delivery confirmations (Admin only)")
+    @Operation(
+            summary = "Get unscanned delivery confirmations",
+            description = "Retrieve all delivery confirmations that have not been scanned (delivery receipt not confirmed). Only ADMIN role can use this API."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Unscanned delivery confirmations retrieved successfully (may return empty list)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only ADMIN role is allowed")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<DeliveryConfirmationResponse>> getUnscannedConfirmations() {
         return ApiResponse.<List<DeliveryConfirmationResponse>>builder()
