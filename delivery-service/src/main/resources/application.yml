@@ -20,16 +20,13 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
-    default-models-expand-depth: -1
     doc-expansion: none
     display-request-duration: true
-    show-common-extensions: false
     try-it-out-enabled: true
     supported-submit-methods: ["get", "post", "put", "delete", "patch"]
     filter: true
-    show-extensions: false
-    show-common-extensions: false
-    # Hide response examples and schemas
+    # Hide response examples and schemas completely
+    default-models-expand-depth: -1
     default-model-expand-depth: -1
     default-model-render-depth: -1
   api-docs:
