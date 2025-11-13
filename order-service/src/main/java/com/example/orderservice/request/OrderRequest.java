@@ -22,9 +22,11 @@ public class OrderRequest {
     @NotNull(message = "AddressId is required")
     private Integer addressId;
 
+    @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Total quantity must be greater than 0")
     private Integer quantity;
 
+    @NotNull(message = "Total is required")
     @Min(value = 1, message = "Total amount must be greater than 0")
     private Double total;
 

@@ -25,7 +25,7 @@ public class DeliveryAssignment extends AbstractEntity {
     @Column(name = "store_id", nullable = false)
     private String storeId;
 
-    @Column(name = "delivery_staff_id")
+    @Column(name = "delivery_staff_id", nullable = false)
     private String deliveryStaffId;
 
     @Column(name = "assigned_by", nullable = false)

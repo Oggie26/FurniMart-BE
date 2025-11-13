@@ -56,7 +56,7 @@ public class DeliveryController {
     @Operation(
             summary = "Assign order to delivery staff",
             description = "Assign an order to a delivery staff member. Only STAFF and BRANCH_MANAGER roles can use this API. " +
-                    "The order will be assigned to the specified deliveryStaffId, with estimated delivery date and notes (if provided). " +
+                    "The order will be assigned to the specified deliveryStaffId (required), with estimated delivery date and notes (if provided). " +
                     "After successful assignment, the assignment status will be ASSIGNED."
     )
     @ApiResponses(value = {
