@@ -130,6 +130,8 @@ public class VNPayController {
         String orderId = vnpParams.get("vnp_TxnRef");
         String responseCode = vnpParams.get("vnp_ResponseCode");
 
+        if (orderId == null || orderId.isEmpty()) orderId = "unknown";
+
         String webUrl = "http://localhost:5173/payment-success";
         String mobileDeepLink = "furnimartmobileapp://order-success";
 
@@ -140,8 +142,7 @@ public class VNPayController {
                         userAgent.toLowerCase().contains("mobile")
         );
 
-        // KHAI BÁO redirectUrl TRƯỚC
-        String redirectUrl;
+        String redirectUrl = "";
         String title = "Đang xử lý...";
         String message = "Vui lòng chờ";
         String color = "#3B6C46";
@@ -151,7 +152,6 @@ public class VNPayController {
                 title = "Thanh toán thành công!";
                 message = "Đơn hàng #" + orderId + " đã được thanh toán.";
                 color = "#3B6C46";
-
                 redirectUrl = isMobile
                         ? mobileDeepLink + "?status=success&orderId=" + orderId
                         : webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8);
@@ -159,7 +159,6 @@ public class VNPayController {
                 title = "Thanh toán thất bại";
                 message = "Mã lỗi: " + responseCode;
                 color = "#dc3545";
-
                 redirectUrl = isMobile
                         ? mobileDeepLink + "?status=failed&code=" + responseCode
                         : webUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8);
@@ -168,14 +167,13 @@ public class VNPayController {
             title = "Giao dịch không hợp lệ";
             message = "Chữ ký không khớp.";
             color = "#dc3545";
-
             redirectUrl = isMobile
                     ? mobileDeepLink + "?status=invalid"
                     : webUrl + "?status=invalid";
         }
 
-        // TRẢ VỀ HTML + JS (HOẠT ĐỘNG TRÊN SAFARI)
-        String html = """
+        // DÙNG String.format → KHÔNG LỖI %
+        String html = String.format("""
         <!DOCTYPE html>
         <html lang="vi">
         <head>
@@ -183,34 +181,16 @@ public class VNPayController {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>%s</title>
             <style>
-                body { 
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                    background: #f8f9fa; 
-                    margin: 0; 
-                    padding: 40px; 
-                    text-align: center;
-                }
-                .container { 
-                    max-width: 400px; 
-                    margin: 0 auto; 
-                    background: white; 
-                    padding: 30px; 
-                    border-radius: 16px; 
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-                }
+                body { font-family: -apple-system, sans-serif; background: #f8f9fa; margin: 0; padding: 40px; text-align: center; }
+                .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
                 h1 { color: %s; margin: 0 0 16px; font-size: 24px; }
                 p { color: #555; margin: 0 0 24px; font-size: 16px; }
-                .btn { 
-                    background: #3B6C46; color: white; padding: 12px 24px; 
-                    border-radius: 12px; text-decoration: none; display: inline-block; 
-                    font-weight: 600; font-size: 16px;
+                .btn { background: #3B6C46; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; display: inline-block; font-weight: 600; font-size: 16px; }
+                .spinner { border: 4px solid #f3f3f3; border-top: 4px solid %s; border-radius: 50%%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+                @keyframes spin { 
+                    0%% { transform: rotate(0deg); } 
+                    100%% { transform: rotate(360deg); } 
                 }
-                .spinner { 
-                    border: 4px solid #f3f3f3; border-top: 4px solid %s; 
-                    border-radius: 50%; width: 40px; height: 40px; 
-                    animation: spin 1s linear infinite; margin: 20px auto; 
-                }
-                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             </style>
         </head>
         <body>
@@ -227,7 +207,7 @@ public class VNPayController {
             </script>
         </body>
         </html>
-        """.formatted(title, color, color, title, message, redirectUrl, redirectUrl);
+        """, title, color, color, title, message, redirectUrl, redirectUrl);
 
         response.getWriter().write(html);
     }
