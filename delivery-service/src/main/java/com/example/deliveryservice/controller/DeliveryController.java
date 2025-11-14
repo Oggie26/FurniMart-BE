@@ -8,6 +8,8 @@ import com.example.deliveryservice.response.DeliveryProgressResponse;
 import com.example.deliveryservice.response.StoreBranchInfoResponse;
 import com.example.deliveryservice.service.inteface.DeliveryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,7 +56,7 @@ public class DeliveryController {
     @Operation(
             summary = "Assign order to delivery staff",
             description = "Assign an order to a delivery staff member. Only STAFF and BRANCH_MANAGER roles can use this API. " +
-                    "The order will be assigned to the specified deliveryStaffId, with estimated delivery date and notes (if provided). " +
+                    "The order will be assigned to the specified deliveryStaffId (required), with estimated delivery date and notes (if provided). " +
                     "After successful assignment, the assignment status will be ASSIGNED."
     )
     @ApiResponses(value = {
@@ -200,7 +202,17 @@ public class DeliveryController {
     })
     @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('DELIVERY')")
     public ApiResponse<DeliveryAssignmentResponse> updateDeliveryStatus(
+            @Parameter(description = "Delivery assignment ID", required = true, example = "1")
             @PathVariable Long assignmentId,
+            @Parameter(
+                    description = "Delivery status. Valid values: ASSIGNED, PREPARING, READY, IN_TRANSIT, DELIVERED, CANCELLED",
+                    required = true,
+                    schema = @Schema(
+                            type = "string",
+                            allowableValues = {"ASSIGNED", "PREPARING", "READY", "IN_TRANSIT", "DELIVERED", "CANCELLED"},
+                            example = "IN_TRANSIT"
+                    )
+            )
             @RequestParam String status) {
         return ApiResponse.<DeliveryAssignmentResponse>builder()
                 .status(HttpStatus.OK.value())

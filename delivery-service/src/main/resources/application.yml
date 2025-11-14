@@ -20,8 +20,18 @@ spring:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+    doc-expansion: none
+    display-request-duration: true
+    try-it-out-enabled: true
+    supported-submit-methods: ["get", "post", "put", "delete", "patch"]
+    filter: true
+    # Hide response examples and schemas completely
+    default-models-expand-depth: -1
+    default-model-expand-depth: -1
+    default-model-render-depth: -1
   api-docs:
     path: /v3/api-docs
+  show-actuator: false
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
