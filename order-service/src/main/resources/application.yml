@@ -72,3 +72,4 @@ vnpay:
   tmnCode: SB02ZITC
   hashSecret: AMHK5P8JFFXKFUWCF6DC1NWUTJC26LHY
   url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  returnUrl: https://furnimart.click/api/v1/payment/vnpay-return

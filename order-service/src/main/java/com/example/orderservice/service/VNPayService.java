@@ -240,7 +240,7 @@ public class VNPayService {
     private String vnpUrl;
 
     @Value("${vnpay.returnUrl}")
-    private String returnUrl = "https://furnimart.click/api/v1/payment/vnpay-return"; // Khai báo 1 lần, dùng chung
+    private String returnUrl;// Khai báo 1 lần, dùng chung
 
     /**
      * Tạo URL thanh toán VNPay (dùng chung cho web & mobile)
