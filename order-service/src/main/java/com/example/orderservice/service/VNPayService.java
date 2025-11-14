@@ -247,8 +247,8 @@ public class VNPayService {
         if (tmnCode == null || tmnCode.isEmpty()) {
             throw new IllegalStateException("vnp_TmnCode không được để trống!");
         }
-        if (hashSecret == null || hashSecret.length() != 64) {
-            throw new IllegalStateException("hashSecret phải là 64 ký tự hex! Kiểm tra lại VNPay Sandbox.");
+        if (hashSecret == null || hashSecret.length() != 32) {
+            throw new IllegalStateException("hashSecret phải là 32 ký tự hex! Kiểm tra lại VNPay Sandbox.");
         }
         if (vnpUrl == null || !vnpUrl.contains("sandbox")) {
             logger.warn("Đang dùng URL VNPay Sandbox: {}", vnpUrl);
