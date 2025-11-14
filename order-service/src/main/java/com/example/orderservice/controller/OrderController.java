@@ -48,7 +48,7 @@ public class OrderController {
             @RequestParam(required = false) String voucherCode,
             @RequestParam PaymentMethod paymentMethod,
             HttpServletRequest request
-    ) throws UnsupportedEncodingException {
+    ) throws Exception {
         String clientIp = getClientIp(request);
 
         CartResponse cartResponse = cartService.getCartById(cartId);
@@ -98,7 +98,7 @@ public class OrderController {
             @RequestParam(required = false) String voucherCode,
             @RequestParam PaymentMethod paymentMethod,
             HttpServletRequest request
-    ) throws UnsupportedEncodingException {
+    ) throws Exception {
         String clientIp = getClientIp(request);
 
         CartResponse cartResponse = cartService.getCartById(cartId);
