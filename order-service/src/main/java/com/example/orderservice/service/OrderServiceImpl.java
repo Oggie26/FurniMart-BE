@@ -217,6 +217,9 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
+        
+        // Update order status to the new status
+        order.setStatus(status);
         orderRepository.save(order);
         if(status.equals(EnumProcessOrder.PAYMENT)){
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
