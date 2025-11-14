@@ -152,12 +152,29 @@ public class VNPayController {
         if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
                 if (isMobile) {
-                    // CẬP NHẬT DB
-                    try {
-                        orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
-                        System.out.println("Đơn hàng #" + orderId + " → PAYMENT");
-                    } catch (Exception e) {
-                        System.err.println("Lỗi cập nhật đơn hàng: " + e.getMessage());
+                    // CẬP NHẬT
+
+                    Long orderIdLong = null;
+                    if (orderId != null && !orderId.isEmpty() && !orderId.equals("unknown")) {
+                        try {
+                            orderIdLong = Long.parseLong(orderId);
+                        } catch (NumberFormatException e) {
+                            System.err.println("orderId không phải số: " + orderId);
+                        }
+                    } else {
+                        System.err.println("orderId không hợp lệ (null/empty/unknown): " + orderId);
+                    }
+
+                    if (orderIdLong != null) {
+                        try {
+                            orderService.updateOrderStatus(orderIdLong, EnumProcessOrder.PAYMENT);
+                            System.out.println("Đơn hàng #" + orderIdLong + " → PAYMENT");
+                        } catch (Exception e) {
+                            System.err.println("Lỗi cập nhật DB đơn hàng #" + orderIdLong + ": " + e.getMessage());
+                            e.printStackTrace(); // In full stack để debug
+                        }
+                    } else {
+                        System.err.println("BỎ QUA cập nhật DB vì orderId không hợp lệ: " + orderId);
                     }
 
                     // HIỆN TRANG THÀNH CÔNG + NÚT ĐÓNG
