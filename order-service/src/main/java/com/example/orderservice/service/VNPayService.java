@@ -272,7 +272,6 @@ public class VNPayService {
 
         Date now = new Date();
         String vnp_CreateDate = sdf.format(now);
-
         Calendar expireCal = Calendar.getInstance(tz);
         expireCal.setTime(now);
         expireCal.add(Calendar.MINUTE, 15);
@@ -281,47 +280,45 @@ public class VNPayService {
         params.put("vnp_CreateDate", vnp_CreateDate);
         params.put("vnp_ExpireDate", vnp_ExpireDate);
 
-        // Sắp xếp theo key
+        // === BƯỚC 1: TẠO hashData (KHÔNG CÓ vnp_SecureHash) ===
         List<String> fieldNames = new ArrayList<>(params.keySet());
         Collections.sort(fieldNames);
 
         StringBuilder hashData = new StringBuilder();
-        StringBuilder query = new StringBuilder();
-
         for (String field : fieldNames) {
             String value = params.get(field);
             if (value != null && !value.isEmpty()) {
                 String encoded = URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
                 hashData.append(field).append('=').append(encoded).append('&');
+            }
+        }
+        if (hashData.length() > 0) {
+            hashData.deleteCharAt(hashData.length() - 1); // Xóa & cuối
+        }
+
+        // === BƯỚC 2: TẠO vnp_SecureHash ===
+        String vnp_SecureHash = hmacSHA512(hashSecret, hashData.toString());
+
+        // === BƯỚC 3: TẠO query URL (CÓ vnp_SecureHash) ===
+        StringBuilder query = new StringBuilder();
+        for (String field : fieldNames) {
+            String value = params.get(field);
+            if (value != null && !value.isEmpty()) {
+                String encoded = URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
                 query.append(field).append('=').append(encoded).append('&');
             }
         }
-
-        // SỬA: DÙNG deleteCharAt() – XÓA CHÍNH XÁC &
-        if (hashData.length() > 0) {
-            hashData.deleteCharAt(hashData.length() - 1);
-        }
         if (query.length() > 0) {
-            query.deleteCharAt(query.length() - 1);
+            query.deleteCharAt(query.length() - 1); // Xóa & cuối
         }
-
-        String vnp_SecureHash = hmacSHA512(hashSecret, hashData.toString());
-        query.append("&vnp_SecureHash=").append(vnp_SecureHash); // KHÔNG ENCODE
+        query.append("&vnp_SecureHash=").append(vnp_SecureHash); // Thêm hash
 
         String paymentUrl = vnpUrl + "?" + query.toString();
 
-        // Log debug
-        logger.info("=== VNPAY PAYMENT URL ===");
-        logger.info("Order ID: {}", orderId);
-        logger.info("Amount: {} -> {} (x100)", amount, vnpAmount);
-        logger.info("CreateDate: {}", vnp_CreateDate);
-        logger.info("ExpireDate: {}", vnp_ExpireDate);
-        logger.info("IP: {}", ipAddress);
-        logger.info("ReturnUrl: {}", returnUrl);
+        // Log
         logger.info("HashData: {}", hashData);
         logger.info("SecureHash: {}", vnp_SecureHash);
         logger.info("Payment URL: {}", paymentUrl);
-        logger.info("=========================");
 
         return paymentUrl;
     }
