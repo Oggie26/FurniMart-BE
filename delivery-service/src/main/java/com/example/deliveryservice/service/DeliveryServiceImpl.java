@@ -2,6 +2,7 @@ package com.example.deliveryservice.service;
 
 import com.example.deliveryservice.entity.DeliveryAssignment;
 import com.example.deliveryservice.enums.DeliveryStatus;
+import com.example.deliveryservice.enums.EnumProcessOrder;
 import com.example.deliveryservice.enums.ErrorCode;
 import com.example.deliveryservice.exception.AppException;
 import com.example.deliveryservice.feign.InventoryClient;
@@ -80,6 +81,15 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
         log.info("Order {} assigned to delivery staff {}", request.getOrderId(), request.getDeliveryStaffId());
+
+        // Update order status to SHIPPING when assigned to delivery
+        try {
+            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
+            log.info("Order {} status updated to SHIPPING", request.getOrderId());
+        } catch (Exception e) {
+            log.error("Failed to update order status for order {}: {}", request.getOrderId(), e.getMessage());
+            // Don't fail the assignment if status update fails, but log the error
+        }
 
         return mapToResponse(saved);
     }
