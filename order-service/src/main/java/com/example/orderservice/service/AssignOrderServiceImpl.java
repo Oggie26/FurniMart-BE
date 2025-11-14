@@ -36,6 +36,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
         AddressResponse address = safeGetAddress(order.getAddressId());
 
         if (address == null) {
@@ -44,6 +45,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         order.setStoreId(getStoreNear(address.getLatitude(), address.getLongitude(), 1));
         order.setStatus(EnumProcessOrder.ASSIGN_ORDER_STORE);
+
         ProcessOrder process =  ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.ASSIGN_ORDER_STORE)
