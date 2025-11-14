@@ -214,7 +214,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
+import javax.annotation.PostConstruct;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URLEncoder;
@@ -241,23 +241,40 @@ public class VNPayService {
     @Value("${vnpay.returnUrl}")
     private String returnUrl;
 
+    // === VALIDATE CONFIG ===
+    @PostConstruct
+    public void validateConfig() {
+        if (tmnCode == null || tmnCode.isEmpty()) {
+            throw new IllegalStateException("vnp_TmnCode không được để trống!");
+        }
+        if (hashSecret == null || hashSecret.length() != 64) {
+            throw new IllegalStateException("hashSecret phải là 64 ký tự hex! Kiểm tra lại VNPay Sandbox.");
+        }
+        if (vnpUrl == null || !vnpUrl.contains("sandbox")) {
+            logger.warn("Đang dùng URL VNPay Sandbox: {}", vnpUrl);
+        }
+        logger.info("VNPay Config LOADED: TMN={}, HashSecret=OK", tmnCode);
+    }
+
+    // === WEB ===
     public String createPaymentUrl(Long orderId, Double amount, String ipAddress) throws Exception {
         return buildPaymentUrl(orderId, amount, ipAddress, returnUrl);
     }
 
+    // === MOBILE ===
     public String createPaymentUrlByMobile(Long orderId, Double amount, String ipAddress) throws Exception {
         String mobileReturnUrl = "https://furnimart.click/api/v1/payment/vnpay-return";
         return buildPaymentUrl(orderId, amount, ipAddress, mobileReturnUrl);
     }
 
+    // === CHUNG ===
     private String buildPaymentUrl(Long orderId, Double amount, String ipAddress, String returnUrl) throws Exception {
-        // Validate input
         if (amount == null || amount <= 0) {
-            throw new IllegalArgumentException("Số tiền phải lớn hơn 0");
+            throw new IllegalArgumentException("Số tiền phải > 0");
         }
 
-        Map<String, String> params = new HashMap<>();
-        long vnpAmount = Math.round(amount * 100); // VNPay yêu cầu x100
+        Map<String, String> params = new LinkedHashMap<>();
+        long vnpAmount = Math.round(amount * 100);
 
         params.put("vnp_Version", "2.1.0");
         params.put("vnp_Command", "pay");
@@ -275,7 +292,6 @@ public class VNPayService {
         TimeZone tz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
         sdf.setTimeZone(tz);
-
         Date now = new Date();
         String vnp_CreateDate = sdf.format(now);
 
@@ -287,7 +303,7 @@ public class VNPayService {
         params.put("vnp_CreateDate", vnp_CreateDate);
         params.put("vnp_ExpireDate", vnp_ExpireDate);
 
-        // === BƯỚC 1: TẠO hashData (chỉ để tính hash) ===
+        // === BƯỚC 1: TẠO hashData ===
         List<String> fieldNames = new ArrayList<>(params.keySet());
         Collections.sort(fieldNames);
 
@@ -300,29 +316,16 @@ public class VNPayService {
             }
         }
         if (hashData.length() > 0) {
-            hashData.deleteCharAt(hashData.length() - 1); // XÓA & CUỐI
+            hashData.deleteCharAt(hashData.length() - 1);
         }
 
         // === BƯỚC 2: TẠO vnp_SecureHash ===
         String vnp_SecureHash = hmacSHA512(hashSecret, hashData.toString());
 
-        // === BƯỚC 3: TẠO query URL (riêng biệt) ===
-        StringBuilder query = new StringBuilder();
-        for (String field : fieldNames) {
-            String value = params.get(field);
-            if (value != null && !value.isEmpty()) {
-                String encoded = URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
-                query.append(field).append('=').append(encoded).append('&');
-            }
-        }
-        if (query.length() > 0) {
-            query.deleteCharAt(query.length() - 1); // XÓA & CUỐI
-        }
-        query.append("&vnp_SecureHash=").append(vnp_SecureHash); // GẮN HASH
+        // === BƯỚC 3: TẠO URL ĐÃ ENCODE ĐÚNG (vnp_SecureHash giữ nguyên) ===
+        String paymentUrl = buildSafeQueryUrl(vnpUrl, params, vnp_SecureHash);
 
-        String paymentUrl = vnpUrl + "?" + query.toString();
-
-        // === LOG CHI TIẾT ===
+        // === LOG ===
         logger.info("=== VNPAY URL CREATED ===");
         logger.info("Order ID: {}", orderId);
         logger.info("Amount: {} VND → vnp_Amount: {}", amount, vnpAmount);
@@ -333,11 +336,34 @@ public class VNPayService {
         logger.info("HashData: {}", hashData);
         logger.info("SecureHash: {}", vnp_SecureHash);
         logger.info("Payment URL: {}", paymentUrl);
-        logger.info("==========================");
+        logger.info("==============================");
 
         return paymentUrl;
     }
 
+    // === TẠO URL AN TOÀN: vnp_SecureHash KHÔNG BỊ ENCODE ===
+    private String buildSafeQueryUrl(String baseUrl, Map<String, String> params, String secureHash) throws Exception {
+        List<String> fieldNames = new ArrayList<>(params.keySet());
+        Collections.sort(fieldNames);
+
+        StringBuilder query = new StringBuilder();
+        for (String field : fieldNames) {
+            String value = params.get(field);
+            if (value != null && !value.isEmpty()) {
+                String encoded = URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+                if (query.length() > 0) query.append("&");
+                query.append(field).append("=").append(encoded);
+            }
+        }
+        if (query.length() > 0) {
+            query.append("&");
+        }
+        query.append("vnp_SecureHash=").append(secureHash); // GIỮ NGUYÊN
+
+        return baseUrl + "?" + query.toString();
+    }
+
+    // === HMAC SHA512 ===
     private String hmacSHA512(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA512");
@@ -358,6 +384,7 @@ public class VNPayService {
         return sb.toString();
     }
 
+    // === CALLBACK VALIDATION ===
     public boolean validateCallback(Map<String, String> params) throws Exception {
         String receivedHash = params.get("vnp_SecureHash");
         if (receivedHash == null || receivedHash.isEmpty()) return false;
@@ -379,7 +406,7 @@ public class VNPayService {
             }
         }
         if (hashData.length() > 0) {
-            hashData.deleteCharAt(hashData.length() - 1); // XÓA & CUỐI
+            hashData.deleteCharAt(hashData.length() - 1);
         }
 
         String calculatedHash = hmacSHA512(hashSecret, hashData.toString());
