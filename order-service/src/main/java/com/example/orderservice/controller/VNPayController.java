@@ -133,7 +133,10 @@ public class VNPayController {
         if (orderId == null || orderId.isEmpty()) orderId = "unknown";
 
         String webUrl = "http://localhost:5173/payment-success";
-        String mobileDeepLink = "furnimartmobileapp://order-success";
+
+        // DEEP LINK CHUẨN: TRUYỀN orderId + status
+        String mobileDeepLink = "furnimartmobileapp://order-success?orderId=" + orderId +
+                "&status=" + ("00".equals(responseCode) ? "success" : "failed");
 
         boolean isMobile = userAgent != null && (
                 userAgent.toLowerCase().contains("android") ||
@@ -147,32 +150,28 @@ public class VNPayController {
         String message = "Vui lòng chờ";
         String color = "#3B6C46";
 
-            if (signValue.equalsIgnoreCase(secureHash)) {
+        if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
                 title = "Thanh toán thành công!";
                 message = "Đơn hàng #" + orderId + " đã được thanh toán.";
                 color = "#3B6C46";
-                redirectUrl = isMobile
-                        ? mobileDeepLink + "?status=success&orderId=" + orderId
-                        : webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8);
             } else {
                 title = "Thanh toán thất bại";
                 message = "Mã lỗi: " + responseCode;
                 color = "#dc3545";
-                redirectUrl = isMobile
-                        ? mobileDeepLink + "?status=failed&code=" + responseCode
-                        : webUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8);
             }
         } else {
             title = "Giao dịch không hợp lệ";
             message = "Chữ ký không khớp.";
             color = "#dc3545";
-            redirectUrl = isMobile
-                    ? mobileDeepLink + "?status=invalid"
-                    : webUrl + "?status=invalid";
         }
 
-        // DÙNG String.format → KHÔNG LỖI %
+        // redirectUrl: mobile → deep link, web → webUrl
+        redirectUrl = isMobile ? mobileDeepLink : webUrl +
+                "?status=" + ("00".equals(responseCode) ? "success" : "failed") +
+                "&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8);
+
+        // HTML: HIỆN 5S → TỰ ĐỘNG VỀ APP
         String html = String.format("""
 <!DOCTYPE html>
 <html lang="vi">
@@ -188,6 +187,7 @@ public class VNPayController {
         .btn { background: #3B6C46; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; display: inline-block; font-weight: 600; font-size: 16px; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid %s; border-radius: 50%%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
+        .countdown { font-size: 14px; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -195,44 +195,40 @@ public class VNPayController {
         <div class="spinner"></div>
         <h1>%s</h1>
         <p>%s</p>
-        <a href="#" class="btn" id="returnBtn">Quay lại ứng dụng</a>
+        <a href="%s" class="btn" id="returnBtn">Quay lại ứng dụng ngay</a>
+        <div class="countdown">Tự động quay lại sau <span id="timer">5</span>s...</div>
     </div>
 
     <script>
-        // GỌI API CẬP NHẬT STATUS
-        fetch('https://furnimart.click/api/orders/status/%s?status=%s', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer YOUR_JWT_TOKEN_IF_NEEDED' // Nếu cần JWT
-            }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('API error');
-            return response.json();
-        })
-        .then(() => {
-            // GỌI XONG → MỞ APP NGAY
-            window.location.href = "%s";
-        })
-        .catch(err => {
-            console.error('API Error:', err);
-            // DÙ LỖI → VẪN MỞ APP
-            window.location.href = "%s";
-        });
+        let timeLeft = 5;
+        const timerEl = document.getElementById('timer');
+        const redirectUrl = "%s";
 
-        // Bấm nút cũng mở app (dự phòng)
-        document.getElementById('returnBtn').addEventListener('click', (e) => {
+        // ĐẾM NGƯỢC 5S
+        const countdown = setInterval(() => {
+            timeLeft--;
+            timerEl.textContent = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                window.location.href = redirectUrl;
+            }
+        }, 1000);
+
+        // Bấm nút → về ngay
+        document.getElementById('returnBtn').onclick = (e) => {
             e.preventDefault();
-            window.location.href = "%s";
-        });
+            clearInterval(countdown);
+            window.location.href = redirectUrl;
+        };
     </script>
 </body>
 </html>
 """,
                 title, color, color, title, message,
-                orderId, "00".equals(responseCode) ? "PAYMENT" : "CANCELLED",  // status gửi API
-                redirectUrl, redirectUrl, redirectUrl);
+                redirectUrl, redirectUrl
+        );
+
+        response.getWriter().write(html);
     }
 
 
