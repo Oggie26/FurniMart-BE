@@ -147,7 +147,7 @@ public class VNPayController {
         String message = "Vui lòng chờ";
         String color = "#3B6C46";
 
-        if (signValue.equalsIgnoreCase(secureHash)) {
+            if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
                 title = "Thanh toán thành công!";
                 message = "Đơn hàng #" + orderId + " đã được thanh toán.";
@@ -174,42 +174,65 @@ public class VNPayController {
 
         // DÙNG String.format → KHÔNG LỖI %
         String html = String.format("""
-        <!DOCTYPE html>
-        <html lang="vi">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>%s</title>
-            <style>
-                body { font-family: -apple-system, sans-serif; background: #f8f9fa; margin: 0; padding: 40px; text-align: center; }
-                .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-                h1 { color: %s; margin: 0 0 16px; font-size: 24px; }
-                p { color: #555; margin: 0 0 24px; font-size: 16px; }
-                .btn { background: #3B6C46; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; display: inline-block; font-weight: 600; font-size: 16px; }
-                .spinner { border: 4px solid #f3f3f3; border-top: 4px solid %s; border-radius: 50%%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
-                @keyframes spin { 
-                    0%% { transform: rotate(0deg); } 
-                    100%% { transform: rotate(360deg); } 
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="spinner"></div>
-                <h1>%s</h1>
-                <p>%s</p>
-                <a href="%s" class="btn">Quay lại ứng dụng</a>
-            </div>
-            <script>
-                setTimeout(() => {
-                    window.location.href = "%s";
-                }, 2000);
-            </script>
-        </body>
-        </html>
-        """, title, color, color, title, message, redirectUrl, redirectUrl);
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>%s</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f8f9fa; margin: 0; padding: 40px; text-align: center; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: %s; margin: 0 0 16px; font-size: 24px; }
+        p { color: #555; margin: 0 0 24px; font-size: 16px; }
+        .btn { background: #3B6C46; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; display: inline-block; font-weight: 600; font-size: 16px; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid %s; border-radius: 50%%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>%s</h1>
+        <p>%s</p>
+        <a href="#" class="btn" id="returnBtn">Quay lại ứng dụng</a>
+    </div>
 
-        response.getWriter().write(html);
+    <script>
+        // GỌI API CẬP NHẬT STATUS
+        fetch('https://furnimart.click/api/orders/status/%s?status=%s', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer YOUR_JWT_TOKEN_IF_NEEDED' // Nếu cần JWT
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('API error');
+            return response.json();
+        })
+        .then(() => {
+            // GỌI XONG → MỞ APP NGAY
+            window.location.href = "%s";
+        })
+        .catch(err => {
+            console.error('API Error:', err);
+            // DÙ LỖI → VẪN MỞ APP
+            window.location.href = "%s";
+        });
+
+        // Bấm nút cũng mở app (dự phòng)
+        document.getElementById('returnBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = "%s";
+        });
+    </script>
+</body>
+</html>
+""",
+                title, color, color, title, message,
+                orderId, "00".equals(responseCode) ? "PAYMENT" : "CANCELLED",  // status gửi API
+                redirectUrl, redirectUrl, redirectUrl);
     }
 
 
