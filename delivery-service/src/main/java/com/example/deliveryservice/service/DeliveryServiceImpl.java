@@ -301,7 +301,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         try {
             ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(assignment.getOrderId());
             if (orderResponse.getBody() != null && orderResponse.getBody().getData() != null) {
-                order = orderResponse.getBody().getData();
+                order = sanitizeOrderResponse(orderResponse.getBody().getData());
             }
         } catch (Exception e) {
             log.warn("Failed to fetch order {}: {}", assignment.getOrderId(), e.getMessage());
@@ -332,6 +332,56 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .productsPreparedAt(assignment.getProductsPreparedAt())
                 .order(order)
                 .store(store)
+                .build();
+    }
+
+    /**
+     * Sanitize OrderResponse for delivery staff - remove sensitive user information
+     * and ensure data consistency
+     */
+    private OrderResponse sanitizeOrderResponse(OrderResponse order) {
+        if (order == null) {
+            return null;
+        }
+
+        // Sanitize user information - only keep essential fields for delivery
+        UserResponse sanitizedUser = null;
+        if (order.getUser() != null) {
+            sanitizedUser = UserResponse.builder()
+                    .id(order.getUser().getId())
+                    .fullName(order.getUser().getFullName())
+                    .email(order.getUser().getEmail())
+                    .phone(order.getUser().getPhone())
+                    .gender(order.getUser().getGender())
+                    .birthday(order.getUser().getBirthday())
+                    .avatar(order.getUser().getAvatar())
+                    // Removed: role, status, createdAt, updatedAt, cccd, point
+                    .build();
+        }
+
+        // Ensure depositPrice is not null (set to 0 if null)
+        Double depositPrice = order.getDepositPrice();
+        if (depositPrice == null) {
+            depositPrice = 0.0;
+        }
+
+        // Build sanitized order response
+        return OrderResponse.builder()
+                .id(order.getId())
+                .user(sanitizedUser)
+                .storeId(order.getStoreId())
+                .address(order.getAddress())
+                .total(order.getTotal())
+                .note(order.getNote())
+                .orderDate(order.getOrderDate())
+                .status(order.getStatus())
+                .reason(order.getReason())
+                .orderDetails(order.getOrderDetails())
+                .processOrders(order.getProcessOrders())
+                .payment(order.getPayment())
+                .qrCode(order.getQrCode())
+                .depositPrice(depositPrice)
+                .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .build();
     }
 }

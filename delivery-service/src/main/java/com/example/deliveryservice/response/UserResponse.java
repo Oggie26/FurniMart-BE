@@ -1,5 +1,6 @@
 package com.example.deliveryservice.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +12,7 @@ import java.util.Date;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UserResponse {
     private String id;
     private String fullName;
@@ -19,11 +21,7 @@ public class UserResponse {
     private Boolean gender;
     private Date birthday;
     private String avatar;
-    private String cccd;
-    private Integer point;
-    private String role;
-    private String status;
-    private Date createdAt;
-    private Date updatedAt;
+    // Removed: cccd, point, role, status, createdAt, updatedAt
+    // These fields are not needed for delivery staff
 }
 
