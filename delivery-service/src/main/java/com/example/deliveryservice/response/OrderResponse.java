@@ -15,15 +15,19 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderResponse {
     private Long id;
-    private String userId;
+    private UserResponse user;
     private String storeId;
+    private AddressResponse address;
     private Double total;
     private String note;
     private Date orderDate;
     private EnumProcessOrder status;
     private String reason;
     private List<OrderDetailResponse> orderDetails;
+    private List<ProcessOrderResponse> processOrders;
+    private PaymentResponse payment;
     private String qrCode;
+    private Double depositPrice;
     private Date qrCodeGeneratedAt;
 }
 
