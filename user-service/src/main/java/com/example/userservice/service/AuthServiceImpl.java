@@ -19,6 +19,7 @@ import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
 import com.example.userservice.service.inteface.AuthService;
+import com.example.userservice.service.inteface.WalletService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class AuthServiceImpl implements AuthService {
     private final EmployeeStoreRepository employeeStoreRepository;
     private final TokenService tokenService;
     private final KafkaTemplate<String, AccountCreatedEvent> kafkaTemplate;
+    private final WalletService walletService;
 
     @Override
     @Transactional
@@ -75,7 +77,16 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         accountRepository.save(account);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Auto-create wallet for new customer
+        try {
+            walletService.createWalletForUser(savedUser.getId());
+            log.info("Wallet auto-created for new customer: {}", savedUser.getId());
+        } catch (Exception e) {
+            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage());
+            // Don't fail registration if wallet creation fails, but log the error
+        }
 
         AccountCreatedEvent event = new AccountCreatedEvent(account.getId(),user.getFullName() , account.getEmail(),EnumRole.CUSTOMER);
 

@@ -10,6 +10,7 @@ import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.response.LoginResponse;
+import com.example.userservice.service.inteface.WalletService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class GoogleOAuth2Service {
     private final TokenService tokenService;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
+    private final WalletService walletService;
 
     @Transactional
     public LoginResponse authenticateWithGoogle(String googleAccessToken) {
@@ -142,7 +144,16 @@ public class GoogleOAuth2Service {
                 .account(savedAccount)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Auto-create wallet for new customer
+        try {
+            walletService.createWalletForUser(savedUser.getId());
+            log.info("Wallet auto-created for new Google OAuth user: {}", savedUser.getId());
+        } catch (Exception e) {
+            log.error("Failed to auto-create wallet for Google OAuth user {}: {}", savedUser.getId(), e.getMessage());
+            // Don't fail user creation if wallet creation fails, but log the error
+        }
 
         log.info("Created new user from Google OAuth: {}", userInfo.getEmail());
         return savedAccount;
