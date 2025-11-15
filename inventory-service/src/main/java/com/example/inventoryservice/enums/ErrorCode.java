@@ -61,6 +61,9 @@ public enum ErrorCode {
     EXCEEDS_MAX_QUANTITY(1205,"Exceeds maximum quantity", HttpStatus.CONFLICT),
     BELOW_MIN_QUANTITY(1206,"Below Minimum quantity", HttpStatus.CONFLICT),
     WAREHOUSE_CAPACITY_EXCEEDED(1207, "Warehouse capacity exceeded", HttpStatus.CONFLICT),
+    INVALID_TYPE(1208,"Invalid token ", HttpStatus.CONFLICT),
+    INVALID_INPUT(1209,"Invalid Input", HttpStatus.BAD_REQUEST)
+    ,
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

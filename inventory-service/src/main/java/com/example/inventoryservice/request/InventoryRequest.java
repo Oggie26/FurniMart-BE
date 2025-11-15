@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -28,4 +29,7 @@ public class InventoryRequest {
     private String note;
 
     private String warehouseId;
+
+    @NotEmpty(message = "Phải có ít nhất 1 sản phẩm")
+    private List<InventoryItemRequest> items;
 }

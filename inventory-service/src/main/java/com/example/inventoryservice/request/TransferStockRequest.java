@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -37,4 +39,7 @@ public class TransferStockRequest {
 
     @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity;
+
+    private List<InventoryItemRequest> items; // danh sách sản phẩm cần chuyển
+
 }

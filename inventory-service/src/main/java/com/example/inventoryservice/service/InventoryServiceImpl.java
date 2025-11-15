@@ -43,9 +43,11 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
 
+        // Lấy kho
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
+        // Tạo inventory
         Inventory inventory = Inventory.builder()
                 .employeeId(getUserId())
                 .type(request.getType())
@@ -54,11 +56,71 @@ public class InventoryServiceImpl implements InventoryService {
                 .note(request.getNote())
                 .warehouse(warehouse)
                 .build();
-        log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
 
         inventoryRepository.save(inventory);
+        log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return mapToInventoryResponse(inventory);
+        }
+
+        for (InventoryItemRequest itemReq : request.getItems()) {
+
+            switch (request.getType()) {
+
+                case IMPORT -> {
+                    LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
+                            .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+
+                    String zoneId = location.getZone().getId();
+                    if (!checkZoneCapacity(zoneId, itemReq.getQuantity())) {
+                        throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+                    }
+
+                    createInventoryItem(inventory, itemReq.getLocationItemId(),
+                            itemReq.getProductColorId(), itemReq.getQuantity());
+                }
+
+                case EXPORT -> {
+                    List<InventoryItem> items = inventoryItemRepository
+                            .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(),
+                                    warehouse.getId());
+
+                    if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+
+                    int remaining = itemReq.getQuantity();
+
+                    for (InventoryItem it : items) {
+                        int available = it.getQuantity() - it.getReservedQuantity();
+                        if (available <= 0) continue;
+
+                        int toExport = Math.min(available, remaining);
+                        it.setQuantity(it.getQuantity() - toExport);
+                        inventoryItemRepository.save(it);
+
+                        remaining -= toExport;
+                        if (remaining <= 0) break;
+                    }
+
+                    if (remaining > 0)
+                        throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+
+                    createInventoryItem(inventory, itemReq.getLocationItemId(),
+                            itemReq.getProductColorId(), -itemReq.getQuantity());
+                }
+
+                case TRANSFER -> {
+                    break;
+                }
+
+
+                default -> throw new AppException(ErrorCode.INVALID_TYPE);
+            }
+        }
+
         return mapToInventoryResponse(inventory);
     }
+
 
     @Override
     @Transactional
@@ -151,15 +213,14 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public void transferStock(TransferStockRequest request) {
+
+        // Kiểm tra các thông tin chung
         if (request.getFromWarehouseId() == null || request.getToWarehouseId() == null)
             throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
         if (request.getFromZoneId() == null || request.getToZoneId() == null)
             throw new AppException(ErrorCode.ZONE_NOT_FOUND);
         if (request.getFromLocationItemId() == null || request.getToLocationItemId() == null)
             throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
-
-        String productColorId = request.getProductColorId();
-        int quantity = request.getQuantity();
 
         Warehouse fromWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getFromWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
@@ -176,27 +237,39 @@ public class InventoryServiceImpl implements InventoryService {
         LocationItem toLocation = locationItemRepository.findByIdAndIsDeletedFalse(request.getToLocationItemId())
                 .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-        if (!hasSufficientStock(productColorId, fromWarehouse.getId(), quantity))
-            throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-
-        // Xuất khỏi kho nguồn
+        // Tạo 1 phiếu xuất kho tổng
         Inventory exportInventory = createInventory(
                 fromWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
                 "Transfer OUT to " + toWarehouse.getWarehouseName() + " / Zone: " + toZone.getZoneName()
         );
-        createInventoryItem(exportInventory, fromLocation.getId(), productColorId, -quantity);
 
-        // Nhập vào kho đích
+        // Tạo 1 phiếu nhập kho tổng
         Inventory importInventory = createInventory(
                 toWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
                 "Transfer IN from " + fromWarehouse.getWarehouseName() + " / Zone: " + fromZone.getZoneName()
         );
-        createInventoryItem(importInventory, toLocation.getId(), productColorId, quantity);
+
+        if (request.getItems() != null && !request.getItems().isEmpty()) {
+            for (InventoryItemRequest item : request.getItems()) {
+                if (!hasSufficientStock(item.getProductColorId(), fromWarehouse.getId(), item.getQuantity()))
+                    throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+
+                createInventoryItem(exportInventory, fromLocation.getId(), item.getProductColorId(), -item.getQuantity());
+                createInventoryItem(importInventory, toLocation.getId(), item.getProductColorId(), item.getQuantity());
+            }
+        } else {
+            if (!hasSufficientStock(request.getProductColorId(), fromWarehouse.getId(), request.getQuantity()))
+                throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+
+            createInventoryItem(exportInventory, fromLocation.getId(), request.getProductColorId(), -request.getQuantity());
+            createInventoryItem(importInventory, toLocation.getId(), request.getProductColorId(), request.getQuantity());
+        }
     }
+
 
     // ----------------- RESERVE / RELEASE -----------------
 
