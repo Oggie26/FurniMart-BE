@@ -33,7 +33,6 @@ public class WalletController {
     @PostMapping
     @Operation(summary = "Create new wallet")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletResponse> createWallet(@Valid @RequestBody WalletRequest request) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -44,7 +43,6 @@ public class WalletController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get wallet by ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#id).userId == authentication.name")
     public ApiResponse<WalletResponse> getWalletById(@PathVariable String id) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -55,7 +53,6 @@ public class WalletController {
 
     @GetMapping("/user/{userId}")
     @Operation(summary = "Get wallet by user ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or #userId == authentication.name")
     public ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -66,7 +63,6 @@ public class WalletController {
 
     @GetMapping("/code/{code}")
     @Operation(summary = "Get wallet by code")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletResponse> getWalletByCode(@PathVariable String code) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -77,7 +73,6 @@ public class WalletController {
 
     @GetMapping
     @Operation(summary = "Get all wallets")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<List<WalletResponse>> getAllWallets() {
         return ApiResponse.<List<WalletResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -88,7 +83,6 @@ public class WalletController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update wallet")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletResponse> updateWallet(@PathVariable String id, @Valid @RequestBody WalletRequest request) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -100,7 +94,6 @@ public class WalletController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete wallet")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteWallet(@PathVariable String id) {
         walletService.deleteWallet(id);
         return ApiResponse.<Void>builder()
@@ -112,7 +105,6 @@ public class WalletController {
     @PostMapping("/transactions")
     @Operation(summary = "Create wallet transaction")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletTransactionResponse> createTransaction(@Valid @RequestBody WalletTransactionRequest request) {
         return ApiResponse.<WalletTransactionResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -123,7 +115,6 @@ public class WalletController {
 
     @GetMapping("/transactions/{id}")
     @Operation(summary = "Get transaction by ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletTransactionResponse> getTransactionById(@PathVariable String id) {
         return ApiResponse.<WalletTransactionResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -134,7 +125,6 @@ public class WalletController {
 
     @GetMapping("/{walletId}/transactions")
     @Operation(summary = "Get transactions by wallet ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
     public ApiResponse<List<WalletTransactionResponse>> getTransactionsByWalletId(@PathVariable String walletId) {
         return ApiResponse.<List<WalletTransactionResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -145,7 +135,6 @@ public class WalletController {
 
     @GetMapping("/{walletId}/transactions/paged")
     @Operation(summary = "Get transactions by wallet ID with pagination")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
     public ApiResponse<PageResponse<WalletTransactionResponse>> getTransactionsByWalletIdPaged(
             @PathVariable String walletId,
             @RequestParam(defaultValue = "0") int page,
@@ -173,7 +162,6 @@ public class WalletController {
 
     @PostMapping("/{walletId}/deposit")
     @Operation(summary = "Deposit to wallet")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletResponse> deposit(
             @PathVariable String walletId,
             @RequestParam Double amount,
@@ -189,7 +177,6 @@ public class WalletController {
 
     @PostMapping("/{walletId}/withdraw")
     @Operation(summary = "Withdraw from wallet")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
     public ApiResponse<WalletResponse> withdraw(
             @PathVariable String walletId,
             @RequestParam Double amount,
@@ -205,7 +192,6 @@ public class WalletController {
 
     @PostMapping("/transfer")
     @Operation(summary = "Transfer between wallets")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#fromWalletId).userId == authentication.name")
     public ApiResponse<WalletResponse> transfer(
             @RequestParam String fromWalletId,
             @RequestParam String toWalletId,
@@ -222,7 +208,6 @@ public class WalletController {
 
     @GetMapping("/{walletId}/balance")
     @Operation(summary = "Get wallet balance")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
     public ApiResponse<Double> getWalletBalance(@PathVariable String walletId) {
         return ApiResponse.<Double>builder()
                 .status(HttpStatus.OK.value())
