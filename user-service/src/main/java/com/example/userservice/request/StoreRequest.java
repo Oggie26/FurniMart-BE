@@ -18,7 +18,6 @@ public class StoreRequest {
     @NotBlank(message = "Thành phố không được để trống")
     private String city;
     
-    @NotBlank(message = "Quận/Huyện không được để trống")
     private String district;
     
     @NotBlank(message = "Phường/Xã không được để trống")
