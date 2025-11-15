@@ -143,8 +143,6 @@ public class InventoryServiceImpl implements InventoryService {
                 "Export stock"
         );
 
-        createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), -request.getQuantity());
-
         return mapToInventoryResponse(inventory);
     }
 
