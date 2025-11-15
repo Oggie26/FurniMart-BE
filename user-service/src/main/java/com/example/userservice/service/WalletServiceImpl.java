@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,12 +43,12 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse createWallet(WalletRequest request) {
         log.info("Creating wallet with code: {}", request.getCode());
 
-        // Check if wallet code already exists
+        // Check if wallet code already exists (not deleted)
         if (walletRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
             throw new AppException(ErrorCode.WALLET_CODE_EXISTS);
         }
 
-        // Check if user already has a wallet
+        // Check if user already has an active wallet
         if (walletRepository.existsByUserIdAndIsDeletedFalse(request.getUserId())) {
             throw new AppException(ErrorCode.USER_ALREADY_HAS_WALLET);
         }
@@ -56,6 +57,25 @@ public class WalletServiceImpl implements WalletService {
         User user = userRepository.findByIdAndIsDeletedFalse(request.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        // Check if user has a deleted wallet (soft delete) - restore it instead of creating new
+        Optional<Wallet> deletedWallet = walletRepository.findByUserId(request.getUserId());
+        if (deletedWallet.isPresent() && deletedWallet.get().getIsDeleted()) {
+            Wallet wallet = deletedWallet.get();
+            log.info("Found deleted wallet for user {}, restoring it instead of creating new", request.getUserId());
+            
+            // Restore wallet
+            wallet.setIsDeleted(false);
+            wallet.setCode(request.getCode());
+            wallet.setBalance(request.getBalance());
+            wallet.setStatus(request.getStatus());
+            
+            wallet = walletRepository.save(wallet);
+            log.info("Wallet restored successfully with ID: {}", wallet.getId());
+            
+            return mapToWalletResponse(wallet, user);
+        }
+
+        // Create new wallet
         Wallet wallet = Wallet.builder()
                 .code(request.getCode())
                 .balance(request.getBalance())
@@ -334,7 +354,7 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse createWalletForUser(String userId) {
         log.info("Auto-creating wallet for user: {}", userId);
 
-        // Check if user already has a wallet
+        // Check if user already has an active wallet
         if (walletRepository.existsByUserIdAndIsDeletedFalse(userId)) {
             log.warn("User {} already has a wallet, returning existing wallet", userId);
             return getWalletByUserId(userId);
@@ -343,6 +363,27 @@ public class WalletServiceImpl implements WalletService {
         // Verify user exists
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Check if user has a deleted wallet (soft delete) - restore it instead of creating new
+        Optional<Wallet> deletedWallet = walletRepository.findByUserId(userId);
+        if (deletedWallet.isPresent() && deletedWallet.get().getIsDeleted()) {
+            Wallet wallet = deletedWallet.get();
+            log.info("Found deleted wallet for user {}, restoring it instead of creating new", userId);
+            
+            // Restore wallet with default values
+            wallet.setIsDeleted(false);
+            // Generate new unique wallet code if needed
+            String walletCode = generateWalletCode();
+            wallet.setCode(walletCode);
+            wallet.setBalance(BigDecimal.ZERO);
+            wallet.setStatus(WalletStatus.ACTIVE);
+            
+            wallet = walletRepository.save(wallet);
+            log.info("Wallet restored successfully for user {} with ID: {} and code: {}", 
+                    userId, wallet.getId(), walletCode);
+            
+            return mapToWalletResponse(wallet, user);
+        }
 
         // Generate unique wallet code
         String walletCode = generateWalletCode();

@@ -27,4 +27,8 @@ public interface WalletRepository extends JpaRepository<Wallet, String> {
     boolean existsByCodeAndIsDeletedFalse(String code);
     
     boolean existsByUserIdAndIsDeletedFalse(String userId);
+    
+    // Find wallet by userId including deleted ones (for restore purpose)
+    @Query("SELECT w FROM Wallet w WHERE w.userId = :userId")
+    Optional<Wallet> findByUserId(@Param("userId") String userId);
 }
