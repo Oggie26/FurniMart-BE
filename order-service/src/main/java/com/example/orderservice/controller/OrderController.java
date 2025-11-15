@@ -81,13 +81,20 @@ public class OrderController {
 
             orderResponse.setDepositPrice(deposit);
             orderRepository.save(order);
-//            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
-            return ApiResponse.<Void>builder()
-                    .status(HttpStatus.OK.value())
-                    .message("Đặt hàng thành công")
-                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
-                    .build();
+            if(order.getTotal() > 10000000){
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
+                        .build();
+            }else {
+                orderService.handlePaymentCOD(orderResponse.getId());
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .build();
+            }
         }
     }
 
@@ -124,13 +131,23 @@ public class OrderController {
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            double deposit = Math.round((orderResponse.getTotal() * 0.3) * 100.0) / 100.0; // Làm tròn 2 số thập phân
             orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
+            if (orderResponse.getTotal() > 10000000) {
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
+                        .build();
+            } else {
+                orderService.handlePaymentCOD(orderResponse.getId());
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .build();
+            }
 
-            return ApiResponse.<Void>builder()
-                    .status(HttpStatus.OK.value())
-                    .message("Đặt hàng thành công")
-                    .build();
         }
     }
 
