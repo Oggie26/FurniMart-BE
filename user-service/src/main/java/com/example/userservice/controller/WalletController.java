@@ -31,7 +31,12 @@ public class WalletController {
     private final WalletService walletService;
 
     @PostMapping
-    @Operation(summary = "Create new wallet")
+    @Operation(
+            summary = "Create new wallet",
+            description = "Create a new wallet manually. Note: Wallets are automatically created for CUSTOMER users during registration. " +
+                    "This API is primarily for ADMIN/STAFF to create wallets manually if needed. " +
+                    "Each user can only have one wallet."
+    )
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<WalletResponse> createWallet(@Valid @RequestBody WalletRequest request) {
         return ApiResponse.<WalletResponse>builder()

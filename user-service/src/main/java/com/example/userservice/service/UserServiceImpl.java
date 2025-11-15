@@ -13,6 +13,7 @@ import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.*;
 import com.example.userservice.service.inteface.EmployeeService;
 import com.example.userservice.service.inteface.UserService;
+import com.example.userservice.service.inteface.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -37,6 +38,7 @@ public class UserServiceImpl implements UserService {
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeService employeeService;
+    private final WalletService walletService;
 
     @Override
     @Transactional
@@ -81,6 +83,16 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        
+        // Auto-create wallet for new customer
+        try {
+            walletService.createWalletForUser(savedUser.getId());
+            log.info("Wallet auto-created for new customer: {}", savedUser.getId());
+        } catch (Exception e) {
+            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage());
+            // Don't fail user creation if wallet creation fails, but log the error
+        }
+        
         log.info("Created CUSTOMER user: {} with email: {}", savedUser.getId(), savedAccount.getEmail());
         return toUserResponse(savedUser);
     }

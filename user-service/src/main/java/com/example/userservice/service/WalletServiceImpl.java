@@ -329,6 +329,58 @@ public class WalletServiceImpl implements WalletService {
         return balance >= amount;
     }
 
+    @Override
+    @Transactional
+    public WalletResponse createWalletForUser(String userId) {
+        log.info("Auto-creating wallet for user: {}", userId);
+
+        // Check if user already has a wallet
+        if (walletRepository.existsByUserIdAndIsDeletedFalse(userId)) {
+            log.warn("User {} already has a wallet, returning existing wallet", userId);
+            return getWalletByUserId(userId);
+        }
+
+        // Verify user exists
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Generate unique wallet code
+        String walletCode = generateWalletCode();
+
+        // Create wallet with default values
+        Wallet wallet = Wallet.builder()
+                .code(walletCode)
+                .balance(BigDecimal.ZERO)
+                .status(WalletStatus.ACTIVE)
+                .userId(userId)
+                .build();
+
+        wallet = walletRepository.save(wallet);
+        log.info("Wallet auto-created successfully for user {} with ID: {} and code: {}", 
+                userId, wallet.getId(), walletCode);
+
+        return mapToWalletResponse(wallet, user);
+    }
+
+    private String generateWalletCode() {
+        String code;
+        int attempts = 0;
+        int maxAttempts = 10;
+        
+        do {
+            // Generate code: WLT-{UUID first 8 chars}
+            code = "WLT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            attempts++;
+            
+            if (attempts >= maxAttempts) {
+                log.error("Failed to generate unique wallet code after {} attempts", maxAttempts);
+                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+        } while (walletRepository.existsByCodeAndIsDeletedFalse(code));
+        
+        return code;
+    }
+
     private boolean isDebitTransaction(WalletTransactionType type) {
         return type == WalletTransactionType.WITHDRAWAL ||
                type == WalletTransactionType.TRANSFER_OUT ||

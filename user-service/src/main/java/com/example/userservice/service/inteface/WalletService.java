@@ -44,4 +44,7 @@ public interface WalletService {
     Double getWalletBalance(String walletId);
     
     boolean hasBalance(String walletId, Double amount);
+    
+    // Auto-create wallet for new customer
+    WalletResponse createWalletForUser(String userId);
 }
