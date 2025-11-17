@@ -33,8 +33,11 @@ public class Wallet extends AbstractEntity {
     @Column(nullable = false)
     private WalletStatus status;
 
+    @Column(name = "user_id", nullable = false)
+    private String userId;
+
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
 
     @OneToMany(mappedBy = "wallet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
