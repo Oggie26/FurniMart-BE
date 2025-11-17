@@ -224,6 +224,11 @@ public class UserServiceImpl implements UserService {
                         return new AppException(ErrorCode.USER_NOT_FOUND);
                     });
             
+            if (user.getAccount() == null) {
+                log.error("User {} does not have an associated account", user.getId());
+                throw new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
+            }
+            
             log.info("Found user to delete: {} (email: {})", user.getFullName(), user.getAccount().getEmail());
             
             user.setStatus(EnumStatus.DELETED);
@@ -249,6 +254,11 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        if (user.getAccount() == null) {
+            log.error("User {} does not have an associated account", user.getId());
+            throw new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
+
         user.setStatus(EnumStatus.INACTIVE);
         user.getAccount().setStatus(EnumStatus.INACTIVE);
         
@@ -263,6 +273,11 @@ public class UserServiceImpl implements UserService {
 
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getAccount() == null) {
+            log.error("User {} does not have an associated account", user.getId());
+            throw new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
 
         user.setStatus(EnumStatus.ACTIVE);
         user.getAccount().setStatus(EnumStatus.ACTIVE);
@@ -316,6 +331,11 @@ public class UserServiceImpl implements UserService {
         
         User user = userRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getAccount() == null) {
+            log.error("User {} does not have an associated account", user.getId());
+            throw new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
 
         Account account = user.getAccount();
         
@@ -410,6 +430,11 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUserRole(String userId, EnumRole newRole) {
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        if (user.getAccount() == null) {
+            log.error("User {} does not have an associated account", user.getId());
+            throw new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
+        }
         
         if (user.getAccount().getRole() == EnumRole.CUSTOMER) {
             throw new AppException(ErrorCode.CANNOT_UPDATE_CUSTOMER_ROLE);
