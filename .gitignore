@@ -3,7 +3,8 @@
 README.md
 CHANGELOG.md
 *.mdx
-
+.test-data/
+.test-scripts/
 # Scripts (May contain sensitive info, credentials, or server details)
 *.sh
 *.ps1
