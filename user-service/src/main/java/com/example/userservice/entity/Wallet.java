@@ -33,9 +33,6 @@ public class Wallet extends AbstractEntity {
     @Column(nullable = false)
     private WalletStatus status;
 
-    @Column(name = "user_id", nullable = false)
-    private String userId;
-
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
