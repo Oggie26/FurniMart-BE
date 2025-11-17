@@ -40,7 +40,6 @@ public class SecurityConfig {
                 "http://127.0.0.1:3000",
                 "http://152.53.169.79",
                 "https://furnimart-web.vercel.app",
-                "https://furnimart-web.vercel.app/",
                 "https://furnimart.click",
                 "exp://192.168.102.7:8081",
                 "http://172.20.10.4:8081",
@@ -49,7 +48,7 @@ public class SecurityConfig {
                 "http://152.53.227.115:8080"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.addAllowedHeader("*");
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
