@@ -16,7 +16,7 @@ public interface DeliveryService {
     // Get store branch information with stock availability (for guests)
     StoreBranchInfoResponse getStoreBranchInfo(String storeId);
     
-    // Generate invoice (for staff)
+    // Generate invoice (for branch manager)
     DeliveryAssignmentResponse generateInvoice(Long orderId);
     
     // Prepare products for delivery (for staff)
