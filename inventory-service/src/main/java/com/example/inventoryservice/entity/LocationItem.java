@@ -22,7 +22,7 @@ public class LocationItem extends AbstractEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EnumRowLabel rowLabel;
+    private Integer rowLabel;
 
     @Column(nullable = false)
     private Integer columnNumber;
@@ -51,7 +51,7 @@ public class LocationItem extends AbstractEntity {
     @PrePersist
     public void generateCode() {
         if (zone != null && zone.getZoneCode() != null) {
-            this.code = zone.getZoneCode().name() + "-" + rowLabel.name() + "-C" + columnNumber;
+            this.code = zone.getZoneCode().name() + "-" + rowLabel + "-C" + columnNumber;
         }
     }
 }

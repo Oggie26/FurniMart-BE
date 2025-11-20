@@ -17,7 +17,7 @@ public interface LocationItemRepository extends JpaRepository<LocationItem, Stri
     List<LocationItem> findByZoneIdAndIsDeletedFalse(String zoneId);
     Optional<LocationItem> findByZoneIdAndRowLabelAndColumnNumberAndIsDeletedFalse(
             String zoneId,
-            EnumRowLabel rowLabel,
+            Integer rowLabel,
             Integer columnNumber
     );
     @Query(value = """

@@ -17,7 +17,7 @@ import java.util.List;
 public class LocationItemResponse {
 
     private String id;
-    private EnumRowLabel rowLabel;
+    private Integer rowLabel;
     private Integer columnNumber;
     private String code;
     private String description;

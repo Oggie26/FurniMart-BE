@@ -22,7 +22,7 @@ public class LocationItemRequest {
     private String zoneId;
 
     @NotNull(message = "Hàng (rowLabel) không được để trống")
-    private EnumRowLabel rowLabel;
+    private Integer rowLabel;
 
     @NotNull(message = "Số cột không được để trống")
     @Min(value = 1, message = "Số cột phải lớn hơn hoặc bằng 1")
