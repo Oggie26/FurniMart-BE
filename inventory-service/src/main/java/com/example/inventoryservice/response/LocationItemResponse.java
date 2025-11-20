@@ -22,6 +22,7 @@ public class LocationItemResponse {
     private String code;
     private String description;
     private Integer quantity;
+    private Integer currentQuantity;
     private EnumStatus status;
     private List<InventoryItemResponse> itemResponse;
 }

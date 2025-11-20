@@ -22,6 +22,10 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM InventoryItem i WHERE i.productColorId = :productColorId")
     int getTotalQuantityByProductColorId(@Param("productColorId") String productColorId);
 
+    @Query("SELECT COALESCE(SUM(ii.quantity), 0) FROM InventoryItem ii WHERE ii.locationItem.id = :locationId")
+    int sumQuantityByLocationItemId(@Param("locationId") String locationId);
+
+
     // 🔹 Tổng số lượng đang được giữ (reserve)
     @Query("SELECT COALESCE(SUM(i.reservedQuantity), 0) FROM InventoryItem i WHERE i.productColorId = :productColorId")
     int getTotalReservedQuantityByProductColorId(@Param("productColorId") String productColorId);

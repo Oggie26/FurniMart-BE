@@ -7,6 +7,7 @@ import com.example.inventoryservice.enums.EnumStatus;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.ProductClient;
+import com.example.inventoryservice.repository.InventoryItemRepository;
 import com.example.inventoryservice.repository.LocationItemRepository;
 import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.LocationItemRequest;
@@ -30,6 +31,7 @@ public class LocationItemServiceImpl implements LocationItemService {
     private final LocationItemRepository locationItemRepository;
     private final ZoneRepository zoneRepository;
     private final ProductClient productClient;
+    private final InventoryItemRepository inventoryItemRepository;
 
     @Override
     @Transactional
@@ -150,6 +152,29 @@ public class LocationItemServiceImpl implements LocationItemService {
     private LocationItemResponse toLocationItemResponse(LocationItem li) {
         List<InventoryItem> list = li.getInventoryItems();
 
+        List<InventoryItemResponse> itemResponses = list != null
+                ? list.stream()
+                .collect(Collectors.groupingBy(InventoryItem::getProductColorId))
+                .entrySet().stream()
+                .map(entry -> {
+                    List<InventoryItem> items = entry.getValue();
+                    int totalQuantity = items.stream().mapToInt(InventoryItem::getQuantity).sum();
+                    int totalReserved = items.stream().mapToInt(InventoryItem::getReservedQuantity).sum();
+                    InventoryItem first = items.getFirst();
+
+                    return InventoryItemResponse.builder()
+                            .id(first.getId())
+                            .productColorId(entry.getKey())
+                            .quantity(totalQuantity)
+                            .reservedQuantity(totalReserved)
+                            .productName(getProductName(entry.getKey()))
+                            .locationItem(li)
+                            .inventoryId(first.getInventory() != null ? first.getInventory().getId() : null)
+                            .build();
+                })
+                .toList()
+                : Collections.emptyList();
+
         return LocationItemResponse.builder()
                 .id(li.getId())
                 .code(li.getCode())
@@ -157,27 +182,11 @@ public class LocationItemServiceImpl implements LocationItemService {
                 .columnNumber(li.getColumnNumber())
                 .rowLabel(li.getRowLabel())
                 .quantity(li.getQuantity())
-                .itemResponse(list != null
-                        ? list.stream()
-                        .map(this::mapToInventoryItemResponse)
-                        .collect(Collectors.toList())
-                        : Collections.emptyList())
+                .currentQuantity(inventoryItemRepository.sumQuantityByLocationItemId(li.getId()))
+                .itemResponse(itemResponses)
                 .status(li.getStatus())
                 .build();
     }
-
-    private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
-        return InventoryItemResponse.builder()
-                .id(item.getId())
-                .quantity(item.getQuantity())
-                .reservedQuantity(item.getReservedQuantity())
-                .productName(getProductName(item.getProductColorId()))
-                .productColorId(item.getProductColorId())
-                .locationItem(item.getLocationItem())
-                .inventoryId(item.getInventory() != null ? item.getInventory().getId() : null)
-                .build();
-    }
-
 
     private void validateZoneCapacity(Zone zone, Integer newQuantity, String excludeLocationItemId) {
         int totalQuantity = locationItemRepository

@@ -61,6 +61,7 @@ public class InventoryServiceImpl implements InventoryService {
             return mapToInventoryResponse(inventory);
         }
 
+
         for (InventoryItemRequest itemReq : request.getItems()) {
 
             switch (request.getType()) {
@@ -71,6 +72,15 @@ public class InventoryServiceImpl implements InventoryService {
 
                     String zoneId = location.getZone().getId();
                     if (!checkZoneCapacity(zoneId, itemReq.getQuantity())) {
+                        throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+                    }
+                    if(location.getQuantity() < itemReq.getQuantity()) {
+                        throw new AppException(ErrorCode.INVALID_INPUT);
+                    }
+
+                    int currentStock = inventoryItemRepository.sumQuantityByLocationItemId(location.getId());
+
+                    if (currentStock + itemReq.getQuantity() > location.getQuantity()) {
                         throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
                     }
 
