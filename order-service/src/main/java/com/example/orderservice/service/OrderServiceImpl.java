@@ -48,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final AssignOrderServiceImpl assignOrderService;
+    private final PDFService pdfService;
 
     @Override
     @Transactional
@@ -132,6 +133,19 @@ public class OrderServiceImpl implements OrderService {
         order.setProcessOrders(new ArrayList<>(List.of(process)));
 
         orderRepository.save(order);
+
+        // Generate PDF for the order
+        try {
+            UserResponse user = safeGetUser(order.getUserId());
+            AddressResponse address = safeGetAddress(order.getAddressId());
+            String pdfPath = pdfService.generateOrderPDF(order, user, address);
+            order.setPdfFilePath(pdfPath);
+            orderRepository.save(order);
+            log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
+            // Continue even if PDF generation fails
+        }
 
         // Clear cart after creating pre-order
         cart.getItems().clear();
@@ -322,12 +336,21 @@ public class OrderServiceImpl implements OrderService {
                 .orderDetails(
                         order.getOrderDetails() != null
                                 ? order.getOrderDetails().stream()
-                                .map(detail -> OrderDetailResponse.builder()
-                                        .id(detail.getId())
-                                        .productColorId(detail.getProductColorId())
-                                        .quantity(detail.getQuantity())
-                                        .price(detail.getPrice())
-                                        .build())
+                                .map(detail -> {
+                                    ProductColorResponse productColor = null;
+                                    try {
+                                        productColor = getProductColorResponse(detail.getProductColorId());
+                                    } catch (Exception e) {
+                                        log.warn("Failed to get product color for {}: {}", detail.getProductColorId(), e.getMessage());
+                                    }
+                                    return OrderDetailResponse.builder()
+                                            .id(detail.getId())
+                                            .productColorId(detail.getProductColorId())
+                                            .quantity(detail.getQuantity())
+                                            .price(detail.getPrice())
+                                            .productColor(productColor)
+                                            .build();
+                                })
                                 .collect(Collectors.toList())
                                 : Collections.emptyList()
                 )
@@ -346,6 +369,7 @@ public class OrderServiceImpl implements OrderService {
                 .storeId(order.getStoreId())
                 .qrCode(order.getQrCode())
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
+                .pdfFilePath(order.getPdfFilePath())
                 .build();
     }
 

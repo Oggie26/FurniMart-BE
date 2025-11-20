@@ -26,4 +26,5 @@ public class OrderResponse {
     private PaymentResponse payment;
     private String qrCode;
     private Date qrCodeGeneratedAt;
+    private String pdfFilePath;
 }

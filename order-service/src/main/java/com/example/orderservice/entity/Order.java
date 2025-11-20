@@ -69,6 +69,9 @@ public class Order extends AbstractEntity {
     @Temporal(TemporalType.TIMESTAMP)
     private Date qrCodeGeneratedAt;
 
+    @Column(name = "pdf_file_path")
+    private String pdfFilePath;
+
 //    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
 //    private DeliveryConfirmation deliveryConfirmation;
 }

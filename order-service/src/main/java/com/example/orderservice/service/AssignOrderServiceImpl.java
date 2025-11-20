@@ -4,6 +4,7 @@ import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.ProcessOrder;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
+import com.example.orderservice.event.OrderAssignedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.feign.StoreClient;
@@ -14,11 +15,14 @@ import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssignOrderServiceImpl implements AssignOrderService {
@@ -29,6 +33,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final UserClient userClient;
     private final ProcessOrderRepository processOrderRepository;
     private final QRCodeService qrCodeService;
+    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
 
     @Override
     @Transactional
@@ -52,6 +57,60 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         processOrderRepository.save(process);
         orderRepository.save(order);
+
+        // Send notification to manager
+        try {
+            sendManagerNotification(order);
+        } catch (Exception e) {
+            log.error("Failed to send manager notification for order {}: {}", orderId, e.getMessage());
+            // Continue even if notification fails
+        }
+    }
+
+    private void sendManagerNotification(Order order) {
+        try {
+            StoreResponse store = getStoreResponse(order.getStoreId());
+            if (store == null) {
+                log.warn("Store not found for order {}", order.getId());
+                return;
+            }
+
+            AddressResponse address = safeGetAddress(order.getAddressId());
+            String addressLine = address != null ? address.getAddressLine() : "";
+
+            // Create notification event
+            OrderAssignedEvent event = OrderAssignedEvent.builder()
+                    .orderId(order.getId())
+                    .storeId(order.getStoreId())
+                    .pdfFilePath(order.getPdfFilePath())
+                    .totalPrice(order.getTotal())
+                    .addressLine(addressLine)
+                    .build();
+
+            // Send to Kafka for manager notification
+            kafkaTemplate.send("order-assigned-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.error("Failed to send order assigned event: {}", ex.getMessage());
+                        } else {
+                            log.info("Successfully sent order assigned event for order: {}", order.getId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Error sending manager notification: {}", e.getMessage());
+        }
+    }
+
+    private StoreResponse getStoreResponse(String storeId) {
+        try {
+            ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
+            if (response != null && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception e) {
+            log.warn("Error getting store {}: {}", storeId, e.getMessage());
+        }
+        return null;
     }
 
     @Override
