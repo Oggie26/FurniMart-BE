@@ -47,4 +47,8 @@ public interface WalletService {
     
     // Auto-create wallet for new customer
     WalletResponse createWalletForUser(String userId);
+    
+    // Withdraw to VNPay bank account
+    WalletTransactionResponse withdrawToVNPay(String walletId, Double amount, String bankAccountNumber, 
+                                              String bankName, String accountHolderName, String description);
 }

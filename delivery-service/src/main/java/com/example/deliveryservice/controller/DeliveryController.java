@@ -102,19 +102,20 @@ public class DeliveryController {
     @PostMapping("/prepare-products")
     @Operation(
             summary = "Prepare products for delivery",
-            description = "Prepare products for delivery. Only STAFF role can use this API. " +
+            description = "Prepare products for delivery. STAFF and BRANCH_MANAGER roles can use this API. " +
                     "The system will check stock availability for each product in the order. If stock is insufficient, it will return INSUFFICIENT_STOCK error. " +
-                    "After successful preparation, productsPrepared will be set to true and status will change to READY."
+                    "After successful preparation, productsPrepared will be set to true and status will change to PREPARING. " +
+                    "Manager can use this to control inventory shortages and request stock from other warehouses."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Products prepared successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Products already prepared OR Insufficient stock - Details of missing products will be returned in the message"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery assignment not found with orderId: {orderId} OR Order not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF role is allowed")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
     })
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryAssignmentResponse> prepareProducts(@Valid @RequestBody PrepareProductsRequest request) {
         return ApiResponse.<DeliveryAssignmentResponse>builder()
                 .status(HttpStatus.OK.value())

@@ -40,16 +40,42 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Override
     @Transactional
     public DeliveryAssignmentResponse assignOrderToDelivery(AssignOrderRequest request) {
-        log.info("Assigning order {} to delivery", request.getOrderId());
+        log.info("Assigning order {} to delivery staff {}", request.getOrderId(), request.getDeliveryStaffId());
 
-        // Check if order already assigned
-        deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
-                .ifPresent(assignment -> {
-                    String errorMessage = String.format("Order đã được assign. Assignment ID: %d, Status: %s", 
-                            assignment.getId(), assignment.getStatus());
-                    log.warn(errorMessage);
-                    throw new AppException(ErrorCode.ASSIGNMENT_ALREADY_EXISTS);
+        // Find existing delivery assignment (must be created during prepare-products step)
+        DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
+                .orElseThrow(() -> {
+                    log.warn("Cannot assign order {}: Delivery assignment not found. Please prepare products first.", request.getOrderId());
+                    throw new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND);
                 });
+
+        // Check if already assigned to a delivery staff
+        if (assignment.getDeliveryStaffId() != null && !assignment.getDeliveryStaffId().isEmpty()) {
+            String errorMessage = String.format("Order đã được assign cho delivery staff: %s. Assignment ID: %d, Status: %s", 
+                    assignment.getDeliveryStaffId(), assignment.getId(), assignment.getStatus());
+            log.warn(errorMessage);
+            throw new AppException(ErrorCode.ASSIGNMENT_ALREADY_EXISTS);
+        }
+
+        // Validate workflow prerequisites:
+        // 1. Products must be prepared
+        if (!assignment.getProductsPrepared()) {
+            log.warn("Cannot assign order {}: Products not prepared yet. Please prepare products first.", request.getOrderId());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // 2. Status must be READY (Manager must confirm ready)
+        if (assignment.getStatus() != DeliveryStatus.READY) {
+            log.warn("Cannot assign order {}: Status is {}, but must be READY. Please confirm ready first.", 
+                    request.getOrderId(), assignment.getStatus());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // 3. Invoice must be generated (Manager must approve export)
+        if (!assignment.getInvoiceGenerated()) {
+            log.warn("Cannot assign order {}: Invoice not generated yet. Please approve export (generate invoice) first.", request.getOrderId());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
         // Verify order exists
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
@@ -63,24 +89,28 @@ public class DeliveryServiceImpl implements DeliveryService {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
 
+        // Verify store matches assignment
+        if (!assignment.getStoreId().equals(request.getStoreId())) {
+            log.warn("Store ID mismatch: Assignment store {}, Request store {}", assignment.getStoreId(), request.getStoreId());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String assignedBy = authentication.getName();
 
-        DeliveryAssignment assignment = DeliveryAssignment.builder()
-                .orderId(request.getOrderId())
-                .storeId(request.getStoreId())
-                .deliveryStaffId(request.getDeliveryStaffId())
-                .assignedBy(assignedBy)
-                .assignedAt(LocalDateTime.now())
-                .estimatedDeliveryDate(request.getEstimatedDeliveryDate())
-                .status(DeliveryStatus.ASSIGNED)
-                .notes(request.getNotes())
-                .invoiceGenerated(false)
-                .productsPrepared(false)
-                .build();
+        // Update assignment with delivery staff info
+        assignment.setDeliveryStaffId(request.getDeliveryStaffId());
+        assignment.setAssignedBy(assignedBy);
+        assignment.setAssignedAt(LocalDateTime.now());
+        assignment.setEstimatedDeliveryDate(request.getEstimatedDeliveryDate());
+        assignment.setStatus(DeliveryStatus.ASSIGNED);
+        if (request.getNotes() != null && !request.getNotes().isEmpty()) {
+            assignment.setNotes(request.getNotes());
+        }
 
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
-        log.info("Order {} assigned to delivery staff {}", request.getOrderId(), request.getDeliveryStaffId());
+        log.info("Order {} assigned to delivery staff {} after products prepared, confirmed ready, and export approved", 
+                request.getOrderId(), request.getDeliveryStaffId());
 
         // Update order status to SHIPPING when assigned to delivery
         try {
@@ -150,16 +180,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryAssignmentResponse prepareProducts(PrepareProductsRequest request) {
         log.info("Preparing products for order: {}", request.getOrderId());
 
-        DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
-                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
-
-        if (assignment.getProductsPrepared()) {
-            String errorMessage = String.format("Products đã được prepare cho order này. Assignment ID: %d", 
-                    assignment.getId());
-            log.warn(errorMessage);
-            throw new AppException(ErrorCode.PRODUCTS_ALREADY_PREPARED);
-        }
-
         // Verify order exists and get order details
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
         if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
@@ -167,6 +187,39 @@ public class DeliveryServiceImpl implements DeliveryService {
         }
 
         OrderResponse order = orderResponse.getBody().getData();
+        
+        // Get or create delivery assignment
+        DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
+                .orElseGet(() -> {
+                    // Create new assignment if not exists
+                    log.info("Creating new delivery assignment for order: {}", request.getOrderId());
+                    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                    String preparedBy = authentication != null ? authentication.getName() : "SYSTEM";
+                    
+                    return DeliveryAssignment.builder()
+                            .orderId(request.getOrderId())
+                            .storeId(order.getStoreId())
+                            .deliveryStaffId(null) // Will be assigned later
+                            .assignedBy(preparedBy)
+                            .assignedAt(LocalDateTime.now())
+                            .status(DeliveryStatus.PREPARING)
+                            .productsPrepared(false)
+                            .invoiceGenerated(false)
+                            .build();
+                });
+
+        // Check if already prepared
+        if (assignment.getProductsPrepared()) {
+            String errorMessage = String.format("Products đã được prepare cho order này. Assignment ID: %d", 
+                    assignment.getId());
+            log.warn(errorMessage);
+            throw new AppException(ErrorCode.PRODUCTS_ALREADY_PREPARED);
+        }
+
+        // Ensure storeId matches order
+        if (assignment.getStoreId() == null || !assignment.getStoreId().equals(order.getStoreId())) {
+            assignment.setStoreId(order.getStoreId());
+        }
         
         // Check stock availability for each product in order
         List<String> insufficientProducts = new ArrayList<>();
@@ -195,12 +248,13 @@ public class DeliveryServiceImpl implements DeliveryService {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
 
+        // Update assignment
         assignment.setProductsPrepared(true);
         assignment.setProductsPreparedAt(LocalDateTime.now());
-        assignment.setStatus(DeliveryStatus.READY);
+        assignment.setStatus(DeliveryStatus.PREPARING);
 
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
-        log.info("Products prepared for order: {}", request.getOrderId());
+        log.info("Products prepared for order: {}. Status set to PREPARING. Manager needs to confirm readiness.", request.getOrderId());
 
         return mapToResponse(saved);
     }

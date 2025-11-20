@@ -219,4 +219,29 @@ public class WalletController {
                 .data(walletService.getWalletBalance(walletId))
                 .build();
     }
+
+    @PostMapping("/withdraw-to-vnpay")
+    @Operation(
+            summary = "Withdraw money from wallet to VNPay bank account",
+            description = "Withdraw money from wallet to a bank account via VNPay. " +
+                    "The amount will be deducted from wallet and transferred to the specified bank account. " +
+                    "Minimum withdrawal: 10,000 VND, Maximum: 100,000,000 VND. " +
+                    "Transaction will be created with PENDING status first, then updated to COMPLETED or FAILED based on VNPay processing result."
+    )
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<WalletTransactionResponse> withdrawToVNPay(
+            @Valid @RequestBody com.example.userservice.request.WalletWithdrawToVNPayRequest request) {
+        return ApiResponse.<WalletTransactionResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Withdrawal request processed successfully")
+                .data(walletService.withdrawToVNPay(
+                        request.getWalletId(),
+                        request.getAmount(),
+                        request.getBankAccountNumber(),
+                        request.getBankName(),
+                        request.getAccountHolderName(),
+                        request.getDescription()
+                ))
+                .build();
+    }
 }

@@ -38,6 +38,7 @@ public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final VNPayWithdrawalService vnPayWithdrawalService;
 
     @Override
     public WalletResponse createWallet(WalletRequest request) {
@@ -444,6 +445,95 @@ public class WalletServiceImpl implements WalletService {
                 .createdAt(wallet.getCreatedAt())
                 .updatedAt(wallet.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public WalletTransactionResponse withdrawToVNPay(String walletId, Double amount, String bankAccountNumber,
+                                                      String bankName, String accountHolderName, String description) {
+        log.info("Withdrawing {} VND from wallet {} to VNPay bank account: {}", amount, walletId, bankAccountNumber);
+
+        // Get wallet
+        Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(walletId)
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        // Check wallet status
+        if (wallet.getStatus() != WalletStatus.ACTIVE) {
+            throw new AppException(ErrorCode.WALLET_NOT_ACTIVE);
+        }
+
+        // Check balance
+        BigDecimal balanceBefore = wallet.getBalance();
+        if (balanceBefore.compareTo(BigDecimal.valueOf(amount)) < 0) {
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        // Generate transaction code and reference ID
+        String transactionCode = generateTransactionCode();
+        String referenceId = "VNPAY-WD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        // Create transaction with PENDING status first
+        BigDecimal amountDecimal = BigDecimal.valueOf(amount);
+        BigDecimal balanceAfter = balanceBefore.subtract(amountDecimal);
+
+        WalletTransaction transaction = WalletTransaction.builder()
+                .code(transactionCode)
+                .balanceBefore(balanceBefore)
+                .balanceAfter(balanceAfter)
+                .amount(amountDecimal)
+                .status(WalletTransactionStatus.PENDING)
+                .type(WalletTransactionType.WITHDRAWAL)
+                .description(description != null ? description : 
+                    String.format("Rút tiền về VNPay - TK: %s - %s - Chủ TK: %s", 
+                        bankAccountNumber, bankName, accountHolderName))
+                .referenceId(referenceId)
+                .walletId(walletId)
+                .build();
+
+        transaction = transactionRepository.save(transaction);
+
+        // Update wallet balance (temporarily hold the amount)
+        wallet.setBalance(balanceAfter);
+        walletRepository.save(wallet);
+
+        log.info("Transaction created with PENDING status: {}", transactionCode);
+
+        // Call VNPay API to process withdrawal (async)
+        // Transaction status will be updated via webhook callback
+        try {
+            // Process withdrawal asynchronously
+            // If VNPay has direct API, it will be called immediately
+            // Otherwise, it will be queued for processing
+            boolean requestAccepted = vnPayWithdrawalService.processWithdrawal(
+                    amount, bankAccountNumber, bankName, accountHolderName, referenceId);
+            
+            if (requestAccepted) {
+                // Request accepted by VNPay (may still be processing)
+                // Status will be updated via webhook callback
+                log.info("VNPay withdrawal request accepted. Transaction {} is processing. Reference: {}", 
+                        transactionCode, referenceId);
+                // Keep status as PENDING, will be updated by webhook
+            } else {
+                // Request rejected immediately
+                wallet.setBalance(balanceBefore);
+                walletRepository.save(wallet);
+                transaction.setStatus(WalletTransactionStatus.FAILED);
+                transactionRepository.save(transaction);
+                log.error("VNPay withdrawal request rejected. Transaction {} failed, amount refunded to wallet.", 
+                        transactionCode);
+                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+        } catch (Exception e) {
+            // Rollback: refund to wallet
+            wallet.setBalance(balanceBefore);
+            walletRepository.save(wallet);
+            transaction.setStatus(WalletTransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+            log.error("Error processing VNPay withdrawal: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        return mapToTransactionResponse(transaction, wallet);
     }
 
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction transaction, Wallet wallet) {
