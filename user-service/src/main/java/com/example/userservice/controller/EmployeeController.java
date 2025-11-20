@@ -37,7 +37,7 @@ public class EmployeeController {
     @PostMapping
     @Operation(summary = "Create new employee - Admin can create all roles, Branch Manager can only create STAFF and DELIVERY")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
+//    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -49,7 +49,7 @@ public class EmployeeController {
     @PostMapping("/admins")
     @Operation(summary = "Create new admin user (Admin only) - Only existing admin users can create other admin accounts")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<UserResponse> createAdmin(@Valid @RequestBody UserRequest request) {
         request.setRole(EnumRole.ADMIN);
         return ApiResponse.<UserResponse>builder()
