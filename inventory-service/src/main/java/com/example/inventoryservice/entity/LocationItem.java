@@ -20,8 +20,6 @@ public class LocationItem extends AbstractEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Integer rowLabel;
 
     @Column(nullable = false)
