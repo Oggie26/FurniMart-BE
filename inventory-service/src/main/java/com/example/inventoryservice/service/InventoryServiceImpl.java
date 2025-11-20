@@ -37,17 +37,14 @@ public class InventoryServiceImpl implements InventoryService {
     private final AuthClient authClient;
     private final UserClient userClient;
 
-    // ----------------- CREATE / UPDATE -----------------
 
     @Override
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
 
-        // Lấy kho
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        // Tạo inventory
         Inventory inventory = Inventory.builder()
                 .employeeId(getUserId())
                 .type(request.getType())
