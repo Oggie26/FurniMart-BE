@@ -72,4 +72,4 @@ vnpay:
   tmnCode: 3MUC1EW6
   hashSecret: O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K
   url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  returnUrl: https://furnimart.click/api/v1/payment/vnpay-return
+  returnUrl: http://152.53.244.124:8080/api/v1/payment/vnpay-return

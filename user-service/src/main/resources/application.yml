@@ -92,4 +92,11 @@ logging:
     org.apache.kafka.clients.NetworkClient: ERROR
     org.apache.kafka.clients.Metadata: ERROR
 
+vnpay:
+  tmnCode: 3MUC1EW6
+  hashSecret: O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K
+  # VNPay withdrawal API URL (nếu có)
+  # Nếu không có, sẽ xử lý async/queue
+  withdrawalUrl: 
+  withdrawalCallbackUrl: http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback
 
