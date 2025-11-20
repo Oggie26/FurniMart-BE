@@ -39,6 +39,7 @@ public class WalletServiceImpl implements WalletService {
     private final WalletTransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final VNPayWithdrawalService vnPayWithdrawalService;
+    private final VNPayDepositService vnPayDepositService;
 
     @Override
     public WalletResponse createWallet(WalletRequest request) {
@@ -534,6 +535,67 @@ public class WalletServiceImpl implements WalletService {
         }
 
         return mapToTransactionResponse(transaction, wallet);
+    }
+
+    @Override
+    @Transactional
+    public String depositViaVNPay(String walletId, Double amount, String ipAddress) {
+        log.info("Creating VNPay deposit request for wallet {} with amount {}", walletId, amount);
+
+        // Validate amount
+        if (amount == null || amount <= 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // Get wallet
+        Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(walletId)
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        // Check wallet status
+        if (wallet.getStatus() != WalletStatus.ACTIVE) {
+            throw new AppException(ErrorCode.WALLET_NOT_ACTIVE);
+        }
+
+        // Generate transaction code and reference ID
+        String transactionCode = generateTransactionCode();
+        String referenceId = "VNPAY-DEP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        // Create transaction with PENDING status
+        BigDecimal amountDecimal = BigDecimal.valueOf(amount);
+        BigDecimal balanceBefore = wallet.getBalance();
+        BigDecimal balanceAfter = balanceBefore; // Balance không thay đổi cho đến khi payment thành công
+
+        WalletTransaction transaction = WalletTransaction.builder()
+                .code(transactionCode)
+                .balanceBefore(balanceBefore)
+                .balanceAfter(balanceAfter) // Sẽ được update khi callback thành công
+                .amount(amountDecimal)
+                .status(WalletTransactionStatus.PENDING)
+                .type(WalletTransactionType.DEPOSIT)
+                .description("Nạp tiền qua VNPay - Đang chờ thanh toán")
+                .referenceId(referenceId)
+                .walletId(walletId)
+                .build();
+
+        transaction = transactionRepository.save(transaction);
+        log.info("Deposit transaction created with PENDING status: {}", transactionCode);
+
+        // Generate VNPay payment URL
+        try {
+            String paymentUrl = vnPayDepositService.createDepositPaymentUrl(
+                    transaction.getId(), // Dùng transaction ID làm vnp_TxnRef
+                    amount,
+                    ipAddress
+            );
+            log.info("VNPay payment URL created for transaction: {}", transactionCode);
+            return paymentUrl;
+        } catch (Exception e) {
+            log.error("Error creating VNPay payment URL: {}", e.getMessage(), e);
+            // Update transaction status to FAILED
+            transaction.setStatus(WalletTransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction transaction, Wallet wallet) {

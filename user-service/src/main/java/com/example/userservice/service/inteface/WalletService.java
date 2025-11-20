@@ -51,4 +51,7 @@ public interface WalletService {
     // Withdraw to VNPay bank account
     WalletTransactionResponse withdrawToVNPay(String walletId, Double amount, String bankAccountNumber, 
                                               String bankName, String accountHolderName, String description);
+    
+    // Deposit via VNPay payment gateway
+    String depositViaVNPay(String walletId, Double amount, String ipAddress);
 }

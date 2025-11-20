@@ -95,8 +95,11 @@ logging:
 vnpay:
   tmnCode: 3MUC1EW6
   hashSecret: O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K
+  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
   # VNPay withdrawal API URL (nếu có)
   # Nếu không có, sẽ xử lý async/queue
   withdrawalUrl: 
   withdrawalCallbackUrl: http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback
+  # VNPay deposit callback URL
+  depositCallbackUrl: http://152.53.244.124:8086/api/wallets/deposit-via-vnpay/callback
 

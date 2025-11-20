@@ -244,4 +244,32 @@ public class WalletController {
                 ))
                 .build();
     }
+
+    @PostMapping("/{walletId}/deposit-via-vnpay")
+    @Operation(
+            summary = "Deposit money to wallet via VNPay payment gateway",
+            description = "Create a deposit request and return VNPay payment URL. " +
+                    "User will be redirected to VNPay to complete the payment. " +
+                    "After successful payment, the amount will be deposited to the wallet. " +
+                    "Transaction will be created with PENDING status first, then updated to COMPLETED or FAILED based on VNPay payment result."
+    )
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse<String> depositViaVNPay(
+            @PathVariable String walletId,
+            @RequestParam Double amount,
+            @RequestHeader(value = "X-Forwarded-For", required = false) String forwardedFor,
+            @RequestHeader(value = "X-Real-IP", required = false) String realIp) {
+        
+        // Get client IP address
+        String clientIp = realIp != null ? realIp : 
+                         (forwardedFor != null ? forwardedFor.split(",")[0].trim() : "127.0.0.1");
+        
+        String paymentUrl = walletService.depositViaVNPay(walletId, amount, clientIp);
+        
+        return ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("VNPay payment URL created successfully")
+                .data(paymentUrl)
+                .build();
+    }
 }
