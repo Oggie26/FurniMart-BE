@@ -11,4 +11,5 @@ public class OrderDetailResponse {
     private String productColorId;
     private Integer quantity;
     private Double price;
+    private ProductColorResponse productColor; // Enhanced: include product details
 }

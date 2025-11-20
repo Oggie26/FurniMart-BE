@@ -9,6 +9,7 @@ import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
+import com.example.orderservice.service.ManagerWorkflowService;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
@@ -40,6 +41,7 @@ public class OrderController {
     private final OrderRepository orderRepository;
     private final AssignOrderService assignOrderService;
     private final InventoryClient inventoryClient;
+    private final ManagerWorkflowService managerWorkflowService;
 
     @PostMapping("/checkout")
     public ApiResponse<Void> checkout(
@@ -316,6 +318,54 @@ public class OrderController {
                 .status(HttpStatus.OK.value())
                 .message("Từ chối đơn hàng trước thành công")
                 .data(orderResponse)
+                .build();
+    }
+
+    // Manager Workflow APIs
+    @GetMapping("/{orderId}/manager/details")
+    public ApiResponse<OrderResponse> getOrderDetailsForManager(@PathVariable Long orderId) {
+        OrderResponse orderResponse = orderService.getOrderById(orderId);
+        return ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy thông tin đơn hàng thành công")
+                .data(orderResponse)
+                .build();
+    }
+
+    @PostMapping("/{orderId}/manager/create-import-export")
+    public ApiResponse<String> createImportExportOrder(
+            @PathVariable Long orderId,
+            @RequestParam String warehouseId,
+            @RequestParam String storeId
+    ) {
+        managerWorkflowService.createImportExportOrder(orderId, warehouseId, storeId);
+        return ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Tạo phiếu xuất nhập kho thành công")
+                .data("Import-export order created successfully")
+                .build();
+    }
+
+    @PostMapping("/{orderId}/manager/create-sales-receipt")
+    public ApiResponse<String> createSalesReceipt(@PathVariable Long orderId) {
+        managerWorkflowService.createSalesReceipt(orderId);
+        return ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Tạo hóa đơn bán hàng thành công")
+                .data("Sales receipt created successfully")
+                .build();
+    }
+
+    @PostMapping("/{orderId}/manager/assign-delivery")
+    public ApiResponse<String> assignDelivery(
+            @PathVariable Long orderId,
+            @RequestParam String deliveryId
+    ) {
+        managerWorkflowService.assignDelivery(orderId, deliveryId);
+        return ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Gán đơn vận chuyển thành công")
+                .data("Delivery assigned successfully")
                 .build();
     }
 
