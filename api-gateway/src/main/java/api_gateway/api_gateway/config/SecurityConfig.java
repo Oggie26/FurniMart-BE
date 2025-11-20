@@ -38,7 +38,7 @@ public class SecurityConfig {
                 "http://127.0.0.1:5173",
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
-                "http://152.53.169.79",
+                "http://152.53.244.124",
                 "https://furnimart-web.vercel.app",
                 "https://furnimart.click",
                 "exp://192.168.102.7:8081",
