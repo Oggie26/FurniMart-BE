@@ -20,10 +20,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
 
@@ -173,6 +171,15 @@ public class OrderController {
                 .status(HttpStatus.OK.value())
                 .message("Lấy đơn hàng thành công")
                 .data(orderService.getOrderById(id))
+                .build();
+    }
+
+    @GetMapping("/{id}/status-history")
+    public ApiResponse<List<ProcessOrderResponse>> getOrderStatusHistory(@PathVariable Long id) {
+        return ApiResponse.<List<ProcessOrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy lịch sử trạng thái đơn hàng thành công")
+                .data(orderService.getOrderStatusHistory(id))
                 .build();
     }
 

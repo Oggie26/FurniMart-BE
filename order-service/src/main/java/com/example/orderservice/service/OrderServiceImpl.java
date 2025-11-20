@@ -404,6 +404,24 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
+    @Override
+    public List<ProcessOrderResponse> getOrderStatusHistory(Long orderId) {
+        // Kiểm tra đơn hàng có tồn tại không
+        orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Lấy lịch sử status, sắp xếp theo thời gian (cũ nhất trước)
+        List<ProcessOrder> processOrders = processOrderRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+
+        return processOrders.stream()
+                .map(process -> ProcessOrderResponse.builder()
+                        .id(process.getId())
+                        .status(process.getStatus())
+                        .createdAt(process.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     private OrderResponse mapToResponse(Order order) {
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
 
@@ -452,6 +470,12 @@ public class OrderServiceImpl implements OrderService {
                 .processOrders(
                         order.getProcessOrders() != null
                                 ? order.getProcessOrders().stream()
+                                .sorted((p1, p2) -> {
+                                    if (p1.getCreatedAt() == null && p2.getCreatedAt() == null) return 0;
+                                    if (p1.getCreatedAt() == null) return 1;
+                                    if (p2.getCreatedAt() == null) return -1;
+                                    return p1.getCreatedAt().compareTo(p2.getCreatedAt()); // Sắp xếp cũ nhất trước
+                                })
                                 .map(process -> ProcessOrderResponse.builder()
                                         .id(process.getId())
                                         .status(process.getStatus())
