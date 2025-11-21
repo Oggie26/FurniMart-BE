@@ -36,4 +36,7 @@ public interface DeliveryService {
     
     // Update delivery status
     DeliveryAssignmentResponse updateDeliveryStatus(Long assignmentId, String status);
+    
+    // Reject delivery assignment (for delivery staff)
+    DeliveryAssignmentResponse rejectAssignment(Long assignmentId, String reason, String deliveryStaffId);
 }
