@@ -1,6 +1,7 @@
 package com.example.inventoryservice.response;
 
 import com.example.inventoryservice.enums.PaymentMethod;
+import com.example.inventoryservice.enums.PaymentStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
