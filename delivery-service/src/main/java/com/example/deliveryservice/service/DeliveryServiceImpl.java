@@ -154,7 +154,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Override
     @Transactional
     public DeliveryAssignmentResponse generateInvoice(Long orderId) {
-        log.info("Generating invoice for order: {}", orderId);
 
         DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
@@ -389,10 +388,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .build();
     }
 
-    /**
-     * Sanitize OrderResponse for delivery staff - remove sensitive user information
-     * and ensure data consistency
-     */
+
     private OrderResponse sanitizeOrderResponse(OrderResponse order) {
         if (order == null) {
             return null;
@@ -438,5 +434,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .build();
     }
+
+
 }
 

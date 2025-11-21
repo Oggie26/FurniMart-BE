@@ -7,6 +7,7 @@ public enum EnumProcessOrder {
     ASSIGN_ORDER_STORE,
     MANAGER_ACCEPT,
     MANAGER_REJECT,
+    MANAGER_EXPORT_ORDER,
     CONFIRMED,
     PACKAGED,
     SHIPPING,
