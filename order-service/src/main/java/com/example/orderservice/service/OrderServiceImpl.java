@@ -405,6 +405,38 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public PageResponse<OrderResponse> getOrdersByStoreId(String storeId, EnumProcessOrder status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Validate store exists
+        String validatedStoreId = getStoreById(storeId);
+
+        Page<Order> orders;
+        if (status != null) {
+            // Lọc theo storeId và status
+            orders = orderRepository.findByStoreIdAndStatusAndIsDeletedFalse(validatedStoreId, status, pageable);
+        } else {
+            // Lấy tất cả orders của store (không filter status)
+            orders = orderRepository.findByStoreIdAndIsDeletedFalse(validatedStoreId, pageable);
+        }
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
+    }
+
+    @Override
     public List<ProcessOrderResponse> getOrderStatusHistory(Long orderId) {
         // Kiểm tra đơn hàng có tồn tại không
         orderRepository.findByIdAndIsDeletedFalse(orderId)

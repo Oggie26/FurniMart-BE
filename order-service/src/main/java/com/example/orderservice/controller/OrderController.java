@@ -249,6 +249,24 @@ public class OrderController {
                 .build();
     }
 
+    @GetMapping("/store/{storeId}")
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Lấy danh sách đơn hàng của cửa hàng",
+            description = "Lấy danh sách các đơn hàng đã được ASSIGN_ORDER_STORE cho cửa hàng. Có thể lọc theo status (optional)."
+    )
+    public ApiResponse<PageResponse<OrderResponse>> getOrdersByStore(
+            @PathVariable String storeId,
+            @RequestParam(required = false) EnumProcessOrder status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size
+    ) {
+        return ApiResponse.<PageResponse<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy danh sách đơn hàng của cửa hàng thành công")
+                .data(orderService.getOrdersByStoreId(storeId, status, page, size))
+                .build();
+    }
+
         @PutMapping("/status/{id}")
         public ApiResponse<OrderResponse> updateOrderStatus(
                 @PathVariable Long id,

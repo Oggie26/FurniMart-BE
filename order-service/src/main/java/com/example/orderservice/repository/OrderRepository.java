@@ -19,6 +19,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByStatusAndIsDeletedFalse(com.example.orderservice.enums.EnumProcessOrder status, Pageable pageable);
 
+    // 🔍 Lấy orders theo storeId và status (optional), sắp xếp theo thời gian tạo (mới nhất trước)
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.isDeleted = false AND o.storeId = :storeId AND o.status = :status
+        ORDER BY o.createdAt DESC
+    """)
+    Page<Order> findByStoreIdAndStatusAndIsDeletedFalse(
+            @Param("storeId") String storeId,
+            @Param("status") com.example.orderservice.enums.EnumProcessOrder status,
+            Pageable pageable
+    );
+
+    // 🔍 Lấy tất cả orders của store (không filter status), sắp xếp theo thời gian tạo (mới nhất trước)
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.isDeleted = false AND o.storeId = :storeId
+        ORDER BY o.createdAt DESC
+    """)
+    Page<Order> findByStoreIdAndIsDeletedFalse(@Param("storeId") String storeId, Pageable pageable);
+
     // 🔍 Search theo userId + keyword
     @Query(value = """
             SELECT * FROM orders 
