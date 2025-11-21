@@ -47,15 +47,15 @@ public class ManagerWorkflowService {
         for (OrderDetail detail : order.getOrderDetails()) {
             try {
                 // Get inventory for this product in the warehouse
-                ResponseEntity<ApiResponse<List<InventoryResponse>>> inventoryResponse = 
+                ApiResponse<List<InventoryResponse>> inventoryResponse =
                     inventoryClient.getInventoryByProduct(detail.getProductColorId());
                 
-                if (inventoryResponse.getBody() == null || inventoryResponse.getBody().getData() == null) {
+                if (inventoryResponse.getData() == null || inventoryResponse.getData().isEmpty()) {
                     log.warn("No inventory found for productColorId: {}", detail.getProductColorId());
                     continue;
                 }
 
-                List<InventoryResponse> inventories = inventoryResponse.getBody().getData();
+                List<InventoryResponse> inventories = inventoryResponse.getData();
                 
                 // Find inventory in the warehouse
                 // Note: InventoryResponse may not have warehouseId directly
@@ -106,12 +106,11 @@ public class ManagerWorkflowService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Verify all items have sufficient stock
         for (OrderDetail detail : order.getOrderDetails()) {
-            ResponseEntity<ApiResponse<Boolean>> stockCheck = 
+            ApiResponse<Boolean> stockCheck =
                 inventoryClient.hasSufficientGlobalStock(detail.getProductColorId(), detail.getQuantity());
             
-            if (stockCheck.getBody() == null || !stockCheck.getBody().getData()) {
+            if (stockCheck.getData() == null) {
                 throw new AppException(ErrorCode.OUT_OF_STOCK);
             }
         }
