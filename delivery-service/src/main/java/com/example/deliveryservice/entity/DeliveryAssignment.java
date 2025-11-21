@@ -7,7 +7,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "delivery_assignments")
+@Table(
+    name = "delivery_assignments",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_delivery_assignment_order_id",
+        columnNames = "order_id"
+    )
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -57,6 +63,15 @@ public class DeliveryAssignment extends AbstractEntity {
 
     @Column(name = "products_prepared_at")
     private LocalDateTime productsPreparedAt;
+
+    @Column(name = "reject_reason", columnDefinition = "TEXT")
+    private String rejectReason;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "rejected_by")
+    private String rejectedBy;
 
     @PrePersist
     public void prePersist() {

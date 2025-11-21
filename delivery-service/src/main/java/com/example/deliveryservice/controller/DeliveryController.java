@@ -2,6 +2,7 @@ package com.example.deliveryservice.controller;
 
 import com.example.deliveryservice.request.AssignOrderRequest;
 import com.example.deliveryservice.request.PrepareProductsRequest;
+import com.example.deliveryservice.request.RejectAssignmentRequest;
 import com.example.deliveryservice.response.ApiResponse;
 import com.example.deliveryservice.response.DeliveryAssignmentResponse;
 import com.example.deliveryservice.response.DeliveryProgressResponse;
@@ -17,6 +18,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -79,18 +82,20 @@ public class DeliveryController {
     @PostMapping("/generate-invoice/{orderId}")
     @Operation(
             summary = "Generate invoice for order",
-            description = "Generate an invoice for an order. Only BRANCH_MANAGER role can use this API. " +
-                    "Each order can only have an invoice generated once. After successful generation, invoiceGenerated will be set to true."
+            description = "Generate an invoice (PDF) for an order. Only STAFF and BRANCH_MANAGER roles can use this API. " +
+                    "Order status must be READY_FOR_INVOICE (or MANAGER_ACCEPT for backward compatibility). " +
+                    "Each order can only have an invoice generated once. " +
+                    "After successful generation, invoiceGenerated will be set to true and PDF file will be created."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invoice generated successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invoice already generated for this order"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery assignment not found with orderId: {orderId}"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invoice already generated for this order OR Order status is not READY_FOR_INVOICE/MANAGER_ACCEPT"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Order not found with orderId: {orderId}"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only BRANCH_MANAGER role is allowed")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
     })
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryAssignmentResponse> generateInvoice(@PathVariable Long orderId) {
         return ApiResponse.<DeliveryAssignmentResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -240,6 +245,43 @@ public class DeliveryController {
                 .status(HttpStatus.OK.value())
                 .message("Delivery assignments retrieved successfully")
                 .data(deliveryService.getDeliveryAssignmentsByStaff(deliveryStaffId))
+                .build();
+    }
+
+    @PostMapping("/assignments/{assignmentId}/reject")
+    @Operation(
+            summary = "Reject delivery assignment",
+            description = "Delivery staff can reject an assignment assigned to them. " +
+                         "Only assignments with status ASSIGNED can be rejected. " +
+                         "After rejection, order status will be updated to READY for re-assignment and manager will be notified."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment rejected successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid status - Only ASSIGNED assignments can be rejected"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Assignment does not belong to this delivery staff"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Assignment not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated")
+    })
+    @PreAuthorize("hasRole('DELIVERY')")
+    public ApiResponse<DeliveryAssignmentResponse> rejectAssignment(
+            @Parameter(description = "Delivery assignment ID", required = true, example = "1")
+            @PathVariable Long assignmentId,
+            @Valid @RequestBody RejectAssignmentRequest request) {
+        
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String deliveryStaffId = auth != null ? auth.getName() : null;
+        
+        if (deliveryStaffId == null || deliveryStaffId.isEmpty()) {
+            return ApiResponse.<DeliveryAssignmentResponse>builder()
+                    .status(HttpStatus.UNAUTHORIZED.value())
+                    .message("Unauthenticated")
+                    .build();
+        }
+        
+        return ApiResponse.<DeliveryAssignmentResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Assignment rejected successfully. Manager has been notified for re-assignment.")
+                .data(deliveryService.rejectAssignment(assignmentId, request.getReason(), deliveryStaffId))
                 .build();
     }
 }
