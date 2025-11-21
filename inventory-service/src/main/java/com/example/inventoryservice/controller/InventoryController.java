@@ -265,24 +265,48 @@ public class InventoryController {
                 .build();
     }
 
-    @Operation(summary = "Lấy tất cả vị trí chứa productColorId (warehouse, zone, location)")
-    @GetMapping("/stock/locations")
-    public ApiResponse<List<ProductLocationResponse>> getProductLocations(
+    @Operation(summary = "Lấy tất cả kho chứa productColorId (warehouse → zone → location)")
+    @GetMapping("/stock/locations/all")
+    public ApiResponse<ProductLocationResponse> getAllProductLocations(
             @RequestParam @NotBlank String productColorId) {
         try {
-            List<ProductLocationResponse> response = inventoryService.getProductLocations(productColorId);
-            return ApiResponse.<List<ProductLocationResponse>>builder()
+            ProductLocationResponse response = inventoryService.getAllProductLocations(productColorId);
+            return ApiResponse.<ProductLocationResponse>builder()
                     .status(200)
-                    .message("Lấy vị trí sản phẩm thành công")
+                    .message("Lấy toàn bộ vị trí sản phẩm thành công")
                     .data(response)
                     .build();
         } catch (AppException e) {
-            return ApiResponse.<List<ProductLocationResponse>>builder()
+            return ApiResponse.<ProductLocationResponse>builder()
                     .status(e.getErrorCode().getCode())
                     .message(e.getErrorCode().getMessage())
                     .build();
         }
     }
+
+    @Operation(summary = "Lấy vị trí chứa productColorId theo Warehouse ID")
+    @GetMapping("/stock/locations/by-warehouse")
+    public ApiResponse<ProductLocationResponse> getProductLocationsByWarehouse(
+            @RequestParam @NotBlank String productColorId,
+            @RequestParam @NotBlank String warehouseId) {
+        try {
+            ProductLocationResponse response =
+                    inventoryService.getProductLocationsByWarehouse(productColorId, warehouseId);
+
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(200)
+                    .message("Lấy vị trí sản phẩm theo warehouse thành công")
+                    .data(response)
+                    .build();
+        } catch (AppException e) {
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
+        }
+    }
+
+
 
 
     @Operation(summary = "Lấy Phiếu Kho theo ID")

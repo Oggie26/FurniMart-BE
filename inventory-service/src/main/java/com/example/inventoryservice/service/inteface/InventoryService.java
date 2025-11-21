@@ -47,7 +47,9 @@ public interface InventoryService {
 
     InventoryResponse getInventoryById(Long inventoryId);
 
-    List<ProductLocationResponse> getProductLocations(String productColorId);
+    ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String warehouseId);
+
+    ProductLocationResponse getAllProductLocations(String productColorId);
 
     boolean checkZoneCapacity(String zoneId, int additionalQty);
 }

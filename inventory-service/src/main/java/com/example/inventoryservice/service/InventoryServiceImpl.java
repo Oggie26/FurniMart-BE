@@ -276,6 +276,41 @@ public class InventoryServiceImpl implements InventoryService {
         }
     }
 
+    @Override
+    public ProductLocationResponse getAllProductLocations(String productColorId) {
+        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorId(productColorId);
+
+        Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
+
+        for (InventoryItem item : items) {
+            LocationItem li = item.getLocationItem();
+            Zone zone = li.getZone();
+            Warehouse warehouse = zone.getWarehouse();
+
+            String key = li.getId();
+
+            grouped.computeIfAbsent(key, k -> ProductLocationResponse.LocationInfo.builder()
+                    .warehouseId(warehouse.getId())
+                    .warehouseName(warehouse.getWarehouseName())
+                    .zoneId(zone.getId())
+                    .zoneName(zone.getZoneName())
+                    .locationItemId(li.getId())
+                    .locationCode(li.getCode())
+                    .totalQuantity(0)
+                    .reserved(0)
+                    .build());
+
+            ProductLocationResponse.LocationInfo info = grouped.get(key);
+            info.setTotalQuantity(info.getTotalQuantity() + item.getQuantity());
+            info.setReserved(info.getReserved() + item.getReservedQuantity());
+        }
+
+        return ProductLocationResponse.builder()
+                .productColorId(productColorId)
+                .locations(new ArrayList<>(grouped.values()))
+                .build();
+    }
+
 
     // ----------------- RESERVE / RELEASE -----------------
 
@@ -401,8 +436,9 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public List<ProductLocationResponse> getProductLocations(String productColorId) {
-        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorId(productColorId);
+    public ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String warehouseId) {
+        List<InventoryItem> items =
+                inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
 
         Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
 
@@ -429,13 +465,13 @@ public class InventoryServiceImpl implements InventoryService {
             info.setReserved(info.getReserved() + item.getReservedQuantity());
         }
 
-        ProductLocationResponse response = ProductLocationResponse.builder()
+        return ProductLocationResponse.builder()
                 .productColorId(productColorId)
+                .warehouseId(warehouseId)
                 .locations(new ArrayList<>(grouped.values()))
                 .build();
-
-        return Collections.singletonList(response);
     }
+
 
 
     @Override
