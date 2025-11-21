@@ -529,6 +529,11 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
+        List<InventoryItemResponse> itemResponseList = inventory.getInventoryItems()  // hoặc inventory.getItems()
+                .stream()
+                .map(this::mapToInventoryItemResponse)
+                .toList();
+
         return InventoryResponse.builder()
                 .id(inventory.getId())
                 .employeeId(inventory.getEmployeeId())
@@ -538,6 +543,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .note(inventory.getNote())
                 .warehouseId(inventory.getWarehouse().getId())
                 .warehouseName(inventory.getWarehouse().getWarehouseName())
+                .itemResponseList(itemResponseList)
                 .build();
     }
 
@@ -548,9 +554,10 @@ public class InventoryServiceImpl implements InventoryService {
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
                 .locationItem(item.getLocationItem())
-                .inventoryId(item.getId())
+                .inventoryId(item.getInventory().getId())
                 .build();
     }
+
 
     private String getUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

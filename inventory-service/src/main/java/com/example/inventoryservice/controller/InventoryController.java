@@ -306,9 +306,6 @@ public class InventoryController {
         }
     }
 
-
-
-
     @Operation(summary = "Lấy Phiếu Kho theo ID")
     @GetMapping("/{inventoryId}")
     public ApiResponse<InventoryResponse> getInventoryById(@PathVariable Long inventoryId) {
