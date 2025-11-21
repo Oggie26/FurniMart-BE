@@ -47,7 +47,7 @@ public interface InventoryService {
 
     InventoryResponse getInventoryById(Long inventoryId);
 
-    ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String warehouseId);
+    ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId);
 
     ProductLocationResponse getAllProductLocations(String productColorId);
 

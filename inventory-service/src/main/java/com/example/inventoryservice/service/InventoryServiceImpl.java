@@ -443,22 +443,25 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String warehouseId) {
+    public ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId) {
+        Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
+                .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
+
         List<InventoryItem> items =
-                inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
+                inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, storeWarehouse.getId());
 
         Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
 
         for (InventoryItem item : items) {
             LocationItem li = item.getLocationItem();
             Zone zone = li.getZone();
-            Warehouse warehouse = zone.getWarehouse();
+            Warehouse itemWarehouse = zone.getWarehouse(); // đổi tên để tránh shadow variable
 
             String key = li.getId();
 
             grouped.computeIfAbsent(key, k -> ProductLocationResponse.LocationInfo.builder()
-                    .warehouseId(warehouse.getId())
-                    .warehouseName(warehouse.getWarehouseName())
+                    .warehouseId(itemWarehouse.getId())
+                    .warehouseName(itemWarehouse.getWarehouseName())
                     .zoneId(zone.getId())
                     .zoneName(zone.getZoneName())
                     .locationItemId(li.getId())
@@ -474,10 +477,11 @@ public class InventoryServiceImpl implements InventoryService {
 
         return ProductLocationResponse.builder()
                 .productColorId(productColorId)
-                .warehouseId(warehouseId)
+                .storeId(storeId)
                 .locations(new ArrayList<>(grouped.values()))
                 .build();
     }
+
 
 
 

@@ -288,10 +288,10 @@ public class InventoryController {
     @GetMapping("/stock/locations/by-warehouse")
     public ApiResponse<ProductLocationResponse> getProductLocationsByWarehouse(
             @RequestParam @NotBlank String productColorId,
-            @RequestParam @NotBlank String warehouseId) {
+            @RequestParam @NotBlank String storeId) {
         try {
             ProductLocationResponse response =
-                    inventoryService.getProductLocationsByWarehouse(productColorId, warehouseId);
+                    inventoryService.getProductLocationsByWarehouse(productColorId, storeId);
 
             return ApiResponse.<ProductLocationResponse>builder()
                     .status(200)

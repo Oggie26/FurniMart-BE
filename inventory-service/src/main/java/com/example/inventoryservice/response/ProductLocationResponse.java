@@ -12,7 +12,7 @@ import java.util.List;
 public class ProductLocationResponse {
     private String productColorId;
     private List<LocationInfo> locations;
-    private String warehouseId;
+    private String storeId;
 
     @Getter @Setter @Builder
     public static class LocationInfo {
