@@ -529,7 +529,8 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
-        List<InventoryItemResponse> itemResponseList = inventory.getInventoryItems()  // hoặc inventory.getItems()
+        List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
+                .orElse(Collections.emptyList())
                 .stream()
                 .map(this::mapToInventoryItemResponse)
                 .toList();
