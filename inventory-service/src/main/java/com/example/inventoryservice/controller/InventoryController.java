@@ -7,6 +7,7 @@ import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
+import com.example.inventoryservice.response.ProductLocationResponse;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -263,6 +264,26 @@ public class InventoryController {
                 .data(inventories)
                 .build();
     }
+
+    @Operation(summary = "Lấy tất cả vị trí chứa productColorId (warehouse, zone, location)")
+    @GetMapping("/stock/locations")
+    public ApiResponse<List<ProductLocationResponse>> getProductLocations(
+            @RequestParam @NotBlank String productColorId) {
+        try {
+            List<ProductLocationResponse> response = inventoryService.getProductLocations(productColorId);
+            return ApiResponse.<List<ProductLocationResponse>>builder()
+                    .status(200)
+                    .message("Lấy vị trí sản phẩm thành công")
+                    .data(response)
+                    .build();
+        } catch (AppException e) {
+            return ApiResponse.<List<ProductLocationResponse>>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
+        }
+    }
+
 
     @Operation(summary = "Lấy Phiếu Kho theo ID")
     @GetMapping("/{inventoryId}")

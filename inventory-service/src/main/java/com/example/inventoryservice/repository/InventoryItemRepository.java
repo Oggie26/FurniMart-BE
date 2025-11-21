@@ -26,6 +26,15 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     int sumQuantityByLocationItemId(@Param("locationId") String locationId);
 
 
+    @Query("""
+    SELECT ii
+    FROM InventoryItem ii
+    JOIN FETCH ii.locationItem li
+    JOIN FETCH li.zone z
+    JOIN FETCH z.warehouse w
+    WHERE ii.productColorId = :productColorId
+""")
+    List<InventoryItem> findFullByProductColorId(@Param("productColorId") String productColorId);
     // 🔹 Tổng số lượng đang được giữ (reserve)
     @Query("SELECT COALESCE(SUM(i.reservedQuantity), 0) FROM InventoryItem i WHERE i.productColorId = :productColorId")
     int getTotalReservedQuantityByProductColorId(@Param("productColorId") String productColorId);

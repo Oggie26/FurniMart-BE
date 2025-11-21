@@ -5,6 +5,7 @@ import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
+import com.example.inventoryservice.response.ProductLocationResponse;
 
 import java.util.List;
 
@@ -45,6 +46,8 @@ public interface InventoryService {
     List<InventoryResponse> getAllInventories();
 
     InventoryResponse getInventoryById(Long inventoryId);
+
+    List<ProductLocationResponse> getProductLocations(String productColorId);
 
     boolean checkZoneCapacity(String zoneId, int additionalQty);
 }

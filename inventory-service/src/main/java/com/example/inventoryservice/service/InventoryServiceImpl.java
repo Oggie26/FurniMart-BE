@@ -21,7 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -63,7 +63,6 @@ public class InventoryServiceImpl implements InventoryService {
 
 
         for (InventoryItemRequest itemReq : request.getItems()) {
-
             switch (request.getType()) {
 
                 case IMPORT -> {
@@ -400,6 +399,44 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
         return mapToInventoryResponse(inventory);
     }
+
+    @Override
+    public List<ProductLocationResponse> getProductLocations(String productColorId) {
+        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorId(productColorId);
+
+        Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
+
+        for (InventoryItem item : items) {
+            LocationItem li = item.getLocationItem();
+            Zone zone = li.getZone();
+            Warehouse warehouse = zone.getWarehouse();
+
+            String key = li.getId();
+
+            grouped.computeIfAbsent(key, k -> ProductLocationResponse.LocationInfo.builder()
+                    .warehouseId(warehouse.getId())
+                    .warehouseName(warehouse.getWarehouseName())
+                    .zoneId(zone.getId())
+                    .zoneName(zone.getZoneName())
+                    .locationItemId(li.getId())
+                    .locationCode(li.getCode())
+                    .totalQuantity(0)
+                    .reserved(0)
+                    .build());
+
+            ProductLocationResponse.LocationInfo info = grouped.get(key);
+            info.setTotalQuantity(info.getTotalQuantity() + item.getQuantity());
+            info.setReserved(info.getReserved() + item.getReservedQuantity());
+        }
+
+        ProductLocationResponse response = ProductLocationResponse.builder()
+                .productColorId(productColorId)
+                .locations(new ArrayList<>(grouped.values()))
+                .build();
+
+        return Collections.singletonList(response);
+    }
+
 
     @Override
     public boolean checkZoneCapacity(String zoneId, int additionalQty) {
