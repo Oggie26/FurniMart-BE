@@ -5,6 +5,7 @@ public enum EnumProcessOrder {
     PAYMENT,
     ASSIGN_ORDER_STORE,
     MANAGER_ACCEPT,
+    READY_FOR_INVOICE,
     MANAGER_REJECT,
     CONFIRMED,
     DELIVERED,

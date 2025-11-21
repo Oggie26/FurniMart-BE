@@ -18,6 +18,7 @@ public enum  ErrorCode {
     INVALID_STATUS(1118, "Invalid Status", HttpStatus.BAD_REQUEST),
     INVALID_REQUEST(1119, "Invalid Request", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_CHANGE_ROLE(1120, "No right to change ", HttpStatus.UNAUTHORIZED),
+    ACCESS_DENIED(1122, "Access denied", HttpStatus.FORBIDDEN),
     INTERNAL_SERVER_ERROR(1121, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR),
     // 12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
