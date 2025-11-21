@@ -34,8 +34,19 @@ public class InternalOrderController {
     public ApiResponse<String> generatePDF(@PathVariable Long orderId) {
         log.info("Internal API: Generating PDF for order: {}", orderId);
         
+        // Validate orderId
+        if (orderId == null || orderId <= 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Verify orderId matches (prevent creating invoice for wrong order)
+        if (!order.getId().equals(orderId)) {
+            log.error("Order ID mismatch: requested {}, found {}", orderId, order.getId());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
         // Check if order is at MANAGER_ACCEPT
         if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT) {
@@ -45,32 +56,44 @@ public class InternalOrderController {
         }
         
         // Check if order already has READY_FOR_INVOICE in status history
-        // If yes, PDF already exists, cannot create again
         boolean hasReadyForInvoice = false;
         if (order.getProcessOrders() != null && !order.getProcessOrders().isEmpty()) {
             hasReadyForInvoice = order.getProcessOrders().stream()
                     .anyMatch(po -> po.getStatus() == EnumProcessOrder.READY_FOR_INVOICE);
         }
         
-        if (hasReadyForInvoice) {
-            log.warn("Cannot generate PDF for order {}: Order already has READY_FOR_INVOICE in status history. PDF already exists.", orderId);
-            throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
-        }
-        
-        // Check duplicate: PDF already exists (check pdfFilePath and file existence)
+        // Check duplicate: PDF file already exists and belongs to this order
+        boolean pdfFileExists = false;
         if (order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
             try {
                 java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
                 if (pdfFile.exists()) {
-                    log.warn("PDF already exists for order {}: {}", orderId, order.getPdfFilePath());
-                    throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
+                    // Verify PDF file name contains this orderId to prevent wrong order invoice
+                    String fileName = pdfFile.getName();
+                    if (fileName.contains("order_" + orderId + "_") || fileName.contains("_" + orderId + ".pdf")) {
+                        pdfFileExists = true;
+                        log.info("PDF file already exists for order {}: {}", orderId, order.getPdfFilePath());
+                    } else {
+                        // PDF file exists but doesn't match orderId - this is suspicious, log warning
+                        log.warn("PDF file exists but filename doesn't match orderId {}: {}", orderId, order.getPdfFilePath());
+                        // Don't consider this as valid PDF for this order
+                    }
                 }
-            } catch (AppException e) {
-                throw e;
             } catch (Exception e) {
-                log.warn("Error checking PDF file existence: {}", e.getMessage());
+                log.warn("Error checking PDF file existence for order {}: {}", orderId, e.getMessage());
                 // Continue if file check fails, allow regeneration
             }
+        }
+        
+        // If invoice already exists (READY_FOR_INVOICE in history) AND PDF file exists, cannot create again
+        if (hasReadyForInvoice && pdfFileExists) {
+            log.warn("Cannot generate PDF for order {}: Invoice already exists and PDF file is present.", orderId);
+            throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
+        }
+        
+        // If invoice exists but PDF file is missing, allow regeneration
+        if (hasReadyForInvoice && !pdfFileExists) {
+            log.info("Order {} has READY_FOR_INVOICE in history but PDF file is missing. Allowing PDF regeneration.", orderId);
         }
 
         // Get user and address
@@ -84,21 +107,27 @@ public class InternalOrderController {
         order.setPdfFilePath(pdfPath);
         
         // Update order status to READY_FOR_INVOICE after successful PDF generation
-        ProcessOrder readyProcess = ProcessOrder.builder()
-                .order(order)
-                .status(EnumProcessOrder.READY_FOR_INVOICE)
-                .createdAt(new Date())
-                .build();
-        processOrderRepository.save(readyProcess);
-        
-        order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
-        if (order.getProcessOrders() == null) {
-            order.setProcessOrders(new ArrayList<>());
+        // Only add READY_FOR_INVOICE to history if it doesn't exist yet
+        if (!hasReadyForInvoice) {
+            ProcessOrder readyProcess = ProcessOrder.builder()
+                    .order(order)
+                    .status(EnumProcessOrder.READY_FOR_INVOICE)
+                    .createdAt(new Date())
+                    .build();
+            processOrderRepository.save(readyProcess);
+            
+            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
+            if (order.getProcessOrders() == null) {
+                order.setProcessOrders(new ArrayList<>());
+            }
+            order.getProcessOrders().add(readyProcess);
+        } else {
+            // If READY_FOR_INVOICE already exists in history, just update status and PDF path
+            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
         }
-        order.getProcessOrders().add(readyProcess);
         orderRepository.save(order);
         
-        log.info("PDF generated successfully for order {}: {}. Status updated to READY_FOR_INVOICE", orderId, pdfPath);
+        log.info("PDF generated successfully for order {}: {}. Status: READY_FOR_INVOICE", orderId, pdfPath);
         
         return ApiResponse.<String>builder()
                 .status(HttpStatus.OK.value())
@@ -133,4 +162,3 @@ public class InternalOrderController {
         return null;
     }
 }
-
