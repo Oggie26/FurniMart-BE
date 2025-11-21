@@ -455,7 +455,7 @@ public class InventoryServiceImpl implements InventoryService {
         for (InventoryItem item : items) {
             LocationItem li = item.getLocationItem();
             Zone zone = li.getZone();
-            Warehouse itemWarehouse = zone.getWarehouse(); // đổi tên để tránh shadow variable
+            Warehouse itemWarehouse = zone.getWarehouse();
 
             String key = li.getId();
 
@@ -570,7 +570,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
-                .locationItem(item.getLocationItem())
+//                .locationItem(item.getLocationItem())
                 .inventoryId(item.getInventory().getId())
                 .build();
     }
