@@ -6,6 +6,7 @@ import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.AuthClient;
+import com.example.inventoryservice.feign.OrderClient;
 import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.repository.*;
 import com.example.inventoryservice.request.InventoryItemRequest;
@@ -36,6 +37,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final ZoneRepository zoneRepository;
     private final AuthClient authClient;
     private final UserClient userClient;
+    private final OrderClient orderClient;
 
 
     @Override
@@ -45,6 +47,7 @@ public class InventoryServiceImpl implements InventoryService {
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
+
         Inventory inventory = Inventory.builder()
                 .employeeId(getUserId())
                 .type(request.getType())
@@ -53,6 +56,10 @@ public class InventoryServiceImpl implements InventoryService {
                 .note(request.getNote())
                 .warehouse(warehouse)
                 .build();
+
+        if(request.getType() == EnumTypes.EXPORT){
+            inventory.setOrderId(getOrder(request.getOrderId()).getId());
+        }
 
         inventoryRepository.save(inventory);
         log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
@@ -526,6 +533,11 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
 
         inventoryItemRepository.save(item);
+
+        if (inventory.getInventoryItems() == null) {
+            inventory.setInventoryItems(new ArrayList<>());
+        }
+        inventory.getInventoryItems().add(item);
     }
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
@@ -579,4 +591,13 @@ public class InventoryServiceImpl implements InventoryService {
 
         return userId.getData().getId();
     }
+
+    private OrderResponse getOrder(Long orderId) {
+        ApiResponse<OrderResponse> response = orderClient.getOderById(orderId);
+        if (response == null || response.getData() == null){
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+        }
+        return response.getData();
+    }
+
 }

@@ -41,6 +41,9 @@ public class Inventory extends AbstractEntity {
     @Column(length = 255)
     private String note;
 
+    @Column
+    private Long orderId;
+
     @Column(unique = true, nullable = false)
     private String code;
 

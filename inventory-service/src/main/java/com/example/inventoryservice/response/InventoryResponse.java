@@ -23,5 +23,6 @@ public class InventoryResponse {
     private String note;
     private String warehouseName;
     private String warehouseId;
+    private Long orderId;
     private List<InventoryItemResponse> itemResponseList;
 }

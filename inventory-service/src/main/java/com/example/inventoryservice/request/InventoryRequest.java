@@ -30,6 +30,8 @@ public class InventoryRequest {
 
     private String warehouseId;
 
+    private Long orderId;
+
     @NotEmpty(message = "Phải có ít nhất 1 sản phẩm")
     private List<InventoryItemRequest> items;
 }
