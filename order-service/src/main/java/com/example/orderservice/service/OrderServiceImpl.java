@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -50,6 +49,7 @@ public class OrderServiceImpl implements OrderService {
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final AssignOrderServiceImpl assignOrderService;
+    private final PDFService pdfService;
 
     @Override
     @Transactional
@@ -135,6 +135,20 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
+        // Generate PDF for the order
+        try {
+            UserResponse user = safeGetUser(order.getUserId());
+            AddressResponse address = safeGetAddress(order.getAddressId());
+            String pdfPath = pdfService.generateOrderPDF(order, user, address);
+            order.setPdfFilePath(pdfPath);
+            orderRepository.save(order);
+            log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
+            // Continue even if PDF generation fails
+        }
+
+        // Clear cart after creating pre-order
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
@@ -202,75 +216,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
-        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-        ProcessOrder process = new ProcessOrder();
-        process.setOrder(order);
-        process.setStatus(status);
-        process.setCreatedAt(new Date());
-
-        processOrderRepository.save(process);
-
-        if (order.getProcessOrders() == null) {
-            order.setProcessOrders(new ArrayList<>());
-        }
-        order.getProcessOrders().add(process);
-        
-        // Update order status to the new status
-        order.setStatus(status);
-        orderRepository.save(order);
-        if(status.equals(EnumProcessOrder.PAYMENT)){
-            List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                    .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                            .productColorId(detail.getProductColorId())
-                            .quantity(detail.getQuantity())
-                            .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                            .price(detail.getPrice())
-                            .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                            .build())
-                    .toList();
-            Payment payment = paymentRepository.findByOrderId(orderId)
-                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-            if (payment.getPaymentMethod().equals(PaymentMethod.COD)){
-                payment.setPaymentStatus(PaymentStatus.DEPOSITED);
-            }else{
-                payment.setPaymentStatus(PaymentStatus.PAID);
-            }
-            paymentRepository.save(payment);
-
-            assignOrderService.assignOrderToStore(orderId);
-
-            OrderCreatedEvent event = OrderCreatedEvent.builder()
-                    .email(safeGetUser(order.getUserId()).getEmail())
-                    .fullName(safeGetUser(order.getUserId()).getFullName())
-                    .orderDate(order.getOrderDate())
-                    .totalPrice(order.getTotal())
-                    .orderId(order.getId())
-                    .storeId(order.getStoreId())
-                    .addressLine(getAddress(order.getAddressId()))
-                    .paymentMethod(order.getPayment().getPaymentMethod())
-                    .items(orderItems)
-                    .build();
-
-            try {
-                kafkaTemplate.send("order-created-topic", event)
-                        .whenComplete((result, ex) -> {
-                            if (ex != null) {
-                            } else {
-                                log.info("Successfully sent order creation event for: {}", event.getOrderId());
-                            }
-                        });
-            } catch (Exception e) {
-                log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
-            }
-        }
-        return mapToResponse(order);
-    }
-
-    @Override
-    @Transactional
     public void handlePaymentCOD(Long orderId){
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
@@ -314,6 +259,63 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
+    public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(status);
+        process.setCreatedAt(new Date());
+
+        processOrderRepository.save(process);
+
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
+        }
+        order.getProcessOrders().add(process);
+        orderRepository.save(order);
+        assignOrderService.assignOrderToStore(orderId);
+        if(status.equals(EnumProcessOrder.PAYMENT)){
+            List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                    .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                            .productColorId(detail.getProductColorId())
+                            .quantity(detail.getQuantity())
+                            .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                            .price(detail.getPrice())
+                            .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                            .build())
+                    .toList();
+
+            OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .email(safeGetUser(order.getUserId()).getEmail())
+                    .fullName(safeGetUser(order.getUserId()).getFullName())
+                    .orderDate(order.getOrderDate())
+                    .totalPrice(order.getTotal())
+                    .orderId(order.getId())
+                    .storeId(order.getStoreId())
+                    .addressLine(getAddress(order.getAddressId()))
+                    .paymentMethod(order.getPayment().getPaymentMethod())
+                    .items(orderItems)
+                    .build();
+
+            try {
+                kafkaTemplate.send("order-created-topic", event)
+                        .whenComplete((result, ex) -> {
+                            if (ex != null) {
+                            } else {
+                                log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                            }
+                        });
+            } catch (Exception e) {
+                log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+            }
+        }
+        return mapToResponse(order);
+    }
+
+    @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         String userId = getUserId();
@@ -338,95 +340,47 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrder(String request, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size);
 
-            Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
+        Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
 
-            List<OrderResponse> responses = orders.getContent()
-                    .stream()
-                    .map(order -> {
-                        try {
-                            return mapToResponse(order);
-                        } catch (Exception e) {
-                            log.error("Error mapping order {} to response: {}", order.getId(), e.getMessage(), e);
-                            return OrderResponse.builder()
-                                    .id(order.getId())
-                                    .total(order.getTotal())
-                                    .status(order.getStatus())
-                                    .orderDate(order.getOrderDate())
-                                    .note(order.getNote())
-                                    .storeId(order.getStoreId())
-                                    .orderDetails(Collections.emptyList())
-                                    .processOrders(Collections.emptyList())
-                                    .build();
-                        }
-                    })
-                    .collect(Collectors.toList());
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
 
-            return new PageResponse<>(
-                    responses,
-                    orders.getNumber(),
-                    orders.getSize(),
-                    orders.getTotalElements(),
-                    orders.getTotalPages(),
-                    orders.isFirst(),
-                    orders.isLast()
-            );
-        } catch (AppException e) {
-            log.error("Application error in searchOrder: {}", e.getMessage(), e);
-            throw e;
-        } catch (Exception e) {
-            log.error("Unexpected error in searchOrder: {}", e.getMessage(), e);
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-        }
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
     }
 
     @Override
     public PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            String id = getStoreById(storeId);
+        Pageable pageable = PageRequest.of(page, size);
+        String id = getStoreById(storeId);
 
-            Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);
+        Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);
 
-            List<OrderResponse> responses = orders.getContent()
-                    .stream()
-                    .map(order -> {
-                        try {
-                            return mapToResponse(order);
-                        } catch (Exception e) {
-                            log.error("Error mapping order {} to response: {}", order.getId(), e.getMessage(), e);
-                            return OrderResponse.builder()
-                                    .id(order.getId())
-                                    .total(order.getTotal())
-                                    .status(order.getStatus())
-                                    .orderDate(order.getOrderDate())
-                                    .note(order.getNote())
-                                    .storeId(order.getStoreId())
-                                    .orderDetails(Collections.emptyList())
-                                    .processOrders(Collections.emptyList())
-                                    .build();
-                        }
-                    })
-                    .collect(Collectors.toList());
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
 
-            return new PageResponse<>(
-                    responses,
-                    orders.getNumber(),
-                    orders.getSize(),
-                    orders.getTotalElements(),
-                    orders.getTotalPages(),
-                    orders.isFirst(),
-                    orders.isLast()
-            );
-        } catch (AppException e) {
-            log.error("Application error in searchOrderByStoreId: {}", e.getMessage(), e);
-            throw e;
-        } catch (Exception e) {
-            log.error("Unexpected error in searchOrderByStoreId: {}", e.getMessage(), e);
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-        }
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
     }
 
     @Override
@@ -448,6 +402,24 @@ public class OrderServiceImpl implements OrderService {
                 orders.isFirst(),
                 orders.isLast()
         );
+    }
+
+    @Override
+    public List<ProcessOrderResponse> getOrderStatusHistory(Long orderId) {
+        // Kiểm tra đơn hàng có tồn tại không
+        orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Lấy lịch sử status, sắp xếp theo thời gian (cũ nhất trước)
+        List<ProcessOrder> processOrders = processOrderRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+
+        return processOrders.stream()
+                .map(process -> ProcessOrderResponse.builder()
+                        .id(process.getId())
+                        .status(process.getStatus())
+                        .createdAt(process.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private OrderResponse mapToResponse(Order order) {
@@ -472,24 +444,38 @@ public class OrderServiceImpl implements OrderService {
                 .total(order.getTotal())
                 .note(order.getNote())
                 .status(order.getStatus())
-                .depositPrice(order.getDepositPrice())
                 .reason(order.getReason())
                 .orderDate(order.getOrderDate())
                 .orderDetails(
                         order.getOrderDetails() != null
                                 ? order.getOrderDetails().stream()
-                                .map(detail -> OrderDetailResponse.builder()
-                                        .id(detail.getId())
-                                        .productColorId(detail.getProductColorId())
-                                        .quantity(detail.getQuantity())
-                                        .price(detail.getPrice())
-                                        .build())
+                                .map(detail -> {
+                                    ProductColorResponse productColor = null;
+                                    try {
+                                        productColor = getProductColorResponse(detail.getProductColorId());
+                                    } catch (Exception e) {
+                                        log.warn("Failed to get product color for {}: {}", detail.getProductColorId(), e.getMessage());
+                                    }
+                                    return OrderDetailResponse.builder()
+                                            .id(detail.getId())
+                                            .productColorId(detail.getProductColorId())
+                                            .quantity(detail.getQuantity())
+                                            .price(detail.getPrice())
+                                            .productColor(productColor)
+                                            .build();
+                                })
                                 .collect(Collectors.toList())
                                 : Collections.emptyList()
                 )
                 .processOrders(
                         order.getProcessOrders() != null
                                 ? order.getProcessOrders().stream()
+                                .sorted((p1, p2) -> {
+                                    if (p1.getCreatedAt() == null && p2.getCreatedAt() == null) return 0;
+                                    if (p1.getCreatedAt() == null) return 1;
+                                    if (p2.getCreatedAt() == null) return -1;
+                                    return p1.getCreatedAt().compareTo(p2.getCreatedAt()); // Sắp xếp cũ nhất trước
+                                })
                                 .map(process -> ProcessOrderResponse.builder()
                                         .id(process.getId())
                                         .status(process.getStatus())
@@ -502,6 +488,7 @@ public class OrderServiceImpl implements OrderService {
                 .storeId(order.getStoreId())
                 .qrCode(order.getQrCode())
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
+                .pdfFilePath(order.getPdfFilePath())
                 .build();
     }
 
@@ -518,7 +505,6 @@ public class OrderServiceImpl implements OrderService {
                 .total(total)
                 .userId(getUserId())
                 .addressId(getAddressById(addressId))
-                .depositPrice(0.0)
                 .orderDate(new Date())
                 .build();
         return order;
