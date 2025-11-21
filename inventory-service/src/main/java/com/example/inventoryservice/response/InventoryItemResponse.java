@@ -18,5 +18,6 @@ public class InventoryItemResponse {
     private String productColorId;
     private String productName;
     private Integer reservedQuantity;
+    private LocationItem locationItem;
     private Long inventoryId;
 }
