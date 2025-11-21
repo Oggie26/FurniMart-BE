@@ -163,24 +163,6 @@ public class DeliveryServiceImpl implements DeliveryService {
             log.warn("Cannot generate invoice for order {}: Order already has READY_FOR_INVOICE in status history. PDF already exists.", orderId);
             throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
         }
-        
-        // Check duplicate: PDF already exists (check pdfFilePath and file existence)
-        if (order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
-            // Verify file actually exists
-            try {
-                java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
-                if (pdfFile.exists()) {
-                    String errorMessage = String.format("PDF đã được tạo cho order này. File path: %s", order.getPdfFilePath());
-                    log.warn(errorMessage);
-                    throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
-                }
-            } catch (AppException e) {
-                throw e;
-            } catch (Exception e) {
-                log.warn("Error checking PDF file existence: {}", e.getMessage());
-                // Continue if file check fails, allow regeneration
-            }
-        }
 
         // Get or create delivery assignment atomically
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -398,7 +380,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         if (assignment.getDeliveryStaffId() == null || !assignment.getDeliveryStaffId().equals(deliveryStaffId)) {
             log.warn("Delivery staff {} tried to reject assignment {} assigned to {}", 
                     deliveryStaffId, assignmentId, assignment.getDeliveryStaffId());
-            throw new AppException(ErrorCode.ACCESS_DENIED);
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         // 2. Kiểm tra status = ASSIGNED (chỉ có thể reject khi manager mới assign)
