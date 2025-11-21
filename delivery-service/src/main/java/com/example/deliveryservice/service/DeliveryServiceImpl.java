@@ -134,7 +134,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Override
     @Transactional
     public DeliveryAssignmentResponse generateInvoice(Long orderId) {
-        log.info("Generating invoice for order: {}", orderId);
 
         // Verify order exists and check status
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(orderId);
@@ -710,5 +709,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .build();
     }
+
+
 }
 

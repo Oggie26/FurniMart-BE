@@ -1,19 +1,17 @@
-package com.example.deliveryservice.response;
+package com.example.inventoryservice.response;
 
-import com.example.deliveryservice.enums.EnumProcessOrder;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.example.inventoryservice.enums.EnumProcessOrder;
+import lombok.*;
 
 import java.util.Date;
 import java.util.List;
 
 @Data
-@Builder
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class OrderResponse {
+
     private Long id;
     private UserResponse user;
     private String storeId;
@@ -31,5 +29,3 @@ public class OrderResponse {
     private Date qrCodeGeneratedAt;
     private String pdfFilePath;
 }
-
-

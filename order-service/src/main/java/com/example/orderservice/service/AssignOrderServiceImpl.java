@@ -34,7 +34,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final UserClient userClient;
     private final ProcessOrderRepository processOrderRepository;
     private final QRCodeService qrCodeService;
-    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
+//    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
     private final PDFService pdfService;
 
     @Override
@@ -62,48 +62,60 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         processOrderRepository.save(process);
         orderRepository.save(order);
 
-        // Send notification to manager
-        try {
-            sendManagerNotification(order);
-        } catch (Exception e) {
-            log.error("Failed to send manager notification for order {}: {}", orderId, e.getMessage());
-            // Continue even if notification fails
-        }
+//        try {
+//            sendManagerNotification(order);
+//        } catch (Exception e) {
+//            log.error("Failed to send manager notification for order {}: {}", orderId, e.getMessage());
+//        }
     }
 
-    private void sendManagerNotification(Order order) {
-        try {
-            StoreResponse store = getStoreResponse(order.getStoreId());
-            if (store == null) {
-                log.warn("Store not found for order {}", order.getId());
-                return;
-            }
+//    private void sendManagerNotification(Order order) {
+//        try {
+//            StoreResponse store = getStoreResponse(order.getStoreId());
+//            if (store == null) {
+//                log.warn("Store not found for order {}", order.getId());
+//                return;
+//            }
+//
+//            AddressResponse address = safeGetAddress(order.getAddressId());
+//            String addressLine = address != null ? address.getAddressLine() : "";
+//
+//            List<OrderCreatedEvent.OrderItem> eventItems = order.getOrderDetails().stream()
+//                    .map(item -> OrderCreatedEvent.OrderItem.builder()
+//                            .productColorId(item.getProductColorId())
+//                            .productName(item.getProductColorId())
+//                            .price(item.getPrice())
+//                            .colorName(item.get())
+//                            .quantity(item.getQuantity())
+//                            .build())
+//                    .toList();
+//
+//            OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                    .orderId(order.getId())
+//                    .email()
+//                    .fullName(safeGetAddress(order.getAddressId()).getName())
+//                    .orderDate(order.getOrderDate())
+//                    .totalPrice(order.getTotal())
+//                    .addressLine(addressLine)
+//                    .items(eventItems)
+//                    .storeId(order.getStoreId())
+//                    .paymentMethod(order.getPayment().getPaymentMethod())
+//                    .build();
+//
+//            // Gửi event qua Kafka
+//            kafkaTemplate.send("order-assigned-topic", event)
+//                    .whenComplete((result, ex) -> {
+//                        if (ex != null) {
+//                            log.error("Failed to send order assigned event: {}", ex.getMessage(), ex);
+//                        } else {
+//                            log.info("Successfully sent order assigned event for order: {}", order.getId());
+//                        }
+//                    });
+//        } catch (Exception e) {
+//            log.error("Error sending manager notification for order {}: {}", order.getId(), e.getMessage(), e);
+//        }
+//    }
 
-            AddressResponse address = safeGetAddress(order.getAddressId());
-            String addressLine = address != null ? address.getAddressLine() : "";
-
-            // Create notification event
-            OrderAssignedEvent event = OrderAssignedEvent.builder()
-                    .orderId(order.getId())
-                    .storeId(order.getStoreId())
-                    .pdfFilePath(order.getPdfFilePath())
-                    .totalPrice(order.getTotal())
-                    .addressLine(addressLine)
-                    .build();
-
-            // Send to Kafka for manager notification
-            kafkaTemplate.send("order-assigned-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.error("Failed to send order assigned event: {}", ex.getMessage());
-                        } else {
-                            log.info("Successfully sent order assigned event for order: {}", order.getId());
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("Error sending manager notification: {}", e.getMessage());
-        }
-    }
 
     private StoreResponse getStoreResponse(String storeId) {
         try {
@@ -116,6 +128,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         }
         return null;
     }
+
+
 
     @Override
     @Transactional

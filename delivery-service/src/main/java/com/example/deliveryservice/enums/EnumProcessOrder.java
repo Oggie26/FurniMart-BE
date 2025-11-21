@@ -8,6 +8,7 @@ public enum EnumProcessOrder {
     MANAGER_ACCEPT,
     READY_FOR_INVOICE,  // Sẵn sàng để tạo PDF/hóa đơn (sau MANAGER_ACCEPT)
     MANAGER_REJECT,
+    MANAGER_EXPORT_ORDER,
     CONFIRMED,
     PACKAGED,
     SHIPPING,
@@ -15,3 +16,4 @@ public enum EnumProcessOrder {
     FINISHED,
     CANCELLED
 }
+

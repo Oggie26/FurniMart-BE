@@ -7,6 +7,7 @@ import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
+import com.example.inventoryservice.response.ProductLocationResponse;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -262,6 +263,47 @@ public class InventoryController {
                 .message("Lấy tất cả phiếu kho thành công")
                 .data(inventories)
                 .build();
+    }
+
+    @Operation(summary = "Lấy tất cả kho chứa productColorId (warehouse → zone → location)")
+    @GetMapping("/stock/locations/all")
+    public ApiResponse<ProductLocationResponse> getAllProductLocations(
+            @RequestParam @NotBlank String productColorId) {
+        try {
+            ProductLocationResponse response = inventoryService.getAllProductLocations(productColorId);
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(200)
+                    .message("Lấy toàn bộ vị trí sản phẩm thành công")
+                    .data(response)
+                    .build();
+        } catch (AppException e) {
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
+        }
+    }
+
+    @Operation(summary = "Lấy vị trí chứa productColorId theo Warehouse ID")
+    @GetMapping("/stock/locations/by-warehouse")
+    public ApiResponse<ProductLocationResponse> getProductLocationsByWarehouse(
+            @RequestParam @NotBlank String productColorId,
+            @RequestParam @NotBlank String storeId) {
+        try {
+            ProductLocationResponse response =
+                    inventoryService.getProductLocationsByWarehouse(productColorId, storeId);
+
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(200)
+                    .message("Lấy vị trí sản phẩm theo warehouse thành công")
+                    .data(response)
+                    .build();
+        } catch (AppException e) {
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
+        }
     }
 
     @Operation(summary = "Lấy Phiếu Kho theo ID")
