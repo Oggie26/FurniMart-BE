@@ -47,9 +47,8 @@ public class InventoryServiceImpl implements InventoryService {
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-
         Inventory inventory = Inventory.builder()
-                .employeeId(getUserId())
+                .employeeId(getProfile())
                 .type(request.getType())
                 .purpose(request.getPurpose())
                 .date(LocalDate.now())
@@ -601,6 +600,14 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
         return response.getData();
+    }
+
+    private String getProfile(){
+        ApiResponse<UserResponse> response = userClient.getEmployeeProfile();
+        if(response == null || response.getData() == null){
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+        return response.getData().getId();
     }
 
 }
