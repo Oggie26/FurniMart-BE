@@ -258,8 +258,7 @@ public class DeliveryController {
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Assignment rejected successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid status - Only ASSIGNED assignments can be rejected"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Assignment does not belong to this delivery staff"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request - Only ASSIGNED assignments can be rejected OR Assignment does not belong to this delivery staff"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Assignment not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated")
     })
