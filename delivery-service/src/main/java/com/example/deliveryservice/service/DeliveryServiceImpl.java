@@ -134,7 +134,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Override
     @Transactional
     public DeliveryAssignmentResponse generateInvoice(Long orderId) {
-        log.info("Generating invoice for order: {}", orderId);
 
         // Verify order exists and check status
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(orderId);
@@ -144,24 +143,48 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         OrderResponse order = orderResponse.getBody().getData();
         
-        // Check if order is at MANAGER_ACCEPT
-        if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT) {
-            log.warn("Cannot generate invoice for order {}: Order must be at MANAGER_ACCEPT. Current status: {}", 
+        // Check if order is at MANAGER_ACCEPT or READY_FOR_INVOICE
+        if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT && 
+            order.getStatus() != EnumProcessOrder.READY_FOR_INVOICE) {
+            log.warn("Cannot generate invoice for order {}: Order must be at MANAGER_ACCEPT or READY_FOR_INVOICE. Current status: {}", 
                     orderId, order.getStatus());
             throw new AppException(ErrorCode.INVALID_STATUS);
         }
         
         // Check if order already has READY_FOR_INVOICE in status history
-        // If yes, PDF already exists, cannot create again
+        // If yes, check if PDF file exists
         boolean hasReadyForInvoice = false;
         if (order.getProcessOrders() != null && !order.getProcessOrders().isEmpty()) {
             hasReadyForInvoice = order.getProcessOrders().stream()
                     .anyMatch(po -> po.getStatus() == EnumProcessOrder.READY_FOR_INVOICE);
         }
         
-        if (hasReadyForInvoice) {
-            log.warn("Cannot generate invoice for order {}: Order already has READY_FOR_INVOICE in status history. PDF already exists.", orderId);
+        // Check if PDF file exists (if order has READY_FOR_INVOICE in history)
+        boolean pdfFileExists = false;
+        if (hasReadyForInvoice && order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
+            try {
+                java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
+                if (pdfFile.exists()) {
+                    String fileName = pdfFile.getName();
+                    if (fileName.contains("order_" + orderId + "_") || fileName.contains("_" + orderId + ".pdf")) {
+                        pdfFileExists = true;
+                        log.info("PDF file already exists for order {}: {}", orderId, order.getPdfFilePath());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Error checking PDF file existence for order {}: {}", orderId, e.getMessage());
+            }
+        }
+        
+        // If invoice already exists (READY_FOR_INVOICE in history) AND PDF file exists, cannot create again
+        if (hasReadyForInvoice && pdfFileExists) {
+            log.warn("Cannot generate invoice for order {}: Invoice already exists and PDF file is present.", orderId);
             throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
+        }
+        
+        // If invoice exists but PDF file is missing, allow regeneration
+        if (hasReadyForInvoice && !pdfFileExists) {
+            log.info("Order {} has READY_FOR_INVOICE in history but PDF file is missing. Allowing PDF regeneration.", orderId);
         }
 
         // Get or create delivery assignment atomically
@@ -692,5 +715,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .build();
     }
+
+
 }
 

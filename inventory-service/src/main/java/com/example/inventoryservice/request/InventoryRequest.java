@@ -16,9 +16,6 @@ public class InventoryRequest {
 
     private Long id;
 
-    @NotBlank(message = "Employee ID không được để trống")
-    private String employeeId;
-
     @NotNull(message = "Type không được để trống")
     private EnumTypes type;
 
@@ -29,6 +26,8 @@ public class InventoryRequest {
     private String note;
 
     private String warehouseId;
+
+    private Long orderId;
 
     @NotEmpty(message = "Phải có ít nhất 1 sản phẩm")
     private List<InventoryItemRequest> items;

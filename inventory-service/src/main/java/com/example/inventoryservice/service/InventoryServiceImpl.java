@@ -6,6 +6,8 @@ import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.AuthClient;
+import com.example.inventoryservice.feign.OrderClient;
+import com.example.inventoryservice.feign.ProductClient;
 import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.repository.*;
 import com.example.inventoryservice.request.InventoryItemRequest;
@@ -21,7 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -36,6 +38,8 @@ public class InventoryServiceImpl implements InventoryService {
     private final ZoneRepository zoneRepository;
     private final AuthClient authClient;
     private final UserClient userClient;
+    private final OrderClient orderClient;
+    private final ProductClient productClient;
 
 
     @Override
@@ -46,13 +50,17 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         Inventory inventory = Inventory.builder()
-                .employeeId(getUserId())
+                .employeeId(getProfile())
                 .type(request.getType())
                 .purpose(request.getPurpose())
                 .date(LocalDate.now())
                 .note(request.getNote())
                 .warehouse(warehouse)
                 .build();
+
+        if(request.getType() == EnumTypes.EXPORT){
+            inventory.setOrderId(getOrder(request.getOrderId()).getId());
+        }
 
         inventoryRepository.save(inventory);
         log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
@@ -63,30 +71,28 @@ public class InventoryServiceImpl implements InventoryService {
 
 
         for (InventoryItemRequest itemReq : request.getItems()) {
-
             switch (request.getType()) {
 
                 case IMPORT -> {
                     LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
                             .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-                    String zoneId = location.getZone().getId();
-                    if (!checkZoneCapacity(zoneId, itemReq.getQuantity())) {
-                        throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
-                    }
-                    if(location.getQuantity() < itemReq.getQuantity()) {
-                        throw new AppException(ErrorCode.INVALID_INPUT);
-                    }
 
-                    int currentStock = inventoryItemRepository.sumQuantityByLocationItemId(location.getId());
+                    int actualStock = inventoryItemRepository.getActualStock(location.getId());
 
-                    if (currentStock + itemReq.getQuantity() > location.getQuantity()) {
-                        throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+                    if (actualStock + itemReq.getQuantity() > location.getQuantity()) {
+                        throw new AppException(ErrorCode.LOCATION_CAPACITY_EXCEEDED);
                     }
 
-                    createInventoryItem(inventory, itemReq.getLocationItemId(),
-                            itemReq.getProductColorId(), itemReq.getQuantity());
+                    createInventoryItem(
+                            inventory,
+                            itemReq.getLocationItemId(),
+                            itemReq.getProductColorId(),
+                            itemReq.getQuantity()
+                    );
                 }
+
+
 
                 case EXPORT -> {
                     List<InventoryItem> items = inventoryItemRepository
@@ -277,6 +283,41 @@ public class InventoryServiceImpl implements InventoryService {
         }
     }
 
+    @Override
+    public ProductLocationResponse getAllProductLocations(String productColorId) {
+        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorId(productColorId);
+
+        Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
+
+        for (InventoryItem item : items) {
+            LocationItem li = item.getLocationItem();
+            Zone zone = li.getZone();
+            Warehouse warehouse = zone.getWarehouse();
+
+            String key = li.getId();
+
+            grouped.computeIfAbsent(key, k -> ProductLocationResponse.LocationInfo.builder()
+                    .warehouseId(warehouse.getId())
+                    .warehouseName(warehouse.getWarehouseName())
+                    .zoneId(zone.getId())
+                    .zoneName(zone.getZoneName())
+                    .locationItemId(li.getId())
+                    .locationCode(li.getCode())
+                    .totalQuantity(0)
+                    .reserved(0)
+                    .build());
+
+            ProductLocationResponse.LocationInfo info = grouped.get(key);
+            info.setTotalQuantity(info.getTotalQuantity() + item.getQuantity());
+            info.setReserved(info.getReserved() + item.getReservedQuantity());
+        }
+
+        return ProductLocationResponse.builder()
+                .productColorId(productColorId)
+                .locations(new ArrayList<>(grouped.values()))
+                .build();
+    }
+
 
     // ----------------- RESERVE / RELEASE -----------------
 
@@ -402,6 +443,46 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId) {
+        Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
+                .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
+
+        List<InventoryItem> items =
+                inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, storeWarehouse.getId());
+
+        Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
+
+        for (InventoryItem item : items) {
+            LocationItem li = item.getLocationItem();
+            Zone zone = li.getZone();
+            Warehouse itemWarehouse = zone.getWarehouse();
+
+            String key = li.getId();
+
+            grouped.computeIfAbsent(key, k -> ProductLocationResponse.LocationInfo.builder()
+                    .warehouseId(itemWarehouse.getId())
+                    .warehouseName(itemWarehouse.getWarehouseName())
+                    .zoneId(zone.getId())
+                    .zoneName(zone.getZoneName())
+                    .locationItemId(li.getId())
+                    .locationCode(li.getCode())
+                    .totalQuantity(0)
+                    .reserved(0)
+                    .build());
+
+            ProductLocationResponse.LocationInfo info = grouped.get(key);
+            info.setTotalQuantity(info.getTotalQuantity() + item.getQuantity());
+            info.setReserved(info.getReserved() + item.getReservedQuantity());
+        }
+
+        return ProductLocationResponse.builder()
+                .productColorId(productColorId)
+                .storeId(storeId)
+                .locations(new ArrayList<>(grouped.values()))
+                .build();
+    }
+
+    @Override
     public boolean checkZoneCapacity(String zoneId, int additionalQty) {
         Zone zone = zoneRepository.findByIdAndIsDeletedFalse(zoneId)
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
@@ -453,9 +534,20 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
 
         inventoryItemRepository.save(item);
+
+        if (inventory.getInventoryItems() == null) {
+            inventory.setInventoryItems(new ArrayList<>());
+        }
+        inventory.getInventoryItems().add(item);
     }
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
+        List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
+                .orElse(Collections.emptyList())
+                .stream()
+                .map(this::mapToInventoryItemResponse)
+                .toList();
+
         return InventoryResponse.builder()
                 .id(inventory.getId())
                 .employeeId(inventory.getEmployeeId())
@@ -465,6 +557,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .note(inventory.getNote())
                 .warehouseId(inventory.getWarehouse().getId())
                 .warehouseName(inventory.getWarehouse().getWarehouseName())
+                .itemResponseList(itemResponseList)
                 .build();
     }
 
@@ -474,10 +567,20 @@ public class InventoryServiceImpl implements InventoryService {
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
-                .locationItem(item.getLocationItem())
-                .inventoryId(item.getId())
+                .productName(getProductName(item.getProductColorId()).getProduct().getName())
+//                .locationItem(item.getLocationItem())
+                .inventoryId(item.getInventory().getId())
                 .build();
     }
+
+    private ProductColorResponse getProductName(String productColorId){
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
+        if(response.getData() == null || response == null){
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData();
+    }
+
 
     private String getUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -498,4 +601,21 @@ public class InventoryServiceImpl implements InventoryService {
 
         return userId.getData().getId();
     }
+
+    private OrderResponse getOrder(Long orderId) {
+        ApiResponse<OrderResponse> response = orderClient.getOderById(orderId);
+        if (response == null || response.getData() == null){
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+        }
+        return response.getData();
+    }
+
+    private String getProfile(){
+        ApiResponse<UserResponse> response = userClient.getEmployeeProfile();
+        if(response == null || response.getData() == null){
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+        return response.getData().getId();
+    }
+
 }

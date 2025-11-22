@@ -48,9 +48,10 @@ public class InternalOrderController {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        // Check if order is at MANAGER_ACCEPT
-        if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT) {
-            log.warn("Cannot generate PDF for order {}: Order must be at MANAGER_ACCEPT. Current status: {}", 
+        // Check if order is at MANAGER_ACCEPT or READY_FOR_INVOICE
+        if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT && 
+            order.getStatus() != EnumProcessOrder.READY_FOR_INVOICE) {
+            log.warn("Cannot generate PDF for order {}: Order must be at MANAGER_ACCEPT or READY_FOR_INVOICE. Current status: {}", 
                     orderId, order.getStatus());
             throw new AppException(ErrorCode.INVALID_STATUS);
         }
