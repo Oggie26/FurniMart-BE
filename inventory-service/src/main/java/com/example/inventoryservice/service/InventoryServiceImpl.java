@@ -76,10 +76,8 @@ public class InventoryServiceImpl implements InventoryService {
                     LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
                             .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-                    // Tồn thực tế (nhập – xuất)
-                    int actualStock = inventoryItemRepository.getActualStock(location.getId());
+                    int actualStock = inventoryItemRepository.sumQuantityByLocation(location.getId());
 
-                    // Sức chứa của location
                     int capacity = location.getQuantity();
 
                     // Nếu vượt quá

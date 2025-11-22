@@ -37,6 +37,12 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 """)
     int getActualStock(@Param("locationItemId") String locationItemId);
 
+    @Query("""
+    SELECT COALESCE(SUM(ii.quantity), 0)
+    FROM InventoryItem ii
+    WHERE ii.locationItem.id = :locationItemId
+""")
+    int sumQuantityByLocation(@Param("locationItemId") String locationItemId);
 
     @Query("""
     SELECT ii
