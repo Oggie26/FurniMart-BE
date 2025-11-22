@@ -17,8 +17,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     /**
      * Find employee by ID (excludes CUSTOMER roles)
+     * JOIN FETCH account to avoid LazyInitializationException
      */
-    @Query("SELECT e FROM Employee e WHERE e.id = :id AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
+    @Query("SELECT e FROM Employee e JOIN FETCH e.account a WHERE e.id = :id AND a.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     Optional<Employee> findEmployeeById(@Param("id") String id);
 
     /**
