@@ -41,6 +41,14 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     SELECT COALESCE(SUM(ii.quantity), 0)
     FROM InventoryItem ii
     WHERE ii.locationItem.id = :locationItemId
+      AND ii.inventory.type = 'IMPORT'
+""")
+    int getImportStock(@Param("locationItemId") String locationItemId);
+
+    @Query("""
+    SELECT COALESCE(SUM(ii.quantity), 0)
+    FROM InventoryItem ii
+    WHERE ii.locationItem.id = :locationItemId
 """)
     int sumQuantityByLocation(@Param("locationItemId") String locationItemId);
 
