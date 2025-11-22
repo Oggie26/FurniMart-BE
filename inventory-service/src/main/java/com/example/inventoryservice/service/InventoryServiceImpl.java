@@ -7,6 +7,7 @@ import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.AuthClient;
 import com.example.inventoryservice.feign.OrderClient;
+import com.example.inventoryservice.feign.ProductClient;
 import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.repository.*;
 import com.example.inventoryservice.request.InventoryItemRequest;
@@ -38,6 +39,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final AuthClient authClient;
     private final UserClient userClient;
     private final OrderClient orderClient;
+    private final ProductClient productClient;
 
 
     @Override
@@ -480,9 +482,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-
-
-
     @Override
     public boolean checkZoneCapacity(String zoneId, int additionalQty) {
         Zone zone = zoneRepository.findByIdAndIsDeletedFalse(zoneId)
@@ -568,9 +567,18 @@ public class InventoryServiceImpl implements InventoryService {
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
+                .productName(getProductName(item.getProductColorId()).getProduct().getName())
 //                .locationItem(item.getLocationItem())
                 .inventoryId(item.getInventory().getId())
                 .build();
+    }
+
+    private ProductColorResponse getProductName(String productColorId){
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
+        if(response.getData() == null || response == null){
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData();
     }
 
 
