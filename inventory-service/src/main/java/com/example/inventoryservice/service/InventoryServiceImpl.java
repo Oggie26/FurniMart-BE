@@ -80,9 +80,6 @@ public class InventoryServiceImpl implements InventoryService {
                     if (!checkZoneCapacity(zoneId, itemReq.getQuantity())) {
                         throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
                     }
-                    if(location.getQuantity() < itemReq.getQuantity()) {
-                        throw new AppException(ErrorCode.INVALID_INPUT);
-                    }
 
                     int currentStock = inventoryItemRepository.sumQuantityByLocationItemId(location.getId());
 
@@ -90,9 +87,14 @@ public class InventoryServiceImpl implements InventoryService {
                         throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
                     }
 
-                    createInventoryItem(inventory, itemReq.getLocationItemId(),
-                            itemReq.getProductColorId(), itemReq.getQuantity());
+                    createInventoryItem(
+                            inventory,
+                            itemReq.getLocationItemId(),
+                            itemReq.getProductColorId(),
+                            itemReq.getQuantity()
+                    );
                 }
+
 
                 case EXPORT -> {
                     List<InventoryItem> items = inventoryItemRepository
@@ -570,7 +572,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .quantity(item.getQuantity())
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
-                .locationItem(item.getLocationItem())
+//                .locationItem(item.getLocationItem())
                 .inventoryId(item.getInventory().getId())
                 .build();
     }
