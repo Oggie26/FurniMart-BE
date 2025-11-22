@@ -77,7 +77,7 @@ public class InventoryServiceImpl implements InventoryService {
                             .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
 
-                    int actualStock = inventoryItemRepository.getImportStock(location.getId());
+                    int actualStock = inventoryItemRepository.getActualStock(location.getId());
 
                     if (actualStock + itemReq.getQuantity() > location.getQuantity()) {
                         throw new AppException(ErrorCode.LOCATION_CAPACITY_EXCEEDED);
