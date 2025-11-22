@@ -76,15 +76,15 @@ public class InventoryServiceImpl implements InventoryService {
                     LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
                             .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-                    String zoneId = location.getZone().getId();
-                    if (!checkZoneCapacity(zoneId, itemReq.getQuantity())) {
-                        throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
-                    }
+                    // Tồn thực tế (nhập – xuất)
+                    int actualStock = inventoryItemRepository.getActualStock(location.getId());
 
-                    int currentStock = inventoryItemRepository.sumQuantityByLocationItemId(location.getId());
+                    // Sức chứa của location
+                    int capacity = location.getQuantity();
 
-                    if (currentStock + itemReq.getQuantity() > location.getQuantity()) {
-                        throw new AppException(ErrorCode.ZONE_CAPACITY_EXCEEDED);
+                    // Nếu vượt quá
+                    if (actualStock + itemReq.getQuantity() > capacity) {
+                        throw new AppException(ErrorCode.LOCATION_CAPACITY_EXCEEDED);
                     }
 
                     createInventoryItem(
@@ -94,6 +94,7 @@ public class InventoryServiceImpl implements InventoryService {
                             itemReq.getQuantity()
                     );
                 }
+
 
 
                 case EXPORT -> {
