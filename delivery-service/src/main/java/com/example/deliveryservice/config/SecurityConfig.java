@@ -29,17 +29,18 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/api/users/info/{authId}",
-                                "/swagger-ui.html",
-                                new AntPathRequestMatcher("/api/delivery/stores/**/branch-info"),
-                                "/static/**",
-                                "/*.js",
-                                "/*.css"
-                        ).permitAll()
+                               .requestMatchers(
+                                       "/api/auth/**",
+                                       "/swagger-ui/**",
+                                       "/v3/api-docs/**",
+                                       "/api/users/info/{authId}",
+                                       "/swagger-ui.html",
+                                       "/api/delivery/stores/*/branch-info",
+                                       "/api/delivery/stores/**/branch-info",
+                                       "/static/**",
+                                       "/*.js",
+                                       "/*.css"
+                               ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
