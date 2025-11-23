@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
                     // Use AntPathRequestMatcher explicitly to avoid MvcRequestMatcher
+                    // Pass null as HttpMethod to match all HTTP methods
                     auth.requestMatchers(
                             new AntPathRequestMatcher("/api/auth/**", null),
                             new AntPathRequestMatcher("/swagger-ui/**", null),
@@ -38,13 +39,10 @@ public class SecurityConfig {
                             new AntPathRequestMatcher("/swagger-ui.html", null),
                             new AntPathRequestMatcher("/static/**", null),
                             new AntPathRequestMatcher("/*.js", null),
-                            new AntPathRequestMatcher("/*.css", null)
+                            new AntPathRequestMatcher("/*.css", null),
+                            // Add explicit pattern for branch-info endpoint
+                            new AntPathRequestMatcher("/api/delivery/stores/*/branch-info", null)
                     ).permitAll();
-                    // Custom matcher for branch-info endpoint
-                    auth.requestMatchers(request -> {
-                        String path = request.getRequestURI();
-                        return path != null && path.contains("/stores/") && path.endsWith("/branch-info");
-                    }).permitAll();
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
