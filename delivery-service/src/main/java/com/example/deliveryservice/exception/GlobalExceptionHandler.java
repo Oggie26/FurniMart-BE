@@ -127,6 +127,51 @@ public class GlobalExceptionHandler {
 
     }
 
+    @ExceptionHandler(feign.FeignException.class)
+    public ResponseEntity<ApiResponse<Void>> handleFeignException(feign.FeignException exception) {
+        log.error("Feign exception: status={}, message={}", exception.status(), exception.getMessage());
+        
+        // Map Feign 404 to appropriate error
+        if (exception.status() == 404) {
+            // Try to determine which resource was not found from the request
+            String message = exception.getMessage();
+            if (message != null) {
+                if (message.contains("order") || message.contains("Order")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(ApiResponse.<Void>builder()
+                                    .status(ErrorCode.ORDER_NOT_FOUND.getCode())
+                                    .message(ErrorCode.ORDER_NOT_FOUND.getMessage())
+                                    .build());
+                } else if (message.contains("store") || message.contains("Store")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(ApiResponse.<Void>builder()
+                                    .status(ErrorCode.STORE_NOT_FOUND.getCode())
+                                    .message(ErrorCode.STORE_NOT_FOUND.getMessage())
+                                    .build());
+                } else if (message.contains("assignment") || message.contains("Assignment")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(ApiResponse.<Void>builder()
+                                    .status(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND.getCode())
+                                    .message(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND.getMessage())
+                                    .build());
+                }
+            }
+            // Generic 404
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.<Void>builder()
+                            .status(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND.getCode())
+                            .message("Resource not found")
+                            .build());
+        }
+        
+        // Other Feign errors (4xx, 5xx)
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.<Void>builder()
+                        .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())
+                        .message("External service error: " + exception.getMessage())
+                        .build());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUncaughtException(Exception exception) {
         log.error("Uncaught exception: ", exception);

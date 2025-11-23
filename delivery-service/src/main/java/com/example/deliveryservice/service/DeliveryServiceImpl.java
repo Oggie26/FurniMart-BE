@@ -110,8 +110,23 @@ public class DeliveryServiceImpl implements DeliveryService {
         log.info("Getting store branch info for store: {}", storeId);
 
         // Get store information
-        ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(storeId);
-        if (storeResponse == null || storeResponse.getData() == null) {
+        ApiResponse<StoreResponse> storeResponse;
+        try {
+            storeResponse = storeClient.getStoreById(storeId);
+            if (storeResponse == null || storeResponse.getData() == null) {
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+        } catch (feign.FeignException.NotFound e) {
+            log.warn("Store not found via Feign client: {}", storeId);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (feign.FeignException e) {
+            log.error("Feign error when getting store {}: {}", storeId, e.getMessage());
+            if (e.status() == 404) {
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage());
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         StoreResponse store = storeResponse.getData();
@@ -306,8 +321,23 @@ public class DeliveryServiceImpl implements DeliveryService {
         log.info("Getting delivery progress for store: {}", storeId);
 
         // Verify store exists
-        ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(storeId);
-        if (storeResponse == null || storeResponse.getData() == null) {
+        ApiResponse<StoreResponse> storeResponse;
+        try {
+            storeResponse = storeClient.getStoreById(storeId);
+            if (storeResponse == null || storeResponse.getData() == null) {
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+        } catch (feign.FeignException.NotFound e) {
+            log.warn("Store not found via Feign client: {}", storeId);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (feign.FeignException e) {
+            log.error("Feign error when getting store {}: {}", storeId, e.getMessage());
+            if (e.status() == 404) {
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage());
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         StoreResponse store = storeResponse.getData();

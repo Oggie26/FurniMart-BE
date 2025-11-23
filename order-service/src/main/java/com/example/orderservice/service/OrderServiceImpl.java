@@ -631,11 +631,26 @@ public class OrderServiceImpl implements OrderService {
         if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
-        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
-        if (userId == null || userId.getData() == null) {
+        
+        try {
+            ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
+            if (userId == null || userId.getData() == null) {
+                throw new AppException(ErrorCode.NOT_FOUND_USER);
+            }
+            return userId.getData().getId();
+        } catch (feign.FeignException.NotFound e) {
+            log.warn("User not found via Feign client for accountId: {}", response.getData().getId());
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        } catch (feign.FeignException e) {
+            log.error("Feign error when getting user by accountId {}: {}", response.getData().getId(), e.getMessage());
+            if (e.status() == 404) {
+                throw new AppException(ErrorCode.NOT_FOUND_USER);
+            }
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        } catch (Exception e) {
+            log.error("Unexpected error when getting user by accountId {}: {}", response.getData().getId(), e.getMessage());
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
-        return userId.getData().getId();
     }
 
     private Long getAddressById(Long addressId) {

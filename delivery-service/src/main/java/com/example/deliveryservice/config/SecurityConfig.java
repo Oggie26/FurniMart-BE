@@ -10,9 +10,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -37,7 +34,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/users/info/{authId}",
                                 "/swagger-ui.html",
-                                "/api/delivery/stores/*/branch-info",
+                                "/api/delivery/stores/**/branch-info",
                                 "/static/**",
                                 "/*.js",
                                 "/*.css"
