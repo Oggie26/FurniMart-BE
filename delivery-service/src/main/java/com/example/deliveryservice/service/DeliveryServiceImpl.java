@@ -361,7 +361,27 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .count();
 
         List<DeliveryAssignmentResponse> assignmentResponses = assignments.stream()
-                .map(this::mapToResponse)
+                .map(assignment -> {
+                    try {
+                        return mapToResponse(assignment);
+                    } catch (Exception e) {
+                        log.warn("Failed to map assignment {}: {}", assignment.getId(), e.getMessage());
+                        // Return a minimal response without order/store details
+                        return DeliveryAssignmentResponse.builder()
+                                .id(assignment.getId())
+                                .orderId(assignment.getOrderId())
+                                .storeId(assignment.getStoreId())
+                                .deliveryStaffId(assignment.getDeliveryStaffId())
+                                .assignedBy(assignment.getAssignedBy())
+                                .assignedAt(assignment.getAssignedAt())
+                                .estimatedDeliveryDate(assignment.getEstimatedDeliveryDate())
+                                .status(assignment.getStatus().name())
+                                .productsPrepared(assignment.getProductsPrepared())
+                                .invoiceGenerated(assignment.getInvoiceGenerated())
+                                .build();
+                    }
+                })
+                .filter(response -> response != null)
                 .collect(Collectors.toList());
 
         return DeliveryProgressResponse.builder()
@@ -519,6 +539,10 @@ public class DeliveryServiceImpl implements DeliveryService {
             if (orderResponse.getBody() != null && orderResponse.getBody().getData() != null) {
                 order = sanitizeOrderResponse(orderResponse.getBody().getData());
             }
+        } catch (feign.FeignException.NotFound e) {
+            log.warn("Order not found: {}", assignment.getOrderId());
+        } catch (feign.FeignException e) {
+            log.warn("Feign error when fetching order {}: {}", assignment.getOrderId(), e.getMessage());
         } catch (Exception e) {
             log.warn("Failed to fetch order {}: {}", assignment.getOrderId(), e.getMessage());
         }
@@ -528,6 +552,10 @@ public class DeliveryServiceImpl implements DeliveryService {
             if (storeResponse != null && storeResponse.getData() != null) {
                 store = storeResponse.getData();
             }
+        } catch (feign.FeignException.NotFound e) {
+            log.warn("Store not found: {}", assignment.getStoreId());
+        } catch (feign.FeignException e) {
+            log.warn("Feign error when fetching store {}: {}", assignment.getStoreId(), e.getMessage());
         } catch (Exception e) {
             log.warn("Failed to fetch store {}: {}", assignment.getStoreId(), e.getMessage());
         }
