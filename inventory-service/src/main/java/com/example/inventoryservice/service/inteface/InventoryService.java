@@ -43,9 +43,13 @@ public interface InventoryService {
 
     List<InventoryItemResponse> getAllInventoryItems();
 
+    InventoryResponse approveTransfer(String inventoryId, boolean accept);
+
     List<InventoryResponse> getAllInventories();
 
     InventoryResponse getInventoryById(Long inventoryId);
+
+    ProductLocationResponse getProductByStoreId(String storeId);
 
     ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId);
 

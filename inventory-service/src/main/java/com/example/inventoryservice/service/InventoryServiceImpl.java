@@ -4,6 +4,7 @@ import com.example.inventoryservice.entity.*;
 import com.example.inventoryservice.enums.EnumPurpose;
 import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.ErrorCode;
+import com.example.inventoryservice.enums.TransferStatus;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.AuthClient;
 import com.example.inventoryservice.feign.OrderClient;
@@ -90,10 +91,8 @@ public class InventoryServiceImpl implements InventoryService {
                             itemReq.getProductColorId(),
                             itemReq.getQuantity()
                     );
+
                 }
-
-
-
                 case EXPORT -> {
                     List<InventoryItem> items = inventoryItemRepository
                             .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(),
@@ -123,8 +122,35 @@ public class InventoryServiceImpl implements InventoryService {
                 }
 
                 case TRANSFER -> {
-                    break;
+                    if (request.getToWarehouseId() == null) {
+                        throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+                    }
+
+                    Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
+                            .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+                    Inventory requestInventory = Inventory.builder()
+                            .employeeId(getProfile())
+                            .type(EnumTypes.TRANSFER)
+                            .purpose(EnumPurpose.REQUEST)
+                            .date(LocalDate.now())
+                            .note("Request transfer to warehouse " + toWarehouse.getWarehouseName())
+                            .warehouse(warehouse)
+                            .transferStatus(TransferStatus.PENDING)
+                            .build();
+
+                    inventoryRepository.save(requestInventory);
+
+                    createInventoryItem(
+                            requestInventory,
+                            itemReq.getLocationItemId(),
+                            itemReq.getProductColorId(),
+                            itemReq.getQuantity()
+                    );
+
+                    log.info("Transfer request created from warehouse {} to {}", warehouse.getWarehouseName(), toWarehouse.getWarehouseName());
                 }
+
 
 
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
@@ -133,6 +159,32 @@ public class InventoryServiceImpl implements InventoryService {
 
         return mapToInventoryResponse(inventory);
     }
+
+    @Override
+    @Transactional
+    public InventoryResponse approveTransfer(String inventoryId, boolean accept) {
+        Inventory transfer = inventoryRepository.findById(Long.valueOf(inventoryId))
+                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+
+        if (transfer.getPurpose() != EnumPurpose.REQUEST || transfer.getType() != EnumTypes.TRANSFER)
+            throw new AppException(ErrorCode.INVALID_TYPE);
+
+        if (accept) {
+            for (InventoryItem item : transfer.getInventoryItems()) {
+                if (!hasSufficientStock(item.getProductColorId(), transfer.getWarehouse().getId(), item.getQuantity()))
+                    throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+
+                item.setQuantity(item.getQuantity() * -1);
+                inventoryItemRepository.save(item);
+            }
+            transfer.setTransferStatus(TransferStatus.ACCEPTED);
+        } else {
+            transfer.setTransferStatus(TransferStatus.REJECTED);
+        }
+
+        return mapToInventoryResponse(transfer);
+    }
+
 
 
     @Override
@@ -440,6 +492,46 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
         return mapToInventoryResponse(inventory);
+    }
+
+    @Override
+    public ProductLocationResponse getProductByStoreId(String storeId) {
+
+        List<InventoryItem> items = inventoryItemRepository.findAllByStore(storeId);
+
+        Map<String, ProductLocationResponse.LocationInfo> grouped = new HashMap<>();
+
+        for (InventoryItem it : items) {
+
+            int available = it.getQuantity() - it.getReservedQuantity();
+            if (available <= 0) continue;  // ❗Lọc kho không có hàng
+
+            LocationItem li = it.getLocationItem();
+            Zone zone = li.getZone();
+            Warehouse w = zone.getWarehouse();
+
+            grouped.computeIfAbsent(li.getId(), k ->
+                    ProductLocationResponse.LocationInfo.builder()
+                            .warehouseId(w.getId())
+                            .warehouseName(w.getWarehouseName())
+                            .zoneId(zone.getId())
+                            .zoneName(zone.getZoneName())
+                            .locationItemId(li.getId())
+                            .locationCode(li.getCode())
+                            .totalQuantity(0)
+                            .reserved(0)
+                            .build());
+
+            var info = grouped.get(li.getId());
+            info.setTotalQuantity(info.getTotalQuantity() + it.getQuantity());
+            info.setReserved(info.getReserved() + it.getReservedQuantity());
+        }
+
+        return ProductLocationResponse.builder()
+                .storeId(storeId)
+                .productColorId(null)
+                .locations(new ArrayList<>(grouped.values()))
+                .build();
     }
 
     @Override

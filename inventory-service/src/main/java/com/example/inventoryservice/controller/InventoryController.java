@@ -254,6 +254,48 @@ public class InventoryController {
     // 4. TRUY VẤN DANH SÁCH & LỊCH SỬ
     // ==========================================================
 
+    @Operation(summary = "Duyệt hoặc Từ chối phiếu chuyển kho")
+    @PostMapping("/transfer/{inventoryId}/approve")
+    public ApiResponse<InventoryResponse> approveTransfer(
+            @PathVariable String inventoryId,
+            @RequestParam boolean accept) {
+
+        try {
+            InventoryResponse response = inventoryService.approveTransfer(inventoryId, accept);
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(200)
+                    .message(accept ? "Duyệt chuyển kho thành công" : "Từ chối chuyển kho thành công")
+                    .data(response)
+                    .build();
+        } catch (AppException e) {
+            return ApiResponse.<InventoryResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
+        }
+    }
+
+    @Operation(summary = "Lấy danh sách sản phẩm còn hàng theo Store ID")
+    @GetMapping("/stock/by-store")
+    public ApiResponse<ProductLocationResponse> getProductByStoreId(
+            @RequestParam @NotBlank String storeId) {
+
+        try {
+            ProductLocationResponse response = inventoryService.getProductByStoreId(storeId);
+
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(200)
+                    .message("Lấy sản phẩm theo store thành công")
+                    .data(response)
+                    .build();
+        } catch (AppException e) {
+            return ApiResponse.<ProductLocationResponse>builder()
+                    .status(e.getErrorCode().getCode())
+                    .message(e.getErrorCode().getMessage())
+                    .build();
+        }
+    }
+
     @Operation(summary = "Lấy tất cả Phiếu Kho")
     @GetMapping
     public ApiResponse<List<InventoryResponse>> getAllInventories() {

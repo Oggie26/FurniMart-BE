@@ -32,6 +32,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 """)
     int getActualStock(@Param("locationItemId") String locationItemId);
 
+    @Query("""
+    SELECT ii
+    FROM InventoryItem ii
+    JOIN FETCH ii.locationItem li
+    JOIN FETCH li.zone z
+    JOIN FETCH z.warehouse w
+    WHERE w.storeId = :storeId
+""")
+    List<InventoryItem> findAllByStore(@Param("storeId") String storeId);
+
 
     @Query("""
     SELECT COALESCE(SUM(ii.quantity), 0)

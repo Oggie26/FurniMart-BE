@@ -25,7 +25,10 @@ public class InventoryRequest {
     @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự")
     private String note;
 
+    @NotNull(message = "WarehouseId không được để trống")
     private String warehouseId;
+
+    private String toWarehouseId;
 
     private Long orderId;
 

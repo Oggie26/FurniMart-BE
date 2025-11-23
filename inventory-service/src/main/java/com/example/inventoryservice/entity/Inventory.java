@@ -2,6 +2,7 @@ package com.example.inventoryservice.entity;
 
 import com.example.inventoryservice.enums.EnumPurpose;
 import com.example.inventoryservice.enums.EnumTypes;
+import com.example.inventoryservice.enums.TransferStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -46,6 +47,10 @@ public class Inventory extends AbstractEntity {
 
     @Column(unique = true, nullable = false)
     private String code;
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private TransferStatus transferStatus;
 
     @ManyToOne
     @JoinColumn(name = "warehouse_id")
