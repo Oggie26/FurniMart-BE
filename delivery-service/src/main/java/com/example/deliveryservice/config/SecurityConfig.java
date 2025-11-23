@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> {
                     // Use AntPathRequestMatcher explicitly to avoid MvcRequestMatcher
                     // Pass null as HttpMethod to match all HTTP methods
-                    auth.requestMatchers(
+                    RequestMatcher[] publicMatchers = {
                             new AntPathRequestMatcher("/api/auth/**", null),
                             new AntPathRequestMatcher("/swagger-ui/**", null),
                             new AntPathRequestMatcher("/v3/api-docs/**", null),
@@ -41,10 +41,11 @@ public class SecurityConfig {
                             new AntPathRequestMatcher("/swagger-ui.html", null),
                             new AntPathRequestMatcher("/static/**", null),
                             new AntPathRequestMatcher("/*.js", null),
-                            new AntPathRequestMatcher("/*.css", null)
-                    ).permitAll();
-                    // Note: branch-info endpoint is handled by JwtAuthFilter.shouldNotFilter()
-                    // to avoid MvcRequestMatcher pattern parsing issues
+                            new AntPathRequestMatcher("/*.css", null),
+                            // Use RegexRequestMatcher for branch-info to completely avoid MvcRequestMatcher
+                            new RegexRequestMatcher("/api/delivery/stores/[^/]+/branch-info", null)
+                    };
+                    auth.requestMatchers(publicMatchers).permitAll();
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
