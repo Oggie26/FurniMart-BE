@@ -41,13 +41,8 @@ public class SecurityConfig {
                             new AntPathRequestMatcher("/*.js", null),
                             new AntPathRequestMatcher("/*.css", null)
                     ).permitAll();
-                    // Use custom RequestMatcher for branch-info to avoid MvcRequestMatcher pattern parsing
-                    auth.requestMatchers(request -> {
-                        String path = request.getRequestURI();
-                        if (path == null) return false;
-                        // Match /api/delivery/stores/{any}/branch-info
-                        return path.matches("/api/delivery/stores/[^/]+/branch-info");
-                    }).permitAll();
+                    // Note: branch-info endpoint is handled by JwtAuthFilter.shouldNotFilter()
+                    // to avoid MvcRequestMatcher pattern parsing issues
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
