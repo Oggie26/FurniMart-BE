@@ -370,4 +370,18 @@ public class InventoryController {
                 .data(response)
                 .build();
     }
+
+    @Operation(summary = "Lấy danh sách các yêu cầu chuyển kho đang chờ duyệt cho kho")
+    @GetMapping("/transfer/pending/{warehouseId}")
+    public ApiResponse<List<InventoryResponse>> getPendingTransferRequests(
+            @PathVariable String warehouseId) {
+
+        List<InventoryResponse> response = inventoryService.getPendingTransfers(warehouseId);
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách yêu cầu chuyển kho đang chờ duyệt thành công")
+                .data(response)
+                .build();
+    }
 }

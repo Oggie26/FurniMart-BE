@@ -107,8 +107,16 @@ public class InventoryServiceImpl implements InventoryService {
                         if (available <= 0) continue;
 
                         int toExport = Math.min(available, remaining);
+
                         it.setQuantity(it.getQuantity() - toExport);
                         inventoryItemRepository.save(it);
+
+                        createInventoryItem(
+                                inventory,
+                                it.getLocationItem().getId(),
+                                itemReq.getProductColorId(),
+                                -toExport
+                        );
 
                         remaining -= toExport;
                         if (remaining <= 0) break;
@@ -117,9 +125,33 @@ public class InventoryServiceImpl implements InventoryService {
                     if (remaining > 0)
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-                    createInventoryItem(inventory, itemReq.getLocationItemId(),
-                            itemReq.getProductColorId(), -itemReq.getQuantity());
+                    if (request.getToWarehouseId() != null) {
+                        Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
+                                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+                        Inventory transferInventory = Inventory.builder()
+                                .employeeId(getProfile()) // manager kho B
+                                .type(EnumTypes.TRANSFER)
+                                .purpose(EnumPurpose.REQUEST)
+                                .warehouse(toWarehouse) // kho B là kho gửi
+                                .transferStatus(TransferStatus.PENDING)
+                                .note("Transfer to warehouse " + toWarehouse.getWarehouseName())
+                                .date(LocalDate.now())
+                                .build();
+
+                        inventoryRepository.save(transferInventory);
+
+                        for (InventoryItem it : inventory.getInventoryItems()) {
+                            createInventoryItem(
+                                    transferInventory,
+                                    it.getLocationItem().getId(),
+                                    it.getProductColorId(),
+                                    Math.abs(it.getQuantity())
+                            );
+                        }
+                    }
                 }
+
 
                 case TRANSFER -> {
                     if (request.getToWarehouseId() == null) {
@@ -151,8 +183,6 @@ public class InventoryServiceImpl implements InventoryService {
                     log.info("Transfer request created from warehouse {} to {}", warehouse.getWarehouseName(), toWarehouse.getWarehouseName());
                 }
 
-
-
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
             }
         }
@@ -166,26 +196,56 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory transfer = inventoryRepository.findById(Long.valueOf(inventoryId))
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
+        // Kiểm tra đúng loại transfer request
         if (transfer.getPurpose() != EnumPurpose.REQUEST || transfer.getType() != EnumTypes.TRANSFER)
             throw new AppException(ErrorCode.INVALID_TYPE);
 
-        if (accept) {
-            for (InventoryItem item : transfer.getInventoryItems()) {
-                if (!hasSufficientStock(item.getProductColorId(), transfer.getWarehouse().getId(), item.getQuantity()))
-                    throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-
-                item.setQuantity(item.getQuantity() * -1);
-                inventoryItemRepository.save(item);
-            }
-            transfer.setTransferStatus(TransferStatus.ACCEPTED);
-        } else {
+        // Nếu từ chối → chỉ cập nhật status
+        if (!accept) {
             transfer.setTransferStatus(TransferStatus.REJECTED);
+            return mapToInventoryResponse(transfer);
+        }
+
+        // === 1. CHECK TỒN KHO Ở KHO GỬI ===
+        for (InventoryItem item : transfer.getInventoryItems()) {
+            if (!hasSufficientStock(item.getProductColorId(),
+                    transfer.getWarehouse().getId(),
+                    item.getQuantity())) {
+                throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+            }
+        }
+
+        for (InventoryItem item : transfer.getInventoryItems()) {
+            item.setQuantity(item.getQuantity() * -1);
+            inventoryItemRepository.save(item);
+        }
+
+        transfer.setTransferStatus(TransferStatus.ACCEPTED);
+
+        Inventory importInventory = Inventory.builder()
+                .type(EnumTypes.IN)
+                .purpose(EnumPurpose.STOCK_IN)
+                .warehouse(warehouseRepository.findById(transfer.getWarehouse().getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND)))
+                .note("Auto import from transfer " + transfer.getId())
+                .build();
+
+        inventoryRepository.save(importInventory);
+
+        for (InventoryItem oldItem : transfer.getInventoryItems()) {
+            InventoryItem newItem = InventoryItem.builder()
+                    .inventory(importInventory)
+                    .productColorId(oldItem.getProductColorId())
+                    .quantity(Math.abs(oldItem.getQuantity()))
+                    .reservedQuantity(0)
+                    .locationItem(oldItem.getLocationItem()) // bạn có thể đổi vị trí khác nếu muốn
+                    .build();
+
+            inventoryItemRepository.save(newItem);
         }
 
         return mapToInventoryResponse(transfer);
     }
-
-
 
     @Override
     @Transactional
@@ -495,6 +555,19 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public List<InventoryResponse> getPendingTransfers(String warehouseId) {
+        return inventoryRepository
+                .findAllByWarehouse_IdAndPurposeAndTransferStatus(
+                        warehouseId,
+                        EnumPurpose.REQUEST,
+                        TransferStatus.PENDING
+                )
+                .stream()
+                .map(this::mapToInventoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public ProductLocationResponse getProductByStoreId(String storeId) {
 
         List<InventoryItem> items = inventoryItemRepository.findAllByStore(storeId);
@@ -504,7 +577,7 @@ public class InventoryServiceImpl implements InventoryService {
         for (InventoryItem it : items) {
 
             int available = it.getQuantity() - it.getReservedQuantity();
-            if (available <= 0) continue;  // ❗Lọc kho không có hàng
+            if (available <= 0) continue;
 
             LocationItem li = it.getLocationItem();
             Zone zone = li.getZone();
@@ -615,11 +688,13 @@ public class InventoryServiceImpl implements InventoryService {
         if (locationItemId != null) {
             locationItem = locationItemRepository.findByIdAndIsDeletedFalse(locationItemId)
                     .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
+        } else if (inventory.getType() != EnumTypes.TRANSFER) {
+            throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
         }
 
         InventoryItem item = InventoryItem.builder()
                 .inventory(inventory)
-                .locationItem(locationItem)
+                .locationItem(locationItem) // null nếu là phiếu transfer
                 .productColorId(productColorId)
                 .quantity(quantity)
                 .reservedQuantity(0)
@@ -632,6 +707,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
         inventory.getInventoryItems().add(item);
     }
+
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())

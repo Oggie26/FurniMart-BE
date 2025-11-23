@@ -49,6 +49,8 @@ public interface InventoryService {
 
     InventoryResponse getInventoryById(Long inventoryId);
 
+    List<InventoryResponse> getPendingTransfers(String warehouseId);
+
     ProductLocationResponse getProductByStoreId(String storeId);
 
     ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId);
