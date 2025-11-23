@@ -39,10 +39,15 @@ public class SecurityConfig {
                             new AntPathRequestMatcher("/swagger-ui.html", null),
                             new AntPathRequestMatcher("/static/**", null),
                             new AntPathRequestMatcher("/*.js", null),
-                            new AntPathRequestMatcher("/*.css", null),
-                            // Add explicit pattern for branch-info endpoint
-                            new AntPathRequestMatcher("/api/delivery/stores/*/branch-info", null)
+                            new AntPathRequestMatcher("/*.css", null)
                     ).permitAll();
+                    // Use custom RequestMatcher for branch-info to avoid MvcRequestMatcher pattern parsing
+                    auth.requestMatchers(request -> {
+                        String path = request.getRequestURI();
+                        if (path == null) return false;
+                        // Match /api/delivery/stores/{any}/branch-info
+                        return path.matches("/api/delivery/stores/[^/]+/branch-info");
+                    }).permitAll();
                     auth.anyRequest().authenticated();
                 })
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

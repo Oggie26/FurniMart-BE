@@ -37,7 +37,7 @@ public class DeliveryController {
 
     // ========== GUEST ENDPOINTS (Public) ==========
 
-    @GetMapping("/stores/{storeId}/branch-info")
+    @GetMapping(value = "/stores/{storeId}/branch-info", produces = "application/json")
     @Operation(
             summary = "Get store branch information with stock availability",
             description = "Retrieve detailed store information including warehouse details and stock availability. This is a public API that does not require authentication."
@@ -47,7 +47,7 @@ public class DeliveryController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Store not found with storeId: {storeId}")
     })
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<StoreBranchInfoResponse> getStoreBranchInfo(@PathVariable String storeId) {
+    public ApiResponse<StoreBranchInfoResponse> getStoreBranchInfo(@PathVariable("storeId") String storeId) {
         log.info("=== DeliveryController.getStoreBranchInfo called with storeId: {} ===", storeId);
         return ApiResponse.<StoreBranchInfoResponse>builder()
                 .status(HttpStatus.OK.value())
