@@ -129,7 +129,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(feign.FeignException.class)
     public ResponseEntity<ApiResponse<Void>> handleFeignException(feign.FeignException exception) {
-        log.error("Feign exception: status={}, message={}", exception.status(), exception.getMessage());
+        String requestUrl = "N/A";
+        try {
+            if (exception.request() != null) {
+                requestUrl = exception.request().url();
+            }
+        } catch (Exception e) {
+            // Ignore if request URL cannot be extracted
+        }
+        log.error("Feign exception: status={}, message={}, requestUrl={}", 
+                exception.status(), exception.getMessage(), requestUrl, exception);
         
         // Map Feign 404 to appropriate error
         if (exception.status() == 404) {
