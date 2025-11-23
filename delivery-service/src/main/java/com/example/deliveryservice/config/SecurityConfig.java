@@ -29,16 +29,18 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> {
+                    // Use AntPathRequestMatcher explicitly to avoid MvcRequestMatcher
                     auth.requestMatchers(
-                            new AntPathRequestMatcher("/api/auth/**"),
-                            new AntPathRequestMatcher("/swagger-ui/**"),
-                            new AntPathRequestMatcher("/v3/api-docs/**"),
-                                new AntPathRequestMatcher("/api/users/info/*"),
-                            new AntPathRequestMatcher("/swagger-ui.html"),
-                            new AntPathRequestMatcher("/static/**"),
-                            new AntPathRequestMatcher("/*.js"),
-                            new AntPathRequestMatcher("/*.css")
+                            new AntPathRequestMatcher("/api/auth/**", null),
+                            new AntPathRequestMatcher("/swagger-ui/**", null),
+                            new AntPathRequestMatcher("/v3/api-docs/**", null),
+                            new AntPathRequestMatcher("/api/users/info/*", null),
+                            new AntPathRequestMatcher("/swagger-ui.html", null),
+                            new AntPathRequestMatcher("/static/**", null),
+                            new AntPathRequestMatcher("/*.js", null),
+                            new AntPathRequestMatcher("/*.css", null)
                     ).permitAll();
+                    // Custom matcher for branch-info endpoint
                     auth.requestMatchers(request -> {
                         String path = request.getRequestURI();
                         return path != null && path.contains("/stores/") && path.endsWith("/branch-info");
