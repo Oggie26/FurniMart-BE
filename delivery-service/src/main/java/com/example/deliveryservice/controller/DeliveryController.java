@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -29,6 +30,7 @@ import java.util.List;
 @Tag(name = "Delivery Controller", description = "APIs for managing delivery assignments, store branch info, invoices, and delivery progress")
 @SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
+@Slf4j
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
@@ -46,6 +48,7 @@ public class DeliveryController {
     })
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<StoreBranchInfoResponse> getStoreBranchInfo(@PathVariable String storeId) {
+        log.info("=== DeliveryController.getStoreBranchInfo called with storeId: {} ===", storeId);
         return ApiResponse.<StoreBranchInfoResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Store branch information retrieved successfully")

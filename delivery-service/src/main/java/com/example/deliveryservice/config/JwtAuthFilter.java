@@ -27,7 +27,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
+        String method = request.getMethod();
+        log.info("=== JwtAuthFilter.shouldNotFilter: {} {} ===", method, path);
         if (path == null) {
+            log.debug("Path is null, not filtering.");
             return false;
         }
         // Skip JWT filter for public endpoints
@@ -40,9 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 path.endsWith(".js") ||
                 path.endsWith(".css");
         
-        if (shouldSkip) {
-            log.debug("JwtAuthFilter: Skipping filter for path: {}", path);
-        }
+        log.info("JwtAuthFilter.shouldNotFilter: {} {} -> shouldSkip: {}", method, path, shouldSkip);
         return shouldSkip;
     }
 
@@ -51,10 +52,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        log.info("=== JwtAuthFilter.doFilterInternal: {} {} ===", method, path);
 
         final String authHeader = request.getHeader("Authorization");
+        log.debug("Authorization header: {}", authHeader != null ? "present" : "missing");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.debug("No valid Authorization header, proceeding without authentication");
             filterChain.doFilter(request, response);
             return;
         }
@@ -78,12 +84,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception ex) {
+            log.error("JWT authentication failed for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"status\":401,\"message\":\"Invalid or expired JWT token\"}");
             response.getWriter().flush();
             return;
         }
+        log.debug("JWT authentication successful, proceeding with filter chain");
         filterChain.doFilter(request, response);
 
     }
