@@ -12,11 +12,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -29,7 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return false;
         }
         // Skip JWT filter for public endpoints
-        return path.startsWith("/api/auth/") ||
+        boolean shouldSkip = path.startsWith("/api/auth/") ||
                 path.startsWith("/swagger-ui/") ||
                 path.startsWith("/v3/api-docs/") ||
                 path.startsWith("/swagger-ui.html") ||
@@ -37,6 +39,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 path.startsWith("/static/") ||
                 path.endsWith(".js") ||
                 path.endsWith(".css");
+        
+        if (shouldSkip) {
+            log.debug("JwtAuthFilter: Skipping filter for path: {}", path);
+        }
+        return shouldSkip;
     }
 
     @Override

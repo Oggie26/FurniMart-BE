@@ -362,8 +362,24 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId) {
+        log.info("searchOrderByStoreId called with storeId: {}, keyword: {}, page: {}, size: {}", storeId, request, page, size);
+        
+        // Validate storeId
+        if (storeId == null || storeId.trim().isEmpty()) {
+            log.error("storeId is null or empty");
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        }
+        
+        // Check if storeId contains query parameters (indicates parsing issue)
+        if (storeId.contains("=") || storeId.contains("&")) {
+            log.error("storeId appears to contain query parameters: {}", storeId);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
+        log.debug("Calling getStoreById with storeId: {}", storeId);
         String id = getStoreById(storeId);
+        log.debug("Validated storeId: {}", id);
 
         Page<Order> orders = orderRepository.searchByStoreIdAndKeyword(id, request, pageable);
 

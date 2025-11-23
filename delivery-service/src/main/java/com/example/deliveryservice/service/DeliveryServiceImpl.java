@@ -324,7 +324,9 @@ public class DeliveryServiceImpl implements DeliveryService {
         ApiResponse<StoreResponse> storeResponse;
         StoreResponse store;
         try {
+            log.debug("Calling storeClient.getStoreById({})", storeId);
             storeResponse = storeClient.getStoreById(storeId);
+            log.debug("Store response received: {}", storeResponse != null ? "not null" : "null");
             if (storeResponse == null || storeResponse.getData() == null) {
                 log.warn("Store response is null for store: {}", storeId);
                 throw new AppException(ErrorCode.STORE_NOT_FOUND);
@@ -332,16 +334,16 @@ public class DeliveryServiceImpl implements DeliveryService {
             store = storeResponse.getData();
             log.info("Store found: {} - {}", store.getId(), store.getName());
         } catch (feign.FeignException.NotFound e) {
-            log.warn("Store not found via Feign client (404): {}", storeId);
+            log.error("Store not found via Feign client (404): {} - {}", storeId, e.getMessage(), e);
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         } catch (feign.FeignException e) {
-            log.error("Feign error when getting store {}: status={}, message={}", storeId, e.status(), e.getMessage());
+            log.error("Feign error when getting store {}: status={}, message={}", storeId, e.status(), e.getMessage(), e);
             if (e.status() == 404) {
                 throw new AppException(ErrorCode.STORE_NOT_FOUND);
             }
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         } catch (AppException e) {
-            log.error("AppException when getting store {}: {}", storeId, e.getMessage());
+            log.error("AppException when getting store {}: {}", storeId, e.getMessage(), e);
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage(), e);
@@ -426,15 +428,20 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryAssignmentResponse getDeliveryAssignmentByOrderId(Long orderId) {
         log.info("Getting delivery assignment for order: {}", orderId);
         try {
+            log.debug("Querying delivery assignment for order: {}", orderId);
             DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId)
                     .orElseThrow(() -> {
                         log.warn("Delivery assignment not found for order: {}", orderId);
                         return new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND);
                     });
             log.info("Found delivery assignment: {} for order: {}", assignment.getId(), orderId);
-            return mapToResponse(assignment);
+            log.debug("Calling mapToResponse for assignment: {}", assignment.getId());
+            DeliveryAssignmentResponse response = mapToResponse(assignment);
+            log.debug("mapToResponse completed successfully for assignment: {}", assignment.getId());
+            return response;
         } catch (AppException e) {
-            log.error("AppException in getDeliveryAssignmentByOrderId for order {}: {}", orderId, e.getMessage());
+            log.error("AppException in getDeliveryAssignmentByOrderId for order {}: {} - ErrorCode: {}", 
+                    orderId, e.getMessage(), e.getErrorCode(), e);
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error in getDeliveryAssignmentByOrderId for order {}: {}", orderId, e.getMessage(), e);
@@ -550,33 +557,45 @@ public class DeliveryServiceImpl implements DeliveryService {
     }
 
     private DeliveryAssignmentResponse mapToResponse(DeliveryAssignment assignment) {
+        log.debug("mapToResponse called for assignment: {}, orderId: {}, storeId: {}", 
+                assignment.getId(), assignment.getOrderId(), assignment.getStoreId());
         OrderResponse order = null;
         StoreResponse store = null;
 
         try {
+            log.debug("Fetching order {} for assignment {}", assignment.getOrderId(), assignment.getId());
             ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(assignment.getOrderId());
             if (orderResponse.getBody() != null && orderResponse.getBody().getData() != null) {
                 order = sanitizeOrderResponse(orderResponse.getBody().getData());
+                log.debug("Order {} fetched successfully", assignment.getOrderId());
+            } else {
+                log.debug("Order {} response body is null", assignment.getOrderId());
             }
         } catch (feign.FeignException.NotFound e) {
-            log.warn("Order not found: {}", assignment.getOrderId());
+            log.warn("Order not found: {} - {}", assignment.getOrderId(), e.getMessage());
         } catch (feign.FeignException e) {
-            log.warn("Feign error when fetching order {}: {}", assignment.getOrderId(), e.getMessage());
+            log.warn("Feign error when fetching order {}: status={}, message={}", 
+                    assignment.getOrderId(), e.status(), e.getMessage());
         } catch (Exception e) {
-            log.warn("Failed to fetch order {}: {}", assignment.getOrderId(), e.getMessage());
+            log.warn("Failed to fetch order {}: {}", assignment.getOrderId(), e.getMessage(), e);
         }
 
         try {
+            log.debug("Fetching store {} for assignment {}", assignment.getStoreId(), assignment.getId());
             ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(assignment.getStoreId());
             if (storeResponse != null && storeResponse.getData() != null) {
                 store = storeResponse.getData();
+                log.debug("Store {} fetched successfully", assignment.getStoreId());
+            } else {
+                log.debug("Store {} response is null", assignment.getStoreId());
             }
         } catch (feign.FeignException.NotFound e) {
-            log.warn("Store not found: {}", assignment.getStoreId());
+            log.warn("Store not found: {} - {}", assignment.getStoreId(), e.getMessage());
         } catch (feign.FeignException e) {
-            log.warn("Feign error when fetching store {}: {}", assignment.getStoreId(), e.getMessage());
+            log.warn("Feign error when fetching store {}: status={}, message={}", 
+                    assignment.getStoreId(), e.status(), e.getMessage());
         } catch (Exception e) {
-            log.warn("Failed to fetch store {}: {}", assignment.getStoreId(), e.getMessage());
+            log.warn("Failed to fetch store {}: {}", assignment.getStoreId(), e.getMessage(), e);
         }
 
         return DeliveryAssignmentResponse.builder()
