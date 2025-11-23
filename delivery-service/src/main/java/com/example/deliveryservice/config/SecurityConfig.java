@@ -30,14 +30,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/api/users/info/{authId}",
-                                "/swagger-ui.html",
-                                "/static/**",
-                                "/*.js",
-                                "/*.css"
+                                new AntPathRequestMatcher("/api/auth/**"),
+                                new AntPathRequestMatcher("/swagger-ui/**"),
+                                new AntPathRequestMatcher("/v3/api-docs/**"),
+                                new AntPathRequestMatcher("/api/users/info/{authId}"),
+                                new AntPathRequestMatcher("/swagger-ui.html"),
+                                new AntPathRequestMatcher("/static/**"),
+                                new AntPathRequestMatcher("/*.js"),
+                                new AntPathRequestMatcher("/*.css")
                         ).permitAll()
                         .requestMatchers(request -> {
                             String path = request.getRequestURI();
