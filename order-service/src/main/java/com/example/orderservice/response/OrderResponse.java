@@ -28,4 +28,5 @@ public class OrderResponse {
     private Double depositPrice;
     private Date qrCodeGeneratedAt;
     private String pdfFilePath;
+    private Boolean hasPdfFile; // Ghi chú: true nếu file PDF tồn tại, false nếu không tồn tại hoặc chưa có
 }
