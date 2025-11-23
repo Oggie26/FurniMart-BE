@@ -28,6 +28,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Skip JWT filter for public endpoints
+        String path = request.getRequestURI();
+        if (path != null && (
+                path.startsWith("/api/auth/") ||
+                path.startsWith("/swagger-ui/") ||
+                path.startsWith("/v3/api-docs/") ||
+                path.startsWith("/swagger-ui.html") ||
+                path.contains("/branch-info") ||
+                path.startsWith("/static/") ||
+                path.endsWith(".js") ||
+                path.endsWith(".css")
+        )) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

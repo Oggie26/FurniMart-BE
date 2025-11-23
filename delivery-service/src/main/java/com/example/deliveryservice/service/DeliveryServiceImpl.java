@@ -322,25 +322,31 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         // Verify store exists
         ApiResponse<StoreResponse> storeResponse;
+        StoreResponse store;
         try {
             storeResponse = storeClient.getStoreById(storeId);
             if (storeResponse == null || storeResponse.getData() == null) {
+                log.warn("Store response is null for store: {}", storeId);
                 throw new AppException(ErrorCode.STORE_NOT_FOUND);
             }
+            store = storeResponse.getData();
+            log.info("Store found: {} - {}", store.getId(), store.getName());
         } catch (feign.FeignException.NotFound e) {
-            log.warn("Store not found via Feign client: {}", storeId);
+            log.warn("Store not found via Feign client (404): {}", storeId);
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         } catch (feign.FeignException e) {
-            log.error("Feign error when getting store {}: {}", storeId, e.getMessage());
+            log.error("Feign error when getting store {}: status={}, message={}", storeId, e.status(), e.getMessage());
             if (e.status() == 404) {
                 throw new AppException(ErrorCode.STORE_NOT_FOUND);
             }
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (AppException e) {
+            log.error("AppException when getting store {}: {}", storeId, e.getMessage());
+            throw e;
         } catch (Exception e) {
-            log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage());
+            log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage(), e);
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
-        StoreResponse store = storeResponse.getData();
 
         List<DeliveryAssignment> assignments = deliveryAssignmentRepository.findByStoreIdAndIsDeletedFalse(storeId);
 
@@ -418,9 +424,22 @@ public class DeliveryServiceImpl implements DeliveryService {
     @Override
     @Transactional(readOnly = true)
     public DeliveryAssignmentResponse getDeliveryAssignmentByOrderId(Long orderId) {
-        DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
-        return mapToResponse(assignment);
+        log.info("Getting delivery assignment for order: {}", orderId);
+        try {
+            DeliveryAssignment assignment = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId)
+                    .orElseThrow(() -> {
+                        log.warn("Delivery assignment not found for order: {}", orderId);
+                        return new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND);
+                    });
+            log.info("Found delivery assignment: {} for order: {}", assignment.getId(), orderId);
+            return mapToResponse(assignment);
+        } catch (AppException e) {
+            log.error("AppException in getDeliveryAssignmentByOrderId for order {}: {}", orderId, e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error in getDeliveryAssignmentByOrderId for order {}: {}", orderId, e.getMessage(), e);
+            throw new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND);
+        }
     }
 
     @Override
