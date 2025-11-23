@@ -28,23 +28,23 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                new AntPathRequestMatcher("/api/auth/**"),
-                                new AntPathRequestMatcher("/swagger-ui/**"),
-                                new AntPathRequestMatcher("/v3/api-docs/**"),
-                                new AntPathRequestMatcher("/api/users/info/{authId}"),
-                                new AntPathRequestMatcher("/swagger-ui.html"),
-                                new AntPathRequestMatcher("/static/**"),
-                                new AntPathRequestMatcher("/*.js"),
-                                new AntPathRequestMatcher("/*.css")
-                        ).permitAll()
-                        .requestMatchers(request -> {
-                            String path = request.getRequestURI();
-                            return path != null && path.contains("/stores/") && path.endsWith("/branch-info");
-                        }).permitAll()
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(
+                            new AntPathRequestMatcher("/api/auth/**"),
+                            new AntPathRequestMatcher("/swagger-ui/**"),
+                            new AntPathRequestMatcher("/v3/api-docs/**"),
+                            new AntPathRequestMatcher("/api/users/info/{authId}"),
+                            new AntPathRequestMatcher("/swagger-ui.html"),
+                            new AntPathRequestMatcher("/static/**"),
+                            new AntPathRequestMatcher("/*.js"),
+                            new AntPathRequestMatcher("/*.css")
+                    ).permitAll();
+                    auth.requestMatchers(request -> {
+                        String path = request.getRequestURI();
+                        return path != null && path.contains("/stores/") && path.endsWith("/branch-info");
+                    }).permitAll();
+                    auth.anyRequest().authenticated();
+                })
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
