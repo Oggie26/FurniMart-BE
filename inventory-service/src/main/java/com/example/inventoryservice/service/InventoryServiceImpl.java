@@ -677,6 +677,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .warehouse(warehouse)
                 .build();
 
+
         return inventoryRepository.save(inventory);
     }
 
