@@ -184,6 +184,7 @@ public class DeliveryController {
     })
     @PreAuthorize("hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryProgressResponse> getDeliveryProgressByStore(@PathVariable String storeId) {
+        log.info("=== DeliveryController.getDeliveryProgressByStore called with storeId: {} ===", storeId);
         return ApiResponse.<DeliveryProgressResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Delivery progress retrieved successfully")
