@@ -36,4 +36,13 @@ public interface OrderService {
      * Lấy lịch sử status của đơn hàng theo orderId, sắp xếp theo thời gian (cũ nhất trước)
      */
     List<ProcessOrderResponse> getOrderStatusHistory(Long orderId);
+
+    /**
+     * Lấy danh sách orders của một cửa hàng đã được tạo hóa đơn (có pdfFilePath)
+     * @param storeId ID của cửa hàng
+     * @param page Số trang (bắt đầu từ 0)
+     * @param size Số lượng items mỗi trang
+     * @return PageResponse chứa danh sách orders với thông tin về PDF file
+     */
+    PageResponse<OrderResponse> getStoreOrdersWithInvoice(String storeId, int page, int size);
 }
