@@ -36,19 +36,14 @@ public class InventoryController {
     @PostMapping
     public ApiResponse<InventoryResponse> createOrUpdateInventory(
             @Valid @RequestBody InventoryRequest request) {
-        try {
-            InventoryResponse response = inventoryService.createOrUpdateInventory(request);
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Tạo/Cập nhật phiếu kho thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryResponse response = inventoryService.createOrUpdateInventory(request);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Tạo/Cập nhật phiếu kho thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Thêm Chi Tiết Item vào Phiếu Kho")
@@ -56,19 +51,14 @@ public class InventoryController {
     public ApiResponse<InventoryItemResponse> addInventoryItem(
             @PathVariable Long inventoryId,
             @Valid @RequestBody InventoryItemRequest request) {
-        try {
-            InventoryItemResponse response = inventoryService.addInventoryItem(request, inventoryId);
-            return ApiResponse.<InventoryItemResponse>builder()
-                    .status(200)
-                    .message("Thêm chi tiết vào phiếu kho thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryItemResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryItemResponse response = inventoryService.addInventoryItem(request, inventoryId);
+
+        return ApiResponse.<InventoryItemResponse>builder()
+                .status(200)
+                .message("Thêm chi tiết vào phiếu kho thành công")
+                .data(response)
+                .build();
     }
 
     // ==========================================================
@@ -80,19 +70,14 @@ public class InventoryController {
     public ApiResponse<InventoryResponse> importStock(
             @PathVariable String warehouseId,
             @Valid @RequestBody InventoryItemRequest request) {
-        try {
-            InventoryResponse response = inventoryService.importStock(request, warehouseId);
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Nhập kho thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryResponse response = inventoryService.importStock(request, warehouseId);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Nhập kho thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Xuất kho (Tạo phiếu EXPORT)")
@@ -100,81 +85,61 @@ public class InventoryController {
     public ApiResponse<InventoryResponse> exportStock(
             @PathVariable String warehouseId,
             @Valid @RequestBody InventoryItemRequest request) {
-        try {
-            InventoryResponse response = inventoryService.exportStock(request, warehouseId);
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Xuất kho thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryResponse response = inventoryService.exportStock(request, warehouseId);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Xuất kho thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Giữ hàng (Tạo phiếu RESERVE)")
     @PostMapping("/reserve")
     public ApiResponse<InventoryResponse> reserveStock(
             @Valid @RequestBody InventoryItemRequest request) {
-        try {
-            InventoryResponse response = inventoryService.reserveStock(
-                    request.getProductColorId(),
-                    request.getQuantity()
-            );
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Giữ hàng thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryResponse response = inventoryService.reserveStock(
+                request.getProductColorId(),
+                request.getQuantity()
+        );
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Giữ hàng thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Bỏ giữ hàng (Tạo phiếu RELEASE)")
     @PostMapping("/release")
     public ApiResponse<InventoryResponse> releaseReservedStock(
             @Valid @RequestBody InventoryItemRequest request) {
-        try {
-            InventoryResponse response = inventoryService.releaseReservedStock(
-                    request.getProductColorId(),
-                    request.getQuantity()
-            );
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Bỏ giữ hàng thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryResponse response = inventoryService.releaseReservedStock(
+                request.getProductColorId(),
+                request.getQuantity()
+        );
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Bỏ giữ hàng thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Chuyển kho (Tạo phiếu TRANSFER)")
     @PostMapping("/transfer")
     public ApiResponse<Void> transferStock(
             @Valid @RequestBody TransferStockRequest request) {
-        try {
-            inventoryService.transferStock(request);
-            return ApiResponse.<Void>builder()
-                    .status(200)
-                    .message("Chuyển kho thành công")
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<Void>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        inventoryService.transferStock(request);
+
+        return ApiResponse.<Void>builder()
+                .status(200)
+                .message("Chuyển kho thành công")
+                .build();
     }
 
     // ==========================================================
@@ -187,7 +152,9 @@ public class InventoryController {
             @RequestParam @NotBlank String productColorId,
             @RequestParam @NotBlank String warehouseId,
             @RequestParam @Min(1) int requiredQty) {
+
         boolean response = inventoryService.hasSufficientStock(productColorId, warehouseId, requiredQty);
+
         return ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho kho thành công")
@@ -200,7 +167,9 @@ public class InventoryController {
     public ApiResponse<Boolean> hasSufficientGlobalStock(
             @RequestParam @NotBlank String productColorId,
             @RequestParam @Min(1) int requiredQty) {
+
         boolean response = inventoryService.hasSufficientGlobalStock(productColorId, requiredQty);
+
         return ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho toàn cục thành công")
@@ -212,6 +181,7 @@ public class InventoryController {
     @GetMapping("/stock/total-physical")
     public ApiResponse<Integer> getTotalStockByProductColorId(
             @RequestParam @NotBlank String productColorId) {
+
         return ApiResponse.<Integer>builder()
                 .status(200)
                 .message("Lấy tổng tồn kho vật lý thành công")
@@ -223,6 +193,7 @@ public class InventoryController {
     @GetMapping("/stock/total-available")
     public ApiResponse<Integer> getAvailableStockByProductColorId(
             @RequestParam @NotBlank String productColorId) {
+
         return ApiResponse.<Integer>builder()
                 .status(200)
                 .message("Lấy tổng tồn kho khả dụng thành công")
@@ -235,19 +206,13 @@ public class InventoryController {
     public ApiResponse<Boolean> checkZoneCapacity(
             @PathVariable @NotBlank String zoneId,
             @RequestParam @Min(1) int additionalQty) {
-        try {
-            boolean response = inventoryService.checkZoneCapacity(zoneId, additionalQty);
-            return ApiResponse.<Boolean>builder()
-                    .status(200)
-                    .message("Kiểm tra sức chứa Zone thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<Boolean>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        boolean response = inventoryService.checkZoneCapacity(zoneId, additionalQty);
+        return ApiResponse.<Boolean>builder()
+                .status(200)
+                .message("Kiểm tra sức chứa Zone thành công")
+                .data(response)
+                .build();
     }
 
     // ==========================================================
@@ -260,19 +225,13 @@ public class InventoryController {
             @PathVariable String inventoryId,
             @RequestParam boolean accept) {
 
-        try {
-            InventoryResponse response = inventoryService.approveTransfer(inventoryId, accept);
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message(accept ? "Duyệt chuyển kho thành công" : "Từ chối chuyển kho thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+        InventoryResponse response = inventoryService.approveTransfer(inventoryId, accept);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message(accept ? "Duyệt chuyển kho thành công" : "Từ chối chuyển kho thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Lấy danh sách sản phẩm còn hàng theo Store ID")
@@ -280,26 +239,20 @@ public class InventoryController {
     public ApiResponse<ProductLocationResponse> getProductByStoreId(
             @RequestParam @NotBlank String storeId) {
 
-        try {
-            ProductLocationResponse response = inventoryService.getProductByStoreId(storeId);
+        ProductLocationResponse response = inventoryService.getProductByStoreId(storeId);
 
-            return ApiResponse.<ProductLocationResponse>builder()
-                    .status(200)
-                    .message("Lấy sản phẩm theo store thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<ProductLocationResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+        return ApiResponse.<ProductLocationResponse>builder()
+                .status(200)
+                .message("Lấy sản phẩm theo store thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Lấy tất cả Phiếu Kho")
     @GetMapping
     public ApiResponse<List<InventoryResponse>> getAllInventories() {
         List<InventoryResponse> inventories = inventoryService.getAllInventories();
+
         return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy tất cả phiếu kho thành công")
@@ -307,23 +260,18 @@ public class InventoryController {
                 .build();
     }
 
-    @Operation(summary = "Lấy tất cả kho chứa productColorId (warehouse → zone → location)")
+    @Operation(summary = "Lấy tất cả kho chứa productColorId")
     @GetMapping("/stock/locations/all")
     public ApiResponse<ProductLocationResponse> getAllProductLocations(
             @RequestParam @NotBlank String productColorId) {
-        try {
-            ProductLocationResponse response = inventoryService.getAllProductLocations(productColorId);
-            return ApiResponse.<ProductLocationResponse>builder()
-                    .status(200)
-                    .message("Lấy toàn bộ vị trí sản phẩm thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<ProductLocationResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        ProductLocationResponse response = inventoryService.getAllProductLocations(productColorId);
+
+        return ApiResponse.<ProductLocationResponse>builder()
+                .status(200)
+                .message("Lấy toàn bộ vị trí sản phẩm thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Lấy vị trí chứa productColorId theo Warehouse ID")
@@ -331,45 +279,36 @@ public class InventoryController {
     public ApiResponse<ProductLocationResponse> getProductLocationsByWarehouse(
             @RequestParam @NotBlank String productColorId,
             @RequestParam @NotBlank String storeId) {
-        try {
-            ProductLocationResponse response =
-                    inventoryService.getProductLocationsByWarehouse(productColorId, storeId);
 
-            return ApiResponse.<ProductLocationResponse>builder()
-                    .status(200)
-                    .message("Lấy vị trí sản phẩm theo warehouse thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<ProductLocationResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+        ProductLocationResponse response =
+                inventoryService.getProductLocationsByWarehouse(productColorId, storeId);
+
+        return ApiResponse.<ProductLocationResponse>builder()
+                .status(200)
+                .message("Lấy vị trí sản phẩm theo warehouse thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Lấy Phiếu Kho theo ID")
     @GetMapping("/{inventoryId}")
     public ApiResponse<InventoryResponse> getInventoryById(@PathVariable Long inventoryId) {
-        try {
-            InventoryResponse response = inventoryService.getInventoryById(inventoryId);
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Lấy phiếu kho thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<InventoryResponse>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        InventoryResponse response = inventoryService.getInventoryById(inventoryId);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Lấy phiếu kho thành công")
+                .data(response)
+                .build();
     }
 
     @Operation(summary = "Lấy danh sách Phiếu Kho theo Warehouse ID")
     @GetMapping("/warehouse/{warehouseId}")
     public ApiResponse<List<InventoryResponse>> getInventoryByWarehouse(@PathVariable String warehouseId) {
+
         List<InventoryResponse> response = inventoryService.getInventoryByWarehouse(warehouseId);
+
         return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách phiếu kho theo kho thành công")
@@ -380,7 +319,9 @@ public class InventoryController {
     @Operation(summary = "Lấy danh sách Phiếu Kho theo Zone ID")
     @GetMapping("/zone/{zoneId}")
     public ApiResponse<List<InventoryResponse>> getInventoryByZone(@PathVariable String zoneId) {
+
         List<InventoryResponse> response = inventoryService.getInventoryByZone(zoneId);
+
         return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách phiếu kho theo Zone thành công")
@@ -391,7 +332,9 @@ public class InventoryController {
     @Operation(summary = "Lấy tất cả Chi Tiết Phiếu Kho")
     @GetMapping("/items")
     public ApiResponse<List<InventoryItemResponse>> getAllInventoryItems() {
+
         List<InventoryItemResponse> items = inventoryService.getAllInventoryItems();
+
         return ApiResponse.<List<InventoryItemResponse>>builder()
                 .status(200)
                 .message("Lấy tất cả lịch sử giao dịch thành công")
@@ -401,8 +344,11 @@ public class InventoryController {
 
     @Operation(summary = "Lấy Chi Tiết Giao Dịch theo Product ID")
     @GetMapping("/items/product/{productColorId}")
-    public ApiResponse<List<InventoryItemResponse>> getInventoryItemsByProduct(@PathVariable String productColorId) {
+    public ApiResponse<List<InventoryItemResponse>> getInventoryItemsByProduct(
+            @PathVariable String productColorId) {
+
         List<InventoryItemResponse> response = inventoryService.getInventoryItemsByProduct(productColorId);
+
         return ApiResponse.<List<InventoryItemResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách giao dịch theo sản phẩm thành công")
@@ -415,18 +361,13 @@ public class InventoryController {
     public ApiResponse<List<InventoryItemResponse>> getTransactionHistory(
             @RequestParam @NotBlank String productColorId,
             @RequestParam(required = false) String zoneId) {
-        try {
-            List<InventoryItemResponse> response = inventoryService.getTransactionHistory(productColorId, zoneId);
-            return ApiResponse.<List<InventoryItemResponse>>builder()
-                    .status(200)
-                    .message("Lấy lịch sử giao dịch thành công")
-                    .data(response)
-                    .build();
-        } catch (AppException e) {
-            return ApiResponse.<List<InventoryItemResponse>>builder()
-                    .status(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        }
+
+        List<InventoryItemResponse> response = inventoryService.getTransactionHistory(productColorId, zoneId);
+
+        return ApiResponse.<List<InventoryItemResponse>>builder()
+                .status(200)
+                .message("Lấy lịch sử giao dịch thành công")
+                .data(response)
+                .build();
     }
 }
