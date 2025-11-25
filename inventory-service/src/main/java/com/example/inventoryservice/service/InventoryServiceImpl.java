@@ -174,7 +174,7 @@ public class InventoryServiceImpl implements InventoryService {
                             .purpose(purpose)
                             .date(LocalDate.now())
                             .note("Request transfer to warehouse " + toWarehouse.getWarehouseName())
-                            .warehouse(warehouse)
+                            .warehouse(toWarehouse)
                             .transferStatus(TransferStatus.PENDING)
                             .build();
 
