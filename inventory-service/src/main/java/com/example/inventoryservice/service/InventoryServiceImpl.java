@@ -203,53 +203,18 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory transfer = inventoryRepository.findById(Long.valueOf(inventoryId))
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
-        // Kiểm tra đúng loại transfer request
-        if (transfer.getPurpose() != EnumPurpose.REQUEST || transfer.getType() != EnumTypes.TRANSFER)
+        if (transfer.getPurpose() != EnumPurpose.REQUEST || transfer.getType() != EnumTypes.TRANSFER) {
             throw new AppException(ErrorCode.INVALID_TYPE);
+        }
 
-        // Nếu từ chối → chỉ cập nhật status
         if (!accept) {
             transfer.setTransferStatus(TransferStatus.REJECTED);
+            inventoryRepository.save(transfer);
             return mapToInventoryResponse(transfer);
         }
 
-        // === 1. CHECK TỒN KHO Ở KHO GỬI ===
-        for (InventoryItem item : transfer.getInventoryItems()) {
-            if (!hasSufficientStock(item.getProductColorId(),
-                    transfer.getWarehouse().getId(),
-                    item.getQuantity())) {
-                throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-            }
-        }
-
-        for (InventoryItem item : transfer.getInventoryItems()) {
-            item.setQuantity(item.getQuantity() * -1);
-            inventoryItemRepository.save(item);
-        }
-
         transfer.setTransferStatus(TransferStatus.ACCEPTED);
-
-        Inventory importInventory = Inventory.builder()
-                .type(EnumTypes.IN)
-                .purpose(EnumPurpose.STOCK_IN)
-                .warehouse(warehouseRepository.findById(transfer.getWarehouse().getId())
-                        .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND)))
-                .note("Auto import from transfer " + transfer.getId())
-                .build();
-
-        inventoryRepository.save(importInventory);
-
-        for (InventoryItem oldItem : transfer.getInventoryItems()) {
-            InventoryItem newItem = InventoryItem.builder()
-                    .inventory(importInventory)
-                    .productColorId(oldItem.getProductColorId())
-                    .quantity(Math.abs(oldItem.getQuantity()))
-                    .reservedQuantity(0)
-                    .locationItem(oldItem.getLocationItem()) // bạn có thể đổi vị trí khác nếu muốn
-                    .build();
-
-            inventoryItemRepository.save(newItem);
-        }
+        inventoryRepository.save(transfer);
 
         return mapToInventoryResponse(transfer);
     }
