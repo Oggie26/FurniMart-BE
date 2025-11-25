@@ -161,10 +161,17 @@ public class InventoryServiceImpl implements InventoryService {
                     Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
+                    EnumPurpose purpose;
+                    if (request.getType() == EnumTypes.TRANSFER) {
+                        purpose = EnumPurpose.REQUEST; // luôn set REQUEST cho TRANSFER
+                    } else {
+                        purpose = EnumPurpose.REQUEST;
+                    }
+
                     Inventory requestInventory = Inventory.builder()
                             .employeeId(getProfile())
                             .type(EnumTypes.TRANSFER)
-                            .purpose(EnumPurpose.REQUEST)
+                            .purpose(purpose)
                             .date(LocalDate.now())
                             .note("Request transfer to warehouse " + toWarehouse.getWarehouseName())
                             .warehouse(warehouse)
