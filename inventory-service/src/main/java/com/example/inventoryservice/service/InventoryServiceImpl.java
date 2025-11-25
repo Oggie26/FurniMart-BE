@@ -134,7 +134,7 @@ public class InventoryServiceImpl implements InventoryService {
                                 .type(EnumTypes.TRANSFER)
                                 .purpose(EnumPurpose.REQUEST)
                                 .warehouse(toWarehouse) // kho B là kho gửi
-                                .transferStatus(TransferStatus.PENDING)
+                                .transferStatus(request.getType() == EnumTypes.TRANSFER ? TransferStatus.PENDING : null)
                                 .note("Transfer to warehouse " + toWarehouse.getWarehouseName())
                                 .date(LocalDate.now())
                                 .build();
