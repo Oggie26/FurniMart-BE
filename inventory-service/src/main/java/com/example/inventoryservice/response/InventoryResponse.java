@@ -2,6 +2,7 @@ package com.example.inventoryservice.response;
 
 import com.example.inventoryservice.enums.EnumPurpose;
 import com.example.inventoryservice.enums.EnumTypes;
+import com.example.inventoryservice.enums.TransferStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,5 +25,6 @@ public class InventoryResponse {
     private String warehouseName;
     private String warehouseId;
     private Long orderId;
+    private TransferStatus transferStatus;
     private List<InventoryItemResponse> itemResponseList;
 }
