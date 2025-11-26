@@ -184,4 +184,54 @@ public class ChatController {
                 .data(chatService.pinChat(id, pinned))
                 .build();
     }
+
+    // AI Chat to Staff Connection Endpoints
+
+    @PostMapping("/{chatId}/request-staff")
+    @Operation(summary = "Request staff connection for AI chat", 
+               description = "Customer can request to connect with a staff member. Chat mode will change from AI to WAITING_STAFF.")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<ChatResponse> requestStaffConnection(@PathVariable String chatId) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff connection requested successfully")
+                .data(chatService.requestStaffConnection(chatId))
+                .build();
+    }
+
+    @PostMapping("/{chatId}/accept-staff")
+    @Operation(summary = "Accept staff connection request", 
+               description = "Staff member accepts a customer's request. Only one staff can accept each chat. Chat mode will change from WAITING_STAFF to STAFF_CONNECTED.")
+    @PreAuthorize("hasRole('STAFF')")
+    public ApiResponse<ChatResponse> acceptStaffConnection(@PathVariable String chatId) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff connection accepted successfully")
+                .data(chatService.acceptStaffConnection(chatId))
+                .build();
+    }
+
+    @PostMapping("/{chatId}/end-staff-chat")
+    @Operation(summary = "End staff chat session", 
+               description = "Customer or staff can end the staff chat session. Chat mode will change from STAFF_CONNECTED back to AI.")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('STAFF')")
+    public ApiResponse<ChatResponse> endStaffChat(@PathVariable String chatId) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff chat ended successfully")
+                .data(chatService.endStaffChat(chatId))
+                .build();
+    }
+
+    @GetMapping("/{chatId}/status")
+    @Operation(summary = "Get chat status and mode", 
+               description = "Get the current status of the chat including chat mode (AI, WAITING_STAFF, STAFF_CONNECTED) and assigned staff ID if any.")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
+    public ApiResponse<ChatResponse> getChatStatus(@PathVariable String chatId) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Chat status retrieved successfully")
+                .data(chatService.getChatById(chatId))
+                .build();
+    }
 }

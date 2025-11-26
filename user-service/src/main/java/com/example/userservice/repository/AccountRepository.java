@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface AccountRepository extends JpaRepository<Account, String> {
     Optional<Account> findByEmailAndIsDeletedFalse(String email);
     Optional<Account> findByIdAndIsDeletedFalse(String id);
+    Optional<Account> findByResetToken(String resetToken);
+    Optional<Account> findByVerificationToken(String verificationToken);
     
     /**
      * Find all accounts with User and Employee eagerly loaded

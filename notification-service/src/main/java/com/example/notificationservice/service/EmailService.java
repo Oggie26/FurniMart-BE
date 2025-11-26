@@ -75,4 +75,84 @@ public class EmailService {
         }
     }
 
+    public void sendMailEmailVerification(com.example.notificationservice.event.EmailVerificationEvent event) {
+        try {
+            String link = "http://localhost:5173/verify-email?token=" + event.getVerificationToken();
+            String button = "XÁC THỰC EMAIL";
+
+            Context context = new Context();
+            context.setVariable("name", event.getFullName());
+            context.setVariable("button", button);
+            context.setVariable("link", link);
+
+            String htmlContent = templateEngine.process("emailverification", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("namphse173452@fpt.edu.vn");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Xác thực email FurniMart");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            System.out.println("✅ Đã gửi email xác thực thành công");
+        } catch (MessagingException e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ Lỗi khi gửi email: " + e.getMessage());
+        }
+    }
+
+    public void sendMailOtpCode(com.example.notificationservice.event.OtpEvent event) {
+        try {
+            Context context = new Context();
+            context.setVariable("name", event.getFullName());
+            context.setVariable("otpCode", event.getOtpCode());
+            if (event.getResetToken() != null) {
+                String resetLink = "http://localhost:5173/reset-password?token=" + event.getResetToken();
+                context.setVariable("resetLink", resetLink);
+            }
+
+            String htmlContent = templateEngine.process("otpcode", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("namphse173452@fpt.edu.vn");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Mã OTP xác thực FurniMart");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            System.out.println("✅ Đã gửi mã OTP thành công");
+        } catch (MessagingException e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ Lỗi khi gửi email: " + e.getMessage());
+        }
+    }
+
+    public void sendMailChangePasswordOtp(com.example.notificationservice.event.OtpEvent event) {
+        try {
+            Context context = new Context();
+            context.setVariable("name", event.getFullName());
+            context.setVariable("otpCode", event.getOtpCode());
+
+            String htmlContent = templateEngine.process("changepasswordotp", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("namphse173452@fpt.edu.vn");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Mã OTP đổi mật khẩu FurniMart");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            System.out.println("✅ Đã gửi mã OTP đổi mật khẩu thành công");
+        } catch (MessagingException e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ Lỗi khi gửi email: " + e.getMessage());
+        }
+    }
+
 }

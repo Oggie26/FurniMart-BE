@@ -36,9 +36,19 @@ public class GlobalExceptionHandler {
             ? "Validation failed" 
             : errors.values().iterator().next();
         
+        // Map common validation errors to ErrorCode
+        ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
+        if (mainMessage != null) {
+            if (mainMessage.contains("Email must be valid") || mainMessage.contains("email")) {
+                errorCode = ErrorCode.INVALID_REQUEST;
+            } else if (mainMessage.contains("Password") || mainMessage.contains("password")) {
+                errorCode = ErrorCode.INVALID_PASSWORD;
+            }
+        }
+        
         return ResponseEntity.badRequest()
                 .body(ApiResponse.<Map<String, String>>builder()
-                        .status(HttpStatus.BAD_REQUEST.value())
+                        .status(errorCode.getCode())
                         .message(mainMessage)
                         .data(errors)
                         .build());

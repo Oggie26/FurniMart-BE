@@ -2,10 +2,14 @@ package com.example.userservice.controller;
 
 import com.example.userservice.config.JwtService;
 import com.example.userservice.request.AuthRequest;
+import com.example.userservice.request.ForgotPasswordRequest;
 import com.example.userservice.request.GoogleLoginRequest;
 import com.example.userservice.request.RefreshTokenRequest;
 import com.example.userservice.request.RegisterRequest;
+import com.example.userservice.request.ResetPasswordRequest;
 import com.example.userservice.request.TokenRequest;
+import com.example.userservice.request.VerifyEmailRequest;
+import com.example.userservice.request.VerifyOtpRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
@@ -121,6 +125,66 @@ public class AuthController {
                 .status(HttpStatus.OK.value())
                 .message("Đăng nhập với Google thành công")
                 .data(googleOAuth2Service.authenticateWithGoogle(request.getAccessToken()))
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Quên mật khẩu", description = "API gửi OTP và reset token qua email để đặt lại mật khẩu")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestBody @Valid ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đã gửi mã OTP và link đặt lại mật khẩu qua email")
+                .data("OTP và reset link đã được gửi đến email của bạn")
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Đặt lại mật khẩu", description = "API đặt lại mật khẩu bằng reset token")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đặt lại mật khẩu thành công")
+                .data("Mật khẩu đã được đặt lại thành công")
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Xác thực email", description = "API xác thực email bằng verification token")
+    public ResponseEntity<ApiResponse<String>> verifyEmail(@RequestBody @Valid VerifyEmailRequest request) {
+        authService.verifyEmail(request);
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Xác thực email thành công")
+                .data("Email đã được xác thực thành công")
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
+    @PostMapping("/resend-verification-email")
+    @Operation(summary = "Gửi lại email xác thực", description = "API gửi lại email xác thực")
+    public ResponseEntity<ApiResponse<String>> resendVerificationEmail(@RequestBody @Valid ForgotPasswordRequest request) {
+        authService.resendVerificationEmail(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đã gửi lại email xác thực")
+                .data("Email xác thực đã được gửi lại đến email của bạn")
+                .timestamp(LocalDateTime.now())
+                .build());
+    }
+
+    @PostMapping("/verify-otp")
+    @Operation(summary = "Xác thực OTP cho reset password", description = "API xác thực OTP code trước khi reset password")
+    public ResponseEntity<ApiResponse<String>> verifyOtp(@RequestParam String email, @RequestBody @Valid VerifyOtpRequest request) {
+        authService.verifyOtpForPasswordReset(email, request.getOtpCode());
+        return ResponseEntity.ok(ApiResponse.<String>builder()
+                .status(HttpStatus.OK.value())
+                .message("OTP xác thực thành công")
+                .data("OTP đã được xác thực. Bạn có thể đặt lại mật khẩu.")
                 .timestamp(LocalDateTime.now())
                 .build());
     }

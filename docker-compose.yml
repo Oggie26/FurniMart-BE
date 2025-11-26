@@ -101,6 +101,8 @@ services:
     depends_on:
       - eureka-server
       - user-db
+      - redis
+      - kafka
     networks:
       - backend
     restart: unless-stopped
@@ -110,6 +112,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   user-db:
     image: postgres:16

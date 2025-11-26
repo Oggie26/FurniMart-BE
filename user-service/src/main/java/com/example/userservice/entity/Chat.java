@@ -4,6 +4,7 @@ import com.example.userservice.enums.EnumStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -44,9 +45,29 @@ public class Chat extends AbstractEntity {
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ChatParticipant> participants;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "chat_mode")
+    @Builder.Default
+    private ChatMode chatMode = ChatMode.AI;
+
+    @Column(name = "assigned_staff_id")
+    private String assignedStaffId;
+
+    @Column(name = "staff_requested_at")
+    private LocalDateTime staffRequestedAt;
+
+    @Column(name = "staff_chat_ended_at")
+    private LocalDateTime staffChatEndedAt;
+
     public enum ChatType {
         PRIVATE,
         GROUP,
         CHANNEL
+    }
+
+    public enum ChatMode {
+        AI,                    // Đang chat với AI
+        WAITING_STAFF,         // Đang chờ staff accept
+        STAFF_CONNECTED        // Đã kết nối với staff
     }
 }

@@ -1,8 +1,6 @@
 package com.example.userservice.repository;
 
 import com.example.userservice.entity.Chat;
-import com.example.userservice.entity.User;
-import com.example.userservice.enums.EnumStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,4 +35,72 @@ public interface ChatRepository extends JpaRepository<Chat, String> {
     @Query("SELECT c FROM Chat c WHERE c.isDeleted = false AND " +
            "(c.name LIKE %:searchTerm% OR c.description LIKE %:searchTerm%)")
     Page<Chat> searchChats(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    // ========== NEW METHODS FOR AI CHAT TO STAFF FLOW ==========
+
+    /**
+     * Find chats by chat mode
+     * Used to find chats waiting for staff or connected to staff
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = :chatMode AND c.isDeleted = false")
+    List<Chat> findChatsByChatMode(@Param("chatMode") Chat.ChatMode chatMode);
+
+    /**
+     * Find chats by chat mode with pagination
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = :chatMode AND c.isDeleted = false")
+    Page<Chat> findChatsByChatMode(@Param("chatMode") Chat.ChatMode chatMode, Pageable pageable);
+
+    /**
+     * Find chats assigned to a specific staff
+     * Used by staff to see their assigned chats
+     */
+    @Query("SELECT c FROM Chat c WHERE c.assignedStaffId = :staffId AND c.isDeleted = false")
+    List<Chat> findChatsByAssignedStaffId(@Param("staffId") String staffId);
+
+    /**
+     * Find chats assigned to a specific staff with pagination
+     */
+    @Query("SELECT c FROM Chat c WHERE c.assignedStaffId = :staffId AND c.isDeleted = false")
+    Page<Chat> findChatsByAssignedStaffId(@Param("staffId") String staffId, Pageable pageable);
+
+    /**
+     * Find chats waiting for staff (WAITING_STAFF mode)
+     * Used by staff dashboard to see available chat requests
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = 'WAITING_STAFF' AND c.isDeleted = false ORDER BY c.staffRequestedAt ASC")
+    List<Chat> findChatsWaitingForStaff();
+
+    /**
+     * Find chats waiting for staff with pagination
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = 'WAITING_STAFF' AND c.isDeleted = false ORDER BY c.staffRequestedAt ASC")
+    Page<Chat> findChatsWaitingForStaff(Pageable pageable);
+
+    /**
+     * Find active chats assigned to staff (STAFF_CONNECTED mode)
+     * Used by staff to see their active chats
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = 'STAFF_CONNECTED' AND c.assignedStaffId = :staffId AND c.isDeleted = false")
+    List<Chat> findActiveChatsByAssignedStaffId(@Param("staffId") String staffId);
+
+    /**
+     * Find active chats assigned to staff with pagination
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = 'STAFF_CONNECTED' AND c.assignedStaffId = :staffId AND c.isDeleted = false")
+    Page<Chat> findActiveChatsByAssignedStaffId(@Param("staffId") String staffId, Pageable pageable);
+
+    /**
+     * Count chats waiting for staff
+     * Used for dashboard statistics
+     */
+    @Query("SELECT COUNT(c) FROM Chat c WHERE c.chatMode = 'WAITING_STAFF' AND c.isDeleted = false")
+    long countChatsWaitingForStaff();
+
+    /**
+     * Count active chats assigned to a specific staff
+     * Used for staff workload statistics
+     */
+    @Query("SELECT COUNT(c) FROM Chat c WHERE c.chatMode = 'STAFF_CONNECTED' AND c.assignedStaffId = :staffId AND c.isDeleted = false")
+    long countActiveChatsByAssignedStaffId(@Param("staffId") String staffId);
 }

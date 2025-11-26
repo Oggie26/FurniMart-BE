@@ -1,6 +1,9 @@
 package com.example.userservice.config;
 
 import com.example.userservice.event.AccountCreatedEvent;
+import com.example.userservice.event.AccountPlaceEvent;
+import com.example.userservice.event.EmailVerificationEvent;
+import com.example.userservice.event.OtpEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -50,6 +53,48 @@ public class KafkaConfig {
     @Bean
     public KafkaTemplate<String, AccountCreatedEvent> accountCreatedEventKafkaTemplate() {
         return new KafkaTemplate<>(accountCreatedEventProducerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, AccountPlaceEvent> accountPlaceEventProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, AccountPlaceEvent> accountPlaceEventKafkaTemplate() {
+        return new KafkaTemplate<>(accountPlaceEventProducerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, EmailVerificationEvent> emailVerificationEventProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, EmailVerificationEvent> emailVerificationEventKafkaTemplate() {
+        return new KafkaTemplate<>(emailVerificationEventProducerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, OtpEvent> otpEventProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, OtpEvent> otpEventKafkaTemplate() {
+        return new KafkaTemplate<>(otpEventProducerFactory());
     }
 
     // ----------------- PRODUCER cho String (nếu cần) --------------------

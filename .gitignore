@@ -28,6 +28,12 @@ CHANGELOG.md
 .env.swo
 .env.swp
 
+# Application configuration with secrets (keep .example files)
+application-local.yml
+application-prod.yml
+application-staging.yml
+!application*.example.yml
+
 # SSH and Server Information (Sensitive)
 SSH_CONNECTION_INFO.md
 *_CONNECTION_INFO.md

@@ -1,6 +1,8 @@
 package com.example.notificationservice.config;
 
 import com.example.notificationservice.event.AccountPlaceEvent;
+import com.example.notificationservice.event.EmailVerificationEvent;
+import com.example.notificationservice.event.OtpEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -66,6 +68,36 @@ public class KafkaConsumerConfig {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent>();
 
         factory.setConsumerFactory(orderCreatedConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, EmailVerificationEvent> emailVerificationConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(EmailVerificationEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, EmailVerificationEvent> emailVerificationKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, EmailVerificationEvent>();
+        factory.setConsumerFactory(emailVerificationConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, OtpEvent> otpConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(OtpEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OtpEvent> otpKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, OtpEvent>();
+        factory.setConsumerFactory(otpConsumerFactory());
         return factory;
     }
 

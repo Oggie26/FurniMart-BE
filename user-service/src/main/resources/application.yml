@@ -10,7 +10,7 @@ spring:
     url: jdbc:postgresql://user-db:5432/user_db
 #    url: jdbc:postgresql://localhost:5432/user_db
     username: postgres
-    password: 123456
+    password: ${DB_PASSWORD:123456}  # Use environment variable, default for local dev only
   jpa:
     hibernate:
       ddl-auto: update
@@ -65,7 +65,7 @@ app:
     retry-delay: 1000
 
 jwt:
-  secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
+  secret: ${JWT_SECRET:j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj}  # Use environment variable, default for local dev only
   expiration: 3600000
   refreshExpiration: 604800000
 
@@ -87,19 +87,28 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
+# Feign Client Configuration
+feign:
+  client:
+    config:
+      ai-service:
+        connectTimeout: 5000  # 5 seconds
+        readTimeout: 10000    # 10 seconds
+        loggerLevel: basic
+
 logging:
   level:
     org.apache.kafka.clients.NetworkClient: ERROR
     org.apache.kafka.clients.Metadata: ERROR
 
 vnpay:
-  tmnCode: 3MUC1EW6
-  hashSecret: O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K
-  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  tmnCode: ${VNPAY_TMN_CODE:3MUC1EW6}  # Use environment variable, default for local dev only
+  hashSecret: ${VNPAY_HASH_SECRET:O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K}  # Use environment variable, default for local dev only
+  url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
   # VNPay withdrawal API URL (nếu có)
   # Nếu không có, sẽ xử lý async/queue
-  withdrawalUrl: 
-  withdrawalCallbackUrl: http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback
+  withdrawalUrl: ${VNPAY_WITHDRAWAL_URL:}
+  withdrawalCallbackUrl: ${VNPAY_WITHDRAWAL_CALLBACK_URL:http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback}
   # VNPay deposit callback URL
-  depositCallbackUrl: http://152.53.244.124:8086/api/wallets/deposit-via-vnpay/callback
+  depositCallbackUrl: ${VNPAY_DEPOSIT_CALLBACK_URL:http://152.53.244.124:8086/api/wallets/deposit-via-vnpay/callback}
 

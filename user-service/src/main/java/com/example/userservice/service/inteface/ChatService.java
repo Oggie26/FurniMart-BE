@@ -1,6 +1,6 @@
 package com.example.userservice.service.inteface;
 
-import com.example.userservice.entity.Chat;
+import com.example.userservice.entity.Employee;
 import com.example.userservice.request.ChatRequest;
 import com.example.userservice.response.ChatResponse;
 import com.example.userservice.response.PageResponse;
@@ -36,4 +36,15 @@ public interface ChatService {
     ChatResponse muteChat(String chatId, boolean muted);
 
     ChatResponse pinChat(String chatId, boolean pinned);
+
+    // New methods for AI chat to staff flow
+    ChatResponse requestStaffConnection(String chatId);
+
+    ChatResponse acceptStaffConnection(String chatId);
+
+    ChatResponse endStaffChat(String chatId);
+
+    List<Employee> getOnlineStaff();
+
+    boolean isStaffOnline(String staffId);
 }

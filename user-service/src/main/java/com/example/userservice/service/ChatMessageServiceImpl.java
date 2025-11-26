@@ -4,11 +4,13 @@ import com.example.userservice.entity.*;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
+import com.example.userservice.feign.AiServiceClient;
 import com.example.userservice.repository.ChatMessageRepository;
 import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.ChatMessageRequest;
+import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.ChatMessageResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.service.inteface.ChatMessageService;
@@ -35,6 +37,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     private final ChatRepository chatRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
+    private final AiServiceClient aiServiceClient;
 
     @Override
     @Transactional
@@ -50,27 +53,20 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         chatParticipantRepository.findActiveParticipantByChatIdAndUserId(messageRequest.getChatId(), currentUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
 
-        ChatMessage replyTo = null;
-        if (messageRequest.getReplyToMessageId() != null) {
-            replyTo = chatMessageRepository.findById(messageRequest.getReplyToMessageId())
-                    .orElseThrow(() -> new AppException(ErrorCode.MESSAGE_NOT_FOUND));
+        // Route based on chat mode
+        Chat.ChatMode chatMode = chat.getChatMode() != null ? 
+                chat.getChatMode() : Chat.ChatMode.AI; // Backward compatibility
+        
+        if (chatMode == Chat.ChatMode.AI) {
+            return sendMessageToAI(messageRequest, sender, chat);
+        } else if (chatMode == Chat.ChatMode.STAFF_CONNECTED) {
+            return sendMessageToStaff(messageRequest, sender, chat, currentUserId);
+        } else if (chatMode == Chat.ChatMode.WAITING_STAFF) {
+            throw new AppException(ErrorCode.CHAT_NOT_READY);
+        } else {
+            // Fallback for existing chats (PRIVATE, GROUP, CHANNEL)
+            return sendMessageToStaff(messageRequest, sender, chat, currentUserId);
         }
-
-        ChatMessage message = ChatMessage.builder()
-                .content(messageRequest.getContent())
-                .type(messageRequest.getType())
-                .status(EnumStatus.ACTIVE)
-                .chat(chat)
-                .sender(sender)
-                .replyTo(replyTo)
-                .attachmentUrl(messageRequest.getAttachmentUrl())
-                .attachmentType(messageRequest.getAttachmentType())
-                .isEdited(false)
-                .isDeleted(false)
-                .build();
-
-        ChatMessage savedMessage = chatMessageRepository.save(message);
-        return toChatMessageResponse(savedMessage);
     }
 
     @Override
@@ -255,6 +251,124 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         return user.getId();
     }
 
+    private ChatMessageResponse sendMessageToAI(
+            ChatMessageRequest request, User sender, Chat chat) {
+        
+        // Save customer message
+        ChatMessage replyTo = null;
+        if (request.getReplyToMessageId() != null) {
+            replyTo = chatMessageRepository.findById(request.getReplyToMessageId())
+                    .orElse(null);
+        }
+        
+        ChatMessage customerMessage = ChatMessage.builder()
+                .content(request.getContent())
+                .type(request.getType())
+                .status(EnumStatus.ACTIVE)
+                .chat(chat)
+                .sender(sender)
+                .replyTo(replyTo)
+                .attachmentUrl(request.getAttachmentUrl())
+                .attachmentType(request.getAttachmentType())
+                .isEdited(false)
+                .isDeleted(false)
+                .build();
+        
+        ChatMessage savedCustomerMessage = chatMessageRepository.save(customerMessage);
+        
+        // Call AI service
+        try {
+            ApiResponse<String> aiResponse = aiServiceClient.chat(
+                    new AiServiceClient.ChatRequest(request.getContent())
+            );
+            
+            // Save AI response as SYSTEM message
+            User aiBotUser = getOrCreateAiBotUser();
+            ChatMessage aiMessage = ChatMessage.builder()
+                    .content(aiResponse.getData() != null ? aiResponse.getData() : 
+                            "Xin lỗi, tôi không thể phản hồi ngay bây giờ.")
+                    .type(ChatMessage.MessageType.SYSTEM)
+                    .status(EnumStatus.ACTIVE)
+                    .chat(chat)
+                    .sender(aiBotUser)
+                    .isEdited(false)
+                    .isDeleted(false)
+                    .build();
+            
+            chatMessageRepository.save(aiMessage);
+            log.info("AI response saved for chat: {}", chat.getId());
+            
+        } catch (Exception e) {
+            log.error("Error calling AI service for chat: {}", chat.getId(), e);
+            // Save error message
+            try {
+                User aiBotUser = getOrCreateAiBotUser();
+                ChatMessage errorMessage = ChatMessage.builder()
+                        .content("Xin lỗi, tôi không thể phản hồi ngay bây giờ. Vui lòng thử lại sau.")
+                        .type(ChatMessage.MessageType.SYSTEM)
+                        .status(EnumStatus.ACTIVE)
+                        .chat(chat)
+                        .sender(aiBotUser)
+                        .isEdited(false)
+                        .isDeleted(false)
+                        .build();
+                chatMessageRepository.save(errorMessage);
+            } catch (AppException ex) {
+                // If AI bot user is not configured, log error but don't fail the customer message
+                log.error("Cannot save AI error message: AI bot user not configured. Customer message still saved.", ex);
+            }
+        }
+        
+        return toChatMessageResponse(savedCustomerMessage);
+    }
+    
+    private ChatMessageResponse sendMessageToStaff(
+            ChatMessageRequest request, User sender, Chat chat, String currentUserId) {
+        
+        // Security check: Only customer or assigned staff can send
+        if (chat.getChatMode() == Chat.ChatMode.STAFF_CONNECTED) {
+            String customerId = chat.getCreatedBy().getId();
+            String assignedStaffId = chat.getAssignedStaffId();
+            
+            if (!currentUserId.equals(customerId) && 
+                !currentUserId.equals(assignedStaffId)) {
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+        }
+        
+        // Normal message flow
+        ChatMessage replyTo = null;
+        if (request.getReplyToMessageId() != null) {
+            replyTo = chatMessageRepository.findById(request.getReplyToMessageId())
+                    .orElse(null);
+        }
+        
+        ChatMessage message = ChatMessage.builder()
+                .content(request.getContent())
+                .type(request.getType())
+                .status(EnumStatus.ACTIVE)
+                .chat(chat)
+                .sender(sender)
+                .replyTo(replyTo)
+                .attachmentUrl(request.getAttachmentUrl())
+                .attachmentType(request.getAttachmentType())
+                .isEdited(false)
+                .isDeleted(false)
+                .build();
+        
+        ChatMessage savedMessage = chatMessageRepository.save(message);
+        return toChatMessageResponse(savedMessage);
+    }
+    
+    private User getOrCreateAiBotUser() {
+        String aiBotEmail = "ai-bot@furnimart.com";
+        return userRepository.findByEmailAndIsDeletedFalse(aiBotEmail)
+                .orElseThrow(() -> {
+                    log.error("AI bot user not found with email: {}. Please create AI bot user via migration script or initialization.", aiBotEmail);
+                    return new AppException(ErrorCode.AI_BOT_NOT_CONFIGURED);
+                });
+    }
+    
     private ChatMessageResponse toChatMessageResponse(ChatMessage message) {
         return ChatMessageResponse.builder()
                 .id(message.getId())

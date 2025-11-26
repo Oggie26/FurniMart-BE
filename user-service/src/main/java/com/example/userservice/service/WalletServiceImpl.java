@@ -11,6 +11,8 @@ import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.WalletRepository;
 import com.example.userservice.repository.WalletTransactionRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.example.userservice.request.WalletRequest;
 import com.example.userservice.request.WalletTransactionRequest;
 import com.example.userservice.response.WalletResponse;
@@ -21,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -113,6 +116,26 @@ public class WalletServiceImpl implements WalletService {
                 .orElse(null);
 
         return mapToWalletResponse(wallet, user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletResponse getMyWallet() {
+        String currentUserId = getCurrentUserId();
+        return getWalletByUserId(currentUserId);
+    }
+
+    private String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        
+        String email = authentication.getName(); // This returns the email
+        // Find the user by email to get the actual user ID
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        return user.getId();
     }
 
     @Override
@@ -352,7 +375,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public WalletResponse createWalletForUser(String userId) {
         log.info("Auto-creating wallet for user: {}", userId);
 
