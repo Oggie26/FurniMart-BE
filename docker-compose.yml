@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.1
     container_name: traefik
     restart: unless-stopped
     command:
@@ -42,7 +42,7 @@ services:
     networks:
       - backend
     environment:
-      - DOCKER_API_VERSION=1.45
+      - DOCKER_API_VERSION=1.44
 
   eureka-server:
     build: ./eureka-server
