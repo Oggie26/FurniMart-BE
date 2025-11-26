@@ -1,25 +1,24 @@
 services:
 
   traefik:
-    image: traefik:v3.0 # 👉 Dùng bản v3.0 để ổn định nhất với Docker trên VPS
+    image: traefik:v3.0 # Dùng bản v3.0 ổn định
     container_name: traefik
     restart: unless-stopped
     command:
-      # --- 1. Dashboard & API (Mở công khai để debug) ---
+      # --- 1. Dashboard & API ---
       - "--api.dashboard=true"
-      - "--api.insecure=true"
+      - "--api.insecure=true" # Mở port 8081 để debug dễ dàng
 
-      # --- 2. Cấu hình Docker Provider ---
+      # --- 2. Docker Provider ---
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # 👇 Quan trọng: Chỉ định đúng tên mạng đã đặt ở cuối file
-      - "--providers.docker.network=furnimart_net"
+      - "--providers.docker.network=furnimart_net" # Chỉ định mạng cố định
 
-      # --- 3. Cổng web ---
+      # --- 3. Entrypoints ---
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
 
-      # --- 4. Tự động chuyển HTTP sang HTTPS (Global) ---
+      # --- 4. HTTP -> HTTPS Redirect ---
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
 
@@ -29,21 +28,20 @@ services:
       - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
 
-      # --- 6. Log ---
+      # --- Log ---
       - "--log.level=INFO"
       - "--accesslog=true"
 
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080" # Dashboard port
+      - "8081:8080" # Dashboard
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
     environment:
-      # 👉 Fix lỗi "client version 1.24 is too old"
       - DOCKER_API_VERSION=1.45
 
   eureka-server:
@@ -58,8 +56,7 @@ services:
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
-    ports:
-      - "8080:8080"
+    # Không map port 8080 ra ngoài để bắt buộc đi qua Traefik
     depends_on:
       - eureka-server
     networks:
@@ -67,28 +64,28 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      # 👉 Quan trọng: Báo cho Traefik biết Gateway nằm ở mạng nào
       - "traefik.docker.network=furnimart_net"
 
-      # Cấu hình Router HTTPS
+      # --- Router & SSL ---
       - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
-
-      # Chỉ định port nội bộ (8080)
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
 
-      # Middlewares (CORS & RateLimit)
+      # --- Middleware Kích hoạt ---
       - "traefik.http.routers.api-gateway.middlewares=api-cors,api-ratelimit"
 
-      # Config CORS
+      # --- CẤU HÌNH CORS (QUAN TRỌNG ĐỂ FIX LỖI FRONTEND) ---
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=*"
+      # 👇 Cho phép Localhost (Dev) và Domain thật (Prod)
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=http://localhost:5173,https://furnimart.click"
+      # 👇 Bắt buộc có dòng này khi Frontend gửi Token (Authorization)
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowcredentials=true"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
       - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
 
-      # Config RateLimit
+      # --- Rate Limit ---
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
 
@@ -342,7 +339,7 @@ services:
           cpus: "1.0"
           memory: 1g
 
-# 👇 MẠNG ĐƯỢC ĐẶT TÊN CỐ ĐỊNH Ở ĐÂY
+# 👇 MẠNG CỐ ĐỊNH CHO TRAEFIK
 networks:
   backend:
     name: furnimart_net
