@@ -710,7 +710,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
                 .productName(getProductName(item.getProductColorId()).getProduct().getName())
-                .locationItem(item.getLocationItem())
+//                .locationItem(item.getLocationItem())
+                .locationId(item.getLocationItem().getId())
                 .inventoryId(item.getInventory().getId())
                 .build();
     }
