@@ -59,6 +59,7 @@ services:
 #    networks:
 #      - backend
 
+
   traefik:
     image: traefik:v3.1   # 👉 Nên đổi từ v3.0 sang v3.1 hoặc latest
     container_name: traefik
