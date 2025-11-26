@@ -42,7 +42,7 @@ services:
     command:
       - "--api.dashboard=true"
       - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false" # chỉ những service bật label mới expose
+      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
@@ -52,7 +52,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080" # dashboard traefik
+      - "8081:8080" # Traefik dashboard
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
