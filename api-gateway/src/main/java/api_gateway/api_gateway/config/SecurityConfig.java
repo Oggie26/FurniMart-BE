@@ -9,6 +9,8 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.adapter.ForwardedHeaderTransformer;
 
 import java.util.List;
 
@@ -29,6 +31,20 @@ public class SecurityConfig {
                 );
         return http.build();
     }
+
+    @Bean
+    public ForwardedHeaderTransformer forwardedHeaderTransformer() {
+        return new ForwardedHeaderTransformer();
+    }
+
+//    @Bean
+//    public WebFilter forwardedHeaderFilter() {
+//        ForwardedHeaderTransformer transformer = new ForwardedHeaderTransformer();
+//        return (exchange, chain) -> {
+//            transformer.apply(exchange.getRequest());
+//            return chain.filter(exchange);
+//        };
+//    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
