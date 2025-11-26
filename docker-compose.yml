@@ -69,7 +69,7 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # ❌ XÓA DÒNG NÀY ĐI: - "--providers.docker.apiVersion=1.44"
+      # Tuyệt đối KHÔNG thêm dòng apiVersion vào command này nữa
 
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -86,9 +86,12 @@ services:
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
-    # ✅ THÊM LẠI PHẦN NÀY
+    # 👇 THAY TOÀN BỘ PHẦN NÀY
     environment:
+      # Cách 1: Ép thư viện Docker Client
       - DOCKER_API_VERSION=1.44
+      # Cách 2: Ép cấu hình Traefik (tương đương với flag --providers.docker.apiVersion)
+      - TRAEFIK_PROVIDERS_DOCKER_APIVERSION=1.44
 
   eureka-server:
     build: ./eureka-server
