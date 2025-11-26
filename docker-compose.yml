@@ -65,33 +65,58 @@ services:
     container_name: traefik
     restart: unless-stopped
     command:
+      # API & Dashboard
       - "--api.dashboard=true"
-      - "--api.insecure=true"
+      - "--api.insecure=false"  # Tắt insecure mode để bảo mật hơn
+      
+      # Docker Provider
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # Tuyệt đối KHÔNG thêm dòng apiVersion vào command này nữa
-
+      - "--providers.docker.network=furnimart-be_backend"
+      
+      # Entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      
+      # HTTP to HTTPS redirect (global)
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      
+      # SSL/TLS Configuration
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      
+      # Logging (optional - uncomment nếu cần debug)
+      # - "--log.level=DEBUG"
+      - "--accesslog=true"
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080"
+      - "8081:8080"  # Dashboard port
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
-    # 👇 THAY TOÀN BỘ PHẦN NÀY
     environment:
-      # Cách 1: Ép thư viện Docker Client
       - DOCKER_API_VERSION=1.44
-      # Cách 2: Ép cấu hình Traefik (tương đương với flag --providers.docker.apiVersion)
       - TRAEFIK_PROVIDERS_DOCKER_APIVERSION=1.44
+    labels:
+      # Traefik Dashboard với Basic Auth
+      - "traefik.enable=true"
+      
+      # Dashboard route (HTTPS)
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.furnimart.click`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=myresolver"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
+      
+      # Basic Auth cho dashboard (user: admin, pass: admin123)
+      # Tạo password mới: echo $(htpasswd -nb admin yourpassword) | sed -e s/\\$/\\$\\$/g
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=admin:$$apr1$$8EVjn/nj$$GiLUZqcbueTFeD23SuB6x0"
 
   eureka-server:
     build: ./eureka-server
@@ -114,14 +139,26 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api-gateway-http.rule=Host(`furnimart.click`)"
-      - "traefik.http.routers.api-gateway-http.entrypoints=web"
-      - "traefik.http.routers.api-gateway-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      
+      # HTTPS route cho API Gateway
       - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
+      
+      # Middlewares
+      - "traefik.http.routers.api-gateway.middlewares=api-cors,api-ratelimit"
+      
+      # CORS middleware
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
+      
+      # Rate limiting (100 requests/second)
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
 
   product-service:
     build: ./product-service
