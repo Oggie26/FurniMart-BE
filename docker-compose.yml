@@ -1,18 +1,18 @@
 services:
 
   traefik:
-    image: traefik:v3.0 # Dùng bản v3.0 ổn định
+    image: traefik:v3.0
     container_name: traefik
     restart: unless-stopped
     command:
       # --- 1. Dashboard & API ---
       - "--api.dashboard=true"
-      - "--api.insecure=true" # Mở port 8081 để debug dễ dàng
+      - "--api.insecure=true" # Mở port 8081
 
       # --- 2. Docker Provider ---
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=furnimart_net" # Chỉ định mạng cố định
+      - "--providers.docker.network=furnimart_net" # Mạng cố định
 
       # --- 3. Entrypoints ---
       - "--entrypoints.web.address=:80"
@@ -56,7 +56,6 @@ services:
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
-    # Không map port 8080 ra ngoài để bắt buộc đi qua Traefik
     depends_on:
       - eureka-server
     networks:
@@ -66,20 +65,18 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
 
-      # --- Router & SSL ---
+      # --- Router ---
       - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
 
-      # --- Middleware Kích hoạt ---
+      # --- Middleware ---
       - "traefik.http.routers.api-gateway.middlewares=api-cors,api-ratelimit"
 
-      # --- CẤU HÌNH CORS (QUAN TRỌNG ĐỂ FIX LỖI FRONTEND) ---
+      # --- CORS Fix (Cho phép Localhost & Domain) ---
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
-      # 👇 Cho phép Localhost (Dev) và Domain thật (Prod)
       - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=http://localhost:5173,https://furnimart.click"
-      # 👇 Bắt buộc có dòng này khi Frontend gửi Token (Authorization)
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowcredentials=true"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
@@ -339,7 +336,7 @@ services:
           cpus: "1.0"
           memory: 1g
 
-# 👇 MẠNG CỐ ĐỊNH CHO TRAEFIK
+# 👇 MẠNG CỐ ĐỊNH
 networks:
   backend:
     name: furnimart_net
