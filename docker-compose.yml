@@ -1,39 +1,49 @@
 services:
 
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.0 # 👉 Dùng bản v3.0 để ổn định nhất với Docker trên VPS
     container_name: traefik
     restart: unless-stopped
     command:
+      # --- 1. Dashboard & API (Mở công khai để debug) ---
       - "--api.dashboard=true"
       - "--api.insecure=true"
 
+      # --- 2. Cấu hình Docker Provider ---
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # 👇 DÒNG QUAN TRỌNG: Chỉ định tên mạng chính xác
+      # 👇 Quan trọng: Chỉ định đúng tên mạng đã đặt ở cuối file
       - "--providers.docker.network=furnimart_net"
 
+      # --- 3. Cổng web ---
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
 
+      # --- 4. Tự động chuyển HTTP sang HTTPS (Global) ---
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
 
+      # --- 5. SSL (Let's Encrypt) ---
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
 
+      # --- 6. Log ---
+      - "--log.level=INFO"
+      - "--accesslog=true"
+
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080"
+      - "8081:8080" # Dashboard port
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
     environment:
+      # 👉 Fix lỗi "client version 1.24 is too old"
       - DOCKER_API_VERSION=1.45
 
   eureka-server:
@@ -57,17 +67,30 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      # 👉 Thêm dòng này để chắc chắn Gateway dùng đúng mạng
+      # 👉 Quan trọng: Báo cho Traefik biết Gateway nằm ở mạng nào
       - "traefik.docker.network=furnimart_net"
 
+      # Cấu hình Router HTTPS
       - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
+
+      # Chỉ định port nội bộ (8080)
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
 
-  # ... (Các service khác user, product, order... giữ nguyên phần networks: - backend) ...
-  # Để ngắn gọn mình không copy lại hết các service dưới, bạn giữ nguyên chúng nhé.
-  # Chỉ cần đảm bảo cuối file có phần networks như dưới đây:
+      # Middlewares (CORS & RateLimit)
+      - "traefik.http.routers.api-gateway.middlewares=api-cors,api-ratelimit"
+
+      # Config CORS
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
+
+      # Config RateLimit
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
 
   product-service:
     build: ./product-service
@@ -319,6 +342,7 @@ services:
           cpus: "1.0"
           memory: 1g
 
+# 👇 MẠNG ĐƯỢC ĐẶT TÊN CỐ ĐỊNH Ở ĐÂY
 networks:
   backend:
     name: furnimart_net
