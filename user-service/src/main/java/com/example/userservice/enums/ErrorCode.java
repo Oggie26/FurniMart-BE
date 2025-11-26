@@ -65,6 +65,27 @@ public enum ErrorCode {
     // Favorite product related errors
     PRODUCT_ALREADY_FAVORITE(1235, "Product is already in favorites", HttpStatus.BAD_REQUEST),
     FAVORITE_PRODUCT_NOT_FOUND(1236, "Favorite product not found", HttpStatus.NOT_FOUND),
+    
+    // Chat mode related errors
+    CHAT_NOT_READY(1237, "Chat is not ready for messaging", HttpStatus.BAD_REQUEST),
+    CHAT_ALREADY_ACCEPTED(1238, "Chat request has already been accepted", HttpStatus.BAD_REQUEST),
+    INVALID_CHAT_STATE(1239, "Chat is in invalid state for this operation", HttpStatus.BAD_REQUEST),
+    STAFF_NOT_ONLINE(1240, "No staff is currently online", HttpStatus.BAD_REQUEST),
+    AI_SERVICE_UNAVAILABLE(1241, "AI service is currently unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_BOT_NOT_CONFIGURED(1242, "AI bot user is not configured. Please contact administrator", HttpStatus.INTERNAL_SERVER_ERROR),
+    SERVICE_UNAVAILABLE(1243, "Service temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+    
+    // Email verification and password reset errors
+    EMAIL_NOT_VERIFIED(1253, "Email is not verified", HttpStatus.BAD_REQUEST),
+    VERIFICATION_TOKEN_EXPIRED(1254, "Verification token has expired", HttpStatus.BAD_REQUEST),
+    VERIFICATION_TOKEN_INVALID(1255, "Invalid verification token", HttpStatus.BAD_REQUEST),
+    RESET_TOKEN_EXPIRED(1256, "Reset token has expired", HttpStatus.BAD_REQUEST),
+    RESET_TOKEN_INVALID(1257, "Invalid reset token", HttpStatus.BAD_REQUEST),
+    OTP_EXPIRED(1258, "OTP code has expired", HttpStatus.BAD_REQUEST),
+    OTP_INVALID(1259, "Invalid OTP code", HttpStatus.BAD_REQUEST),
+    OTP_REQUIRED(1260, "OTP verification required", HttpStatus.BAD_REQUEST),
+    OTP_LOCKED(1261, "OTP verification locked due to too many failed attempts. Please try again later", HttpStatus.BAD_REQUEST),
+    RATE_LIMIT_EXCEEDED(1262, "Too many requests. Please try again later", HttpStatus.TOO_MANY_REQUESTS),
 
     ;
 
