@@ -35,8 +35,32 @@ services:
 #      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
 
 
+#  traefik:
+#    image: traefik:v3.0
+#    container_name: traefik
+#    restart: unless-stopped
+#    command:
+#      - "--api.dashboard=true"
+#      - "--providers.docker=true"
+#      - "--providers.docker.exposedbydefault=false"
+#      - "--entrypoints.web.address=:80"
+#      - "--entrypoints.websecure.address=:443"
+#      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+#      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+#      - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
+#      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#      - "8081:8080" # Traefik dashboard
+#    volumes:
+#      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+#      - "./letsencrypt:/letsencrypt"
+#    networks:
+#      - backend
+
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.1   # 👉 Nên đổi từ v3.0 sang v3.1 hoặc latest
     container_name: traefik
     restart: unless-stopped
     command:
@@ -52,12 +76,15 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080" # Traefik dashboard
+      - "8081:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
+    # 👇 THÊM PHẦN NÀY ĐỂ FIX LỖI 1.24 vs 1.44
+    environment:
+      - DOCKER_API_VERSION=1.44
 
   eureka-server:
     build: ./eureka-server
