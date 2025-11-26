@@ -1,104 +1,39 @@
 services:
 
-  #  traefik:
-  #    image: traefik:v3.0
-  #    command:
-  #      - "--api.dashboard=true"
-  #      - "--providers.docker=true"
-  #      - "--entrypoints.web.address=:80"
-  #      - "--entrypoints.websecure.address=:443"
-  #      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-  #      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-  #      - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
-  #      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-  #    ports:
-  #      - "80:80"
-  #      - "443:443"
-  #      - "8081:8080" # dashboard traefik
-  #    volumes:
-  #      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-  #      - "./letsencrypt:/letsencrypt"
-  #    networks:
-  #      - backend
-
-  #  frontend:
-  #    build: ./furnimart-fe   # 👉 chỗ này là folder FE, đặt ngang hàng với api-gateway, user-service,...
-  #    container_name: frontend
-  #    networks:
-  #      - backend
-  #    restart: unless-stopped
-  #    labels:
-  #      - "traefik.enable=true"
-  #      - "traefik.http.routers.frontend.rule=Host(`furnimart.click`)"
-  #      - "traefik.http.routers.frontend.entrypoints=websecure"
-  #      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
-  #      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
-
-
-  #  traefik:
-  #    image: traefik:v3.0
-  #    container_name: traefik
-  #    restart: unless-stopped
-  #    command:
-  #      - "--api.dashboard=true"
-  #      - "--providers.docker=true"
-  #      - "--providers.docker.exposedbydefault=false"
-  #      - "--entrypoints.web.address=:80"
-  #      - "--entrypoints.websecure.address=:443"
-  #      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-  #      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-  #      - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
-  #      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-  #    ports:
-  #      - "80:80"
-  #      - "443:443"
-  #      - "8081:8080" # Traefik dashboard
-  #    volumes:
-  #      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-  #      - "./letsencrypt:/letsencrypt"
-  #    networks:
-  #      - backend
-
-
   traefik:
-    image: traefik:v3.0 # 👉 Dùng v3.0 để ổn định, tránh lỗi API Docker
+    image: traefik:v3.0
     container_name: traefik
     restart: unless-stopped
     command:
-      # --- 1. Dashboard & API (Bắt buộc insecure=true để vào được port 8081) ---
       - "--api.dashboard=true"
       - "--api.insecure=true"
 
-      # --- 2. Cấu hình Docker Provider ---
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=backend"
+      # 👇 DÒNG QUAN TRỌNG: Chỉ định tên mạng chính xác
+      - "--providers.docker.network=furnimart_net"
 
-      # --- 3. Cổng web ---
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
 
-      # --- 4. Tự động chuyển HTTP sang HTTPS ---
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
 
-      # --- 5. SSL (Let's Encrypt) ---
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
 
     ports:
-      - "80:80" # HTTP
-      - "443:443" # HTTPS
-      - "8081:8080" # Dashboard (bên ngoài 8081 -> bên trong 8080)
+      - "80:80"
+      - "443:443"
+      - "8081:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
     environment:
-      # 👉 Fix lỗi "client version 1.24 is too old"
       - DOCKER_API_VERSION=1.45
 
   eureka-server:
@@ -122,12 +57,17 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      # Định tuyến: Gõ furnimart.click -> Vào API Gateway
+      # 👉 Thêm dòng này để chắc chắn Gateway dùng đúng mạng
+      - "traefik.docker.network=furnimart_net"
+
       - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
-      # Quan trọng: Chỉ định port của container API Gateway
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
+
+  # ... (Các service khác user, product, order... giữ nguyên phần networks: - backend) ...
+  # Để ngắn gọn mình không copy lại hết các service dưới, bạn giữ nguyên chúng nhé.
+  # Chỉ cần đảm bảo cuối file có phần networks như dưới đây:
 
   product-service:
     build: ./product-service
@@ -381,7 +321,7 @@ services:
 
 networks:
   backend:
-
+    name: furnimart_net
 
 volumes:
   user_data:
