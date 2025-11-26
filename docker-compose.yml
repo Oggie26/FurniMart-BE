@@ -107,14 +107,12 @@ services:
     networks:
       - backend
     restart: unless-stopped
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.gateway.rule=Host(`furnimart.click`)"
-#      - "traefik.http.routers.gateway.entrypoints=websecure"
-#      - "traefik.http.routers.gateway.tls.certresolver=myresolver"
-#      - "traefik.http.services.gateway.loadbalancer.server.port=8080"
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.api-gateway-http.rule=Host(`furnimart.click`)"
+      - "traefik.http.routers.api-gateway-http.entrypoints=web"
+      - "traefik.http.routers.api-gateway-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
       - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
