@@ -696,7 +696,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .purpose(inventory.getPurpose())
                 .date(inventory.getDate())
                 .note(inventory.getNote())
-                .transferStatus(inventory.getType() == EnumTypes.TRANSFER ? TransferStatus.PENDING : null)
+                .transferStatus(inventory.getTransferStatus())
                 .warehouseId(inventory.getWarehouse().getId())
                 .warehouseName(inventory.getWarehouse().getWarehouseName())
                 .itemResponseList(itemResponseList)
