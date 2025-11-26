@@ -267,6 +267,24 @@ public class OrderController {
                 .build();
     }
 
+    @GetMapping("/store/{storeId}/invoices")
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Lấy danh sách đơn hàng đã tạo hóa đơn của cửa hàng",
+            description = "Lấy danh sách các đơn hàng của cửa hàng đã được tạo hóa đơn (có pdfFilePath). " +
+                         "Response bao gồm thông tin về file PDF: pdfFilePath (đường dẫn file) và hasPdfFile (true/false - file có tồn tại hay không)."
+    )
+    public ApiResponse<PageResponse<OrderResponse>> getStoreOrdersWithInvoice(
+            @PathVariable String storeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size
+    ) {
+        return ApiResponse.<PageResponse<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy danh sách đơn hàng đã tạo hóa đơn của cửa hàng thành công")
+                .data(orderService.getStoreOrdersWithInvoice(storeId, page, size))
+                .build();
+    }
+
         @PutMapping("/status/{id}")
         public ApiResponse<OrderResponse> updateOrderStatus(
                 @PathVariable Long id,

@@ -30,4 +30,10 @@ public class ChatResponse {
     private Long unreadCount;
     private Boolean isMuted;
     private Boolean isPinned;
+    // Fields for AI chat to staff flow
+    private Chat.ChatMode chatMode;
+    private String assignedStaffId;
+    private String assignedStaffName;
+    private Date staffRequestedAt;
+    private Date staffChatEndedAt;
 }

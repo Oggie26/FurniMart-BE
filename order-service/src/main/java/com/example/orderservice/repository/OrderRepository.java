@@ -112,4 +112,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    // 🔍 Lấy orders của store đã được tạo hóa đơn (có pdfFilePath)
+    // Orders có pdfFilePath IS NOT NULL AND pdfFilePath != '' được coi là đã tạo hóa đơn
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId 
+          AND o.pdfFilePath IS NOT NULL 
+          AND o.pdfFilePath != ''
+        ORDER BY o.createdAt DESC
+    """)
+    Page<Order> findByStoreIdWithInvoice(
+            @Param("storeId") String storeId,
+            Pageable pageable
+    );
 }

@@ -44,9 +44,30 @@ public class Chat extends AbstractEntity {
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ChatParticipant> participants;
 
+    // Fields for AI chat to staff flow
+    @Enumerated(EnumType.STRING)
+    @Column(name = "chat_mode")
+    @Builder.Default
+    private ChatMode chatMode = ChatMode.AI;
+
+    @Column(name = "assigned_staff_id")
+    private String assignedStaffId;
+
+    @Column(name = "staff_requested_at")
+    private java.time.LocalDateTime staffRequestedAt;
+
+    @Column(name = "staff_chat_ended_at")
+    private java.time.LocalDateTime staffChatEndedAt;
+
     public enum ChatType {
         PRIVATE,
         GROUP,
         CHANNEL
+    }
+
+    public enum ChatMode {
+        AI,
+        WAITING_STAFF,
+        STAFF_CONNECTED
     }
 }

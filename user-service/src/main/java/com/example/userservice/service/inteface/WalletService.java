@@ -17,6 +17,8 @@ public interface WalletService {
     
     WalletResponse getWalletByUserId(String userId);
     
+    WalletResponse getMyWallet(); // Get current user's wallet
+    
     WalletResponse getWalletByCode(String code);
     
     List<WalletResponse> getAllWallets();
