@@ -60,10 +60,11 @@ public class AuthServiceImpl implements AuthService {
         if(accountRepository.findByEmailAndIsDeletedFalse(request.getEmail()).isPresent()){
             throw new AppException(ErrorCode.EMAIL_EXISTS);
         }
+        
         Account account = Account.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .status(EnumStatus.ACTIVE)
+                .status(EnumStatus.ACTIVE) // Set to ACTIVE immediately (no email verification)
                 .role(EnumRole.CUSTOMER)
                 .build();
 
@@ -79,36 +80,56 @@ public class AuthServiceImpl implements AuthService {
         accountRepository.save(account);
         User savedUser = userRepository.save(user);
 
-        // Auto-create wallet for new customer
+        // Reload account to ensure we have the latest state from database
+        Account savedAccount = accountRepository.findById(account.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        // Auto-create wallet for new customer (in separate transaction to avoid rollback)
+        // Flush to ensure user is persisted before creating wallet
         try {
+            // Flush to ensure user and account are persisted to database
+            userRepository.flush();
+            accountRepository.flush(); // Also flush account to ensure it's visible
+            log.debug("User and account flushed to database: {}", savedUser.getId());
+            
+            // Use separate transaction (REQUIRES_NEW) to avoid affecting main transaction
+            // The REQUIRES_NEW transaction should see the flushed user
             walletService.createWalletForUser(savedUser.getId());
             log.info("Wallet auto-created for new customer: {}", savedUser.getId());
+        } catch (AppException e) {
+            log.error("Failed to auto-create wallet for user {}: ErrorCode={}, Message={}", 
+                    savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
+            // Don't fail registration if wallet creation fails - wallet can be created later
         } catch (Exception e) {
-            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage());
-            // Don't fail registration if wallet creation fails, but log the error
+            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage(), e);
+            // Don't fail registration if wallet creation fails - wallet can be created later
         }
 
-        AccountCreatedEvent event = new AccountCreatedEvent(account.getId(),user.getFullName() , account.getEmail(),EnumRole.CUSTOMER);
+        final String accountEmail = savedAccount.getEmail();
+        final String accountId = savedAccount.getId();
+        
+        AccountCreatedEvent event = new AccountCreatedEvent(accountId, user.getFullName(), accountEmail, EnumRole.CUSTOMER);
 
         try {
             kafkaTemplate.send("account-created-topic", event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
+                        log.error("Failed to send account creation event: {}", ex.getMessage());
                     } else {
-                        log.info("Successfully sent account creation event for: {}", account.getEmail());
+                        log.info("Successfully sent account creation event for: {}", accountEmail);
                     }
                 });
         } catch (Exception e) {
-            log.error("Failed to send Kafka event for account: {}, error: {}", account.getEmail(), e.getMessage());
+            log.error("Failed to send Kafka event for account: {}, error: {}", accountEmail, e.getMessage());
         }
 
         return AuthResponse.builder()
-                .id(account.getId())
-                .email(account.getEmail())
-                .role(account.getRole())
+                .id(accountId)
+                .email(accountEmail)
+                .role(savedAccount.getRole())
                 .fullName(user.getFullName())
                 .gender(user.getGender())
-                .status(account.getStatus())
+                .status(savedAccount.getStatus())
                 .password("********")
                 .build();
     }
@@ -122,11 +143,13 @@ public class AuthServiceImpl implements AuthService {
         Account account = accountRepository.findByEmailAndIsDeletedFalse(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 
-        if (EnumStatus.INACTIVE.equals(account.getStatus())) {
-            throw new AppException(ErrorCode.USER_BLOCKED);
-        }
         if (EnumStatus.DELETED.equals(account.getStatus())) {
             throw new AppException(ErrorCode.USER_DELETED);
+        }
+        
+        // Check account status
+        if (EnumStatus.INACTIVE.equals(account.getStatus())) {
+            throw new AppException(ErrorCode.USER_BLOCKED);
         }
 
         Map<String, Object> claims;
@@ -226,4 +249,5 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.INVALID_TOKEN);
         }
     }
+
 }

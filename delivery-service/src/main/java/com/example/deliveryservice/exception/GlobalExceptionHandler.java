@@ -108,7 +108,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(DataIntegrityViolationException exception) {
-        log.warn("Data violation: {}", exception.getMessage());
+        log.warn("Data violation: {}", exception.getMessage(), exception);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.<Void>builder()
                         .status(HttpStatus.BAD_REQUEST.value())
@@ -118,7 +118,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException exception) {
-        log.error("Application error: {}", exception.getMessage());
+        log.error("Application error: {} - ErrorCode: {}", exception.getMessage(), exception.getErrorCode(), exception);
         return ResponseEntity.status(exception.getErrorCode().getStatusCode())
                 .body(ApiResponse.<Void>builder()
                         .status(exception.getErrorCode().getCode())
@@ -129,7 +129,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUncaughtException(Exception exception) {
-        log.error("Uncaught exception: ", exception);
+        log.error("=== UNCAUGHT EXCEPTION ===", exception);
+        log.error("Exception type: {}", exception.getClass().getName());
+        log.error("Exception message: {}", exception.getMessage());
+        log.error("Exception cause: {}", exception.getCause() != null ? exception.getCause().getClass().getName() : "null");
+        if (exception.getCause() != null) {
+            log.error("Cause message: {}", exception.getCause().getMessage());
+        }
+        log.error("Stack trace:", exception);
+        log.error("========================");
+        
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.<Void>builder()
                         .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode())

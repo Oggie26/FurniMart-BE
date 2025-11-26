@@ -53,9 +53,20 @@ public class WalletController {
                 .build();
     }
 
+    @GetMapping("/my-wallet")
+    @Operation(summary = "Get current user's wallet - Only for customers to view their own wallet")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<WalletResponse> getMyWallet() {
+        return ApiResponse.<WalletResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Wallet retrieved successfully")
+                .data(walletService.getMyWallet())
+                .build();
+    }
+
     @GetMapping("/user/{userId}")
-    @Operation(summary = "Get wallet by user ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or #userId == authentication.name")
+    @Operation(summary = "Get wallet by user ID - For admin and staff to manage user wallets")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())
