@@ -66,16 +66,13 @@ services:
     restart: unless-stopped
     command:
       - "--api.dashboard=true"
-      - "--api.insecure=true"   # Mở Dashboard không cần pass
+      - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # 👇 Dòng này QUAN TRỌNG để fix lỗi kết nối Docker
-      - "--providers.docker.apiVersion=1.44"
+      # ❌ XÓA DÒNG NÀY ĐI: - "--providers.docker.apiVersion=1.44"
 
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-
-      # 👇 Giữ lại cái này để có HTTPS xịn
       - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
       - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
       - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
@@ -83,12 +80,15 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8081:8080" # Map ra 8081 để đỡ trùng port 8080 của api-gateway
+      - "8081:8080"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
+    # ✅ THÊM LẠI PHẦN NÀY
+    environment:
+      - DOCKER_API_VERSION=1.44
 
   eureka-server:
     build: ./eureka-server
