@@ -1,5 +1,6 @@
 package com.example.inventoryservice.service.inteface;
 
+import com.example.inventoryservice.enums.TransferStatus;
 import com.example.inventoryservice.request.InventoryItemRequest;
 import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
@@ -43,7 +44,7 @@ public interface InventoryService {
 
     List<InventoryItemResponse> getAllInventoryItems();
 
-    InventoryResponse approveTransfer(String inventoryId, boolean accept);
+    InventoryResponse approveTransfer(String inventoryId, TransferStatus transferStatus);
 
     List<InventoryResponse> getAllInventories();
 

@@ -130,10 +130,10 @@ public class InventoryServiceImpl implements InventoryService {
                                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
                         Inventory transferInventory = Inventory.builder()
-                                .employeeId(getProfile()) // manager kho B
+                                .employeeId(getProfile())
                                 .type(EnumTypes.TRANSFER)
                                 .purpose(EnumPurpose.REQUEST)
-                                .warehouse(toWarehouse) // kho B là kho gửi
+                                .warehouse(toWarehouse)
                                 .transferStatus(request.getType() == EnumTypes.TRANSFER ? TransferStatus.PENDING : null)
                                 .note("Transfer to warehouse " + toWarehouse.getWarehouseName())
                                 .date(LocalDate.now())
@@ -199,7 +199,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse approveTransfer(String inventoryId, boolean accept) {
+    public InventoryResponse approveTransfer(String inventoryId, TransferStatus transferStatus) {
         Inventory transfer = inventoryRepository.findById(Long.valueOf(inventoryId))
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
@@ -207,16 +207,22 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.INVALID_TYPE);
         }
 
-        if (!accept) {
+        if (transferStatus.equals(TransferStatus.REJECTED)) {
             transfer.setTransferStatus(TransferStatus.REJECTED);
             inventoryRepository.save(transfer);
             return mapToInventoryResponse(transfer);
         }
+        if(transferStatus.equals(TransferStatus.ACCEPTED)){
+            transfer.setTransferStatus(TransferStatus.ACCEPTED);
+            inventoryRepository.save(transfer);
+            return mapToInventoryResponse(transfer);
+        }
+        if(transferStatus.equals(TransferStatus.FINISHED)){
+            transfer.setTransferStatus(TransferStatus.FINISHED);
+            inventoryRepository.save(transfer);
+            return mapToInventoryResponse(transfer);
+        }
 
-        transfer.setTransferStatus(TransferStatus.ACCEPTED);
-        inventoryRepository.save(transfer);
-
-        return mapToInventoryResponse(transfer);
     }
 
     @Override

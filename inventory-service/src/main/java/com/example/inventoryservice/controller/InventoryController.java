@@ -1,5 +1,6 @@
 package com.example.inventoryservice.controller;
 
+import com.example.inventoryservice.enums.TransferStatus;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.request.InventoryItemRequest;
 import com.example.inventoryservice.request.InventoryRequest;
@@ -223,13 +224,13 @@ public class InventoryController {
     @PostMapping("/transfer/{inventoryId}/approve")
     public ApiResponse<InventoryResponse> approveTransfer(
             @PathVariable String inventoryId,
-            @RequestParam boolean accept) {
+            @RequestParam TransferStatus transferStatus) {
 
-        InventoryResponse response = inventoryService.approveTransfer(inventoryId, accept);
+        InventoryResponse response = inventoryService.approveTransfer(inventoryId, transferStatus);
 
         return ApiResponse.<InventoryResponse>builder()
                 .status(200)
-                .message(accept ? "Duyệt chuyển kho thành công" : "Từ chối chuyển kho thành công")
+                .message("Duyệt chuyển kho thành công" )
                 .data(response)
                 .build();
     }
