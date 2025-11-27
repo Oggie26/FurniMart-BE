@@ -160,7 +160,7 @@ public class AuthServiceImpl implements AuthService {
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 
             List<EmployeeStore> employeeStores = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId());
-            storeId = employeeStores.isEmpty() ? "" : employeeStores.getFirst().getStoreId();
+            storeId = employeeStores.isEmpty() ? "" : employeeStores.get(0).getStoreId();
 
             claims = Map.of(
                     "role", account.getRole(),

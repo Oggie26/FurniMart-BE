@@ -37,7 +37,7 @@ public class EmployeeController {
     @PostMapping
     @Operation(summary = "Create new employee - Admin can create all roles, Branch Manager can only create STAFF and DELIVERY")
     @ResponseStatus(HttpStatus.CREATED)
-//    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())

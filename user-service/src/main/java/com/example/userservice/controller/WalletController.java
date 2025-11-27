@@ -55,7 +55,7 @@ public class WalletController {
 
     @GetMapping("/my-wallet")
     @Operation(summary = "Get current user's wallet - Only for customers to view their own wallet")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'USER')")
     public ApiResponse<WalletResponse> getMyWallet() {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())

@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 
 @RestControllerAdvice
 @Slf4j
@@ -89,6 +91,26 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.<Void>builder()
                         .status(HttpStatus.UNAUTHORIZED.value())
                         .message(ErrorCode.UNAUTHENTICATED.getMessage())
+                        .build());
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentialsException(BadCredentialsException exception) {
+        log.warn("Bad Credentials: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.<Void>builder()
+                        .status(HttpStatus.UNAUTHORIZED.value())
+                        .message("Email hoặc mật khẩu không đúng")
+                        .build());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException exception) {
+        log.warn("Authentication failed: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.<Void>builder()
+                        .status(HttpStatus.UNAUTHORIZED.value())
+                        .message("Xác thực thất bại")
                         .build());
     }
 

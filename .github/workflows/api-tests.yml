@@ -1,0 +1,102 @@
+name: API Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    
+    - name: Setup jq
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq bc
+    
+    - name: Run Comprehensive API Tests
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          cd ~/FurniMart-BE
+          bash test-scripts/run-comprehensive-tests-enhanced.sh
+        EOF
+    
+    - name: Run Expanded API Tests
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          cd ~/FurniMart-BE
+          bash test-scripts/run-expanded-tests.sh
+        EOF
+    
+    - name: Download Test Reports
+      run: |
+        mkdir -p test-reports
+        scp -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/FurniMart-BE/test-scripts/reports/*.json test-reports/ || true
+        scp -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/FurniMart-BE/test-scripts/reports/*.md test-reports/ || true
+    
+    - name: Upload Test Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-reports
+        path: test-reports/
+        retention-days: 30
+    
+    - name: Comment PR with Test Results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          let comment = '## 🧪 API Test Results\n\n';
+          
+          // Find latest test report
+          const reportsDir = 'test-reports';
+          if (fs.existsSync(reportsDir)) {
+            const files = fs.readdirSync(reportsDir);
+            const jsonFiles = files.filter(f => f.endsWith('.json')).sort().reverse();
+            
+            if (jsonFiles.length > 0) {
+              const latestReport = JSON.parse(fs.readFileSync(path.join(reportsDir, jsonFiles[0]), 'utf8'));
+              comment += `**Test Type:** ${latestReport.testType || 'Comprehensive'}\n`;
+              comment += `**Total Tests:** ${latestReport.summary.totalTests}\n`;
+              comment += `**Passed:** ✅ ${latestReport.summary.passedTests}\n`;
+              comment += `**Failed:** ❌ ${latestReport.summary.failedTests}\n`;
+              comment += `**Skipped:** ⏭️ ${latestReport.summary.skippedTests}\n`;
+              comment += `**Success Rate:** ${latestReport.summary.successRate}%\n\n`;
+              
+              if (latestReport.summary.failedTests > 0) {
+                comment += '### Failed Tests:\n';
+                latestReport.testDetails
+                  .filter(t => t.startsWith('FAIL|'))
+                  .slice(0, 10)
+                  .forEach(test => {
+                    comment += `- ${test.replace('FAIL|', '')}\n`;
+                  });
+              }
+            }
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+

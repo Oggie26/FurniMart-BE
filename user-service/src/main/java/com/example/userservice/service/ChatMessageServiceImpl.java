@@ -4,11 +4,13 @@ import com.example.userservice.entity.*;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
+import com.example.userservice.feign.AiServiceClient;
 import com.example.userservice.repository.ChatMessageRepository;
 import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.ChatMessageRequest;
+import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.ChatMessageResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.service.inteface.ChatMessageService;
@@ -35,6 +37,9 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     private final ChatRepository chatRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
+    private final AiServiceClient aiServiceClient;
+    
+    private static final String AI_BOT_EMAIL = "ai-bot@furnimart.com";
 
     @Override
     @Transactional
@@ -70,7 +75,62 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
+        
+        // If chat is in AI mode, call AI service and save AI response
+        Chat.ChatMode chatMode = chat.getChatMode() != null ? chat.getChatMode() : Chat.ChatMode.AI;
+        if (chatMode == Chat.ChatMode.AI) {
+            try {
+                sendAiResponse(chat, savedMessage);
+            } catch (Exception e) {
+                log.error("Error calling AI service for chat {}: {}", chat.getId(), e.getMessage(), e);
+                // Don't fail the user message if AI fails - user message is already saved
+            }
+        }
+        
         return toChatMessageResponse(savedMessage);
+    }
+    
+    private void sendAiResponse(Chat chat, ChatMessage userMessage) {
+        try {
+            log.info("Calling AI service for chat {} with message: {}", chat.getId(), userMessage.getContent());
+            
+            // Call AI service
+            ApiResponse<String> aiResponse = aiServiceClient.chat(
+                new AiServiceClient.ChatRequest(userMessage.getContent())
+            );
+            
+            if (aiResponse != null && aiResponse.getData() != null && !aiResponse.getData().isEmpty()) {
+                String aiReply = aiResponse.getData();
+                log.info("AI service returned response: {}", aiReply);
+                
+                // Get AI bot user
+                User aiBotUser = userRepository.findByEmailAndIsDeletedFalse(AI_BOT_EMAIL)
+                    .orElseThrow(() -> {
+                        log.error("AI bot user not found: {}", AI_BOT_EMAIL);
+                        return new AppException(ErrorCode.AI_BOT_NOT_CONFIGURED);
+                    });
+                
+                // Save AI response as a message from AI bot
+                ChatMessage aiMessage = ChatMessage.builder()
+                    .content(aiReply)
+                    .type(ChatMessage.MessageType.TEXT)
+                    .status(EnumStatus.ACTIVE)
+                    .chat(chat)
+                    .sender(aiBotUser)
+                    .replyTo(userMessage)
+                    .isEdited(false)
+                    .isDeleted(false)
+                    .build();
+                
+                chatMessageRepository.save(aiMessage);
+                log.info("AI response saved as message in chat {}", chat.getId());
+            } else {
+                log.warn("AI service returned empty response for chat {}", chat.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error calling AI service: {}", e.getMessage(), e);
+            throw new AppException(ErrorCode.AI_SERVICE_UNAVAILABLE);
+        }
     }
 
     @Override

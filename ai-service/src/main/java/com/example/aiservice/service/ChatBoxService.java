@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,8 +18,29 @@ import java.util.List;
 @Slf4j
 public class ChatBoxService {
 
-    private final OpenAiChatModel chatModel;
+    // ==============================================================================
+    // 🔴 KHU VỰC CẤU HÌNH API KEY (BẠN SẼ ĐIỀN VÀO ĐÂY SAU)
+    // ==============================================================================
+    // API Key được lấy từ biến môi trường OPENAI_API_KEY hoặc GOOGLE_API_KEY
+    // Cấu hình trong: application.yml hoặc Docker environment variable
+    // ==============================================================================
+
+    // Spring AI tự động tạo bean này nếu có API key hợp lệ
+    // Nếu không có key, bean sẽ không tồn tại và chatModel sẽ là null
+    private final OpenAiChatModel chatModel; // Có thể null nếu chưa có API key
     private final ProductClient productClient;
+
+    @Value("${spring.ai.openai.api-key:dummy_key}")
+    private String apiKey;
+
+    // Kiểm tra xem có API Key thật không (không phải dummy)
+    private boolean hasValidApiKey() {
+        return apiKey != null 
+            && !apiKey.isBlank() 
+            && !apiKey.equals("dummy_key")
+            && !apiKey.startsWith("${") // Không phải placeholder
+            && chatModel != null; // Bean đã được tạo
+    }
 
     public String chatWithAI(String message) {
         log.info("💬 Tin nhắn từ người dùng: {}", message);
@@ -86,17 +108,44 @@ public class ChatBoxService {
         - Nếu có thể, hãy gợi ý thêm 1–2 sản phẩm liên quan để tăng tương tác.
         """.formatted(message, productSummary);
 
-        // Gọi OpenAI
-        try {
-            ChatResponse aiResponse = chatModel.call(new Prompt(prompt));
-            String reply = aiResponse.getResult().getOutput().getText();
-            log.info("🤖 AI Response: {}", reply);
-            return reply != null && !reply.isBlank()
-                    ? reply.trim()
-                    : "Xin lỗi, tôi chưa hiểu rõ câu hỏi của bạn. Bạn có thể nói cụ thể hơn không?";
-        } catch (Exception e) {
-            log.error("❌ Lỗi khi gọi OpenAI API: {}", e.getMessage());
-            return "Xin lỗi, hệ thống AI đang tạm gián đoạn. Vui lòng thử lại sau nhé!";
+        // ==============================================================================
+        // XỬ LÝ AI RESPONSE
+        // ==============================================================================
+        
+        if (hasValidApiKey()) {
+            // --- TRƯỜNG HỢP 1: ĐÃ CÓ KEY (CHẠY THẬT) ---
+            try {
+                ChatResponse aiResponse = chatModel.call(new Prompt(prompt));
+                String reply = aiResponse.getResult().getOutput().getText();
+                log.info("🤖 AI Response: {}", reply != null && reply.length() > 100 
+                    ? reply.substring(0, 100) + "..." : reply);
+                return reply != null && !reply.isBlank()
+                        ? reply.trim()
+                        : "Xin lỗi, tôi chưa hiểu rõ câu hỏi của bạn. Bạn có thể nói cụ thể hơn không?";
+            } catch (Exception e) {
+                log.error("❌ Lỗi khi gọi OpenAI API: {}", e.getMessage(), e);
+                return "Xin lỗi, kết nối đến não bộ AI đang gặp trục trặc. Vui lòng thử lại sau nhé!";
+            }
+        } else {
+            // --- TRƯỜNG HỢP 2: CHƯA CÓ KEY (CHẠY GIẢ LẬP) ---
+            // Đây là chỗ giúp bạn test luồng Gateway -> AI Service mà không cần mua Key
+            log.warn("⚠️  Chưa có API Key - Service đang chạy ở chế độ MÔ PHỎNG");
+            String mockReply = String.format(
+                "[MÔ PHỎNG] Tôi đã nhận được câu hỏi: '%s'. " +
+                "(Hệ thống chưa cấu hình API Key. Vui lòng thêm OPENAI_API_KEY hoặc GOOGLE_API_KEY vào biến môi trường Docker để kích hoạt AI thật.)",
+                message
+            );
+            
+            // Nếu có sản phẩm, thêm thông tin vào mock response
+            if (!matchedProducts.isEmpty()) {
+                mockReply += String.format(
+                    "\n\n[Thông tin sản phẩm có sẵn: %d sản phẩm phù hợp với từ khóa '%s']",
+                    matchedProducts.size(),
+                    keyword.isEmpty() ? "tất cả" : keyword
+                );
+            }
+            
+            return mockReply;
         }
     }
 

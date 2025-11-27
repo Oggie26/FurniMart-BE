@@ -8,10 +8,21 @@ spring:
   ai:
     openai:
       base-url: https://api.openai.com
-      api-key: ${OPENAI_API_KEY:dummy_key} # fallback dummy_key n?u bi?n ch?a ??t
+      # ==============================================================================
+      # 🔴 KHU VỰC CẤU HÌNH API KEY (BẠN SẼ ĐIỀN VÀO ĐÂY SAU)
+      # ==============================================================================
+      # Cách 1 (Khuyên dùng): Lấy từ biến môi trường Docker
+      #   docker run -e OPENAI_API_KEY="your_key_here" ...
+      # 
+      # Cách 2: Điền trực tiếp vào đây (không khuyên dùng cho production)
+      #   api-key: "your_key_here"
+      #
+      # Nếu không có key, service sẽ chạy ở chế độ MÔ PHỎNG (mock mode)
+      # ==============================================================================
+      api-key: ${OPENAI_API_KEY:${GOOGLE_API_KEY:dummy_key}} # Ưu tiên OPENAI_API_KEY, sau đó GOOGLE_API_KEY, cuối cùng là dummy_key
       chat:
         options:
-          model: gpt-4o-mini # model nh?, t?c ?? cao
+          model: gpt-4o-mini # model nhỏ, tốc độ cao
 
   kafka:
     bootstrap-servers: kafka:9092

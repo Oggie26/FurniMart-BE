@@ -159,13 +159,47 @@ public class GoogleOAuth2Service {
         return savedAccount;
     }
 
-    @lombok.Builder
-    @lombok.Data
     private static class GoogleUserInfo {
         private String email;
         private String name;
         private String picture;
         private String googleId;
+
+        // Manual getters (Lombok not working in Docker build)
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getPicture() { return picture; }
+        public void setPicture(String picture) { this.picture = picture; }
+        public String getGoogleId() { return googleId; }
+        public void setGoogleId(String googleId) { this.googleId = googleId; }
+
+        // Builder pattern
+        public static GoogleUserInfoBuilder builder() {
+            return new GoogleUserInfoBuilder();
+        }
+
+        public static class GoogleUserInfoBuilder {
+            private String email;
+            private String name;
+            private String picture;
+            private String googleId;
+
+            public GoogleUserInfoBuilder email(String email) { this.email = email; return this; }
+            public GoogleUserInfoBuilder name(String name) { this.name = name; return this; }
+            public GoogleUserInfoBuilder picture(String picture) { this.picture = picture; return this; }
+            public GoogleUserInfoBuilder googleId(String googleId) { this.googleId = googleId; return this; }
+
+            public GoogleUserInfo build() {
+                GoogleUserInfo info = new GoogleUserInfo();
+                info.email = this.email;
+                info.name = this.name;
+                info.picture = this.picture;
+                info.googleId = this.googleId;
+                return info;
+            }
+        }
     }
 }
 

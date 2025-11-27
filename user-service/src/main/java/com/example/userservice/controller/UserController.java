@@ -79,6 +79,7 @@ public class UserController {
 
     @GetMapping("/paginated")
     @Operation(summary = "Get users with pagination")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<PageResponse<UserResponse>> getUsersWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {

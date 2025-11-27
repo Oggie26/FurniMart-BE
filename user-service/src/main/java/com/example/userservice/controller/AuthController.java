@@ -41,12 +41,28 @@ public class AuthController {
     @ResponseStatus(HttpStatus.OK)
     @Operation(summary = "Đăng nhập", description = "API đăng nhập")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody @Valid AuthRequest request) {
-        return ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Đăng nhập thành công")
-                .data(authService.login(request))
-                .timestamp(LocalDateTime.now())
-                .build());
+        try {
+            return ResponseEntity.ok(ApiResponse.<LoginResponse>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Đăng nhập thành công")
+                    .data(authService.login(request))
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<LoginResponse>builder()
+                            .status(HttpStatus.UNAUTHORIZED.value())
+                            .message("Email hoặc mật khẩu không đúng")
+                            .timestamp(LocalDateTime.now())
+                            .build());
+        } catch (com.example.userservice.exception.AppException e) {
+            return ResponseEntity.status(e.getErrorCode().getStatusCode())
+                    .body(ApiResponse.<LoginResponse>builder()
+                            .status(e.getErrorCode().getCode())
+                            .message(e.getMessage())
+                            .timestamp(LocalDateTime.now())
+                            .build());
+        }
     }
 
     @PostMapping("/register")

@@ -317,6 +317,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
+        // Sanitize search keyword to prevent injection
+        if (request != null && !request.trim().isEmpty()) {
+            String trimmed = request.trim();
+            trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+            request = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+        } else {
+            request = "";
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
         String userId = getUserId();
 
@@ -340,6 +349,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrder(String request, int page, int size) {
+        // Sanitize search keyword to prevent injection
+        if (request != null && !request.trim().isEmpty()) {
+            String trimmed = request.trim();
+            trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+            request = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+        } else {
+            request = "";
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
 
         Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);

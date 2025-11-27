@@ -179,6 +179,15 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public PageResponse<ProductResponse> searchProduct(String request, int page, int size) {
+        // Sanitize search keyword to prevent injection
+        if (request != null && !request.trim().isEmpty()) {
+            String trimmed = request.trim();
+            trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+            request = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+        } else {
+            request = "";
+        }
+        
         PageRequest pageable = PageRequest.of(page, size);
         Page<Product> producPage = productRepository.searchByKeywordNative(request, pageable);
 

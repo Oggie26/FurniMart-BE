@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
+import com.example.userservice.filter.RateLimitingFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -22,6 +23,7 @@ import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,10 +43,10 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/api/auth/**",
-                                "/api/stores/**",
-                                "/api/users/**",
-                                "/api/addresses/**",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/refresh",
+                                "/api/stores",
                                 "/swagger-ui.html",
                                 "/ws/**",
                                 "/ws/chat/**",
@@ -63,6 +65,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);

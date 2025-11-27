@@ -8,13 +8,11 @@ spring:
     web-application-type: reactive
   cloud:
     gateway:
-      server:
-        webflux:
-          discovery:
-            locator:
-              enabled: true
-              lower-case-service-id: true
-          routes:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
 
             # USER SERVICE
                     - id: user-service
@@ -56,6 +54,13 @@ spring:
                       uri: lb://inventory-service
                       predicates:
                         - Path=/api/inventories/**, /api/warehouses/**,/api/location-items/**, /api/zones/**
+                      filters: []
+
+                    # AI SERVICE
+                    - id: ai-service
+                      uri: lb://ai-service
+                      predicates:
+                        - Path=/api/ai/**
                       filters: []
 
 jwt:

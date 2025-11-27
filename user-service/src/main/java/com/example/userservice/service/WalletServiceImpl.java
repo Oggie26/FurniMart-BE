@@ -107,10 +107,10 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public WalletResponse getWalletByUserId(String userId) {
         Wallet wallet = walletRepository.findByUserIdAndIsDeletedFalse(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+                .orElseGet(() -> initializeWalletForUser(userId));
 
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElse(null);
@@ -385,47 +385,48 @@ public class WalletServiceImpl implements WalletService {
             return getWalletByUserId(userId);
         }
 
-        // Verify user exists
+        Wallet wallet = initializeWalletForUser(userId);
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if user has a deleted wallet (soft delete) - restore it instead of creating new
-        Optional<Wallet> deletedWallet = walletRepository.findByUserId(userId);
-        if (deletedWallet.isPresent() && deletedWallet.get().getIsDeleted()) {
-            Wallet wallet = deletedWallet.get();
-            log.info("Found deleted wallet for user {}, restoring it instead of creating new", userId);
+        return mapToWalletResponse(wallet, user);
+    }
 
-            // Restore wallet with default values
-            wallet.setIsDeleted(false);
-            // Generate new unique wallet code if needed
-            String walletCode = generateWalletCode();
-            wallet.setCode(walletCode);
-            wallet.setBalance(BigDecimal.ZERO);
+    private Wallet initializeWalletForUser(String userId) {
+        log.info("Initializing wallet for user {} (lazy creation)", userId);
+
+        userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Optional<Wallet> existingWallet = walletRepository.findByUserId(userId);
+        if (existingWallet.isPresent()) {
+            Wallet wallet = existingWallet.get();
+            if (Boolean.TRUE.equals(wallet.getIsDeleted())) {
+                wallet.setIsDeleted(false);
+            }
+            if (wallet.getCode() == null || wallet.getCode().isBlank()) {
+                wallet.setCode(generateWalletCode());
+            }
+            if (wallet.getBalance() == null) {
+                wallet.setBalance(BigDecimal.ZERO);
+            }
             wallet.setStatus(WalletStatus.ACTIVE);
-
-            wallet = walletRepository.save(wallet);
-            log.info("Wallet restored successfully for user {} with ID: {} and code: {}",
-                    userId, wallet.getId(), walletCode);
-
-            return mapToWalletResponse(wallet, user);
+            Wallet restored = walletRepository.save(wallet);
+            log.info("Restored wallet {} for user {}", restored.getId(), userId);
+            return restored;
         }
 
-        // Generate unique wallet code
-        String walletCode = generateWalletCode();
-
-        // Create wallet with default values
         Wallet wallet = Wallet.builder()
-                .code(walletCode)
+                .code(generateWalletCode())
                 .balance(BigDecimal.ZERO)
                 .status(WalletStatus.ACTIVE)
                 .userId(userId)
                 .build();
 
-        wallet = walletRepository.save(wallet);
+        Wallet created = walletRepository.save(wallet);
         log.info("Wallet auto-created successfully for user {} with ID: {} and code: {}",
-                userId, wallet.getId(), walletCode);
-
-        return mapToWalletResponse(wallet, user);
+                userId, created.getId(), created.getCode());
+        return created;
     }
 
     private String generateWalletCode() {

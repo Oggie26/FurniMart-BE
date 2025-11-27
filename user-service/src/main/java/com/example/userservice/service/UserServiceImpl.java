@@ -205,6 +205,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public PageResponse<UserResponse> searchUsers(String searchTerm, int page, int size) {
+        // Sanitize search term to prevent injection attacks
+        searchTerm = com.example.userservice.util.InputSanitizer.sanitizeSearchKeyword(searchTerm);
         log.info("Searching users with term: {} - page: {}, size: {}", searchTerm, page, size);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
