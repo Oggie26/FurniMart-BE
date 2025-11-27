@@ -61,6 +61,8 @@ services:
     networks:
       - backend
     restart: unless-stopped
+    ports:
+      - "8080:8080"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
