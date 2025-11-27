@@ -9,7 +9,6 @@ import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.ChatMessageRequest;
-import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.ChatMessageResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.service.inteface.ChatMessageService;
