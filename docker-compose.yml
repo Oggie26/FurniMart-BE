@@ -41,8 +41,8 @@ services:
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
-    environment:
-      - DOCKER_API_VERSION=1.44
+#    environment:
+#      - DOCKER_API_VERSION=1.44
 
   eureka-server:
     build: ./eureka-server
