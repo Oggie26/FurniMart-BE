@@ -27,7 +27,8 @@ CHANGELOG.md
 .env.swn
 .env.swo
 .env.swp
-
+letsencrypt/
+*.json
 # SSH and Server Information (Sensitive)
 SSH_CONNECTION_INFO.md
 *_CONNECTION_INFO.md
