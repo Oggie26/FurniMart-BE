@@ -222,6 +222,7 @@ public class InventoryServiceImpl implements InventoryService {
             inventoryRepository.save(transfer);
             return mapToInventoryResponse(transfer);
         }
+        return null;
 
     }
 
