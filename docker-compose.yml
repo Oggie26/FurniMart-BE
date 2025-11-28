@@ -1,7 +1,7 @@
 services:
 
   traefik:
-    image: traefik:v3.0 # Dùng bản v3.0 ổn định
+    image: traefik:lastest
     container_name: traefik
     restart: unless-stopped
     command:
