@@ -8,59 +8,61 @@ spring:
     web-application-type: reactive
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        # USER SERVICE
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**
-          filters: []
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+            # USER SERVICE
+                    - id: user-service
+                      uri: lb://user-service
+                      predicates:
+                        - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**
+                      filters: []
 
-        # PRODUCT SERVICE
-        - id: product-service
-          uri: lb://product-service
-          predicates:
-            - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**, /api/product-colors/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
-          filters: []
+                    # PRODUCT SERVICE
+                    - id: product-service
+                      uri: lb://product-service
+                      predicates:
+                        - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**, /api/product-colors/**, /api/products/swagger-ui.html, /api/products/v3/api-docs/**
+                      filters: []
 
-        # NOTIFICATION SERVICE
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/notifications/**
-          filters: []
+                    # NOTIFICATION SERVICE
+                    - id: notification-service
+                      uri: lb://notification-service
+                      predicates:
+                        - Path=/api/notifications/**
+                      filters: []
 
-        # DELIVERY SERVICE
-        - id: delivery-service
-          uri: lb://delivery-service
-          predicates:
-            - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**
-          filters: []
+                    # DELIVERY SERVICE
+                    - id: delivery-service
+                      uri: lb://delivery-service
+                      predicates:
+                        - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**
+                      filters: []
 
-        # ORDER SERVICE
-        - id: order-service
-          uri: lb://order-service
-          predicates:
-            - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/warranties/**
-          filters: []
+                    # ORDER SERVICE
+                    - id: order-service
+                      uri: lb://order-service
+                      predicates:
+                        - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/warranties/**
+                      filters: []
 
-        # INVENTORY SERVICE
-        - id: inventory-service
-          uri: lb://inventory-service
-          predicates:
-            - Path=/api/inventories/**, /api/warehouses/**, /api/location-items/**, /api/zones/**
-          filters: []
+                    # INVENTORY SERVICE
+                    - id: inventory-service
+                      uri: lb://inventory-service
+                      predicates:
+                        - Path=/api/inventories/**, /api/warehouses/**, /api/location-items/**, /api/zones/**
+                      filters: []
 
-        # AI SERVICE
-        - id: ai-service
-          uri: lb://ai-service
-          predicates:
-            - Path=/api/ai/**
-          filters: []
+                    # AI SERVICE
+                    - id: ai-service
+                      uri: lb://ai-service
+                      predicates:
+                        - Path=/api/ai/**
+                      filters: []
 
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
