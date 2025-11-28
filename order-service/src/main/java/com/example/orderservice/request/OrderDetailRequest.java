@@ -11,8 +11,8 @@ import lombok.*;
 @Builder
 public class OrderDetailRequest {
 
-    @NotBlank(message = "ProductId is required")
-    private String productId;
+    @NotBlank(message = "ProductColorId is required")
+    private String productColorId;
 
     @NotNull(message = "Quantity is required")
     @Min(value = 1, message = "Quantity must be at least 1")

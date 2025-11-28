@@ -1,10 +1,12 @@
 package com.example.userservice.service.inteface;
 
 import com.example.userservice.enums.EnumRole;
+import com.example.userservice.request.StaffCreateCustomerRequest;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.ChangePassword;
 import com.example.userservice.response.PageResponse;
+import com.example.userservice.response.StaffCreateCustomerResponse;
 import com.example.userservice.response.UserResponse;
 
 import java.util.List;
@@ -58,4 +60,7 @@ public interface UserService {
     
     // Role update method (Admin only)
     UserResponse updateUserRole(String userId, EnumRole newRole);
+    
+    // Staff method to create customer account with delivery address
+    StaffCreateCustomerResponse createCustomerAccountForStaff(StaffCreateCustomerRequest request);
 }

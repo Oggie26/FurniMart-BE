@@ -2,12 +2,14 @@ package com.example.orderservice.service.inteface;
 
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.PaymentMethod;
+import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.PageResponse;
 
 public interface OrderService {
     OrderResponse createOrder(Long cartId, Long addressId, PaymentMethod paymentMethod, String voucherCode);
     OrderResponse createPreOrder(Long cartId, Long addressId, String voucherCode);
+    OrderResponse createOrderForStaff(StaffCreateOrderRequest request);
     OrderResponse getOrderById(Long id);
     OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status);
     PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size);

@@ -1,16 +1,21 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
+import com.example.userservice.entity.Address;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
+import com.example.userservice.repository.AddressRepository;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.request.DeliveryAddressRequest;
+import com.example.userservice.request.StaffCreateCustomerRequest;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.*;
+import com.example.userservice.service.inteface.AddressService;
 import com.example.userservice.service.inteface.EmployeeService;
 import com.example.userservice.service.inteface.UserService;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +40,10 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
+    private final AddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeService employeeService;
+    private final AddressService addressService;
     // Note: employeeStoreRepository removed - not used in UserService (only for Customer operations)
 
     @Override
@@ -437,6 +444,145 @@ public class UserServiceImpl implements UserService {
         return role == EnumRole.BRANCH_MANAGER || 
                role == EnumRole.DELIVERY || 
                role == EnumRole.STAFF;
+    }
+    
+    @Override
+    @Transactional
+    public StaffCreateCustomerResponse createCustomerAccountForStaff(StaffCreateCustomerRequest request) {
+        log.info("Staff creating customer account for email: {}", request.getEmail());
+        
+        // Check if email already exists
+        if (accountRepository.findByEmailAndIsDeletedFalse(request.getEmail()).isPresent()) {
+            throw new AppException(ErrorCode.EMAIL_EXISTS);
+        }
+        
+        // Check if phone already exists
+        if (userRepository.findByPhoneAndIsDeletedFalse(request.getPhone()).isPresent()) {
+            throw new AppException(ErrorCode.PHONE_EXISTS);
+        }
+        
+        // Generate password if not provided
+        String password = request.getPassword();
+        String generatedPassword = null;
+        if (password == null || password.isEmpty()) {
+            generatedPassword = generateRandomPassword();
+            password = generatedPassword;
+        }
+        
+        // Create account
+        Account account = Account.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(password))
+                .role(EnumRole.CUSTOMER)
+                .status(EnumStatus.ACTIVE)
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .build();
+        
+        Account savedAccount = accountRepository.save(account);
+        
+        // Create user
+        User user = User.builder()
+                .fullName(request.getFullName())
+                .phone(request.getPhone())
+                .status(EnumStatus.ACTIVE)
+                .point(0)
+                .account(savedAccount)
+                .build();
+        
+        User savedUser = userRepository.save(user);
+        
+        // Create delivery address
+        DeliveryAddressRequest addressRequest = request.getDeliveryAddress();
+        Address address = Address.builder()
+                .name(addressRequest.getName())
+                .phone(addressRequest.getPhone())
+                .city(addressRequest.getCity())
+                .district(addressRequest.getDistrict())
+                .ward(addressRequest.getWard())
+                .street(addressRequest.getStreet())
+                .addressLine(addressRequest.getAddressLine())
+                .isDefault(addressRequest.getIsDefault() != null ? addressRequest.getIsDefault() : true)
+                .latitude(addressRequest.getLatitude())
+                .longitude(addressRequest.getLongitude())
+                .user(savedUser)
+                .build();
+        
+        // If this is set as default, unset other default addresses
+        if (address.getIsDefault()) {
+            addressRepository.findByUserAndIsDefaultTrue(savedUser)
+                    .ifPresent(existingDefault -> {
+                        existingDefault.setIsDefault(false);
+                        addressRepository.save(existingDefault);
+                    });
+        }
+        
+        Address savedAddress = addressRepository.save(address);
+        
+        log.info("Staff successfully created customer account: {} with email: {} and address ID: {}", 
+                savedUser.getId(), savedAccount.getEmail(), savedAddress.getId());
+        
+        // Convert to response
+        AddressResponse addressResponse = toAddressResponse(savedAddress);
+        
+        return StaffCreateCustomerResponse.builder()
+                .user(toUserResponse(savedUser))
+                .address(addressResponse)
+                .generatedPassword(generatedPassword)
+                .build();
+    }
+    
+    private String generateRandomPassword() {
+        // Generate a random 8-character password
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder password = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            password.append(chars.charAt((int) (Math.random() * chars.length())));
+        }
+        return password.toString();
+    }
+    
+    private AddressResponse toAddressResponse(Address address) {
+        StringBuilder fullAddress = new StringBuilder();
+        
+        if (address.getStreet() != null && !address.getStreet().isEmpty()) {
+            fullAddress.append(address.getStreet()).append(", ");
+        }
+        if (address.getWard() != null && !address.getWard().isEmpty()) {
+            fullAddress.append(address.getWard()).append(", ");
+        }
+        if (address.getDistrict() != null && !address.getDistrict().isEmpty()) {
+            fullAddress.append(address.getDistrict()).append(", ");
+        }
+        if (address.getCity() != null && !address.getCity().isEmpty()) {
+            fullAddress.append(address.getCity());
+        }
+        
+        if (address.getAddressLine() != null && !address.getAddressLine().isEmpty()) {
+            if (fullAddress.length() > 0) {
+                fullAddress.append(" - ");
+            }
+            fullAddress.append(address.getAddressLine());
+        }
+        
+        return AddressResponse.builder()
+                .id(address.getId())
+                .name(address.getName())
+                .phone(address.getPhone())
+                .city(address.getCity())
+                .district(address.getDistrict())
+                .ward(address.getWard())
+                .street(address.getStreet())
+                .addressLine(address.getAddressLine())
+                .isDefault(address.getIsDefault())
+                .userId(address.getUser().getId())
+                .userName(address.getUser().getFullName())
+                .fullAddress(fullAddress.toString())
+                .longitude(address.getLongitude())
+                .latitude(address.getLatitude())
+                .build();
     }
 }
 

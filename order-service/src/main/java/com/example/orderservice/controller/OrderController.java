@@ -5,6 +5,7 @@ import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.service.ManagerWorkflowService;
@@ -13,12 +14,14 @@ import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.UnsupportedEncodingException;
@@ -293,6 +296,19 @@ public class OrderController {
                 .status(HttpStatus.OK.value())
                 .message("Gán đơn vận chuyển thành công")
                 .data("Delivery assigned successfully")
+                .build();
+    }
+
+    @PostMapping("/staff/create")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Create order for customer (Staff only)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
+    public ApiResponse<OrderResponse> createOrderForStaff(
+            @Valid @RequestBody StaffCreateOrderRequest request) {
+        OrderResponse orderResponse = orderService.createOrderForStaff(request);
+        return ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Order created successfully for customer")
+                .data(orderResponse)
                 .build();
     }
 
