@@ -372,7 +372,10 @@ services:
 
       # Service: port nội bộ của Kafka UI container
       - "traefik.http.services.kafka-ui.loadbalancer.server.port=9090"
-
+# 👇 MẠNG CỐ ĐỊNH
+networks:
+  backend:
+    name: furnimart_net
 
 volumes:
   user_data:
