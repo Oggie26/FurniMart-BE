@@ -136,7 +136,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         if (status == EnumProcessOrder.MANAGER_ACCEPT) {
-            handleManagerAccept(order);
+            handleManagerAccept(order, storeId);
         } else if (status == EnumProcessOrder.MANAGER_REJECT) {
             handleManagerReject(order,storeId, reason);
         } else {
@@ -144,10 +144,9 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         }
     }
 
-    private void handleManagerAccept(Order order) {
+    private void handleManagerAccept(Order order, String storeId) {
         QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(order.getId());
         
-        // Save MANAGER_ACCEPT status
         ProcessOrder acceptProcess = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.MANAGER_ACCEPT)
@@ -155,67 +154,60 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .build();
         processOrderRepository.save(acceptProcess);
         
-        // Set order status to MANAGER_ACCEPT first
         order.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
         order.setQrCode(qrCodeResult.getQrCodeString());
         order.setQrCodeGeneratedAt(new Date());
+        order.setStoreId(storeId);
         orderRepository.save(order);
         
-        // Generate PDF automatically after MANAGER_ACCEPT
-        // Only move to READY_FOR_INVOICE if PDF generation succeeds
-        boolean pdfGenerated = false;
-        try {
-            log.info("Auto-generating PDF for order {} after MANAGER_ACCEPT", order.getId());
-            
-            // Get user and address for PDF generation
-            UserResponse user = safeGetUser(order.getUserId());
-            AddressResponse address = safeGetAddress(order.getAddressId());
-            
-            if (user == null) {
-                log.warn("Cannot generate PDF: User not found for order {}", order.getId());
-            } else if (address == null) {
-                log.warn("Cannot generate PDF: Address not found for order {}", order.getId());
-            } else {
-                // Generate PDF
-                String pdfPath = pdfService.generateOrderPDF(order, user, address);
-                order.setPdfFilePath(pdfPath);
-                pdfGenerated = true;
-                log.info("PDF generated successfully for order {}: {}", order.getId(), pdfPath);
-            }
-        } catch (Exception e) {
-            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage(), e);
-            // PDF generation failed, do NOT move to READY_FOR_INVOICE
-            // Manager can generate PDF manually later
-        }
-        
-        // Only move to READY_FOR_INVOICE if PDF generation succeeds
-        if (pdfGenerated) {
-            ProcessOrder readyProcess = ProcessOrder.builder()
-                    .order(order)
-                    .status(EnumProcessOrder.READY_FOR_INVOICE)
-                    .createdAt(new Date())
-                    .build();
-            processOrderRepository.save(readyProcess);
-            
-            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
-            if (order.getProcessOrders() == null) {
-                order.setProcessOrders(new ArrayList<>());
-            }
-            order.getProcessOrders().add(acceptProcess);
-            order.getProcessOrders().add(readyProcess);
-            orderRepository.save(order);
-            
-            log.info("Order {} moved to READY_FOR_INVOICE with PDF generated successfully", order.getId());
-        } else {
-            // Keep status as MANAGER_ACCEPT if PDF generation fails
-            if (order.getProcessOrders() == null) {
-                order.setProcessOrders(new ArrayList<>());
-            }
-            order.getProcessOrders().add(acceptProcess);
-            orderRepository.save(order);
-            
-            log.warn("Order {} remains at MANAGER_ACCEPT because PDF generation failed. Manager should generate PDF manually.", order.getId());
-        }
+//        boolean pdfGenerated = false;
+//        try {
+//            log.info("Auto-generating PDF for order {} after MANAGER_ACCEPT", order.getId());
+//
+//            UserResponse user = safeGetUser(order.getUserId());
+//            AddressResponse address = safeGetAddress(order.getAddressId());
+//
+//            if (user == null) {
+//                log.warn("Cannot generate PDF: User not found for order {}", order.getId());
+//            } else if (address == null) {
+//                log.warn("Cannot generate PDF: Address not found for order {}", order.getId());
+//            } else {
+//                String pdfPath = pdfService.generateOrderPDF(order, user, address);
+//                order.setPdfFilePath(pdfPath);
+//                pdfGenerated = true;
+//                log.info("PDF generated successfully for order {}: {}", order.getId(), pdfPath);
+//            }
+//        } catch (Exception e) {
+//            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage(), e);
+//        }
+//
+//        if (pdfGenerated) {
+//            ProcessOrder readyProcess = ProcessOrder.builder()
+//                    .order(order)
+//                    .status(EnumProcessOrder.READY_FOR_INVOICE)
+//                    .createdAt(new Date())
+//                    .build();
+//            processOrderRepository.save(readyProcess);
+//
+//            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
+//            if (order.getProcessOrders() == null) {
+//                order.setProcessOrders(new ArrayList<>());
+//            }
+//            order.getProcessOrders().add(acceptProcess);
+//                order.getProcessOrders().add(readyProcess);
+//                orderRepository.save(order);
+//
+//            log.info("Order {} moved to READY_FOR_INVOICE with PDF generated successfully", order.getId());
+//        } else {
+//            // Keep status as MANAGER_ACCEPT if PDF generation fails
+//            if (order.getProcessOrders() == null) {
+//                order.setProcessOrders(new ArrayList<>());
+//            }
+//            order.getProcessOrders().add(acceptProcess);
+//            orderRepository.save(order);
+//
+//            log.warn("Order {} remains at MANAGER_ACCEPT because PDF generation failed. Manager should generate PDF manually.", order.getId());
+//        }
     }
 
     private void handleManagerReject(Order order, String storeId, String reason) {

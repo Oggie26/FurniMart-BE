@@ -476,28 +476,22 @@ public class OrderServiceImpl implements OrderService {
     public PageResponse<OrderResponse> getStoreOrdersWithInvoice(String storeId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // Validate store exists - catch exception to return proper error
         String validatedStoreId;
         try {
             validatedStoreId = getStoreById(storeId);
         } catch (AppException e) {
-            // Re-throw AppException to let GlobalExceptionHandler handle it
-            // This ensures proper HTTP status code (404 for STORE_NOT_FOUND)
             throw e;
         } catch (Exception e) {
-            // Handle any other exceptions (e.g., Feign client errors)
             log.error("Error validating store {}: {}", storeId, e.getMessage());
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
 
-        // Lấy orders của store đã có hóa đơn (có pdfFilePath)
         Page<Order> orders = orderRepository.findByStoreIdWithInvoice(validatedStoreId, pageable);
 
         List<OrderResponse> responses = orders.getContent()
                 .stream()
                 .map(order -> {
                     OrderResponse response = mapToResponse(order);
-                    // Kiểm tra file PDF có tồn tại không
                     boolean hasPdfFile = false;
                     if (order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
                         try {
@@ -539,7 +533,6 @@ public class OrderServiceImpl implements OrderService {
                     .build();
         }
 
-        // Kiểm tra file PDF có tồn tại không
         boolean hasPdfFile = false;
         if (order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
             try {
@@ -690,18 +683,15 @@ public class OrderServiceImpl implements OrderService {
             }
             return response.getData().getId();
         } catch (feign.FeignException.NotFound e) {
-            // Feign returns 404 when store not found
             log.warn("Store not found via Feign client: {}", storeId);
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         } catch (feign.FeignException e) {
-            // Other Feign exceptions (4xx, 5xx)
             log.error("Feign error when getting store {}: {}", storeId, e.getMessage());
             if (e.status() == 404) {
                 throw new AppException(ErrorCode.STORE_NOT_FOUND);
             }
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         } catch (Exception e) {
-            // Any other exception
             log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage());
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }

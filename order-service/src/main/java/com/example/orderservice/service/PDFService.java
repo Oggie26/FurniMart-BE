@@ -36,7 +36,6 @@ public class PDFService {
             if (!Files.exists(pdfPath)) {
                 Files.createDirectories(pdfPath);
             }
-
             // Generate HTML content
             String htmlContent = generateOrderHTML(order, user, address);
 
