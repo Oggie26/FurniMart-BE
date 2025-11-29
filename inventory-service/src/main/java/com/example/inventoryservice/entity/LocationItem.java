@@ -26,7 +26,7 @@ public class LocationItem extends AbstractEntity {
     @Column(nullable = false)
     private Integer columnNumber;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String code;
 
     @Column(columnDefinition = "TEXT")

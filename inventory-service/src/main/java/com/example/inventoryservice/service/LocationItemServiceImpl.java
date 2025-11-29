@@ -33,51 +33,19 @@ public class LocationItemServiceImpl implements LocationItemService {
     private final ProductClient productClient;
     private final InventoryItemRepository inventoryItemRepository;
 
-//    @Override
-//    @Transactional
-//    public LocationItemResponse createLocationItem(LocationItemRequest request) {
-//        Zone zone = zoneRepository.findById(request.getZoneId())
-//                .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
-//
-//        locationItemRepository.findByZone_WarehouseIdAndRowLabelAndColumnNumberAndIsDeletedFalse(
-//                        zone.getWarehouse().getId(), request.getRowLabel(), request.getColumnNumber()
-//                )
-//                .ifPresent(li -> {
-//                    throw new AppException(ErrorCode.LOCATIONITEM_EXISTS);
-//                });
-//
-//
-//        validateZoneCapacity(zone, request.getQuantity(), null);
-//
-//        LocationItem locationItem = LocationItem.builder()
-//                .description(request.getDescription())
-//                .status(request.getStatus())
-//                .quantity(request.getQuantity())
-//                .rowLabel(request.getRowLabel())
-//                .columnNumber(request.getColumnNumber())
-//                .zone(zone)
-//                .build();
-//
-//        locationItem.generateCode();
-//        locationItemRepository.save(locationItem);
-//        return toLocationItemResponse(locationItem);
-//    }
-
     @Override
     @Transactional
     public LocationItemResponse createLocationItem(LocationItemRequest request) {
         Zone zone = zoneRepository.findById(request.getZoneId())
                 .orElseThrow(() -> new AppException(ErrorCode.ZONE_NOT_FOUND));
 
-        // Lấy warehouse id từ zone
-        String warehouseId = zone.getWarehouse().getId();
+        locationItemRepository.findByZoneIdAndRowLabelAndColumnNumberAndIsDeletedFalse(
+                        zone.getWarehouse().getId(), request.getRowLabel(), request.getColumnNumber()
+                )
+                .ifPresent(li -> {
+                    throw new AppException(ErrorCode.LOCATIONITEM_EXISTS);
+                });
 
-        // Check trùng trong cùng warehouse
-        locationItemRepository.findByWarehouseIdAndRowLabelAndColumnNumber(
-                warehouseId, request.getRowLabel(), request.getColumnNumber()
-        ).ifPresent(li -> {
-            throw new AppException(ErrorCode.LOCATIONITEM_EXISTS);
-        });
 
         validateZoneCapacity(zone, request.getQuantity(), null);
 
@@ -94,7 +62,6 @@ public class LocationItemServiceImpl implements LocationItemService {
         locationItemRepository.save(locationItem);
         return toLocationItemResponse(locationItem);
     }
-
 
     @Override
     @Transactional
