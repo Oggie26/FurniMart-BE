@@ -46,7 +46,6 @@ public class LocationItemServiceImpl implements LocationItemService {
                     throw new AppException(ErrorCode.LOCATIONITEM_EXISTS);
                 });
 
-
         validateZoneCapacity(zone, request.getQuantity(), null);
 
         LocationItem locationItem = LocationItem.builder()

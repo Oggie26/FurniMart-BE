@@ -163,7 +163,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     EnumPurpose purpose;
                     if (request.getType() == EnumTypes.TRANSFER) {
-                        purpose = EnumPurpose.REQUEST; // luôn set REQUEST cho TRANSFER
+                        purpose = EnumPurpose.REQUEST;
                     } else {
                         purpose = EnumPurpose.REQUEST;
                     }
@@ -179,14 +179,6 @@ public class InventoryServiceImpl implements InventoryService {
                             .build();
 
                     inventoryRepository.save(requestInventory);
-
-                    createInventoryItem(
-                            requestInventory,
-                            itemReq.getLocationItemId(),
-                            itemReq.getProductColorId(),
-                            itemReq.getQuantity()
-                    );
-
                     log.info("Transfer request created from warehouse {} to {}", warehouse.getWarehouseName(), toWarehouse.getWarehouseName());
                 }
 
@@ -318,7 +310,6 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public void transferStock(TransferStockRequest request) {
 
-        // Kiểm tra các thông tin chung
         if (request.getFromWarehouseId() == null || request.getToWarehouseId() == null)
             throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
         if (request.getFromZoneId() == null || request.getToZoneId() == null)
@@ -341,7 +332,6 @@ public class InventoryServiceImpl implements InventoryService {
         LocationItem toLocation = locationItemRepository.findByIdAndIsDeletedFalse(request.getToLocationItemId())
                 .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
-        // Tạo 1 phiếu xuất kho tổng
         Inventory exportInventory = createInventory(
                 fromWarehouse.getId(),
                 EnumTypes.TRANSFER,
@@ -349,7 +339,6 @@ public class InventoryServiceImpl implements InventoryService {
                 "Transfer OUT to " + toWarehouse.getWarehouseName() + " / Zone: " + toZone.getZoneName()
         );
 
-        // Tạo 1 phiếu nhập kho tổng
         Inventory importInventory = createInventory(
                 toWarehouse.getId(),
                 EnumTypes.TRANSFER,
@@ -675,7 +664,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         InventoryItem item = InventoryItem.builder()
                 .inventory(inventory)
-                .locationItem(locationItem) // null nếu là phiếu transfer
+                .locationItem(locationItem)
                 .productColorId(productColorId)
                 .quantity(quantity)
                 .reservedQuantity(0)
@@ -731,7 +720,6 @@ public class InventoryServiceImpl implements InventoryService {
         }
         return response.getData();
     }
-
 
     private String getUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
