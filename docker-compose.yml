@@ -366,7 +366,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
       # Router: domain
-      - "traefik.http.routers.kafka-ui.rule=Host(`kafka-ui.furnimart.click`)"
+      - "traefik.http.routers.kafka-ui.rule=Host(`152.53.244.124`)"
       - "traefik.http.routers.kafka-ui.entrypoints=websecure"
       - "traefik.http.routers.kafka-ui.tls.certresolver=myresolver"
 
