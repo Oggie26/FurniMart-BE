@@ -18,6 +18,7 @@ public class ProductLocationResponse {
     public static class LocationInfo {
         private String warehouseId;
         private String warehouseName;
+        private String storeId;
 
         private String zoneId;
         private String zoneName;

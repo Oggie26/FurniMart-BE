@@ -391,6 +391,7 @@ public class InventoryServiceImpl implements InventoryService {
                     .warehouseId(warehouse.getId())
                     .warehouseName(warehouse.getWarehouseName())
                     .zoneId(zone.getId())
+                    .storeId(warehouse.getStoreId())
                     .zoneName(zone.getZoneName())
                     .locationItemId(li.getId())
                     .locationCode(li.getCode())
