@@ -361,10 +361,18 @@ services:
     networks:
       - backend
     restart: unless-stopped
-# 👇 MẠNG CỐ ĐỊNH
-networks:
-  backend:
-    name: furnimart_net
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=furnimart_net"
+      # Router: domain
+      - "traefik.http.routers.kafka-ui.rule=Host(`kafka-ui.furnimart.click`)"
+      - "traefik.http.routers.kafka-ui.entrypoints=websecure"
+      - "traefik.http.routers.kafka-ui.tls.certresolver=myresolver"
+
+      # Service: port nội bộ của Kafka UI container
+      - "traefik.http.services.kafka-ui.loadbalancer.server.port=9090"
+
 
 volumes:
   user_data:
