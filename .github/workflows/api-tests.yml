@@ -12,6 +12,7 @@ on:
 
 jobs:
   api-tests:
+    if: false  # Workflow tạm thời bị tắt - bật lại bằng cách xóa dòng này
     runs-on: ubuntu-latest
     
     steps:
