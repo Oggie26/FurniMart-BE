@@ -157,7 +157,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         order.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
         order.setQrCode(qrCodeResult.getQrCodeString());
         order.setQrCodeGeneratedAt(new Date());
-        order.setStoreId(storeId);
         orderRepository.save(order);
         
 //        boolean pdfGenerated = false;
