@@ -15,6 +15,23 @@ public interface LocationItemRepository extends JpaRepository<LocationItem, Stri
     Optional<LocationItem> findByIdAndIsDeletedFalse(String locationItemId);
     Optional<LocationItem> findFirstByZone_Warehouse_Id(String warehouseId);
     List<LocationItem> findByZoneIdAndIsDeletedFalse(String zoneId);
+
+    @Query("""
+        SELECT li
+        FROM LocationItem li
+        JOIN li.zone z
+        JOIN z.warehouse w
+        WHERE w.id = :warehouseId
+          AND li.rowLabel = :rowLabel
+          AND li.columnNumber = :columnNumber
+          AND li.isDeleted = false
+    """)
+    Optional<LocationItem> findByWarehouseIdAndRowLabelAndColumnNumber(
+            @Param("warehouseId") String warehouseId,
+            @Param("rowLabel") Integer rowLabel,
+            @Param("columnNumber") Integer columnNumber
+    );
+
     Optional<LocationItem> findByZoneIdAndRowLabelAndColumnNumberAndIsDeletedFalse(
             String zoneId,
             Integer rowLabel,
