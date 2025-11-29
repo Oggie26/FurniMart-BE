@@ -17,16 +17,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatBoxService {
-
-    // ==============================================================================
-    // 🔴 KHU VỰC CẤU HÌNH API KEY (BẠN SẼ ĐIỀN VÀO ĐÂY SAU)
-    // ==============================================================================
-    // API Key được lấy từ biến môi trường OPENAI_API_KEY hoặc GOOGLE_API_KEY
-    // Cấu hình trong: application.yml hoặc Docker environment variable
-    // ==============================================================================
-
-    // Spring AI tự động tạo bean này nếu có API key hợp lệ
-    // Nếu không có key, bean sẽ không tồn tại và chatModel sẽ là null
     private final OpenAiChatModel chatModel; // Có thể null nếu chưa có API key
     private final ProductClient productClient;
 
