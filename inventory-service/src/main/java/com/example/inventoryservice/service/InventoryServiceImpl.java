@@ -154,6 +154,7 @@ public class InventoryServiceImpl implements InventoryService {
 
 
                 case TRANSFER -> {
+
                     if (request.getToWarehouseId() == null) {
                         throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
                     }
@@ -161,25 +162,18 @@ public class InventoryServiceImpl implements InventoryService {
                     Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-                    EnumPurpose purpose;
-                    if (request.getType() == EnumTypes.TRANSFER) {
-                        purpose = EnumPurpose.REQUEST;
-                    } else {
-                        purpose = EnumPurpose.REQUEST;
-                    }
+                    inventory.setWarehouse(toWarehouse);
+                    inventory.setTransferStatus(TransferStatus.PENDING);
+                    inventory.setNote("Request transfer to warehouse " + toWarehouse.getWarehouseName());
 
-                    Inventory requestInventory = Inventory.builder()
-                            .employeeId(getProfile())
-                            .type(EnumTypes.TRANSFER)
-                            .purpose(purpose)
-                            .date(LocalDate.now())
-                            .note("Request transfer to warehouse " + toWarehouse.getWarehouseName())
-                            .warehouse(toWarehouse)
-                            .transferStatus(TransferStatus.PENDING)
-                            .build();
+                    inventoryRepository.save(inventory);
 
-                    inventoryRepository.save(requestInventory);
-                    log.info("Transfer request created from warehouse {} to {}", warehouse.getWarehouseName(), toWarehouse.getWarehouseName());
+                    createInventoryItem(
+                            inventory,
+                            itemReq.getLocationItemId(),
+                            itemReq.getProductColorId(),
+                            itemReq.getQuantity()
+                    );
                 }
 
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
