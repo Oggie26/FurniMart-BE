@@ -78,18 +78,8 @@ public class DeliveryServiceImpl implements DeliveryService {
                 request.getNotes()
         );
 
-        log.info("Order {} assigned to delivery staff {} after all prerequisites met", 
-                request.getOrderId(), request.getDeliveryStaffId());
+        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
 
-        try {
-            callWithRetry(() -> {
-                orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
-                return null;
-            }, "updateOrderStatus", 2);
-            log.info("Order {} status updated to SHIPPING", request.getOrderId());
-        } catch (Exception e) {
-            log.error("Failed to update order status for order {}: {}", request.getOrderId(), e.getMessage());
-        }
 
         return mapToResponse(saved);
     }
