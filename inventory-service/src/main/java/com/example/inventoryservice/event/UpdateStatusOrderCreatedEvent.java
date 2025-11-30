@@ -10,8 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExportInventoryCreatedEvent {
-
+public class UpdateStatusOrderCreatedEvent {
     private Long orderId;
     private EnumProcessOrder enumProcessOrder;
 }

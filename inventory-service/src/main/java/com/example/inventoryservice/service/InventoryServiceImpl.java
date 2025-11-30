@@ -2,7 +2,7 @@ package com.example.inventoryservice.service;
 
 import com.example.inventoryservice.entity.*;
 import com.example.inventoryservice.enums.*;
-import com.example.inventoryservice.event.ExportInventoryCreatedEvent;
+import com.example.inventoryservice.event.UpdateStatusOrderCreatedEvent;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.AuthClient;
 import com.example.inventoryservice.feign.OrderClient;
@@ -40,7 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserClient userClient;
     private final OrderClient orderClient;
     private final ProductClient productClient;
-    private final KafkaTemplate<String, ExportInventoryCreatedEvent> kafkaTemplate;
+    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
 
 
 
@@ -127,26 +127,48 @@ public class InventoryServiceImpl implements InventoryService {
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
                     if (request.getOrderId() != null) {
-                        ExportInventoryCreatedEvent event = ExportInventoryCreatedEvent.builder()
+                        OrderResponse order = getOrder(request.getOrderId());
+                        if (order == null || order.getOrderDetails().isEmpty()) {
+                            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+                        }
+
+                        // Check từng sản phẩm trong order
+                        for (OrderDetailResponse detail : order.getOrderDetails()) {
+                            String productColorId = detail.getProductColorId();
+                            int requiredQuantity = detail.getQuantity();
+
+                            int totalExported = inventory.getInventoryItems().stream()
+                                    .filter(item -> productColorId.equals(item.getProductColorId()))
+                                    .mapToInt(item -> Math.abs(item.getQuantity()))
+                                    .sum();
+
+                            if (totalExported < requiredQuantity) {
+                                throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+                            }
+                        }
+
+                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
                                 .orderId(request.getOrderId())
                                 .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
                                 .build();
 
-                        kafkaTemplate.send("export-inventory-created-topic", event)
-                                .whenComplete((result, ex) -> {
-                                    if (ex != null) {
-                                        try {
-                                            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
-                                            log.info("Đã xuất thành công");
-                                        } catch (Exception clientEx) {
-                                            log.error("❌ Failed to update order event fail status: {}", clientEx.getMessage());
-                                        }
-                                    } else {
-                                        log.info("✔️ Kafka event sent for order {}", request.getOrderId());
-                                    }
-                                });
-                        inventoryRepository.save(inventory);
+                        try {
+                            kafkaTemplate.send("update-status-order-created-topic", event).get();
+                            log.info("✔ Kafka event sent for order {}", request.getOrderId());
+                        } catch (Exception ex) {
+                            log.error("❌ Failed to send Kafka event: {}", ex.getMessage());
+
+                            try {
+                                orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+                                log.info("✔ Order rollback to PACKAGED due to Kafka failure");
+                            } catch (Exception e) {
+                                log.error("❌ Failed to rollback order after Kafka failure: {}", e.getMessage());
+                            }
+
+                            throw new AppException(ErrorCode.EXPORT_ERROR);
+                        }
                     }
+
 
 
                     if (request.getToWarehouseId() != null) {

@@ -1,6 +1,6 @@
 package com.example.inventoryservice.config;
 
-import com.example.inventoryservice.event.ExportInventoryCreatedEvent;
+import com.example.inventoryservice.event.UpdateStatusOrderCreatedEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +37,7 @@ public class KafkaProductConfig {
 
 
     @Bean
-    public ProducerFactory<String, ExportInventoryCreatedEvent> exportInventoryCreatedEventProducerFactory() {
+    public ProducerFactory<String, UpdateStatusOrderCreatedEvent> exportInventoryCreatedEventProducerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -46,7 +46,7 @@ public class KafkaProductConfig {
     }
 
     @Bean
-    public KafkaTemplate<String, ExportInventoryCreatedEvent> exportInventoryCreatedEventKafkaTemplate() {
+    public KafkaTemplate<String, UpdateStatusOrderCreatedEvent> exportInventoryCreatedEventKafkaTemplate() {
         return new KafkaTemplate<>(exportInventoryCreatedEventProducerFactory());
     }
 
