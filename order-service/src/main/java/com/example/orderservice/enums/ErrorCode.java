@@ -36,11 +36,12 @@ public enum ErrorCode {
     NOT_IMPLEMENTED(1214, "Not implemented", HttpStatus.BAD_REQUEST),
     CART_ITEM_NOT_FOUND(1215, "Cart item not found", HttpStatus.NOT_FOUND),
     OUT_OF_STOCK(1216, "Out of stock ", HttpStatus.BAD_REQUEST),
+    INVALID_ORDER_TOTAL(1217, "Invalid order total", HttpStatus.BAD_REQUEST),
     
     // Warranty related errors
-    WARRANTY_NOT_FOUND(1217, "Warranty not found", HttpStatus.NOT_FOUND),
-    WARRANTY_CANNOT_BE_CLAIMED(1218, "Warranty cannot be claimed", HttpStatus.BAD_REQUEST),
-    WARRANTY_CLAIM_NOT_FOUND(1219, "Warranty claim not found", HttpStatus.NOT_FOUND),
+    WARRANTY_NOT_FOUND(1218, "Warranty not found", HttpStatus.NOT_FOUND),
+    WARRANTY_CANNOT_BE_CLAIMED(1219, "Warranty cannot be claimed", HttpStatus.BAD_REQUEST),
+    WARRANTY_CLAIM_NOT_FOUND(1220, "Warranty claim not found", HttpStatus.NOT_FOUND),
     
     // Delivery confirmation related errors
     DELIVERY_CONFIRMATION_NOT_FOUND(1220, "Delivery confirmation not found", HttpStatus.NOT_FOUND),
