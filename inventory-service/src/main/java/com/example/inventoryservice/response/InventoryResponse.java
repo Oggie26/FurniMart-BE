@@ -1,23 +1,30 @@
 package com.example.inventoryservice.response;
 
-import com.example.inventoryservice.enums.EnumStatus;
+import com.example.inventoryservice.enums.EnumPurpose;
+import com.example.inventoryservice.enums.EnumTypes;
+import com.example.inventoryservice.enums.TransferStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class InventoryResponse {
-    private String id;
-    private String productColorId;
-    private String locationItemId;
-    private int quantity;
-    private int available_quantity;
-    private int reserved_quantity;
-    private int min_quantity;
-    private int max_quantity;
-    private EnumStatus status;
+    private Long id;
+    private String employeeId;
+    private EnumTypes type;
+    private EnumPurpose purpose;
+    private LocalDate date;
+    private String note;
+    private String warehouseName;
+    private String warehouseId;
+    private Long orderId;
+    private TransferStatus transferStatus;
+    private List<InventoryItemResponse> itemResponseList;
 }

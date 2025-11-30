@@ -32,7 +32,7 @@ public class Zone extends AbstractEntity {
     private ZoneStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private EnumZone zoneCode;
 
     @Column(nullable = false)

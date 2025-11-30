@@ -3,6 +3,7 @@ package com.example.productservice.service;
 import com.example.productservice.entity.*;
 import com.example.productservice.enums.EnumStatus;
 import com.example.productservice.enums.ErrorCode;
+import com.example.productservice.event.ProductCreatedEvent;
 import com.example.productservice.exception.AppException;
 import com.example.productservice.repository.*;
 import com.example.productservice.request.ProductRequest;
@@ -10,20 +11,28 @@ import com.example.productservice.response.*;
 import com.example.productservice.service.inteface.ProductService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final MaterialRepository materialRepository;
-    private final ProductColorRepository productColorRepository;
+    private final KafkaTemplate<String, ProductCreatedEvent> kafkaTemplate;
 
     @Override
     @Transactional
@@ -59,6 +68,25 @@ public class ProductServiceImpl implements ProductService {
                 .build();
         productRepository.save(product);
 
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    ProductCreatedEvent event = ProductCreatedEvent.builder()
+                            .productId(product.getId())
+                            .name(product.getName())
+                            .price(product.getPrice())
+                            .categoryName(product.getCategory().getCategoryName())
+                            .description(productRequest.getDescription())
+                            .build();
+
+                    kafkaTemplate.send("product-create-topic", event);
+                    log.info("🧠 Sent AI event for product [{}]", product.getName());
+                } catch (Exception e) {
+                    log.error("❌ Failed to send AI event for product [{}]: {}", product.getName(), e.getMessage());
+                }
+            }
+        });
 
         return mapToResponse(product);
     }
@@ -151,6 +179,15 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public PageResponse<ProductResponse> searchProduct(String request, int page, int size) {
+        // Sanitize search keyword to prevent injection
+        if (request != null && !request.trim().isEmpty()) {
+            String trimmed = request.trim();
+            trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+            request = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+        } else {
+            request = "";
+        }
+        
         PageRequest pageable = PageRequest.of(page, size);
         Page<Product> producPage = productRepository.searchByKeywordNative(request, pageable);
 
@@ -181,6 +218,8 @@ public class ProductServiceImpl implements ProductService {
                 .thumbnailImage(product.getThumbnailImage())
                 .width(product.getWidth())
                 .height(product.getHeight())
+//                .fullName()
+//                .userId()
                 .productColors(product.getProductColors() != null ?
                         product.getProductColors().stream()
                                 .map(this::mapProductColorToDTO)
@@ -230,4 +269,25 @@ public class ProductServiceImpl implements ProductService {
                 .build();
     }
 
+//    private String getUserId() {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication == null || !authentication.isAuthenticated()
+//                || "anonymousUser".equals(authentication.getPrincipal())) {
+//            throw new AppException(ErrorCode.UNAUTHENTICATED);
+//        }
+//
+//        String username = authentication.getName();
+//        ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
+//
+//        if (response == null || response.getData() == null) {
+//            throw new AppException(ErrorCode.NOT_FOUND_USER);
+//        }
+//
+//        ApiResponse<UserResponse> userId = userClient.getUserByAccountId(response.getData().getId());
+//        if (userId == null || userId.getData() == null) {
+//            throw new AppException(ErrorCode.NOT_FOUND_USER);
+//        }
+//
+//        return userId.getData().getId();
+//    }
 }

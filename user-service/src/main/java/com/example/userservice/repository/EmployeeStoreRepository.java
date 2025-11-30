@@ -16,13 +16,26 @@ public interface EmployeeStoreRepository extends JpaRepository<EmployeeStore, Em
     @Query("SELECT es FROM EmployeeStore es WHERE es.employeeId = :employeeId AND es.storeId = :storeId AND es.isDeleted = false")
     Optional<EmployeeStore> findByEmployeeIdAndStoreId(@Param("employeeId") String employeeId, @Param("storeId") String storeId);
 
-    @Query("SELECT es FROM EmployeeStore es WHERE es.employeeId = :employeeId AND es.isDeleted = false")
+    @Query("SELECT es FROM EmployeeStore es " +
+           "JOIN FETCH es.employee e " +
+           "JOIN FETCH e.account " +
+           "WHERE es.employeeId = :employeeId AND es.isDeleted = false AND e.isDeleted = false")
     List<EmployeeStore> findByEmployeeIdAndIsDeletedFalse(@Param("employeeId") String employeeId);
 
     @Query("SELECT es FROM EmployeeStore es WHERE es.employeeId = :employeeId AND es.storeId = :storeId AND es.isDeleted = false")
     Optional<EmployeeStore> findByEmployeeIdAndStoreIdAndIsDeletedFalse(@Param("employeeId") String employeeId, @Param("storeId") String storeId);
+    
+    @Query("SELECT es FROM EmployeeStore es " +
+           "JOIN FETCH es.employee e " +
+           "JOIN FETCH e.account " +
+           "JOIN FETCH es.store s " +
+           "WHERE es.employeeId = :employeeId AND es.storeId = :storeId AND es.isDeleted = false AND e.isDeleted = false AND s.isDeleted = false")
+    Optional<EmployeeStore> findByEmployeeIdAndStoreIdWithDetails(@Param("employeeId") String employeeId, @Param("storeId") String storeId);
 
-    @Query("SELECT es FROM EmployeeStore es WHERE es.storeId = :storeId AND es.isDeleted = false")
+    @Query("SELECT es FROM EmployeeStore es " +
+           "JOIN FETCH es.employee e " +
+           "JOIN FETCH e.account " +
+           "WHERE es.storeId = :storeId AND es.isDeleted = false AND e.isDeleted = false")
     List<EmployeeStore> findByStoreIdAndIsDeletedFalse(@Param("storeId") String storeId);
 
     void deleteByEmployeeId(String employeeId);

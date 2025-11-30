@@ -70,8 +70,13 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .build();
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
+        
+        // Note: AI chat is now handled directly via API Gateway -> AI Service
+        // No need to call AI service from here anymore
+        
         return toChatMessageResponse(savedMessage);
     }
+    
 
     @Override
     public List<ChatMessageResponse> getChatMessages(String chatId) {

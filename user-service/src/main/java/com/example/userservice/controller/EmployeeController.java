@@ -7,6 +7,10 @@ import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.UserResponse;
+import com.example.userservice.entity.Account;
+import com.example.userservice.enums.ErrorCode;
+import com.example.userservice.exception.AppException;
+import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.service.inteface.EmployeeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,6 +19,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,15 +32,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EmployeeController {
     private final EmployeeService employeeService;
+    private final AccountRepository accountRepository;
 
-    // ========== ADMIN ONLY CRUD OPERATIONS ==========
-    
     @PostMapping
-    @Operation(summary = "Create new employee (Admin only) - Can create ADMIN, BRANCH_MANAGER, DELIVERY, STAFF roles")
+    @Operation(summary = "Create new employee - Admin can create all roles, Branch Manager can only create STAFF and DELIVERY")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createEmployee(@Valid @RequestBody UserRequest request) {
-        // Validation is now handled in EmployeeService - allows ADMIN and employee roles, blocks CUSTOMER
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Employee created successfully")
@@ -45,9 +49,8 @@ public class EmployeeController {
     @PostMapping("/admins")
     @Operation(summary = "Create new admin user (Admin only) - Only existing admin users can create other admin accounts")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<UserResponse> createAdmin(@Valid @RequestBody UserRequest request) {
-        // Force ADMIN role and validate admin creation
         request.setRole(EnumRole.ADMIN);
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -57,8 +60,8 @@ public class EmployeeController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update employee information (Admin only) - Supports updating role and store assignment")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Update employee information - Admin can update all, Branch Manager can only update STAFF and DELIVERY")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<UserResponse> updateEmployee(@PathVariable String id, @Valid @RequestBody UserUpdateRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -111,11 +114,9 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET OPERATIONS ==========
-    
     @GetMapping("/{id}")
     @Operation(summary = "Get employee by ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<UserResponse> getEmployeeById(@PathVariable String id) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -123,10 +124,48 @@ public class EmployeeController {
                 .data(employeeService.getEmployeeById(id))
                 .build();
     }
+
+    @GetMapping("/account/{accountId}")
+    @Operation(summary = "Get employee by account ID")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
+    public ApiResponse<UserResponse> getEmployeeByAccountId(@PathVariable String accountId) {
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee retrieved successfully")
+                .data(employeeService.getEmployeeByAccountId(accountId))
+                .build();
+    }
+
+    @GetMapping("/email/{email}")
+    @Operation(summary = "Get employee by email")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
+    public ApiResponse<UserResponse> getEmployeeByEmail(@PathVariable String email) {
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee retrieved successfully")
+                .data(employeeService.getEmployeeByEmail(email))
+                .build();
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "Get current employee profile")
+    public ApiResponse<UserResponse> getEmployeeProfile() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
+        
+        return ApiResponse.<UserResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Employee profile retrieved successfully")
+                .data(employeeService.getEmployeeByAccountId(account.getId()))
+                .build();
+    }
     
     @GetMapping
     @Operation(summary = "Get all employees")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllEmployees() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -137,7 +176,7 @@ public class EmployeeController {
 
     @GetMapping("/paginated")
     @Operation(summary = "Get employees with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getEmployeesWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -150,7 +189,7 @@ public class EmployeeController {
     
     @GetMapping("/search")
     @Operation(summary = "Search employees by name, email, or phone")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> searchEmployees(
             @RequestParam String searchTerm,
             @RequestParam(defaultValue = "0") int page,
@@ -162,14 +201,9 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET BY ROLE ==========
-    
-    // SELLER endpoints removed - use STAFF endpoints instead
-    // @GetMapping("/role/seller") - DEPRECATED: Use /role/staff instead
-
     @GetMapping("/role/manager")
     @Operation(summary = "Get all branch managers")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllManagers() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -180,7 +214,7 @@ public class EmployeeController {
 
     @GetMapping("/role/delivery")
     @Operation(summary = "Get all delivery staff")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllDeliveryStaff() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -191,7 +225,7 @@ public class EmployeeController {
 
     @GetMapping("/role/staff")
     @Operation(summary = "Get all general staff")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getAllStaff() {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -200,11 +234,9 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET BY STORE ==========
-    
     @GetMapping("/store/{storeId}")
     @Operation(summary = "Get all employees by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getEmployeesByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -213,12 +245,9 @@ public class EmployeeController {
                 .build();
     }
 
-    // SELLER endpoints removed - use STAFF endpoints instead
-    // @GetMapping("/store/{storeId}/role/seller") - DEPRECATED: Use /store/{storeId}/role/staff instead
-
     @GetMapping("/store/{storeId}/role/manager")
     @Operation(summary = "Get branch managers by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getManagersByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -229,7 +258,7 @@ public class EmployeeController {
 
     @GetMapping("/store/{storeId}/role/delivery")
     @Operation(summary = "Get delivery staff by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getDeliveryStaffByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -240,7 +269,7 @@ public class EmployeeController {
 
     @GetMapping("/store/{storeId}/role/staff")
     @Operation(summary = "Get general staff by store ID")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<List<UserResponse>> getStaffByStoreId(@PathVariable String storeId) {
         return ApiResponse.<List<UserResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -249,14 +278,9 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== GET BY ROLE WITH PAGINATION ==========
-    
-    // SELLER endpoints removed - use STAFF endpoints instead
-    // @GetMapping("/role/seller/paginated") - DEPRECATED: Use /role/staff/paginated instead
-
     @GetMapping("/role/manager/paginated")
     @Operation(summary = "Get branch managers with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getManagersWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -269,7 +293,7 @@ public class EmployeeController {
 
     @GetMapping("/role/delivery/paginated")
     @Operation(summary = "Get delivery staff with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getDeliveryStaffWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -282,7 +306,7 @@ public class EmployeeController {
 
     @GetMapping("/role/staff/paginated")
     @Operation(summary = "Get general staff with pagination")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<PageResponse<UserResponse>> getStaffWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -293,8 +317,6 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== EMPLOYEE STATISTICS ==========
-    
     @GetMapping("/count")
     @Operation(summary = "Get total employee count")
     @PreAuthorize("hasRole('ADMIN')")
@@ -317,11 +339,9 @@ public class EmployeeController {
                 .build();
     }
 
-    // ========== STORE ASSIGNMENT ==========
-    
     @PostMapping("/{employeeId}/store/{storeId}")
     @Operation(summary = "Assign employee to store")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<Void> assignEmployeeToStore(
             @PathVariable String employeeId,
             @PathVariable String storeId) {
@@ -334,7 +354,7 @@ public class EmployeeController {
 
     @DeleteMapping("/{employeeId}/store/{storeId}")
     @Operation(summary = "Remove employee from store")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
     public ApiResponse<Void> removeEmployeeFromStore(
             @PathVariable String employeeId,
             @PathVariable String storeId) {

@@ -39,9 +39,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     List<User> findByIsDeletedFalse();
     
-    // Note: Employee-related queries (findEmployeesByRoles, findEmployeesByRole) have been removed.
-    // Use EmployeeRepository.findEmployeesByRoles() and EmployeeRepository.findEmployeesByRole() instead.
-    
     // Admin-related queries
     @Query("SELECT u FROM User u WHERE u.account.role = :role AND u.isDeleted = false")
     List<User> findByAccountRoleAndIsDeletedFalse(@Param("role") EnumRole role);

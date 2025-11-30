@@ -18,6 +18,7 @@ public enum  ErrorCode {
     INVALID_STATUS(1118, "Invalid Status", HttpStatus.BAD_REQUEST),
     INVALID_REQUEST(1119, "Invalid Request", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_CHANGE_ROLE(1120, "No right to change ", HttpStatus.UNAUTHORIZED),
+    ACCESS_DENIED(1122, "Access denied", HttpStatus.FORBIDDEN),
     INTERNAL_SERVER_ERROR(1121, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR),
     // 12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
@@ -39,6 +40,15 @@ public enum  ErrorCode {
     MATERIAL_NAME_EXISTED(1222, "Material name has existed", HttpStatus.BAD_REQUEST),
     CODE_EXISTED(1223, "Code has existed", HttpStatus.BAD_REQUEST),
     CODE_NOT_FOUND(1224, "Code not found", HttpStatus.NOT_FOUND),
+    // Delivery-specific error codes
+    ORDER_NOT_FOUND(1235, "Order not found with orderId: {0}", HttpStatus.NOT_FOUND),
+    STORE_NOT_FOUND(1236, "Store not found with storeId: {0}", HttpStatus.NOT_FOUND),
+    DELIVERY_ASSIGNMENT_NOT_FOUND(1237, "Delivery assignment not found with assignmentId: {0} OR orderId: {0}", HttpStatus.NOT_FOUND),
+    DELIVERY_CONFIRMATION_NOT_FOUND(1238, "Delivery confirmation not found with orderId: {0} OR qrCode: {0}", HttpStatus.NOT_FOUND),
+    ASSIGNMENT_ALREADY_EXISTS(1231, "Order đã được assign. Assignment ID: {0}, Status: {1}", HttpStatus.BAD_REQUEST),
+    INVOICE_ALREADY_GENERATED(1232, "Invoice đã được generate cho order này. Assignment ID: {0}", HttpStatus.BAD_REQUEST),
+    PRODUCTS_ALREADY_PREPARED(1233, "Products đã được prepare cho order này. Assignment ID: {0}", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_STOCK(1234, "Stock không đủ", HttpStatus.BAD_REQUEST),
     COLOR_EXISTED(1225, "Color has existed", HttpStatus.BAD_REQUEST),
     COLOR_NOT_FOUND(1226, "Color not found", HttpStatus.NOT_FOUND),
     COLOR_NAME_EXISTED(1227, "Color name has existed", HttpStatus.BAD_REQUEST),

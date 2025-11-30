@@ -15,26 +15,25 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-    generate-ddl: true
+    generate-ddl: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
   data:
     redis:
-#      host: localhost
-      host: redis
+      host: redis        # Host Redis trong Docker Compose
       port: 6379
-      timeout: 60000
-      connection-timeout: 2000ms
+      timeout: 60000ms   # Thời gian chờ tổng thể (60s)
+      connection-timeout: 2000ms  # Timeout khi connect (2s)
       jedis:
         pool:
-          max-active: 8
-          max-wait: -1ms
-          max-idle: 8
-          min-idle: 0
-  cache:
-    type: redis
+          max-active: 20   # Tăng pool tối đa để phục vụ nhiều request đồng thời
+          max-wait: 5000ms # Thời gian chờ nếu pool hết
+          max-idle: 10     # Số connection tối đa idle
+          min-idle: 2      # Số connection tối thiểu luôn giữ sẵn
+    cache:
+      type: redis
   kafka:
     bootstrap-servers: kafka:9092
     consumer:
@@ -92,4 +91,14 @@ logging:
     org.apache.kafka.clients.NetworkClient: ERROR
     org.apache.kafka.clients.Metadata: ERROR
 
+vnpay:
+  tmnCode: 3MUC1EW6
+  hashSecret: O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K
+  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  # VNPay withdrawal API URL (nếu có)
+  # Nếu không có, sẽ xử lý async/queue
+  withdrawalUrl: 
+  withdrawalCallbackUrl: http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback
+  # VNPay deposit callback URL
+  depositCallbackUrl: http://152.53.244.124:8086/api/wallets/deposit-via-vnpay/callback
 

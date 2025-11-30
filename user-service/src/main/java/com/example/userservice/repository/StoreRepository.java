@@ -2,19 +2,15 @@ package com.example.userservice.repository;
 
 import com.example.userservice.entity.Store;
 import com.example.userservice.enums.EnumStatus;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Optional;
 public interface StoreRepository extends JpaRepository<Store, String> {
-    @Autowired
-    JdbcTemplate jdbcTemplate = null;
     Optional<Store> findByIdAndIsDeletedFalse(String id);
 
     List<Store> findByStatusAndIsDeletedFalse(EnumStatus status);
@@ -37,10 +33,6 @@ public interface StoreRepository extends JpaRepository<Store, String> {
 
     @Query("SELECT s FROM Store s JOIN s.employeeStores es WHERE es.employeeId = :employeeId AND s.isDeleted = false")
     List<Store> findStoresByEmployeeId(@Param("employeeId") String employeeId);
-    
-    // Legacy method - kept for backward compatibility, redirects to employee
-    @Query("SELECT s FROM Store s JOIN s.employeeStores es WHERE es.employeeId = :userId AND s.isDeleted = false")
-    List<Store> findStoresByUserId(@Param("userId") String userId);
 
         @Query(value = """
         SELECT s.*
@@ -68,8 +60,5 @@ public interface StoreRepository extends JpaRepository<Store, String> {
 
     @Query("SELECT s FROM Store s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL")
     List<Store> findAllWithCoordinates();
-
-
-
 
 }

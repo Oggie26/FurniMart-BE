@@ -5,7 +5,15 @@ import com.example.userservice.entity.User;
 import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.UserRepository;
+import com.example.userservice.request.ChatMessageRequest;
+import com.example.userservice.response.ChatMessageResponse;
 import com.example.userservice.response.WebSocketMessage;
+import com.example.userservice.service.inteface.ChatMessageService;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +21,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -28,6 +40,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     private final ChatRepository chatRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
+    private final ChatMessageService chatMessageService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -116,12 +129,61 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 return;
             }
 
-            // Broadcast message to all participants in the chat
-            broadcastToChat(wsMessage.getChatId(), wsMessage, userId);
+            // Get user to set up security context
+            User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+            // Set up security context for ChatMessageService
+            setSecurityContextForUser(user);
+
+            // Create ChatMessageRequest
+            ChatMessageRequest request = ChatMessageRequest.builder()
+                    .chatId(wsMessage.getChatId())
+                    .content(wsMessage.getContent())
+                    .type(ChatMessage.MessageType.TEXT) // Default to TEXT, can be enhanced later
+                    .build();
+
+            // Call ChatMessageService to save message and trigger AI response
+            ChatMessageResponse response = chatMessageService.sendMessage(request);
+
+            // Convert to WebSocket message and broadcast
+            WebSocketMessage broadcastMessage = WebSocketMessage.builder()
+                    .type("MESSAGE")
+                    .chatId(response.getChatId())
+                    .senderId(response.getSenderId())
+                    .content(response.getContent())
+                    .messageType(response.getType())
+                    .timestamp(response.getCreatedAt() != null ? response.getCreatedAt().getTime() : System.currentTimeMillis())
+                    .build();
+
+            // Broadcast customer message
+            broadcastToChat(wsMessage.getChatId(), broadcastMessage, userId);
+
+            log.info("Message saved and broadcasted for chat: {}, user: {}", wsMessage.getChatId(), userId);
             
         } catch (Exception e) {
             log.error("Error handling chat message", e);
-            sendError(session, "Error sending message");
+            sendError(session, "Error sending message: " + e.getMessage());
+        }
+    }
+
+    private void setSecurityContextForUser(User user) {
+        try {
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getAccount().getRole().name()));
+
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    user.getAccount().getEmail(),
+                    null,
+                    authorities
+            );
+
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(authentication);
+            SecurityContextHolder.setContext(context);
+        } catch (Exception e) {
+            log.error("Error setting security context for user: {}", user.getId(), e);
+            throw new RuntimeException("Failed to set security context", e);
         }
     }
 
@@ -349,5 +411,10 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 sendMessage(session, message);
             }
         });
+    }
+
+    // Public method to get online user IDs
+    public Set<String> getOnlineUserIds() {
+        return new HashSet<>(userSessions.keySet());
     }
 }

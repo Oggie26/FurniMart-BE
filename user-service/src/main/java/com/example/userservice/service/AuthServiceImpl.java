@@ -2,6 +2,8 @@ package com.example.userservice.service;
 
 import com.example.userservice.config.JwtService;
 import com.example.userservice.entity.Account;
+import com.example.userservice.entity.Employee;
+import com.example.userservice.entity.EmployeeStore;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
@@ -9,12 +11,15 @@ import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.event.AccountCreatedEvent;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
+import com.example.userservice.repository.EmployeeRepository;
+import com.example.userservice.repository.EmployeeStoreRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.AuthRequest;
 import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.AuthResponse;
 import com.example.userservice.response.LoginResponse;
 import com.example.userservice.service.inteface.AuthService;
+import com.example.userservice.service.inteface.WalletService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,9 +42,11 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
+    private final EmployeeRepository employeeRepository;
+    private final EmployeeStoreRepository employeeStoreRepository;
     private final TokenService tokenService;
-    // Note: employeeStoreRepository removed - not used in AuthService (only creates CUSTOMER users)
     private final KafkaTemplate<String, AccountCreatedEvent> kafkaTemplate;
+    private final WalletService walletService;
 
     @Override
     @Transactional
@@ -53,10 +60,11 @@ public class AuthServiceImpl implements AuthService {
         if(accountRepository.findByEmailAndIsDeletedFalse(request.getEmail()).isPresent()){
             throw new AppException(ErrorCode.EMAIL_EXISTS);
         }
+        
         Account account = Account.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .status(EnumStatus.ACTIVE)
+                .status(EnumStatus.ACTIVE) // Set to ACTIVE immediately (no email verification)
                 .role(EnumRole.CUSTOMER)
                 .build();
 
@@ -70,29 +78,50 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         accountRepository.save(account);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        AccountCreatedEvent event = new AccountCreatedEvent(account.getId(),user.getFullName() , account.getEmail(),EnumRole.CUSTOMER);
+        Account savedAccount = accountRepository.findById(account.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        try {
+            userRepository.flush();
+            accountRepository.flush();
+            log.debug("User and account flushed to database: {}", savedUser.getId());
+            
+            walletService.createWalletForUser(savedUser.getId());
+            log.info("Wallet auto-created for new customer: {}", savedUser.getId());
+        } catch (AppException e) {
+            log.error("Failed to auto-create wallet for user {}: ErrorCode={}, Message={}", 
+                    savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage(), e);
+        }
+
+        final String accountEmail = savedAccount.getEmail();
+        final String accountId = savedAccount.getId();
+        
+        AccountCreatedEvent event = new AccountCreatedEvent(accountId, user.getFullName(), accountEmail, EnumRole.CUSTOMER);
 
         try {
             kafkaTemplate.send("account-created-topic", event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
+                        log.error("Failed to send account creation event: {}", ex.getMessage());
                     } else {
-                        log.info("Successfully sent account creation event for: {}", account.getEmail());
+                        log.info("Successfully sent account creation event for: {}", accountEmail);
                     }
                 });
         } catch (Exception e) {
-            log.error("Failed to send Kafka event for account: {}, error: {}", account.getEmail(), e.getMessage());
+            log.error("Failed to send Kafka event for account: {}, error: {}", accountEmail, e.getMessage());
         }
 
         return AuthResponse.builder()
-                .id(account.getId())
-                .email(account.getEmail())
-                .role(account.getRole())
+                .id(accountId)
+                .email(accountEmail)
+                .role(savedAccount.getRole())
                 .fullName(user.getFullName())
                 .gender(user.getGender())
-                .status(account.getStatus())
+                .status(savedAccount.getStatus())
                 .password("********")
                 .build();
     }
@@ -106,32 +135,50 @@ public class AuthServiceImpl implements AuthService {
         Account account = accountRepository.findByEmailAndIsDeletedFalse(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 
-        if (EnumStatus.INACTIVE.equals(account.getStatus())) {
-            throw new AppException(ErrorCode.USER_BLOCKED);
-        }
         if (EnumStatus.DELETED.equals(account.getStatus())) {
             throw new AppException(ErrorCode.USER_DELETED);
         }
+        
+        // Check account status
+        if (EnumStatus.INACTIVE.equals(account.getStatus())) {
+            throw new AppException(ErrorCode.USER_BLOCKED);
+        }
 
-        // Note: Only employees have store relationships
-        // For customers, storeIds will be empty
-        List<String> storeIds = List.of();
+        Map<String, Object> claims;
+        String storeId = "";
 
-        Map<String, Object> claims = Map.of(
-                "role", account.getRole(),
-                "userId", account.getId(),
-                "storeId", storeIds
-        );
+        if (!account.getRole().equals(EnumRole.CUSTOMER)) {
+            Employee employee = employeeRepository.findByAccountIdAndIsDeletedFalse(account.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
+
+            List<EmployeeStore> employeeStores = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId());
+            storeId = employeeStores.isEmpty() ? "" : employeeStores.get(0).getStoreId();
+
+            claims = Map.of(
+                    "role", account.getRole(),
+                    "accountId", account.getId(),
+                    "storeId", storeId
+            );
+        } else {
+            // Customer login
+            claims = Map.of(
+                    "role", account.getRole(),
+                    "accountId", account.getId()
+            );
+        }
+
         String accessToken = jwtService.generateToken(claims, account.getEmail());
-        String refreshToken = jwtService.generateRefreshToken(claims,account.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(claims, account.getEmail());
 
         tokenService.saveToken(account.getEmail(), accessToken, jwtService.getJwtExpiration());
         tokenService.saveRefreshToken(account.getEmail(), refreshToken, jwtService.getRefreshExpiration());
+
         return LoginResponse.builder()
                 .token(accessToken)
                 .refreshToken(refreshToken)
                 .build();
     }
+
 
     @Override
     public AuthResponse getUserByUsername(String email) {
@@ -194,4 +241,5 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.INVALID_TOKEN);
         }
     }
+
 }

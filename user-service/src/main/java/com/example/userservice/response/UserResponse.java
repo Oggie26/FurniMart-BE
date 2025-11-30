@@ -2,6 +2,7 @@ package com.example.userservice.response;
 
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
@@ -22,6 +23,7 @@ public class UserResponse {
     private String email;
     private String phone;
     private Boolean gender;
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private Date birthday;
     private String avatar;
     private String cccd;

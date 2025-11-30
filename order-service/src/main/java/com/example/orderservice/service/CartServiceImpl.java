@@ -4,10 +4,7 @@ import com.example.orderservice.entity.Cart;
 import com.example.orderservice.entity.CartItem;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.exception.AppException;
-import com.example.orderservice.feign.AuthClient;
-import com.example.orderservice.feign.ColorClient;
-import com.example.orderservice.feign.ProductClient;
-import com.example.orderservice.feign.UserClient;
+import com.example.orderservice.feign.*;
 import com.example.orderservice.repository.CartItemRepository;
 import com.example.orderservice.repository.CartRepository;
 import com.example.orderservice.response.*;
@@ -17,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,7 +33,7 @@ public class CartServiceImpl implements CartService {
     private final AuthClient authClient;
     private final ProductClient productClient;
     private final UserClient userClient;
-    private final ColorClient colorClient;
+    private final InventoryClient inventoryClient;
 
     @Override
     @Transactional
@@ -48,20 +46,31 @@ public class CartServiceImpl implements CartService {
         Cart cart = getOrCreateCartEntity(userId);
 
         ProductColorResponse productColor = getProductColor(productColorId);
+        int availableStock = getAvailableProduct(productColorId);
 
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(item -> item.getProductColorId().equals(productColorId))
                 .findFirst();
 
         if (existingItem.isPresent()) {
-            existingItem.get().setQuantity(existingItem.get().getQuantity() + quantity);
+            int totalQuantity = existingItem.get().getQuantity() + quantity;
+
+            if (totalQuantity > availableStock) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
+
+            existingItem.get().setQuantity(totalQuantity);
         } else {
+            if (quantity > availableStock) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
             addNewItemToCart(cart, productColor, quantity);
         }
 
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
+
 
     @Override
     @Transactional
@@ -165,15 +174,34 @@ public class CartServiceImpl implements CartService {
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
 
-        CartItem cartItem = cart.getItems().stream()
-                .filter(item -> item.getProductColorId().equals(productColorId))
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        ProductColorResponse productColor = getProductColor(productColorId);
+        int availableQuantity = getAvailableProduct(productColorId);
 
-        cartItem.setQuantity(quantity);
+        Optional<CartItem> existingItem = cart.getItems().stream()
+                .filter(item -> item.getProductColorId().equals(productColorId))
+                .findFirst();
+
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            int newQuantity = item.getQuantity() + quantity;
+
+            if (newQuantity > availableQuantity) {
+                throw new AppException(ErrorCode.INVALID_QUANTITY);
+            }
+
+            item.setQuantity(newQuantity);
+        } else {
+            if (quantity > availableQuantity) {
+                throw new AppException(ErrorCode.INVALID_QUANTITY);
+            }
+
+            addNewItemToCart(cart, productColor, quantity);
+        }
+
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
+
 
     private ProductColorResponse getProductColor(String productColorId) {
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
@@ -259,5 +287,10 @@ public class CartServiceImpl implements CartService {
         }
 
         return userIdResponse.getData().getId();
+    }
+
+    private Integer getAvailableProduct(String productColorId){
+        ApiResponse<Integer> response = inventoryClient.getAvailableStockByProductColorId(productColorId);
+        return Objects.requireNonNull(response.getData());
     }
 }

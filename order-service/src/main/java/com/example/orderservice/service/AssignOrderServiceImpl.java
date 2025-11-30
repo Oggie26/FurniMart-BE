@@ -4,7 +4,6 @@ import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.ProcessOrder;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
-import com.example.orderservice.event.OrderAssignedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.feign.StoreClient;
@@ -13,12 +12,12 @@ import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.repository.ProcessOrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.AssignOrderService;
+import com.example.orderservice.service.PDFService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -33,7 +32,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final UserClient userClient;
     private final ProcessOrderRepository processOrderRepository;
     private final QRCodeService qrCodeService;
-    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
+//    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
+    private final PDFService pdfService;
 
     @Override
     @Transactional
@@ -41,6 +41,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
         AddressResponse address = safeGetAddress(order.getAddressId());
 
         if (address == null) {
@@ -49,6 +50,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         order.setStoreId(getStoreNear(address.getLatitude(), address.getLongitude(), 1));
         order.setStatus(EnumProcessOrder.ASSIGN_ORDER_STORE);
+
         ProcessOrder process =  ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.ASSIGN_ORDER_STORE)
@@ -58,48 +60,60 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         processOrderRepository.save(process);
         orderRepository.save(order);
 
-        // Send notification to manager
-        try {
-            sendManagerNotification(order);
-        } catch (Exception e) {
-            log.error("Failed to send manager notification for order {}: {}", orderId, e.getMessage());
-            // Continue even if notification fails
-        }
+//        try {
+//            sendManagerNotification(order);
+//        } catch (Exception e) {
+//            log.error("Failed to send manager notification for order {}: {}", orderId, e.getMessage());
+//        }
     }
 
-    private void sendManagerNotification(Order order) {
-        try {
-            StoreResponse store = getStoreResponse(order.getStoreId());
-            if (store == null) {
-                log.warn("Store not found for order {}", order.getId());
-                return;
-            }
+//    private void sendManagerNotification(Order order) {
+//        try {
+//            StoreResponse store = getStoreResponse(order.getStoreId());
+//            if (store == null) {
+//                log.warn("Store not found for order {}", order.getId());
+//                return;
+//            }
+//
+//            AddressResponse address = safeGetAddress(order.getAddressId());
+//            String addressLine = address != null ? address.getAddressLine() : "";
+//
+//            List<OrderCreatedEvent.OrderItem> eventItems = order.getOrderDetails().stream()
+//                    .map(item -> OrderCreatedEvent.OrderItem.builder()
+//                            .productColorId(item.getProductColorId())
+//                            .productName(item.getProductColorId())
+//                            .price(item.getPrice())
+//                            .colorName(item.get())
+//                            .quantity(item.getQuantity())
+//                            .build())
+//                    .toList();
+//
+//            OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                    .orderId(order.getId())
+//                    .email()
+//                    .fullName(safeGetAddress(order.getAddressId()).getName())
+//                    .orderDate(order.getOrderDate())
+//                    .totalPrice(order.getTotal())
+//                    .addressLine(addressLine)
+//                    .items(eventItems)
+//                    .storeId(order.getStoreId())
+//                    .paymentMethod(order.getPayment().getPaymentMethod())
+//                    .build();
+//
+//            // Gửi event qua Kafka
+//            kafkaTemplate.send("order-assigned-topic", event)
+//                    .whenComplete((result, ex) -> {
+//                        if (ex != null) {
+//                            log.error("Failed to send order assigned event: {}", ex.getMessage(), ex);
+//                        } else {
+//                            log.info("Successfully sent order assigned event for order: {}", order.getId());
+//                        }
+//                    });
+//        } catch (Exception e) {
+//            log.error("Error sending manager notification for order {}: {}", order.getId(), e.getMessage(), e);
+//        }
+//    }
 
-            AddressResponse address = safeGetAddress(order.getAddressId());
-            String addressLine = address != null ? address.getAddressLine() : "";
-
-            // Create notification event
-            OrderAssignedEvent event = OrderAssignedEvent.builder()
-                    .orderId(order.getId())
-                    .storeId(order.getStoreId())
-                    .pdfFilePath(order.getPdfFilePath())
-                    .totalPrice(order.getTotal())
-                    .addressLine(addressLine)
-                    .build();
-
-            // Send to Kafka for manager notification
-            kafkaTemplate.send("order-assigned-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.error("Failed to send order assigned event: {}", ex.getMessage());
-                        } else {
-                            log.info("Successfully sent order assigned event for order: {}", order.getId());
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("Error sending manager notification: {}", e.getMessage());
-        }
-    }
 
     private StoreResponse getStoreResponse(String storeId) {
         try {
@@ -113,6 +127,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         return null;
     }
 
+
+
     @Override
     @Transactional
     public void acceptRejectOrderByManager(Long orderId, String storeId, String reason, EnumProcessOrder status) {
@@ -120,7 +136,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         if (status == EnumProcessOrder.MANAGER_ACCEPT) {
-            handleManagerAccept(order);
+            handleManagerAccept(order, storeId);
         } else if (status == EnumProcessOrder.MANAGER_REJECT) {
             handleManagerReject(order,storeId, reason);
         } else {
@@ -128,22 +144,69 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         }
     }
 
-    private void handleManagerAccept(Order order) {
-        // Generate QR code when manager accepts the order
+    private void handleManagerAccept(Order order, String storeId) {
         QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(order.getId());
         
-        ProcessOrder process = ProcessOrder.builder()
+        ProcessOrder acceptProcess = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.MANAGER_ACCEPT)
                 .createdAt(new Date())
                 .build();
-        processOrderRepository.save(process);
+        processOrderRepository.save(acceptProcess);
         
         order.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
         order.setQrCode(qrCodeResult.getQrCodeString());
         order.setQrCodeGeneratedAt(new Date());
-        order.setProcessOrders(order.getProcessOrders());
         orderRepository.save(order);
+        
+//        boolean pdfGenerated = false;
+//        try {
+//            log.info("Auto-generating PDF for order {} after MANAGER_ACCEPT", order.getId());
+//
+//            UserResponse user = safeGetUser(order.getUserId());
+//            AddressResponse address = safeGetAddress(order.getAddressId());
+//
+//            if (user == null) {
+//                log.warn("Cannot generate PDF: User not found for order {}", order.getId());
+//            } else if (address == null) {
+//                log.warn("Cannot generate PDF: Address not found for order {}", order.getId());
+//            } else {
+//                String pdfPath = pdfService.generateOrderPDF(order, user, address);
+//                order.setPdfFilePath(pdfPath);
+//                pdfGenerated = true;
+//                log.info("PDF generated successfully for order {}: {}", order.getId(), pdfPath);
+//            }
+//        } catch (Exception e) {
+//            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage(), e);
+//        }
+//
+//        if (pdfGenerated) {
+//            ProcessOrder readyProcess = ProcessOrder.builder()
+//                    .order(order)
+//                    .status(EnumProcessOrder.READY_FOR_INVOICE)
+//                    .createdAt(new Date())
+//                    .build();
+//            processOrderRepository.save(readyProcess);
+//
+//            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
+//            if (order.getProcessOrders() == null) {
+//                order.setProcessOrders(new ArrayList<>());
+//            }
+//            order.getProcessOrders().add(acceptProcess);
+//                order.getProcessOrders().add(readyProcess);
+//                orderRepository.save(order);
+//
+//            log.info("Order {} moved to READY_FOR_INVOICE with PDF generated successfully", order.getId());
+//        } else {
+//            // Keep status as MANAGER_ACCEPT if PDF generation fails
+//            if (order.getProcessOrders() == null) {
+//                order.setProcessOrders(new ArrayList<>());
+//            }
+//            order.getProcessOrders().add(acceptProcess);
+//            orderRepository.save(order);
+//
+//            log.warn("Order {} remains at MANAGER_ACCEPT because PDF generation failed. Manager should generate PDF manually.", order.getId());
+//        }
     }
 
     private void handleManagerReject(Order order, String storeId, String reason) {
@@ -167,8 +230,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     }
 
     private List<InventoryResponse> getInventoryResponse(String productId) {
-        ResponseEntity<ApiResponse<List<InventoryResponse>>> response =  inventoryClient.getInventoryByProduct(productId);
-        return response.getBody().getData();
+        ApiResponse<List<InventoryResponse>>response =  inventoryClient.getInventoryByProduct(productId);
+        return response.getData();
     }
 
     private String getStoreById(String storeId) {
@@ -195,5 +258,17 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         return resp.getData();
     }
 
+    private UserResponse safeGetUser(String userId) {
+        if (userId == null) return null;
+        try {
+            ApiResponse<UserResponse> response = userClient.getUserById(userId);
+            if (response != null && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception e) {
+            log.warn("Error getting user {}: {}", userId, e.getMessage());
+        }
+        return null;
+    }
 
 }

@@ -33,11 +33,11 @@ public interface StoreService {
     
     EmployeeStoreResponse addUserToStore(EmployeeStoreRequest request);
     
-    void removeUserFromStore(String userId, String storeId);
+    void removeEmployeeFromStore(String employeeId, String storeId);
     
-    List<StoreResponse> getStoresByUserId(String userId);
+    List<StoreResponse> getStoresByEmployeeId(String employeeId);
     
-    List<EmployeeStoreResponse> getUsersByStoreId(String storeId);
+    List<EmployeeStoreResponse> getEmployeesByStoreId(String storeId);
 
     Store getNearestStore(double lat, double lon);
 

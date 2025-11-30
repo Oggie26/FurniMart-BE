@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -15,9 +17,12 @@ import lombok.NoArgsConstructor;
 public class LocationItemResponse {
 
     private String id;
-    private EnumRowLabel rowLabel;
+    private Integer rowLabel;
     private Integer columnNumber;
     private String code;
     private String description;
+    private Integer quantity;
+    private Integer currentQuantity;
     private EnumStatus status;
+    private List<InventoryItemResponse> itemResponse;
 }

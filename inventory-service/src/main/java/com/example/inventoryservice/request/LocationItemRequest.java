@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +22,7 @@ public class LocationItemRequest {
     private String zoneId;
 
     @NotNull(message = "Hàng (rowLabel) không được để trống")
-    private EnumRowLabel rowLabel;
+    private Integer rowLabel;
 
     @NotNull(message = "Số cột không được để trống")
     @Min(value = 1, message = "Số cột phải lớn hơn hoặc bằng 1")
@@ -29,6 +30,9 @@ public class LocationItemRequest {
 
     @NotNull(message = "Số Code không được để trống")
     private String code;
+
+    @Min(value = 0)
+    private Integer quantity;
 
     @Enumerated(EnumType.STRING)
     private EnumStatus status;

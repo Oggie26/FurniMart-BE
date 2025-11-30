@@ -4,7 +4,6 @@ import com.example.orderservice.enums.EnumProcessOrder;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -42,6 +41,9 @@ public class Order extends AbstractEntity {
 
     @Column
     private String note;
+
+    @Column(name = "deposit_price")
+    private Double depositPrice;
 
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)

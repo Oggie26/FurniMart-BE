@@ -20,14 +20,13 @@ public class LocationItem extends AbstractEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EnumRowLabel rowLabel;
+    @Column
+    private Integer rowLabel;
 
     @Column(nullable = false)
     private Integer columnNumber;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String code;
 
     @Column(columnDefinition = "TEXT")
@@ -36,6 +35,9 @@ public class LocationItem extends AbstractEntity {
     @Enumerated(EnumType.STRING)
     private EnumStatus status;
 
+    @Column
+    private Integer quantity;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JsonIgnore
     @JoinColumn(name = "zone_id", nullable = false)
@@ -43,12 +45,12 @@ public class LocationItem extends AbstractEntity {
 
     @OneToMany(mappedBy = "locationItem")
     @JsonIgnore
-    private List<Inventory> inventories;
+    private List<InventoryItem> inventoryItems ;
 
     @PrePersist
     public void generateCode() {
         if (zone != null && zone.getZoneCode() != null) {
-            this.code = zone.getZoneCode().name() + "-" + rowLabel.name() + "-C" + columnNumber;
+            this.code = zone.getZoneCode().name() + "-R" + rowLabel + "-C" + columnNumber;
         }
     }
 }

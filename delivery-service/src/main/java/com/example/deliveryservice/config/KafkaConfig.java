@@ -1,4 +1,4 @@
-package com.example.deliveryservice.config;//package com.example.productservice.config;
+//package com.example.deliveryservice.config;//package com.example.productservice.config;
 //
 //import org.apache.kafka.clients.consumer.ConsumerConfig;
 //import org.apache.kafka.clients.producer.ProducerConfig;
@@ -15,7 +15,6 @@ package com.example.deliveryservice.config;//package com.example.productservice.
 //
 //public class KafkaConfig {
 //
-//    // ----------------- PRODUCER cho Object --------------------
 //    @Bean
 //    public ProducerFactory<String, Object> producerFactory() {
 //        Map<String, Object> config = new HashMap<>();

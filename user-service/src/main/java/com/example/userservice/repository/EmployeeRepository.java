@@ -12,19 +12,14 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repository for employee-specific database operations.
- * Handles queries for employees with employee roles (BRANCH_MANAGER, DELIVERY, STAFF, ADMIN).
- * Excludes CUSTOMER roles from employee operations.
- * Note: SELLER role has been replaced by STAFF.
- */
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     /**
      * Find employee by ID (excludes CUSTOMER roles)
+     * JOIN FETCH account to avoid LazyInitializationException
      */
-    @Query("SELECT e FROM Employee e WHERE e.id = :id AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
+    @Query("SELECT e FROM Employee e JOIN FETCH e.account a WHERE e.id = :id AND a.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     Optional<Employee> findEmployeeById(@Param("id") String id);
 
     /**
@@ -53,14 +48,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
     /**
      * Find employees by store ID
+     * JOIN FETCH account to avoid LazyInitializationException
      */
-    @Query("SELECT e FROM Employee e JOIN e.employeeStores es WHERE es.storeId = :storeId AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
+    @Query("SELECT DISTINCT e FROM Employee e " +
+           "JOIN FETCH e.account a " +
+           "JOIN e.employeeStores es " +
+           "WHERE es.storeId = :storeId AND a.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     List<Employee> findEmployeesByStoreId(@Param("storeId") String storeId);
 
     /**
      * Find employees by store ID and role
+     * JOIN FETCH account to avoid LazyInitializationException
      */
-    @Query("SELECT e FROM Employee e JOIN e.employeeStores es WHERE es.storeId = :storeId AND e.account.role = :role AND e.isDeleted = false")
+    @Query("SELECT DISTINCT e FROM Employee e " +
+           "JOIN FETCH e.account a " +
+           "JOIN e.employeeStores es " +
+           "WHERE es.storeId = :storeId AND a.role = :role AND e.isDeleted = false")
     List<Employee> findEmployeesByStoreIdAndRole(@Param("storeId") String storeId, @Param("role") EnumRole role);
 
     /**
@@ -119,5 +122,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
      */
     @Query("SELECT e FROM Employee e WHERE e.account.email = :email AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     Optional<Employee> findByEmailAndIsDeletedFalse(@Param("email") String email);
+
+    /**
+     * Find employee by account ID (excludes CUSTOMER roles)
+     */
+    @Query("SELECT e FROM Employee e WHERE e.account.id = :accountId AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
+    Optional<Employee> findByAccountIdAndIsDeletedFalse(@Param("accountId") String accountId);
 }
 

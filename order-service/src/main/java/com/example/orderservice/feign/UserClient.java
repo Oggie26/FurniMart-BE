@@ -1,13 +1,16 @@
 package com.example.orderservice.feign;
 
+import com.example.orderservice.config.FeignClientInterceptor;
 import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.UserResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-
-@FeignClient(name = "user-service", contextId = "userClient")
+@FeignClient(
+        name = "user-service",
+        configuration = FeignClientInterceptor.class
+)
 public interface UserClient {
 
     @GetMapping("/api/addresses/{id}")

@@ -1,40 +1,48 @@
-version: '3.8'
-
 services:
 
-#  traefik:
-#    image: traefik:v3.0
-#    command:
-#      - "--api.dashboard=true"
-#      - "--providers.docker=true"
-#      - "--entrypoints.web.address=:80"
-#      - "--entrypoints.websecure.address=:443"
-#      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
-#      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
-#      - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
-#      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-#    ports:
-#      - "80:80"
-#      - "443:443"
-#      - "8081:8080" # dashboard traefik
-#    volumes:
-#      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-#      - "./letsencrypt:/letsencrypt"
-#    networks:
-#      - backend
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # --- 1. Dashboard & API ---
+      - "--api.dashboard=true"
+      - "--api.insecure=true" # Mở port 8081
 
-#  frontend:
-#    build: ./furnimart-fe   # 👉 chỗ này là folder FE, đặt ngang hàng với api-gateway, user-service,...
-#    container_name: frontend
-#    networks:
-#      - backend
-#    restart: unless-stopped
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.frontend.rule=Host(`furnimart.click`)"
-#      - "traefik.http.routers.frontend.entrypoints=websecure"
-#      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
-#      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
+      # --- 2. Docker Provider ---
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=furnimart_net" # Mạng cố định
+
+      # --- 3. Entrypoints ---
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+
+      # --- 4. HTTP -> HTTPS Redirect ---
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      # --- 5. SSL (Let's Encrypt) ---
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=namphse173452@fpt.edu.vn"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+      # --- Log ---
+      - "--log.level=INFO"
+      - "--accesslog=true"
+
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8081:8080" # Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - backend
+  #  environment:
+  #    - DOCKER_API_VERSION=1.44
 
   eureka-server:
     build: ./eureka-server
@@ -48,25 +56,50 @@ services:
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
-    ports:
-      - "8080:8080"
     depends_on:
       - eureka-server
     networks:
       - backend
     restart: unless-stopped
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.gateway.rule=Host(`furnimart.click`)"
-#      - "traefik.http.routers.gateway.entrypoints=websecure"
-#      - "traefik.http.routers.gateway.tls.certresolver=myresolver"
-#      - "traefik.http.services.gateway.loadbalancer.server.port=8080"
+    ports:
+      - "8080:8080"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=furnimart_net"
+
+      # Router
+      - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
+      - "traefik.http.routers.api-gateway.entrypoints=websecure"
+      - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
+      - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
+
+      # Middleware
+      - "traefik.http.routers.api-gateway.middlewares=api-cors,api-ratelimit"
+
+      # --- CẤU HÌNH CORS "ALLOW ALL" (Dùng Regex) ---
+      # 1. Cho phép tất cả Method
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
+
+      # 2. THAY VÌ LIỆT KÊ, DÙNG REGEX ĐỂ CHẤP NHẬN TẤT CẢ
+      # Regex ".*" nghĩa là tên miền nào cũng khớp
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlistregex=.*"
+
+      # 3. Vẫn cho phép gửi Token (Quan trọng)
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowcredentials=true"
+
+      # 4. Cho phép tất cả Header
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
+
+      # Rate Limit
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
 
   product-service:
     build: ./product-service
     container_name: product-service
-    ports:
-      - "8084:8084"
+
     depends_on:
       - eureka-server
       - product-db
@@ -98,8 +131,7 @@ services:
   user-service:
     build: ./user-service
     container_name: user-service
-    ports:
-      - "8086:8086"
+
     depends_on:
       - eureka-server
       - user-db
@@ -128,11 +160,25 @@ services:
     networks:
       - backend
 
+  ai-service:
+    build: ./ai-service
+    container_name: ai-service
+    env_file:
+      - .env
+
+    depends_on:
+      - eureka-server
+    networks:
+      - backend
+    restart: unless-stopped
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING: "true"
+
   order-service:
     build: ./order-service
     container_name: order-service
-    ports:
-      - "8085:8085"
+
     depends_on:
       - eureka-server
       - order-db
@@ -165,8 +211,7 @@ services:
   inventory-service:
     build: ./inventory-service
     container_name: inventory-service
-    ports:
-      - "8083:8083"
+
     depends_on:
       - eureka-server
       - inventory-db
@@ -198,8 +243,7 @@ services:
   notification-service:
     build: ./notification-service
     container_name: notification-service
-    ports:
-      - "8087:8087"
+
     depends_on:
       - eureka-server
       - kafka
@@ -212,8 +256,7 @@ services:
   delivery-service:
     build: ./delivery-service
     container_name: delivery-service
-    ports:
-      - "8089:8089"
+
     depends_on:
       - eureka-server
       - delivery-db
@@ -242,7 +285,6 @@ services:
     networks:
       - backend
 
-
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -251,11 +293,11 @@ services:
       - "6379:6379"
     networks:
       - backend
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - redis-data:/data
     labels:
-        - "traefik.enable=false"
+      - "traefik.enable=false"
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
@@ -297,8 +339,10 @@ services:
           cpus: "1.0"
           memory: 1g
 
+# 👇 MẠNG CỐ ĐỊNH
 networks:
   backend:
+    name: furnimart_net
 
 volumes:
   user_data:

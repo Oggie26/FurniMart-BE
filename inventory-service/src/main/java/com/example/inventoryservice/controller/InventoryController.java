@@ -1,333 +1,388 @@
 package com.example.inventoryservice.controller;
 
+import com.example.inventoryservice.enums.TransferStatus;
 import com.example.inventoryservice.exception.AppException;
+import com.example.inventoryservice.request.InventoryItemRequest;
+import com.example.inventoryservice.request.InventoryRequest;
+import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.ApiResponse;
+import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
-import com.example.inventoryservice.response.InventoryTransactionResponse;
+import com.example.inventoryservice.response.ProductLocationResponse;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
 @RestController
 @RequestMapping("/api/inventories")
 @RequiredArgsConstructor
-@Tag(name = "Inventory Controller")
+@Tag(name = "Inventory Controller", description = "API quản lý phiếu kho, tồn kho, giao dịch")
 @Validated
 public class InventoryController {
 
     private final InventoryService inventoryService;
 
-    // --------------------------------------------------------------------------
-    // 1. QUẢN LÝ TỒN KHO CƠ BẢN (PHYSICAL STOCK)
-    // --------------------------------------------------------------------------
+    // ==========================================================
+    // 1. QUẢN LÝ PHIẾU KHO
+    // ==========================================================
 
-    @Operation(summary = "Tạo hoặc cập nhật inventory")
+    @Operation(summary = "Tạo hoặc Cập nhật phiếu kho")
     @PostMapping
-    public ResponseEntity<ApiResponse<InventoryResponse>> upsertInventory(
-            @RequestParam @NotBlank(message = "Product ID is required") String productColorId,
-            @RequestParam @NotBlank(message = "Location Item ID is required") String locationItemId,
-            @RequestParam @NotNull(message = "Quantity is required") @Min(value = 0, message = "Quantity must be non-negative") int quantity,
-            @RequestParam @NotNull(message = "Min Quantity is required") @Min(value = 0, message = "Min Quantity must be non-negative") int minQuantity,
-            @RequestParam @NotNull(message = "Max Quantity is required") @Min(value = 0, message = "Max Quantity must be non-negative") int maxQuantity) {
-        try {
-            InventoryResponse response = inventoryService.upsertInventory(productColorId, locationItemId, quantity, minQuantity, maxQuantity);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Cập nhật hoặc tạo inventory thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(400)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
+    public ApiResponse<InventoryResponse> createOrUpdateInventory(
+            @Valid @RequestBody InventoryRequest request) {
 
-    @Operation(summary = "Tăng tồn kho")
-    @PatchMapping("/{warehouseId}/{productColorId}/{locationItemId}/increase")
-    public ResponseEntity<ApiResponse<InventoryResponse>> increaseStock(
-            @PathVariable @NotBlank(message = "Warehouse is required") String warehouseId,
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
-            @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
-        try {
-            InventoryResponse response = inventoryService.increaseStock(productColorId, locationItemId, amount, warehouseId);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Tăng tồn kho thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(400)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
+        InventoryResponse response = inventoryService.createOrUpdateInventory(request);
 
-    @Operation(summary = "Giảm tồn kho")
-    @PatchMapping("/{warehouseId}/{productColorId}/{locationItemId}/decrease")
-    public ResponseEntity<ApiResponse<InventoryResponse>> decreaseStock(
-            @PathVariable @NotBlank(message = "Warehouse is required") String warehouseId,
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
-            @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
-        try {
-            InventoryResponse response = inventoryService.decreaseStock(productColorId, locationItemId, amount,  warehouseId);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Giảm tồn kho thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(400)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
-
-    // --------------------------------------------------------------------------
-    // 2. QUẢN LÝ DỰ TRỮ (STOCK RESERVATION) - BỔ SUNG MỚI
-    // --------------------------------------------------------------------------
-
-    @Operation(summary = "Dự trữ tồn kho cho đơn hàng (Reserved Stock)")
-    @PatchMapping("/reserve/{productColorId}")
-    public ResponseEntity<ApiResponse<InventoryResponse>> reserveStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
-        try {
-            InventoryResponse response = inventoryService.reserveStock(productColorId, amount);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Dự trữ tồn kho thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(400)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
-
-    @Operation(summary = "Giải phóng tồn kho dự trữ (Release Reserved Stock)")
-    @PatchMapping("/release/{productColorId}")
-    public ResponseEntity<ApiResponse<InventoryResponse>> releaseStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @RequestParam @NotNull(message = "Amount is required") @Min(value = 1, message = "Amount must be positive") int amount) {
-        try {
-            InventoryResponse response = inventoryService.releaseStock(productColorId, amount);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Giải phóng tồn kho dự trữ thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(400)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
-
-    // --------------------------------------------------------------------------
-    // 3. TRUY VẤN TỒN KHO VÀ KIỂM TRA
-    // --------------------------------------------------------------------------
-
-    @Operation(summary = "Đếm tổng số lượng tồn kho vật lý (Physical Stock) của sản phẩm ProductColor")
-    @GetMapping("/total-physical/{productColorId}")
-    public ResponseEntity<ApiResponse<Integer>> getTotalStockByProduct(@PathVariable String productColorId) {
-        return ResponseEntity.ok(ApiResponse.<Integer>builder()
+        return ApiResponse.<InventoryResponse>builder()
                 .status(200)
-                .message("Lấy tổng tồn kho vật lý thành công")
-                .data(inventoryService.getTotalStockByProductColorId(productColorId))
-                .build());
-    }
-
-    @Operation(summary = "Đếm tổng số lượng tồn kho khả dụng (Available Stock) của sản phẩm ProductColor")
-    @GetMapping("/total-available/{productColorId}")
-    public ResponseEntity<ApiResponse<Integer>> getTotalAvailableStockByProductColorId(@PathVariable String productColorId) {
-        return ResponseEntity.ok(ApiResponse.<Integer>builder()
-                .status(200)
-                .message("Lấy tổng tồn kho khả dụng thành công")
-                .data(inventoryService.getTotalAvailableStockByProductColorId(productColorId))
-                .build());
-    }
-
-    @Operation(summary = "Kiểm tra tồn kho cục bộ (Available Stock)")
-    @GetMapping("/{productColorId}/{locationItemId}/check-stock")
-    public ResponseEntity<ApiResponse<Boolean>> hasSufficientStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @PathVariable @NotBlank(message = "Location Item ID is required") String locationItemId,
-            @RequestParam @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty) {
-        boolean response = inventoryService.hasSufficientStock(productColorId, locationItemId, requiredQty);
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
-                .status(200)
-                .message("Kiểm tra tồn kho cục bộ thành công")
+                .message("Tạo/Cập nhật phiếu kho thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
-    @Operation(summary = "Kiểm tra tồn kho toàn cục (Available Stock)")
-    @GetMapping("/{productColorId}/check-global-stock")
-    public ResponseEntity<ApiResponse<Boolean>> hasSufficientGlobalStock(
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @RequestParam @NotNull(message = "Required quantity is required") @Min(value = 0, message = "Required quantity must be non-negative") int requiredQty) {
+    @Operation(summary = "Thêm Chi Tiết Item vào Phiếu Kho")
+    @PostMapping("/inventory/{inventoryId}/items")
+    public ApiResponse<InventoryItemResponse> addInventoryItem(
+            @PathVariable Long inventoryId,
+            @Valid @RequestBody InventoryItemRequest request) {
+
+        InventoryItemResponse response = inventoryService.addInventoryItem(request, inventoryId);
+
+        return ApiResponse.<InventoryItemResponse>builder()
+                .status(200)
+                .message("Thêm chi tiết vào phiếu kho thành công")
+                .data(response)
+                .build();
+    }
+
+    // ==========================================================
+    // 2. NGHIỆP VỤ KHO
+    // ==========================================================
+
+    @Operation(summary = "Nhập kho (Tạo phiếu IMPORT)")
+    @PostMapping("/{warehouseId}/import")
+    public ApiResponse<InventoryResponse> importStock(
+            @PathVariable String warehouseId,
+            @Valid @RequestBody InventoryItemRequest request) {
+
+        InventoryResponse response = inventoryService.importStock(request, warehouseId);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Nhập kho thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Xuất kho (Tạo phiếu EXPORT)")
+    @PostMapping("/{warehouseId}/export")
+    public ApiResponse<InventoryResponse> exportStock(
+            @PathVariable String warehouseId,
+            @Valid @RequestBody InventoryItemRequest request) {
+
+        InventoryResponse response = inventoryService.exportStock(request, warehouseId);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Xuất kho thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Giữ hàng (Tạo phiếu RESERVE)")
+    @PostMapping("/reserve")
+    public ApiResponse<InventoryResponse> reserveStock(
+            @Valid @RequestBody InventoryItemRequest request) {
+
+        InventoryResponse response = inventoryService.reserveStock(
+                request.getProductColorId(),
+                request.getQuantity()
+        );
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Giữ hàng thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Bỏ giữ hàng (Tạo phiếu RELEASE)")
+    @PostMapping("/release")
+    public ApiResponse<InventoryResponse> releaseReservedStock(
+            @Valid @RequestBody InventoryItemRequest request) {
+
+        InventoryResponse response = inventoryService.releaseReservedStock(
+                request.getProductColorId(),
+                request.getQuantity()
+        );
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Bỏ giữ hàng thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Chuyển kho (Tạo phiếu TRANSFER)")
+    @PostMapping("/transfer")
+    public ApiResponse<Void> transferStock(
+            @Valid @RequestBody TransferStockRequest request) {
+
+        inventoryService.transferStock(request);
+
+        return ApiResponse.<Void>builder()
+                .status(200)
+                .message("Chuyển kho thành công")
+                .build();
+    }
+
+    // ==========================================================
+    // 3. TRUY VẤN TỒN KHO
+    // ==========================================================
+
+    @Operation(summary = "Kiểm tra tồn kho theo kho")
+    @GetMapping("/stock/check-warehouse")
+    public ApiResponse<Boolean> hasSufficientStock(
+            @RequestParam @NotBlank String productColorId,
+            @RequestParam @NotBlank String warehouseId,
+            @RequestParam @Min(1) int requiredQty) {
+
+        boolean response = inventoryService.hasSufficientStock(productColorId, warehouseId, requiredQty);
+
+        return ApiResponse.<Boolean>builder()
+                .status(200)
+                .message("Kiểm tra tồn kho kho thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Kiểm tra tồn kho toàn hệ thống")
+    @GetMapping("/stock/check-global")
+    public ApiResponse<Boolean> hasSufficientGlobalStock(
+            @RequestParam @NotBlank String productColorId,
+            @RequestParam @Min(1) int requiredQty) {
+
         boolean response = inventoryService.hasSufficientGlobalStock(productColorId, requiredQty);
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder()
+
+        return ApiResponse.<Boolean>builder()
                 .status(200)
                 .message("Kiểm tra tồn kho toàn cục thành công")
                 .data(response)
-                .build());
+                .build();
     }
 
-    // --------------------------------------------------------------------------
-    // 4. TRUY VẤN DANH SÁCH & LỊCH SỬ
-    // --------------------------------------------------------------------------
+    @Operation(summary = "Lấy tổng tồn kho vật lý")
+    @GetMapping("/stock/total-physical")
+    public ApiResponse<Integer> getTotalStockByProductColorId(
+            @RequestParam @NotBlank String productColorId) {
 
-    @Operation(summary = "Lấy danh sách inventory theo product")
-    @GetMapping("/productColorId/{productColorId}")
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventoryByProduct(
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId) {
-        List<InventoryResponse> response = inventoryService.getInventoryByProduct(productColorId);
-        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
+        return ApiResponse.<Integer>builder()
                 .status(200)
-                .message("Lấy danh sách inventory theo sản phẩm thành công")
-                .data(response)
-                .build());
+                .message("Lấy tổng tồn kho vật lý thành công")
+                .data(inventoryService.getTotalStockByProductColorId(productColorId))
+                .build();
     }
 
-    @Operation(summary = "Lấy danh sách inventory theo Zone")
-    @GetMapping("/zone/{zoneId}")
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getInventoryByZone(
-            @PathVariable @NotBlank(message = "Zone ID is required") String zoneId) {
-        List<InventoryResponse> response = inventoryService.getInventoryByZone(zoneId);
-        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
+    @Operation(summary = "Lấy tổng tồn kho khả dụng")
+    @GetMapping("/stock/total-available")
+    public ApiResponse<Integer> getAvailableStockByProductColorId(
+            @RequestParam @NotBlank String productColorId) {
+
+        return ApiResponse.<Integer>builder()
                 .status(200)
-                .message("Lấy danh sách inventory theo Zone thành công")
-                .data(response)
-                .build());
+                .message("Lấy tổng tồn kho khả dụng thành công")
+                .data(inventoryService.getAvailableStockByProductColorId(productColorId))
+                .build();
     }
 
-    @Operation(summary = "Lấy lịch sử giao dịch theo product và zone")
-    @GetMapping("/transaction-history/{productColorId}/{zoneId}")
-    public ResponseEntity<ApiResponse<List<InventoryTransactionResponse>>> getTransactionHistory(
-            @PathVariable @NotBlank(message = "Product ID is required") String productColorId,
-            @PathVariable @NotBlank(message = "Zone ID is required") String zoneId) {
-        try {
-            List<InventoryTransactionResponse> response = inventoryService.getTransactionHistory(productColorId, zoneId);
-            return ResponseEntity.ok(ApiResponse.<List<InventoryTransactionResponse>>builder()
-                    .status(200)
-                    .message("Lấy lịch sử giao dịch thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<List<InventoryTransactionResponse>>builder()
-                            .status(404)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
-
-    @Operation(summary = "Lấy tất cả lịch sử giao dịch tồn kho")
-    @GetMapping("/transactions")
-    public ResponseEntity<ApiResponse<List<InventoryTransactionResponse>>> getAllTransactions() {
-        List<InventoryTransactionResponse> transactions = inventoryService.getAllTransactions();
-        return ResponseEntity.ok(ApiResponse.<List<InventoryTransactionResponse>>builder()
-                .status(200)
-                .message("Lấy tất cả lịch sử giao dịch tồn kho thành công")
-                .data(transactions)
-                .build());
-    }
-
-    @Operation(summary = "Lấy tất cả inventory")
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<InventoryResponse>>> getAllInventory() {
-        List<InventoryResponse> inventories = inventoryService.getAllInventory();
-        return ResponseEntity.ok(ApiResponse.<List<InventoryResponse>>builder()
-                .status(200)
-                .message("Lấy tất cả inventory thành công")
-                .data(inventories)
-                .build());
-    }
-
-    @Operation(summary = "Lấy inventory theo ID")
-    @GetMapping("/{inventoryId}")
-    public ResponseEntity<ApiResponse<InventoryResponse>> getInventoryById(@PathVariable String inventoryId) {
-        try {
-            InventoryResponse response = inventoryService.getInventoryById(inventoryId);
-            return ResponseEntity.ok(ApiResponse.<InventoryResponse>builder()
-                    .status(200)
-                    .message("Lấy inventory thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<InventoryResponse>builder()
-                            .status(404)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
-
-    @Operation(summary = "Chuyển kho inventory")
-    @PostMapping("/transfer")
-    public ResponseEntity<ApiResponse<Void>> transferInventory(
-            @RequestParam @NotBlank(message = "Product ID is required") String productColorId,
-            @RequestParam @NotBlank(message = "Location Item ID is required") String locationItemId,
-            @RequestParam @NotNull(message = "Quantity is required") @Min(value = 1, message = "Quantity must be positive") int quantity,
-            @RequestParam @NotBlank(message = "Warehouse 1 ID is required") String warehouse1_Id,
-            @RequestParam @NotBlank(message = "Warehouse 2 ID is required") String warehouse2_Id) {
-        try {
-            inventoryService.transferInventory(productColorId, locationItemId, quantity, warehouse1_Id, warehouse2_Id);
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .status(200)
-                    .message("Chuyển kho thành công")
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.<Void>builder()
-                            .status(400)
-                            .message(e.getMessage())
-                            .build());
-        }
-    }
-
-    @Operation(summary = "Kiểm tra sức chứa của Zone")
+    @Operation(summary = "Kiểm tra sức chứa Zone")
     @GetMapping("/zone/{zoneId}/check-capacity")
-    public ResponseEntity<ApiResponse<Boolean>> checkZoneCapacity(
-            @PathVariable @NotBlank(message = "Zone ID is required") String zoneId) {
-        try {
-            boolean response = inventoryService.checkZoneCapacity(zoneId);
-            return ResponseEntity.ok(ApiResponse.<Boolean>builder()
-                    .status(200)
-                    .message("Kiểm tra sức chứa Zone thành công")
-                    .data(response)
-                    .build());
-        } catch (AppException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.<Boolean>builder()
-                            .status(404)
-                            .message(e.getMessage())
-                            .build());
-        }
+    public ApiResponse<Boolean> checkZoneCapacity(
+            @PathVariable @NotBlank String zoneId,
+            @RequestParam @Min(1) int additionalQty) {
+
+        boolean response = inventoryService.checkZoneCapacity(zoneId, additionalQty);
+        return ApiResponse.<Boolean>builder()
+                .status(200)
+                .message("Kiểm tra sức chứa Zone thành công")
+                .data(response)
+                .build();
+    }
+
+    // ==========================================================
+    // 4. TRUY VẤN DANH SÁCH & LỊCH SỬ
+    // ==========================================================
+
+    @Operation(summary = "Duyệt hoặc Từ chối phiếu chuyển kho")
+    @PostMapping("/transfer/{inventoryId}/approve")
+    public ApiResponse<InventoryResponse> approveTransfer(
+            @PathVariable String inventoryId,
+            @RequestParam TransferStatus transferStatus) {
+
+        InventoryResponse response = inventoryService.approveTransfer(inventoryId, transferStatus);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Duyệt chuyển kho thành công" )
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy danh sách sản phẩm còn hàng theo Store ID")
+    @GetMapping("/stock/by-store")
+    public ApiResponse<ProductLocationResponse> getProductByStoreId(
+            @RequestParam @NotBlank String storeId) {
+
+        ProductLocationResponse response = inventoryService.getProductByStoreId(storeId);
+
+        return ApiResponse.<ProductLocationResponse>builder()
+                .status(200)
+                .message("Lấy sản phẩm theo store thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy tất cả Phiếu Kho")
+    @GetMapping
+    public ApiResponse<List<InventoryResponse>> getAllInventories() {
+        List<InventoryResponse> inventories = inventoryService.getAllInventories();
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy tất cả phiếu kho thành công")
+                .data(inventories)
+                .build();
+    }
+
+    @Operation(summary = "Lấy tất cả kho chứa productColorId")
+    @GetMapping("/stock/locations/all")
+    public ApiResponse<ProductLocationResponse> getAllProductLocations(
+            @RequestParam @NotBlank String productColorId) {
+
+        ProductLocationResponse response = inventoryService.getAllProductLocations(productColorId);
+
+        return ApiResponse.<ProductLocationResponse>builder()
+                .status(200)
+                .message("Lấy toàn bộ vị trí sản phẩm thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy vị trí chứa productColorId theo Warehouse ID")
+    @GetMapping("/stock/locations/by-warehouse")
+    public ApiResponse<ProductLocationResponse> getProductLocationsByWarehouse(
+            @RequestParam @NotBlank String productColorId,
+            @RequestParam @NotBlank String storeId) {
+
+        ProductLocationResponse response =
+                inventoryService.getProductLocationsByWarehouse(productColorId, storeId);
+
+        return ApiResponse.<ProductLocationResponse>builder()
+                .status(200)
+                .message("Lấy vị trí sản phẩm theo warehouse thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy Phiếu Kho theo ID")
+    @GetMapping("/{inventoryId}")
+    public ApiResponse<InventoryResponse> getInventoryById(@PathVariable Long inventoryId) {
+
+        InventoryResponse response = inventoryService.getInventoryById(inventoryId);
+
+        return ApiResponse.<InventoryResponse>builder()
+                .status(200)
+                .message("Lấy phiếu kho thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy danh sách Phiếu Kho theo Warehouse ID")
+    @GetMapping("/warehouse/{warehouseId}")
+    public ApiResponse<List<InventoryResponse>> getInventoryByWarehouse(@PathVariable String warehouseId) {
+
+        List<InventoryResponse> response = inventoryService.getInventoryByWarehouse(warehouseId);
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách phiếu kho theo kho thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy danh sách Phiếu Kho theo Zone ID")
+    @GetMapping("/zone/{zoneId}")
+    public ApiResponse<List<InventoryResponse>> getInventoryByZone(@PathVariable String zoneId) {
+
+        List<InventoryResponse> response = inventoryService.getInventoryByZone(zoneId);
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách phiếu kho theo Zone thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy tất cả Chi Tiết Phiếu Kho")
+    @GetMapping("/items")
+    public ApiResponse<List<InventoryItemResponse>> getAllInventoryItems() {
+
+        List<InventoryItemResponse> items = inventoryService.getAllInventoryItems();
+
+        return ApiResponse.<List<InventoryItemResponse>>builder()
+                .status(200)
+                .message("Lấy tất cả lịch sử giao dịch thành công")
+                .data(items)
+                .build();
+    }
+
+    @Operation(summary = "Lấy Chi Tiết Giao Dịch theo Product ID")
+    @GetMapping("/items/product/{productColorId}")
+    public ApiResponse<List<InventoryItemResponse>> getInventoryItemsByProduct(
+            @PathVariable String productColorId) {
+
+        List<InventoryItemResponse> response = inventoryService.getInventoryItemsByProduct(productColorId);
+
+        return ApiResponse.<List<InventoryItemResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách giao dịch theo sản phẩm thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy lịch sử giao dịch theo sản phẩm (tùy chọn Zone)")
+    @GetMapping("/items/history")
+    public ApiResponse<List<InventoryItemResponse>> getTransactionHistory(
+            @RequestParam @NotBlank String productColorId,
+            @RequestParam(required = false) String zoneId) {
+
+        List<InventoryItemResponse> response = inventoryService.getTransactionHistory(productColorId, zoneId);
+
+        return ApiResponse.<List<InventoryItemResponse>>builder()
+                .status(200)
+                .message("Lấy lịch sử giao dịch thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy danh sách các yêu cầu chuyển kho đang chờ duyệt cho kho")
+    @GetMapping("/transfer/pending/{warehouseId}")
+    public ApiResponse<List<InventoryResponse>> getPendingTransferRequests(
+            @PathVariable String warehouseId) {
+
+        List<InventoryResponse> response = inventoryService.getPendingTransfers(warehouseId);
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách yêu cầu chuyển kho đang chờ duyệt thành công")
+                .data(response)
+                .build();
     }
 }

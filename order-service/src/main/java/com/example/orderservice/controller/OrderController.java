@@ -1,11 +1,13 @@
 package com.example.orderservice.controller;
 
+import com.example.orderservice.entity.Order;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.request.StaffCreateOrderRequest;
+import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.service.ManagerWorkflowService;
@@ -20,11 +22,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +39,7 @@ public class OrderController {
     private final OrderService orderService;
     private final VNPayService vnPayService;
     private final CartService cartService;
+    private final OrderRepository orderRepository;
     private final AssignOrderService assignOrderService;
     private final InventoryClient inventoryClient;
     private final ManagerWorkflowService managerWorkflowService;
@@ -50,17 +51,17 @@ public class OrderController {
             @RequestParam(required = false) String voucherCode,
             @RequestParam PaymentMethod paymentMethod,
             HttpServletRequest request
-    ) throws UnsupportedEncodingException {
+    ) throws Exception {
         String clientIp = getClientIp(request);
 
         CartResponse cartResponse = cartService.getCartById(cartId);
         List<CartItemResponse> cartItems = cartResponse.getItems();
 
         for (CartItemResponse item : cartItems) {
-            ResponseEntity<ApiResponse<Boolean>> response =
+            ApiResponse<Boolean> response =
                     inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
 
-            boolean available = response.getBody() != null ? response.getBody().getData() : false;
+            boolean available = response.getData();
 
             if (!available) {
                 throw new AppException(ErrorCode.OUT_OF_STOCK);
@@ -75,11 +76,81 @@ public class OrderController {
                     .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getTotal(), clientIp))
                     .build();
         } else {
-            orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            double deposit = Math.round((orderResponse.getTotal() * 0.3) * 100.0) / 100.0; // Làm tròn 2 số thập phân
+
+            Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+            orderResponse.setDepositPrice(deposit);
+            orderRepository.save(order);
+            cartService.clearCart();
+            if(order.getTotal() > 10000000){
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
+                        .build();
+            }else {
+                orderService.handlePaymentCOD(orderResponse.getId());
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .build();
+            }
+        }
+    }
+
+    @PostMapping("/mobile/checkout")
+    public ApiResponse<Void> checkoutMobile(
+            @RequestParam Long addressId,
+            @RequestParam Long cartId,
+            @RequestParam(required = false) String voucherCode,
+            @RequestParam PaymentMethod paymentMethod,
+            HttpServletRequest request
+    ) throws Exception {
+        String clientIp = getClientIp(request);
+
+        CartResponse cartResponse = cartService.getCartById(cartId);
+        List<CartItemResponse> cartItems = cartResponse.getItems();
+
+        for (CartItemResponse item : cartItems) {
+            ApiResponse<Boolean> response =
+                    inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
+
+            boolean available = response.getData();
+
+            if (!available) {
+                throw new AppException(ErrorCode.OUT_OF_STOCK);
+            }
+        }
+
+        if (paymentMethod == PaymentMethod.VNPAY) {
+            OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
-                    .message("Đặt hàng thành công")
+                    .message("Chuyển hướng sang VNPay")
+                    .redirectUrl(vnPayService.createPaymentUrlByMobile(orderResponse.getId(), orderResponse.getTotal(), clientIp))
                     .build();
+        } else {
+            OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            double deposit = Math.round((orderResponse.getTotal() * 0.3) * 100.0) / 100.0; // Làm tròn 2 số thập phân
+            orderService.handlePaymentCOD(orderResponse.getId());
+            cartService.clearCart();
+            if (orderResponse.getTotal() > 10000000) {
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
+                        .build();
+            } else {
+                orderService.handlePaymentCOD(orderResponse.getId());
+                return ApiResponse.<Void>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Đặt hàng thành công")
+                        .build();
+            }
+
         }
     }
 
@@ -106,11 +177,20 @@ public class OrderController {
                 .build();
     }
 
+    @GetMapping("/{id}/status-history")
+    public ApiResponse<List<ProcessOrderResponse>> getOrderStatusHistory(@PathVariable Long id) {
+        return ApiResponse.<List<ProcessOrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy lịch sử trạng thái đơn hàng thành công")
+                .data(orderService.getOrderStatusHistory(id))
+                .build();
+    }
+
     @GetMapping("/search/customer")
     public ApiResponse<PageResponse<OrderResponse>> searchOrderByCustomer(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "100") int size
     ) {
         return ApiResponse.<PageResponse<OrderResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -149,7 +229,7 @@ public class OrderController {
     public ApiResponse<PageResponse<OrderResponse>> searchOrder(
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "100") int size
     ) {
         return ApiResponse.<PageResponse<OrderResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -163,12 +243,48 @@ public class OrderController {
             @PathVariable String storeId,
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "100") int size
     ) {
         return ApiResponse.<PageResponse<OrderResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Tìm kiếm đơn hàng theo cửa hàng thành công")
                 .data(orderService.searchOrderByStoreId(keyword, page, size, storeId))
+                .build();
+    }
+
+    @GetMapping("/store/{storeId}")
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Lấy danh sách đơn hàng của cửa hàng",
+            description = "Lấy danh sách các đơn hàng đã được ASSIGN_ORDER_STORE cho cửa hàng. Có thể lọc theo status (optional)."
+    )
+    public ApiResponse<PageResponse<OrderResponse>> getOrdersByStore(
+            @PathVariable String storeId,
+            @RequestParam(required = false) EnumProcessOrder status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size
+    ) {
+        return ApiResponse.<PageResponse<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy danh sách đơn hàng của cửa hàng thành công")
+                .data(orderService.getOrdersByStoreId(storeId, status, page, size))
+                .build();
+    }
+
+    @GetMapping("/store/{storeId}/invoices")
+    @io.swagger.v3.oas.annotations.Operation(
+            summary = "Lấy danh sách đơn hàng đã tạo hóa đơn của cửa hàng",
+            description = "Lấy danh sách các đơn hàng của cửa hàng đã được tạo hóa đơn (có pdfFilePath). " +
+                         "Response bao gồm thông tin về file PDF: pdfFilePath (đường dẫn file) và hasPdfFile (true/false - file có tồn tại hay không)."
+    )
+    public ApiResponse<PageResponse<OrderResponse>> getStoreOrdersWithInvoice(
+            @PathVariable String storeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size
+    ) {
+        return ApiResponse.<PageResponse<OrderResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy danh sách đơn hàng đã tạo hóa đơn của cửa hàng thành công")
+                .data(orderService.getStoreOrdersWithInvoice(storeId, page, size))
                 .build();
     }
 

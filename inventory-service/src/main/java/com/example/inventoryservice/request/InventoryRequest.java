@@ -1,9 +1,12 @@
 package com.example.inventoryservice.request;
 
-import com.example.inventoryservice.enums.EnumStatus;
-import jakarta.persistence.*;
+import com.example.inventoryservice.enums.EnumPurpose;
+import com.example.inventoryservice.enums.EnumTypes;
 import jakarta.validation.constraints.*;
 import lombok.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -11,23 +14,24 @@ import lombok.*;
 @Builder
 public class InventoryRequest {
 
-    @NotBlank(message = "Product ID is required")
-    private String productColorId;
+    private Long id;
 
-    @Min(value = 0, message = "Quantity must be at least 0")
-    private int quantity;
+    @NotNull(message = "Type không được để trống")
+    private EnumTypes type;
 
-    @Min(value = 0, message = "Minimum quantity must be at least 0")
-    private int minQuantity;
+    @NotNull(message = "Purpose không được để trống")
+    private EnumPurpose purpose;
 
-    @Min(value = 0, message = "Maximum quantity must be at least 0")
-    private int maxQuantity;
+    @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự")
+    private String note;
 
-    @NotBlank(message = "Status is required")
-    @Enumerated(EnumType.STRING)
-    private EnumStatus status;
+    @NotNull(message = "WarehouseId không được để trống")
+    private String warehouseId;
 
-    @NotBlank(message = "LocationItem ID is required")
-    private String locationItemId;
+    private String toWarehouseId;
 
+    private Long orderId;
+
+    @NotEmpty(message = "Phải có ít nhất 1 sản phẩm")
+    private List<InventoryItemRequest> items;
 }

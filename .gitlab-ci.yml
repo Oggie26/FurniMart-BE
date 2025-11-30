@@ -1,0 +1,42 @@
+stages:
+  - test
+
+variables:
+  SSH_USER: "nam"
+  SSH_HOST: "152.53.244.124"
+
+before_script:
+  - apt-get update -qq && apt-get install -y -qq openssh-client jq bc
+  - eval $(ssh-agent -s)
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts
+
+api-tests:
+  stage: test
+  script:
+    - |
+      ssh $SSH_USER@$SSH_HOST << 'EOF'
+        cd ~/FurniMart-BE
+        bash test-scripts/run-comprehensive-tests-enhanced.sh
+      EOF
+    - |
+      ssh $SSH_USER@$SSH_HOST << 'EOF'
+        cd ~/FurniMart-BE
+        bash test-scripts/run-expanded-tests.sh
+      EOF
+    - |
+      mkdir -p test-reports
+      scp $SSH_USER@$SSH_HOST:~/FurniMart-BE/test-scripts/reports/*.json test-reports/ || true
+      scp $SSH_USER@$SSH_HOST:~/FurniMart-BE/test-scripts/reports/*.md test-reports/ || true
+  artifacts:
+    when: always
+    paths:
+      - test-reports/
+    expire_in: 30 days
+  only:
+    - main
+    - develop
+    - merge_requests
+

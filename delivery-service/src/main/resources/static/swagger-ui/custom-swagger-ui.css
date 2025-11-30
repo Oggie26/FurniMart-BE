@@ -1,0 +1,39 @@
+/* Hide Example Value and Schema tabs in Swagger UI */
+.response .tab-item[data-value="example"],
+.response .tab-item[data-value="schema"],
+.response-content-type .tab-item[data-value="example"],
+.response-content-type .tab-item[data-value="schema"] {
+    display: none !important;
+}
+
+/* Hide tabs by text content using attribute selectors */
+.response .tab-item,
+.response-content-type .tab-item {
+    /* Check if tab contains "Example Value" or "Schema" text */
+}
+
+/* More specific selectors for response tabs */
+.opblock-body .response .tab-item:first-of-type,
+.opblock-body .response .tab-item:nth-of-type(2) {
+    display: none !important;
+}
+
+/* Hide response body content tabs that are Example Value or Schema */
+.response-content-type .tab-item {
+    /* Will be hidden by JavaScript */
+}
+
+/* Show only the description and status, hide example and schema content */
+.response .response-col_description {
+    display: block !important;
+}
+
+.response .response-col_status {
+    display: block !important;
+}
+
+/* Hide the response body content area for example and schema */
+.response .response-content-type-wrapper {
+    display: none !important;
+}
+

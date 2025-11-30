@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "order-service")
+@FeignClient(name = "order-service", contextId = "warranty-client")
 public interface WarrantyClient {
 
     @PostMapping("/internal/warranties/generate")

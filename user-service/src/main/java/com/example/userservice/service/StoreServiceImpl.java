@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +40,8 @@ public class StoreServiceImpl implements StoreService {
     @Override
     @Transactional
     public StoreResponse createStore(StoreRequest request) {
+        // Validation is handled by @Valid annotation in controller
+        // All required fields (district, ward, city, street, addressLine) are validated via @NotBlank
         Store store = Store.builder()
                 .name(request.getName())
                 .city(request.getCity())
@@ -65,6 +66,8 @@ public class StoreServiceImpl implements StoreService {
         Store store = storeRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
 
+        // Validation is handled by @Valid annotation in controller
+        // All required fields (district, ward, city, street, addressLine) are validated via @NotBlank
         store.setName(request.getName());
         store.setCity(request.getCity());
         store.setDistrict(request.getDistrict());
@@ -82,6 +85,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public StoreResponse getStoreById(String id) {
         Store store = storeRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
@@ -90,6 +94,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getAllStores() {
         List<Store> stores = storeRepository.findByIsDeletedFalse();
         return stores.stream()
@@ -98,6 +103,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<StoreResponse> getStoresWithPagination(Pageable pageable) {
         Page<Store> storePage = storeRepository.findByIsDeletedFalse(pageable);
         List<StoreResponse> storeResponses = storePage.getContent().stream()
@@ -116,6 +122,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<StoreResponse> searchStores(String searchTerm, Pageable pageable) {
         Page<Store> storePage = storeRepository.searchStores(searchTerm, pageable);
         List<StoreResponse> storeResponses = storePage.getContent().stream()
@@ -134,6 +141,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getStoresByCity(String city) {
         List<Store> stores = storeRepository.findByCityAndIsDeletedFalse(city);
         return stores.stream()
@@ -142,6 +150,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<StoreResponse> getStoresByDistrict(String district) {
         List<Store> stores = storeRepository.findByDistrictAndIsDeletedFalse(district);
         return stores.stream()
@@ -163,89 +172,162 @@ public class StoreServiceImpl implements StoreService {
     @Override
     @Transactional
     public EmployeeStoreResponse addUserToStore(EmployeeStoreRequest request) {
-        String employeeId = request.getEmployeeId() != null ? request.getEmployeeId() : request.getUserId();
-        log.info("Attempting to add employee {} to store {}", employeeId, request.getStoreId());
+        String employeeId = request.getEmployeeId();
+        String storeId = request.getStoreId();
+        
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            log.error("Employee ID is null or empty");
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        // Additional validation: Check if employeeId looks like a valid UUID
+        // (This is a backup check, @Pattern validation should catch invalid formats earlier)
+        if (!employeeId.matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")) {
+            log.error("Invalid employee ID format: {}. Expected UUID format (e.g., ef5ec40c-198f-4dfb-84dc-5bf86db68940)", employeeId);
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        log.info("Attempting to add employee {} to store {}", employeeId, storeId);
         
         try {
             // Check if employee exists
             Employee employee = employeeRepository.findEmployeeById(employeeId)
                     .orElseThrow(() -> {
-                        log.error("Employee not found for store assignment with id: {}", employeeId);
+                        log.error("Employee not found for store assignment with id: {}. Employee may not exist, be deleted, or have CUSTOMER role. Please verify the employee ID is correct.", employeeId);
                         return new AppException(ErrorCode.USER_NOT_FOUND);
                     });
             
-            log.info("Found employee: {} (email: {})", employee.getFullName(), employee.getAccount().getEmail());
+            // Ensure account is loaded (access it to trigger lazy loading within transaction)
+            if (employee.getAccount() == null) {
+                log.error("Employee {} has null account", employeeId);
+                throw new AppException(ErrorCode.USER_NOT_FOUND);
+            }
+            // Access account fields to ensure lazy loading happens within transaction
+            employee.getAccount().getEmail();
+            employee.getAccount().getRole();
+            
+            // Log employee info safely
+            String employeeEmail = employee.getAccount().getEmail();
+            log.info("Found employee: {} (email: {})", employee.getFullName(), employeeEmail);
             
             // Check if store exists
-            Store store = storeRepository.findByIdAndIsDeletedFalse(request.getStoreId())
+            Store store = storeRepository.findByIdAndIsDeletedFalse(storeId)
                     .orElseThrow(() -> {
-                        log.error("Store not found for employee assignment with id: {}", request.getStoreId());
+                        log.error("Store not found for employee assignment with id: {}", storeId);
                         return new AppException(ErrorCode.STORE_NOT_FOUND);
                     });
             
             log.info("Found store: {} (location: {})", store.getName(), store.getAddressLine());
             
             // Check if relationship already exists
-            if (employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, request.getStoreId()).isPresent()) {
+            if (employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, storeId).isPresent()) {
                 log.warn("Employee-store relationship already exists for employee {} and store {}", 
-                        employeeId, request.getStoreId());
+                        employeeId, storeId);
                 throw new AppException(ErrorCode.USER_STORE_RELATIONSHIP_EXISTS);
             }
             
             EmployeeStore employeeStore = EmployeeStore.builder()
                     .employeeId(employeeId)
-                    .storeId(request.getStoreId())
+                    .storeId(storeId)
                     .build();
             
             EmployeeStore savedEmployeeStore = employeeStoreRepository.save(employeeStore);
             log.info("Successfully added employee {} to store {} with relationship id: {}", 
-                    employeeId, request.getStoreId(), savedEmployeeStore.getEmployeeId() + "_" + savedEmployeeStore.getStoreId());
+                    employeeId, storeId, savedEmployeeStore.getEmployeeId() + "_" + savedEmployeeStore.getStoreId());
             
-            // Verify the relationship was actually saved
-            Optional<EmployeeStore> verification = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(
-                    employeeId, request.getStoreId());
-            if (verification.isEmpty()) {
-                log.error("CRITICAL: Employee-store relationship was not persisted! Employee: {}, Store: {}", 
-                        employeeId, request.getStoreId());
-                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
-            }
+            // Set the relationships manually to avoid LazyInitializationException
+            // We already have employee and store loaded from previous checks
+            savedEmployeeStore.setEmployee(employee);
+            savedEmployeeStore.setStore(store);
             
-            log.info("Verified: Employee-store relationship successfully persisted");
-            return mapToEmployeeStoreResponse(savedEmployeeStore);
+            log.info("Employee-store relationship successfully persisted");
+            
+            // Build response directly without calling mapToEmployeeStoreResponse
+            // to avoid potential lazy loading issues in mapToStoreResponse
+            // Get storeIds for the employee (using already loaded employee)
+            List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
+                    .stream()
+                    .map(EmployeeStore::getStoreId)
+                    .collect(Collectors.toList());
+            
+            // Build employee response directly
+            UserResponse employeeResponse = UserResponse.builder()
+                    .id(employee.getId())
+                    .fullName(employee.getFullName())
+                    .email(employee.getAccount().getEmail())
+                    .phone(employee.getPhone())
+                    .gender(employee.getGender())
+                    .birthday(employee.getBirthday())
+                    .avatar(employee.getAvatar())
+                    .cccd(employee.getCccd())
+                    .point(null) // Employees don't have points
+                    .role(employee.getAccount().getRole())
+                    .status(employee.getStatus())
+                    .createdAt(employee.getCreatedAt())
+                    .updatedAt(employee.getUpdatedAt())
+                    .storeIds(storeIds)
+                    .build();
+            
+            // Create a simple store response without loading all employees
+            StoreResponse storeResponse = StoreResponse.builder()
+                    .id(store.getId())
+                    .name(store.getName())
+                    .city(store.getCity() != null ? store.getCity() : "")
+                    .district(store.getDistrict() != null ? store.getDistrict() : "")
+                    .ward(store.getWard() != null ? store.getWard() : "")
+                    .street(store.getStreet() != null ? store.getStreet() : "")
+                    .addressLine(store.getAddressLine() != null ? store.getAddressLine() : "")
+                    .latitude(store.getLatitude())
+                    .longitude(store.getLongitude())
+                    .status(store.getStatus())
+                    .users(null) // Don't load all employees to avoid lazy loading issues
+                    .createdAt(store.getCreatedAt())
+                    .updatedAt(store.getUpdatedAt())
+                    .build();
+            
+            return EmployeeStoreResponse.builder()
+                    .employeeId(savedEmployeeStore.getEmployeeId())
+                    .storeId(savedEmployeeStore.getStoreId())
+                    .employee(employeeResponse)
+                    .store(storeResponse)
+                    .createdAt(savedEmployeeStore.getCreatedAt())
+                    .updatedAt(savedEmployeeStore.getUpdatedAt())
+                    .build();
             
         } catch (AppException e) {
             log.error("Application error adding employee {} to store {}: {}", 
-                    employeeId, request.getStoreId(), e.getMessage());
+                    employeeId, storeId, e.getMessage());
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error adding employee {} to store {}", 
-                    employeeId, request.getStoreId(), e);
+                    employeeId, storeId, e);
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
     @Override
     @Transactional
-    public void removeUserFromStore(String userId, String storeId) {
-        EmployeeStore employeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(userId, storeId)
+    public void removeEmployeeFromStore(String employeeId, String storeId) {
+        EmployeeStore employeeStore = employeeStoreRepository.findByEmployeeIdAndStoreIdAndIsDeletedFalse(employeeId, storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_STORE_RELATIONSHIP_NOT_FOUND));
         
         employeeStore.setIsDeleted(true);
         employeeStoreRepository.save(employeeStore);
-        log.info("Employee {} removed from store {}", userId, storeId);
+        log.info("Employee {} removed from store {}", employeeId, storeId);
     }
 
     @Override
-    public List<StoreResponse> getStoresByUserId(String userId) {
-        // userId is actually employeeId in this context
-        List<Store> stores = storeRepository.findStoresByEmployeeId(userId);
+    @Transactional(readOnly = true)
+    public List<StoreResponse> getStoresByEmployeeId(String employeeId) {
+        List<Store> stores = storeRepository.findStoresByEmployeeId(employeeId);
         return stores.stream()
                 .map(this::mapToStoreResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<EmployeeStoreResponse> getUsersByStoreId(String storeId) {
+    @Transactional(readOnly = true)
+    public List<EmployeeStoreResponse> getEmployeesByStoreId(String storeId) {
         List<EmployeeStore> employeeStores = employeeStoreRepository.findByStoreIdAndIsDeletedFalse(storeId);
         return employeeStores.stream()
                 .map(this::mapToEmployeeStoreResponse)
@@ -253,16 +335,20 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Store getNearestStore(double lat, double lon) {
         return storeRepository.findNearestStore(lat, lon);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Store> getNearestStores(double lat, double lon, int limit) {
         Pageable pageable = PageRequest.of(0, limit);
         return storeRepository.findNearestStores(lat, lon, pageable);
     }
 
+    @Override
+    @Transactional(readOnly = true)
     public List<StoreDistance> findNearestStores(double lat, double lon, int limit) {
         List<Store> stores = storeRepository.findAllWithCoordinates();
 
@@ -293,19 +379,31 @@ public class StoreServiceImpl implements StoreService {
         List<EmployeeStore> employeeStores = employeeStoreRepository.findByStoreIdAndIsDeletedFalse(store.getId());
         List<UserResponse> employees = employeeStores.stream()
                 .map(employeeStore -> {
+                    try {
                     Employee employee = employeeStore.getEmployee();
+                        if (employee == null || employee.getIsDeleted() != null && employee.getIsDeleted()) {
+                            log.warn("Employee is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
+                                    employeeStore.getEmployeeId(), employeeStore.getStoreId());
+                            return null;
+                        }
                     return mapEmployeeToUserResponse(employee);
+                    } catch (Exception e) {
+                        log.error("Error mapping employee to user response for EmployeeStore: employeeId={}, storeId={}, error: {}", 
+                                employeeStore.getEmployeeId(), employeeStore.getStoreId(), e.getMessage());
+                        return null;
+                    }
                 })
+                .filter(employee -> employee != null)  // Filter out null employees
                 .collect(Collectors.toList());
         
         return StoreResponse.builder()
                 .id(store.getId())
                 .name(store.getName())
-                .city(store.getCity())
-                .district(store.getDistrict())
-                .ward(store.getWard())
-                .street(store.getStreet())
-                .addressLine(store.getAddressLine())
+                .city(store.getCity() != null ? store.getCity() : "")
+                .district(store.getDistrict() != null ? store.getDistrict() : "")
+                .ward(store.getWard() != null ? store.getWard() : "")
+                .street(store.getStreet() != null ? store.getStreet() : "")
+                .addressLine(store.getAddressLine() != null ? store.getAddressLine() : "")
                 .latitude(store.getLatitude())
                 .longitude(store.getLongitude())
                 .status(store.getStatus())
@@ -316,10 +414,22 @@ public class StoreServiceImpl implements StoreService {
     }
 
     private UserResponse mapEmployeeToUserResponse(Employee employee) {
+        if (employee == null) {
+            log.warn("Attempting to map null employee to UserResponse");
+            return null;
+        }
+        
+        try {
         List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
                 .stream()
                 .map(EmployeeStore::getStoreId)
                 .collect(Collectors.toList());
+
+            // Check if account exists and is not null
+            if (employee.getAccount() == null) {
+                log.warn("Employee {} has null account", employee.getId());
+                return null;
+            }
 
         return UserResponse.builder()
                 .id(employee.getId())
@@ -337,20 +447,44 @@ public class StoreServiceImpl implements StoreService {
                 .updatedAt(employee.getUpdatedAt())
                 .storeIds(storeIds)
                 .build();
+        } catch (Exception e) {
+            log.error("Error mapping employee {} to UserResponse: {}", employee.getId(), e.getMessage());
+            return null;
+        }
     }
 
     private EmployeeStoreResponse mapToEmployeeStoreResponse(EmployeeStore employeeStore) {
+        try {
         Employee employee = employeeStore.getEmployee();
         Store store = employeeStore.getStore();
+            
+            if (employee == null || (employee.getIsDeleted() != null && employee.getIsDeleted())) {
+                log.warn("Employee is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
+                        employeeStore.getEmployeeId(), employeeStore.getStoreId());
+                throw new AppException(ErrorCode.USER_NOT_FOUND);
+            }
+            
+            if (store == null || (store.getIsDeleted() != null && store.getIsDeleted())) {
+                log.warn("Store is null or deleted for EmployeeStore: employeeId={}, storeId={}", 
+                        employeeStore.getEmployeeId(), employeeStore.getStoreId());
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
         
         return EmployeeStoreResponse.builder()
                 .employeeId(employeeStore.getEmployeeId())
                 .storeId(employeeStore.getStoreId())
                 .employee(mapEmployeeToUserResponse(employee))
-                .store(mapToStoreResponseWithoutUsers(store))  // Use simplified version to avoid circular reference
+                    .store(mapToStoreResponseWithoutUsers(store))  // Use simplified version to avoid circular reference
                 .createdAt(employeeStore.getCreatedAt())
                 .updatedAt(employeeStore.getUpdatedAt())
-                .build();
+                    .build();
+        } catch (AppException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error mapping EmployeeStore to response: employeeId={}, storeId={}, error: {}", 
+                    employeeStore.getEmployeeId(), employeeStore.getStoreId(), e.getMessage());
+            throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**

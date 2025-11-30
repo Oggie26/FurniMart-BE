@@ -44,9 +44,12 @@ public enum ErrorCode {
     WARRANTY_CLAIM_NOT_FOUND(1220, "Warranty claim not found", HttpStatus.NOT_FOUND),
     
     // Delivery confirmation related errors
-    DELIVERY_CONFIRMATION_NOT_FOUND(1221, "Delivery confirmation not found", HttpStatus.NOT_FOUND),
-    DELIVERY_CONFIRMATION_ALREADY_EXISTS(1222, "Delivery confirmation already exists", HttpStatus.BAD_REQUEST),
-    QR_CODE_ALREADY_SCANNED(1223, "QR code already scanned", HttpStatus.BAD_REQUEST)
+    DELIVERY_CONFIRMATION_NOT_FOUND(1220, "Delivery confirmation not found", HttpStatus.NOT_FOUND),
+    DELIVERY_CONFIRMATION_ALREADY_EXISTS(1221, "Delivery confirmation already exists", HttpStatus.BAD_REQUEST),
+    QR_CODE_ALREADY_SCANNED(1222, "QR code already scanned", HttpStatus.BAD_REQUEST),
+    
+    // Invoice/PDF related errors
+    INVOICE_ALREADY_GENERATED(1232, "PDF hóa đơn đã được tạo cho order này", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

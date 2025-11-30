@@ -19,9 +19,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "User Controller")
-@SecurityRequirement(name = "api")
-@RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
 
@@ -81,6 +80,7 @@ public class UserController {
 
     @GetMapping("/paginated")
     @Operation(summary = "Get users with pagination")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<PageResponse<UserResponse>> getUsersWithPagination(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -136,7 +136,6 @@ public class UserController {
                 .message("Profile retrieved successfully")
                 .build();
     }
-
 
     @GetMapping("/account/{accountId}")
     @Operation(summary = "Lấy thông tin User bằng AccountId")

@@ -17,6 +17,8 @@ public interface WalletService {
     
     WalletResponse getWalletByUserId(String userId);
     
+    WalletResponse getMyWallet(); // Get current user's wallet
+    
     WalletResponse getWalletByCode(String code);
     
     List<WalletResponse> getAllWallets();
@@ -44,4 +46,14 @@ public interface WalletService {
     Double getWalletBalance(String walletId);
     
     boolean hasBalance(String walletId, Double amount);
+    
+    // Auto-create wallet for new customer
+    WalletResponse createWalletForUser(String userId);
+    
+    // Withdraw to VNPay bank account
+    WalletTransactionResponse withdrawToVNPay(String walletId, Double amount, String bankAccountNumber, 
+                                              String bankName, String accountHolderName, String description);
+    
+    // Deposit via VNPay payment gateway
+    String depositViaVNPay(String walletId, Double amount, String ipAddress);
 }

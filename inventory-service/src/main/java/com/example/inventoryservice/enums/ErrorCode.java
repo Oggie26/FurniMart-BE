@@ -50,6 +50,10 @@ public enum ErrorCode {
     INSUFFICIENT_STOCK(1163, "Insufficient stock", HttpStatus.CONFLICT),
     INVALID_WAREHOUSE_STOREID(1167, "Invalid warehouse storeID", HttpStatus.BAD_REQUEST),
     INVALID_QUANTITY_RANGE(1168, "Invalid quantity range", HttpStatus.BAD_REQUEST),
+    BAD_REQUEST(1169, "Bad Request", HttpStatus.BAD_REQUEST),
+    NOT_FOUND(1170, "Not Found", HttpStatus.NOT_FOUND),
+    STORE_ALREADY_HAS_WAREHOUSE(1171,"Store already has warehouse", HttpStatus.CONFLICT),
+    EXPORT_ERROR(1172,"Export Error", HttpStatus.CONFLICT),
     //12xx
     UNAUTHENTICATED(1201, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_FOUND_USER(1202, "User not found", HttpStatus.NOT_FOUND),
@@ -58,6 +62,11 @@ public enum ErrorCode {
     EXCEEDS_MAX_QUANTITY(1205,"Exceeds maximum quantity", HttpStatus.CONFLICT),
     BELOW_MIN_QUANTITY(1206,"Below Minimum quantity", HttpStatus.CONFLICT),
     WAREHOUSE_CAPACITY_EXCEEDED(1207, "Warehouse capacity exceeded", HttpStatus.CONFLICT),
+    INVALID_TYPE(1208,"Invalid token ", HttpStatus.CONFLICT),
+    INVALID_INPUT(1209,"Invalid Input", HttpStatus.BAD_REQUEST),
+    ORDER_NOT_FOUND(1210,"Order not found", HttpStatus.BAD_REQUEST),
+    LOCATION_CAPACITY_EXCEEDED(1211,"Location full", HttpStatus.BAD_REQUEST)
+    ,
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

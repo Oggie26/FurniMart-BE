@@ -19,6 +19,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByStatusAndIsDeletedFalse(com.example.orderservice.enums.EnumProcessOrder status, Pageable pageable);
 
+    // 🔍 Lấy orders theo storeId và status (optional), sắp xếp theo thời gian tạo (mới nhất trước)
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.isDeleted = false AND o.storeId = :storeId AND o.status = :status
+        ORDER BY o.createdAt DESC
+    """)
+    Page<Order> findByStoreIdAndStatusAndIsDeletedFalse(
+            @Param("storeId") String storeId,
+            @Param("status") com.example.orderservice.enums.EnumProcessOrder status,
+            Pageable pageable
+    );
+
+    // 🔍 Lấy tất cả orders của store (không filter status), sắp xếp theo thời gian tạo (mới nhất trước)
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.isDeleted = false AND o.storeId = :storeId
+        ORDER BY o.createdAt DESC
+    """)
+    Page<Order> findByStoreIdAndIsDeletedFalse(@Param("storeId") String storeId, Pageable pageable);
+
     // 🔍 Search theo userId + keyword
     @Query(value = """
             SELECT * FROM orders 
@@ -48,32 +68,23 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     // 🔍 Search theo storeId + keyword
-    @Query(value = """
-            SELECT * FROM orders 
-            WHERE is_deleted = false 
-              AND store_id = :storeId
-              AND (
-                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
-              )
-            """,
-            countQuery = """
-            SELECT COUNT(*) FROM orders 
-            WHERE is_deleted = false 
-              AND store_id = :storeId
-              AND (
-                   LOWER(note) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(user_id) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR CAST(total AS TEXT) LIKE LOWER(CONCAT('%', :keyword, '%'))
-              )
-            """,
-            nativeQuery = true)
+    @Query("""
+    SELECT o FROM Order o 
+    WHERE o.isDeleted = false AND o.storeId = :storeId
+      AND (
+           LOWER(o.note) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+        OR LOWER(o.userId) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR CAST(o.total AS string) LIKE LOWER(CONCAT('%', :keyword, '%'))
+      )
+    ORDER BY o.createdAt DESC
+""")
     Page<Order> searchByStoreIdAndKeyword(
             @Param("storeId") String storeId,
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+
 
     // 🔍 Search chung (không ràng buộc userId/storeId)
     @Query(value = """
@@ -99,6 +110,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             nativeQuery = true)
     Page<Order> searchByKeywordNative(
             @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    // 🔍 Lấy orders của store đã được tạo hóa đơn (có pdfFilePath)
+    // Orders có pdfFilePath IS NOT NULL AND pdfFilePath != '' được coi là đã tạo hóa đơn
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId 
+          AND o.pdfFilePath IS NOT NULL 
+          AND o.pdfFilePath != ''
+        ORDER BY o.createdAt DESC
+    """)
+    Page<Order> findByStoreIdWithInvoice(
+            @Param("storeId") String storeId,
             Pageable pageable
     );
 }

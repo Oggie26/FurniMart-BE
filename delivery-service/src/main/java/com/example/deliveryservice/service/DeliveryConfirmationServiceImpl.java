@@ -90,7 +90,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     @Transactional(readOnly = true)
     public DeliveryConfirmationResponse getDeliveryConfirmationByOrderId(Long orderId) {
         DeliveryConfirmation confirmation = deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND));
         return toDeliveryConfirmationResponse(confirmation);
     }
 
@@ -98,7 +98,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     @Transactional(readOnly = true)
     public DeliveryConfirmationResponse getDeliveryConfirmationByQRCode(String qrCode) {
         DeliveryConfirmation confirmation = deliveryConfirmationRepository.findByQrCodeAndIsDeletedFalse(qrCode)
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND));
         return toDeliveryConfirmationResponse(confirmation);
     }
 
@@ -108,7 +108,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         log.info("Scanning QR code: {}", request.getQrCode());
 
         DeliveryConfirmation confirmation = deliveryConfirmationRepository.findByQrCodeAndIsDeletedFalse(request.getQrCode())
-                .orElseThrow(() -> new AppException(ErrorCode.CODE_NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND));
 
         if (confirmation.getQrCodeScannedAt() != null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);

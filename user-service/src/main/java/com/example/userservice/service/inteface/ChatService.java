@@ -36,4 +36,11 @@ public interface ChatService {
     ChatResponse muteChat(String chatId, boolean muted);
 
     ChatResponse pinChat(String chatId, boolean pinned);
+
+    // Methods for AI chat to staff flow
+    ChatResponse requestStaffConnection(String chatId);
+    ChatResponse acceptStaffConnection(String chatId);
+    ChatResponse endStaffChat(String chatId);
+    List<com.example.userservice.entity.Employee> getOnlineStaff();
+    boolean isStaffOnline(String staffId);
 }

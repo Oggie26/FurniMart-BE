@@ -26,6 +26,9 @@ public class DeliveryAssignmentResponse {
     private LocalDateTime invoiceGeneratedAt;
     private Boolean productsPrepared;
     private LocalDateTime productsPreparedAt;
+    private String rejectReason;
+    private LocalDateTime rejectedAt;
+    private String rejectedBy;
     private OrderResponse order;
     private StoreResponse store;
 }

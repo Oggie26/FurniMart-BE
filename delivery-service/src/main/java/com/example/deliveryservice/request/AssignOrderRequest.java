@@ -19,7 +19,8 @@ public class AssignOrderRequest {
     @NotNull(message = "Store ID is required")
     private String storeId;
     
-    private String deliveryStaffId; // Optional, can be assigned later
+    @NotNull(message = "Delivery staff ID is required")
+    private String deliveryStaffId;
     
     private LocalDateTime estimatedDeliveryDate;
     

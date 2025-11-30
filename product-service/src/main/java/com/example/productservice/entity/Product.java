@@ -37,7 +37,7 @@ public class Product extends AbstractEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
+    @Column(name = "sell_price", nullable = false)
     private Double price;
 
     @Column(nullable = false)
@@ -60,6 +60,9 @@ public class Product extends AbstractEntity {
 
     @Column
     private Double length;
+
+//    @Column(nullable = false)
+//    private String userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

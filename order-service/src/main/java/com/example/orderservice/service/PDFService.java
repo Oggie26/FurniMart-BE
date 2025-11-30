@@ -8,9 +8,13 @@ import com.example.orderservice.feign.UserClient;
 import com.itextpdf.html2pdf.HtmlConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
@@ -25,37 +29,53 @@ import java.util.Date;
 public class PDFService {
 
     private final ProductClient productClient;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${app.pdf.directory:./pdfs}")
     private String pdfDirectory;
 
     public String generateOrderPDF(Order order, UserResponse user, AddressResponse address) {
+        File pdfFile = null;
         try {
-            // Create PDF directory if it doesn't exist
             Path pdfPath = Paths.get(pdfDirectory);
             if (!Files.exists(pdfPath)) {
                 Files.createDirectories(pdfPath);
             }
-
-            // Generate HTML content
+            
             String htmlContent = generateOrderHTML(order, user, address);
 
-            // Generate PDF file name
             String fileName = "order_" + order.getId() + "_" + System.currentTimeMillis() + ".pdf";
             String filePath = pdfDirectory + File.separator + fileName;
 
-            // Convert HTML to PDF
-            FileOutputStream outputStream = new FileOutputStream(filePath);
+            pdfFile = new File(filePath);
+            FileOutputStream outputStream = new FileOutputStream(pdfFile);
             HtmlConverter.convertToPdf(htmlContent, outputStream);
             outputStream.close();
 
-            log.info("PDF generated successfully: {}", filePath);
-            return filePath;
+            log.info("📄 PDF generated locally: {}", filePath);
+
+            String publicId = "invoice_order_" + order.getId();
+            String cloudinaryUrl = cloudinaryService.uploadPDF(convertPdfToImage(pdfFile), publicId);
+
+            log.info("☁️  PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
+            return cloudinaryUrl;
 
         } catch (Exception e) {
-            log.error("Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
+            log.error("❌ Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
+    }
+
+    public File convertPdfToImage(File pdfFile) throws Exception {
+        PDDocument document = PDDocument.load(pdfFile);
+        PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+        BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 200); // page 0 → 200 DPI
+        File imageFile = new File("converted.png");
+        ImageIO.write(bim, "PNG", imageFile);
+
+        document.close();
+        return imageFile;
     }
 
     private String generateOrderHTML(Order order, UserResponse user, AddressResponse address) {

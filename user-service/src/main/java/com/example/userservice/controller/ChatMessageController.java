@@ -28,7 +28,7 @@ public class ChatMessageController {
     @PostMapping
     @Operation(summary = "Send message")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<ChatMessageResponse> sendMessage(@Valid @RequestBody ChatMessageRequest request) {
         return ApiResponse.<ChatMessageResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -39,7 +39,7 @@ public class ChatMessageController {
 
     @GetMapping("/chat/{chatId}")
     @Operation(summary = "Get chat messages")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<List<ChatMessageResponse>> getChatMessages(@PathVariable String chatId) {
         return ApiResponse.<List<ChatMessageResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -50,7 +50,7 @@ public class ChatMessageController {
 
     @GetMapping("/chat/{chatId}/paginated")
     @Operation(summary = "Get chat messages with pagination")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<PageResponse<ChatMessageResponse>> getChatMessagesWithPagination(
             @PathVariable String chatId,
             @RequestParam(defaultValue = "0") int page,
@@ -64,7 +64,7 @@ public class ChatMessageController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get message by ID")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<ChatMessageResponse> getMessageById(@PathVariable String id) {
         return ApiResponse.<ChatMessageResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -75,7 +75,7 @@ public class ChatMessageController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Edit message")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<ChatMessageResponse> editMessage(@PathVariable String id, @RequestParam String content) {
         return ApiResponse.<ChatMessageResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -86,7 +86,7 @@ public class ChatMessageController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete message")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<Void> deleteMessage(@PathVariable String id) {
         chatMessageService.deleteMessage(id);
         return ApiResponse.<Void>builder()
@@ -97,7 +97,7 @@ public class ChatMessageController {
 
     @GetMapping("/chat/{chatId}/search")
     @Operation(summary = "Search messages in chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<List<ChatMessageResponse>> searchMessagesInChat(
             @PathVariable String chatId, 
             @RequestParam String searchTerm) {
@@ -110,7 +110,7 @@ public class ChatMessageController {
 
     @GetMapping("/chat/{chatId}/search/paginated")
     @Operation(summary = "Search messages in chat with pagination")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<PageResponse<ChatMessageResponse>> searchMessagesInChatWithPagination(
             @PathVariable String chatId,
             @RequestParam String searchTerm,
@@ -125,7 +125,7 @@ public class ChatMessageController {
 
     @GetMapping("/{id}/replies")
     @Operation(summary = "Get message replies")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<List<ChatMessageResponse>> getMessageReplies(@PathVariable String id) {
         return ApiResponse.<List<ChatMessageResponse>>builder()
                 .status(HttpStatus.OK.value())
@@ -136,7 +136,7 @@ public class ChatMessageController {
 
     @PostMapping("/{id}/read")
     @Operation(summary = "Mark message as read")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<Void> markMessageAsRead(@PathVariable String id) {
         chatMessageService.markMessageAsRead(id);
         return ApiResponse.<Void>builder()
@@ -147,7 +147,7 @@ public class ChatMessageController {
 
     @GetMapping("/chat/{chatId}/unread")
     @Operation(summary = "Get unread messages in chat")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
     public ApiResponse<List<ChatMessageResponse>> getUnreadMessages(@PathVariable String chatId) {
         return ApiResponse.<List<ChatMessageResponse>>builder()
                 .status(HttpStatus.OK.value())

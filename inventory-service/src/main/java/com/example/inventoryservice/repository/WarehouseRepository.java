@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
     Optional<Warehouse> findByIdAndIsDeletedFalse(String id);
     Optional<Warehouse> findByStoreId(String storeId);
-
+    Optional<Warehouse> findByStoreIdAndIsDeletedFalse(String storeId);
     @Query("SELECT w FROM Warehouse w WHERE w.storeId = :storeId")
     Optional<Warehouse> findByStoreIdWithZones(@Param("storeId") String storeId);
     Optional<Warehouse> findByWarehouseNameAndIsDeletedFalse(String warehouseName);

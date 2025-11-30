@@ -13,6 +13,7 @@ import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
+import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
 import lombok.RequiredArgsConstructor;
@@ -100,6 +101,17 @@ public class OrderServiceImpl implements OrderService {
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
 
+        try {
+            UserResponse user = safeGetUser(order.getUserId());
+            AddressResponse address = safeGetAddress(order.getAddressId());
+            String pdfPath = pdfService.generateOrderPDF(order, user, address);
+            order.setPdfFilePath(pdfPath);
+            orderRepository.save(order);
+            log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
+        }
+
         return mapToResponse(order);
     }
 
@@ -135,7 +147,7 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-        // Generate PDF for the order
+        // Generate PDF for the ordergenerateOrderPDF
         try {
             UserResponse user = safeGetUser(order.getUserId());
             AddressResponse address = safeGetAddress(order.getAddressId());
@@ -257,6 +269,100 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public void cancelOrder(CancelOrderRequest cancelOrderRequest) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(cancelOrderRequest.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        order.setStatus(EnumProcessOrder.CANCELLED);
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.CANCELLED);
+        process.setCreatedAt(new Date());
+        order.setProcessOrders(new ArrayList<>(List.of(process)));
+
+        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                        .price(detail.getPrice())
+                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                        .build())
+                .toList();
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(safeGetUser(order.getUserId()).getEmail())
+                .fullName(safeGetUser(order.getUserId()).getFullName())
+                .orderDate(order.getOrderDate())
+                .totalPrice(order.getTotal())
+                .orderId(order.getId())
+                .storeId(order.getStoreId())
+                .addressLine(getAddress(order.getAddressId()))
+                .paymentMethod(order.getPayment().getPaymentMethod())
+                .items(orderItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("order-cancel-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                        } else {
+                            log.info("Successfully sent order cancel event for: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+        }
+
+        processOrderRepository.save(process);
+        orderRepository.save(order);
+    }
+
+    @Override
+    @Transactional
+    public void handlePaymentCOD(Long orderId){
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        assignOrderService.assignOrderToStore(orderId);
+
+        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                        .price(detail.getPrice())
+                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                        .build())
+                .toList();
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(safeGetUser(order.getUserId()).getEmail())
+                .fullName(safeGetUser(order.getUserId()).getFullName())
+                .orderDate(order.getOrderDate())
+                .totalPrice(order.getTotal())
+                .orderId(order.getId())
+                .storeId(order.getStoreId())
+                .addressLine(getAddress(order.getAddressId()))
+                .paymentMethod(PaymentMethod.COD)
+                .items(orderItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("order-created-topic", event)
+                    .whenComplete((
+                            result, ex) -> {
+                        if (ex != null) {
+                        } else {
+                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+        }
+    }
+
+    @Override
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
@@ -274,8 +380,8 @@ public class OrderServiceImpl implements OrderService {
         }
         order.getProcessOrders().add(process);
         orderRepository.save(order);
-        assignOrderService.assignOrderToStore(orderId);
         if(status.equals(EnumProcessOrder.PAYMENT)){
+            assignOrderService.assignOrderToStore(orderId);
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
                             .productColorId(detail.getProductColorId())
@@ -309,12 +415,22 @@ public class OrderServiceImpl implements OrderService {
             } catch (Exception e) {
                 log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
             }
+
         }
         return mapToResponse(order);
     }
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
+        // Sanitize search keyword to prevent injection
+        if (request != null && !request.trim().isEmpty()) {
+            String trimmed = request.trim();
+            trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+            request = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+        } else {
+            request = "";
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
         String userId = getUserId();
 
@@ -338,6 +454,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrder(String request, int page, int size) {
+        // Sanitize search keyword to prevent injection
+        if (request != null && !request.trim().isEmpty()) {
+            String trimmed = request.trim();
+            trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+            request = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+        } else {
+            request = "";
+        }
+        
         Pageable pageable = PageRequest.of(page, size);
 
         Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
@@ -402,6 +527,102 @@ public class OrderServiceImpl implements OrderService {
         );
     }
 
+    @Override
+    public PageResponse<OrderResponse> getOrdersByStoreId(String storeId, EnumProcessOrder status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Validate store exists
+        String validatedStoreId = getStoreById(storeId);
+
+        Page<Order> orders;
+        if (status != null) {
+            // Lọc theo storeId và status
+            orders = orderRepository.findByStoreIdAndStatusAndIsDeletedFalse(validatedStoreId, status, pageable);
+        } else {
+            // Lấy tất cả orders của store (không filter status)
+            orders = orderRepository.findByStoreIdAndIsDeletedFalse(validatedStoreId, pageable);
+        }
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
+    }
+
+    @Override
+    public List<ProcessOrderResponse> getOrderStatusHistory(Long orderId) {
+        // Kiểm tra đơn hàng có tồn tại không
+        orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Lấy lịch sử status, sắp xếp theo thời gian (cũ nhất trước)
+        List<ProcessOrder> processOrders = processOrderRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
+
+        return processOrders.stream()
+                .map(process -> ProcessOrderResponse.builder()
+                        .id(process.getId())
+                        .status(process.getStatus())
+                        .createdAt(process.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResponse<OrderResponse> getStoreOrdersWithInvoice(String storeId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        String validatedStoreId;
+        try {
+            validatedStoreId = getStoreById(storeId);
+        } catch (AppException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error validating store {}: {}", storeId, e.getMessage());
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        }
+
+        Page<Order> orders = orderRepository.findByStoreIdWithInvoice(validatedStoreId, pageable);
+
+        List<OrderResponse> responses = orders.getContent()
+                .stream()
+                .map(order -> {
+                    OrderResponse response = mapToResponse(order);
+                    boolean hasPdfFile = false;
+                    if (order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
+                        try {
+                            java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
+                            hasPdfFile = pdfFile.exists();
+                        } catch (Exception e) {
+                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(), e.getMessage());
+                        }
+                    }
+                    // Set hasPdfFile vào response
+                    response.setHasPdfFile(hasPdfFile);
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                responses,
+                orders.getNumber(),
+                orders.getSize(),
+                orders.getTotalElements(),
+                orders.getTotalPages(),
+                orders.isFirst(),
+                orders.isLast()
+        );
+    }
+
     private OrderResponse mapToResponse(Order order) {
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
 
@@ -415,6 +636,16 @@ public class OrderServiceImpl implements OrderService {
                     .paymentStatus(payment.getPaymentStatus())
                     .date(payment.getDate())
                     .build();
+        }
+
+        boolean hasPdfFile = false;
+        if (order.getPdfFilePath() != null && !order.getPdfFilePath().isEmpty()) {
+            try {
+                java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
+                hasPdfFile = pdfFile.exists();
+            } catch (Exception e) {
+                log.warn("Error checking PDF file existence for order {}: {}", order.getId(), e.getMessage());
+            }
         }
 
         return OrderResponse.builder()
@@ -450,6 +681,12 @@ public class OrderServiceImpl implements OrderService {
                 .processOrders(
                         order.getProcessOrders() != null
                                 ? order.getProcessOrders().stream()
+                                .sorted((p1, p2) -> {
+                                    if (p1.getCreatedAt() == null && p2.getCreatedAt() == null) return 0;
+                                    if (p1.getCreatedAt() == null) return 1;
+                                    if (p2.getCreatedAt() == null) return -1;
+                                    return p1.getCreatedAt().compareTo(p2.getCreatedAt()); // Sắp xếp cũ nhất trước
+                                })
                                 .map(process -> ProcessOrderResponse.builder()
                                         .id(process.getId())
                                         .status(process.getStatus())
@@ -463,6 +700,7 @@ public class OrderServiceImpl implements OrderService {
                 .qrCode(order.getQrCode())
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .pdfFilePath(order.getPdfFilePath())
+                .hasPdfFile(hasPdfFile)
                 .build();
     }
 
@@ -543,11 +781,25 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String getStoreById(String storeId) {
-        ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
-        if (response == null || response.getData() == null) {
+        try {
+            ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
+            if (response == null || response.getData() == null) {
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+            return response.getData().getId();
+        } catch (feign.FeignException.NotFound e) {
+            log.warn("Store not found via Feign client: {}", storeId);
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (feign.FeignException e) {
+            log.error("Feign error when getting store {}: {}", storeId, e.getMessage());
+            if (e.status() == 404) {
+                throw new AppException(ErrorCode.STORE_NOT_FOUND);
+            }
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        } catch (Exception e) {
+            log.error("Unexpected error when getting store {}: {}", storeId, e.getMessage());
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
-        return response.getData().getId();
     }
 
     private String getAddress(Long addressId) {

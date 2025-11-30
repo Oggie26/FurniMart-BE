@@ -10,6 +10,7 @@ import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.response.LoginResponse;
+import com.example.userservice.service.inteface.WalletService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +35,9 @@ public class GoogleOAuth2Service {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final TokenService tokenService;
-    // Note: employeeStoreRepository removed - not used in GoogleOAuth2Service (only creates CUSTOMER users)
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
+    private final WalletService walletService;
 
     @Transactional
     public LoginResponse authenticateWithGoogle(String googleAccessToken) {
@@ -65,8 +66,6 @@ public class GoogleOAuth2Service {
                 }
             }
 
-            // Generate JWT tokens
-            // Note: Google OAuth creates CUSTOMER role, which doesn't have store relationships
             List<String> storeIds = List.of();
 
             Map<String, Object> claims = Map.of(
@@ -145,19 +144,62 @@ public class GoogleOAuth2Service {
                 .account(savedAccount)
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Auto-create wallet for new customer
+        try {
+            walletService.createWalletForUser(savedUser.getId());
+            log.info("Wallet auto-created for new Google OAuth user: {}", savedUser.getId());
+        } catch (Exception e) {
+            log.error("Failed to auto-create wallet for Google OAuth user {}: {}", savedUser.getId(), e.getMessage());
+            // Don't fail user creation if wallet creation fails, but log the error
+        }
 
         log.info("Created new user from Google OAuth: {}", userInfo.getEmail());
         return savedAccount;
     }
 
-    @lombok.Builder
-    @lombok.Data
     private static class GoogleUserInfo {
         private String email;
         private String name;
         private String picture;
         private String googleId;
+
+        // Manual getters (Lombok not working in Docker build)
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getPicture() { return picture; }
+        public void setPicture(String picture) { this.picture = picture; }
+        public String getGoogleId() { return googleId; }
+        public void setGoogleId(String googleId) { this.googleId = googleId; }
+
+        // Builder pattern
+        public static GoogleUserInfoBuilder builder() {
+            return new GoogleUserInfoBuilder();
+        }
+
+        public static class GoogleUserInfoBuilder {
+            private String email;
+            private String name;
+            private String picture;
+            private String googleId;
+
+            public GoogleUserInfoBuilder email(String email) { this.email = email; return this; }
+            public GoogleUserInfoBuilder name(String name) { this.name = name; return this; }
+            public GoogleUserInfoBuilder picture(String picture) { this.picture = picture; return this; }
+            public GoogleUserInfoBuilder googleId(String googleId) { this.googleId = googleId; return this; }
+
+            public GoogleUserInfo build() {
+                GoogleUserInfo info = new GoogleUserInfo();
+                info.email = this.email;
+                info.name = this.name;
+                info.picture = this.picture;
+                info.googleId = this.googleId;
+                return info;
+            }
+        }
     }
 }
 

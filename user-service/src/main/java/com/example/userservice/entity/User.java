@@ -45,8 +45,6 @@ public class User extends AbstractEntity {
     @Column(unique = true, length = 20)
     String cccd;
 
-    // Note: department, position, salary removed - these are only for employees, not customers
-
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
@@ -56,9 +54,6 @@ public class User extends AbstractEntity {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     List<Blog> blogs;
-
-    // Note: User (Customer) does not have direct store relationships
-    // Employee-Store relationships are managed through EmployeeStore entity
 
     @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private Wallet wallet;

@@ -1,11 +1,17 @@
 package com.example.inventoryservice.service;
 
+import com.example.inventoryservice.entity.LocationItem;
 import com.example.inventoryservice.entity.Warehouse;
+import com.example.inventoryservice.entity.Zone;
+import com.example.inventoryservice.enums.EnumStatus;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.enums.WarehouseStatus;
+import com.example.inventoryservice.enums.ZoneStatus;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.StoreClient;
+import com.example.inventoryservice.repository.LocationItemRepository;
 import com.example.inventoryservice.repository.WarehouseRepository;
+import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.WarehouseRequest;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.response.StoreResponse;
@@ -28,6 +34,8 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final StoreClient storeClient;
+    private final ZoneRepository zoneRepository;
+    private final LocationItemRepository locationItemRepository;
 
     @Override
     @Transactional
@@ -40,6 +48,9 @@ public class WarehouseServiceImpl implements WarehouseService {
         if( getStore(storeId) == null){
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
+
+        warehouseRepository.findByStoreIdAndIsDeletedFalse(storeId)
+                .ifPresent(w -> { throw new AppException(ErrorCode.STORE_ALREADY_HAS_WAREHOUSE); });
 
         Warehouse warehouse = Warehouse.builder()
                 .warehouseName(warehouseRequest.getWarehouseName())
@@ -60,19 +71,29 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         warehouseRepository.findByWarehouseNameAndIsDeletedFalse(warehouseRequest.getWarehouseName())
                 .filter(u -> !u.getId().equals(warehouseId))
-                .ifPresent(u -> { throw new AppException(ErrorCode.WAREHOUSE_EXISTS); });
+                .ifPresent(u -> {
+                    throw new AppException(ErrorCode.WAREHOUSE_EXISTS);
+                });
 
-        if( getStore(storeId) == null){
+        if (getStore(storeId) == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
+
+        warehouseRepository.findByStoreIdAndIsDeletedFalse(storeId)
+                .filter(w -> !w.getId().equals(warehouseId))
+                .ifPresent(w -> {
+                    throw new AppException(ErrorCode.STORE_ALREADY_HAS_WAREHOUSE);
+                });
 
         warehouse.setWarehouseName(warehouseRequest.getWarehouseName());
         warehouse.setStatus(warehouseRequest.getStatus());
         warehouse.setCapacity(warehouseRequest.getCapacity());
+        warehouse.setStoreId(storeId);
 
         warehouseRepository.save(warehouse);
         return toWarehouseResponse(warehouse);
     }
+
 
     @Override
     @Transactional
