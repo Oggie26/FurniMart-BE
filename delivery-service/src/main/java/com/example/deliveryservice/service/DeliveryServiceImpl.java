@@ -78,7 +78,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 request.getNotes()
         );
 
-        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
+        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.READY_FOR_INVOICE);
 
 
         return mapToResponse(saved);
