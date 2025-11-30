@@ -80,29 +80,21 @@ public class AuthServiceImpl implements AuthService {
         accountRepository.save(account);
         User savedUser = userRepository.save(user);
 
-        // Reload account to ensure we have the latest state from database
         Account savedAccount = accountRepository.findById(account.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        // Auto-create wallet for new customer (in separate transaction to avoid rollback)
-        // Flush to ensure user is persisted before creating wallet
         try {
-            // Flush to ensure user and account are persisted to database
             userRepository.flush();
-            accountRepository.flush(); // Also flush account to ensure it's visible
+            accountRepository.flush();
             log.debug("User and account flushed to database: {}", savedUser.getId());
             
-            // Use separate transaction (REQUIRES_NEW) to avoid affecting main transaction
-            // The REQUIRES_NEW transaction should see the flushed user
             walletService.createWalletForUser(savedUser.getId());
             log.info("Wallet auto-created for new customer: {}", savedUser.getId());
         } catch (AppException e) {
             log.error("Failed to auto-create wallet for user {}: ErrorCode={}, Message={}", 
                     savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
-            // Don't fail registration if wallet creation fails - wallet can be created later
         } catch (Exception e) {
             log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage(), e);
-            // Don't fail registration if wallet creation fails - wallet can be created later
         }
 
         final String accountEmail = savedAccount.getEmail();

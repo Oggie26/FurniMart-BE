@@ -1,10 +1,8 @@
 package com.example.inventoryservice.service;
 
 import com.example.inventoryservice.entity.*;
-import com.example.inventoryservice.enums.EnumPurpose;
-import com.example.inventoryservice.enums.EnumTypes;
-import com.example.inventoryservice.enums.ErrorCode;
-import com.example.inventoryservice.enums.TransferStatus;
+import com.example.inventoryservice.enums.*;
+import com.example.inventoryservice.event.ExportInventoryCreatedEvent;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.AuthClient;
 import com.example.inventoryservice.feign.OrderClient;
@@ -19,6 +17,7 @@ import com.example.inventoryservice.service.inteface.InventoryService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -41,6 +40,8 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserClient userClient;
     private final OrderClient orderClient;
     private final ProductClient productClient;
+//    private final KafkaTemplate<String, ExportInventoryCreatedEvent> kafkaTemplate;
+
 
 
     @Override
@@ -124,6 +125,29 @@ public class InventoryServiceImpl implements InventoryService {
 
                     if (remaining > 0)
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+
+//                    if (request.getOrderId() != null) {
+//                        ExportInventoryCreatedEvent event = ExportInventoryCreatedEvent.builder()
+//                                .orderId(request.getOrderId())
+//                                .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
+//                                .build();
+//
+//                        kafkaTemplate.send("export-inventory-created-topic", event)
+//                                .whenComplete((result, ex) -> {
+//                                    if (ex != null) {
+//                                        log.error("❌ Kafka failed for order {}: {}", request.getOrderId(), ex.getMessage());
+//
+//                                        try {
+//                                            orderClient.updateOrderStatus(event.getOrderId(), EnumProcessOrder.READY_FOR_INVOICE);                                                    request.getOrderId(),
+//                                        } catch (Exception clientEx) {
+//                                            log.error("❌ Failed to update order event fail status: {}", clientEx.getMessage());
+//                                        }
+//                                    } else {
+//                                        log.info("✔️ Kafka event sent for order {}", request.getOrderId());
+//                                    }
+//                                });
+//                    }
+
 
                     if (request.getToWarehouseId() != null) {
                         Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())

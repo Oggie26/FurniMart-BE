@@ -44,7 +44,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryAssignmentResponse assignOrderToDelivery(AssignOrderRequest request) {
         log.info("Assigning order {} to delivery staff {}", request.getOrderId(), request.getDeliveryStaffId());
 
-        // Verify order exists and get order details (with retry)
         OrderResponse order = callWithRetry(() -> {
             ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
             if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
@@ -53,10 +52,6 @@ public class DeliveryServiceImpl implements DeliveryService {
             return orderResponse.getBody().getData();
         }, "getOrderById", 3);
 
-        // Validate store access - ensure request storeId matches order's storeId
-        validateStoreAccess(request.getStoreId(), order.getStoreId(), request.getOrderId());
-
-        // Verify store exists (with retry)
         callWithRetry(() -> {
             ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
             if (storeResponse == null || storeResponse.getData() == null) {
@@ -65,19 +60,16 @@ public class DeliveryServiceImpl implements DeliveryService {
             return storeResponse.getData();
         }, "getStoreById", 3);
 
-        // Get or create delivery assignment atomically (handles race conditions)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String assignedBy = authentication != null ? authentication.getName() : "SYSTEM";
         DeliveryAssignment assignment = getOrCreateAssignment(
                 request.getOrderId(), 
-                order.getStoreId(), // Use order's storeId, not request's
+                order.getStoreId(),
                 assignedBy
         );
 
-        // Validate prerequisites - ALL assignments must meet prerequisites (no bypass)
         validatePrerequisites(assignment, request.getOrderId());
 
-        // Atomic update of delivery staff assignment (prevents check-then-act race condition)
         DeliveryAssignment saved = assignDeliveryStaffAtomically(
                 assignment,
                 request.getDeliveryStaffId(),
@@ -89,7 +81,6 @@ public class DeliveryServiceImpl implements DeliveryService {
         log.info("Order {} assigned to delivery staff {} after all prerequisites met", 
                 request.getOrderId(), request.getDeliveryStaffId());
 
-        // Update order status to SHIPPING when assigned to delivery (with retry, non-blocking)
         try {
             callWithRetry(() -> {
                 orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
@@ -98,7 +89,6 @@ public class DeliveryServiceImpl implements DeliveryService {
             log.info("Order {} status updated to SHIPPING", request.getOrderId());
         } catch (Exception e) {
             log.error("Failed to update order status for order {}: {}", request.getOrderId(), e.getMessage());
-            // Don't fail the assignment if status update fails, but log the error
         }
 
         return mapToResponse(saved);
@@ -208,7 +198,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     public DeliveryAssignmentResponse prepareProducts(PrepareProductsRequest request) {
         log.info("Preparing products for order: {}", request.getOrderId());
 
-        // Verify order exists and get order details
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
         if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
             throw new AppException(ErrorCode.ORDER_NOT_FOUND);
@@ -216,7 +205,6 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         OrderResponse order = orderResponse.getBody().getData();
         
-        // Get or create delivery assignment atomically
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String preparedBy = authentication != null ? authentication.getName() : "SYSTEM";
         DeliveryAssignment assignment = getOrCreateAssignment(
@@ -225,7 +213,6 @@ public class DeliveryServiceImpl implements DeliveryService {
                 preparedBy
         );
 
-        // Check if already prepared
         if (assignment.getProductsPrepared()) {
             String errorMessage = String.format("Products đã được prepare cho order này. Assignment ID: %d", 
                     assignment.getId());
@@ -233,12 +220,10 @@ public class DeliveryServiceImpl implements DeliveryService {
             throw new AppException(ErrorCode.PRODUCTS_ALREADY_PREPARED);
         }
 
-        // Ensure storeId matches order
         if (assignment.getStoreId() == null || !assignment.getStoreId().equals(order.getStoreId())) {
             assignment.setStoreId(order.getStoreId());
         }
         
-        // Check stock availability for each product in order
         List<String> insufficientProducts = new ArrayList<>();
         if (order.getOrderDetails() != null) {
             for (OrderDetailResponse detail : order.getOrderDetails()) {
@@ -265,7 +250,6 @@ public class DeliveryServiceImpl implements DeliveryService {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
 
-        // Update assignment
         assignment.setProductsPrepared(true);
         assignment.setProductsPreparedAt(LocalDateTime.now());
         assignment.setStatus(DeliveryStatus.PREPARING);
@@ -505,14 +489,11 @@ public class DeliveryServiceImpl implements DeliveryService {
      * Uses unique constraint to handle concurrent creation attempts
      */
     private DeliveryAssignment getOrCreateAssignment(Long orderId, String storeId, String assignedBy) {
-        // Try to find existing assignment first
         Optional<DeliveryAssignment> existing = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId);
         if (existing.isPresent()) {
             return existing.get();
         }
 
-        // Try to create new assignment
-        // If unique constraint violation occurs, another thread created it, so fetch again
         try {
             DeliveryAssignment newAssignment = DeliveryAssignment.builder()
                     .orderId(orderId)
@@ -572,16 +553,12 @@ public class DeliveryServiceImpl implements DeliveryService {
      */
     private void validateStoreAccess(String requestStoreId, String orderStoreId, Long orderId) {
         if (!requestStoreId.equals(orderStoreId)) {
-            log.warn("Store ID mismatch for order {}: Request store {}, Order store {}", 
+            log.warn("Store ID mismatch for order {}: Request store {}, Order store {}",
                     orderId, requestStoreId, orderStoreId);
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
     }
 
-    /**
-     * Atomic update of delivery staff assignment using optimistic locking
-     * Prevents lost updates and check-then-act race conditions
-     */
     private DeliveryAssignment assignDeliveryStaffAtomically(
             DeliveryAssignment assignment, 
             String deliveryStaffId, 
