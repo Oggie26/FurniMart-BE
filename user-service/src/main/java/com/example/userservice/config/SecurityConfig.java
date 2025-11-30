@@ -56,6 +56,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/auth/login",
                                 "/api/auth/register",
+                                "/api/users/{id}",
+                                "/api//employees/profile",
                                 "/api/auth/refresh",
                                 "/api/stores",
                                 "/swagger-ui.html",
@@ -74,7 +76,6 @@ public class SecurityConfig {
                                 "/sockjs-node/**",
                                 "/webjars/**"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/users/{id}").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)

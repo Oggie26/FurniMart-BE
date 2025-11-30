@@ -149,7 +149,6 @@ public class EmployeeController {
 
     @GetMapping("/profile")
     @Operation(summary = "Get current employee profile")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER', 'STAFF', 'DELIVERY')")
     public ApiResponse<UserResponse> getEmployeeProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
