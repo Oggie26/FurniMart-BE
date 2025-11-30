@@ -89,7 +89,7 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, UpdateStatusOrderCreatedEvent> updateStatusKafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, UpdateStatusOrderCreatedEvent> updateStatusCreatedKafkaListenerContainerFactory() {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, UpdateStatusOrderCreatedEvent>();
 
         factory.setConsumerFactory(updateStatusConsumerFactory());

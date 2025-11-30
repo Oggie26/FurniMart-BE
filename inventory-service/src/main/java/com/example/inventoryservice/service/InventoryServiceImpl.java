@@ -128,11 +128,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     if (request.getOrderId() != null) {
                         OrderResponse order = getOrder(request.getOrderId());
-                        if (order == null || order.getOrderDetails().isEmpty()) {
-                            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
-                        }
 
-                        // Check từng sản phẩm trong order
                         for (OrderDetailResponse detail : order.getOrderDetails()) {
                             String productColorId = detail.getProductColorId();
                             int requiredQuantity = detail.getQuantity();
