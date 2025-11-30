@@ -1,6 +1,9 @@
 server:
   port: 8085
 
+  servlet:
+    context-path: /api/orders
+
 spring:
   application:
     name: order-service
