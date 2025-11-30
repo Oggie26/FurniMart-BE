@@ -1,8 +1,10 @@
 package com.example.userservice.config;
 
+import feign.auth.BasicAuthRequestInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -63,6 +65,7 @@ public class SecurityConfig {
                                 "/sockjs-node/**",
                                 "/webjars/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/users/{id}").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
