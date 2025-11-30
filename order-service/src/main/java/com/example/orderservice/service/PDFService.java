@@ -25,34 +25,39 @@ import java.util.Date;
 public class PDFService {
 
     private final ProductClient productClient;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${app.pdf.directory:./pdfs}")
     private String pdfDirectory;
 
     public String generateOrderPDF(Order order, UserResponse user, AddressResponse address) {
+        File pdfFile = null;
         try {
-            // Create PDF directory if it doesn't exist
             Path pdfPath = Paths.get(pdfDirectory);
             if (!Files.exists(pdfPath)) {
                 Files.createDirectories(pdfPath);
             }
-            // Generate HTML content
+            
             String htmlContent = generateOrderHTML(order, user, address);
 
-            // Generate PDF file name
             String fileName = "order_" + order.getId() + "_" + System.currentTimeMillis() + ".pdf";
             String filePath = pdfDirectory + File.separator + fileName;
 
-            // Convert HTML to PDF
-            FileOutputStream outputStream = new FileOutputStream(filePath);
+            pdfFile = new File(filePath);
+            FileOutputStream outputStream = new FileOutputStream(pdfFile);
             HtmlConverter.convertToPdf(htmlContent, outputStream);
             outputStream.close();
 
-            log.info("PDF generated successfully: {}", filePath);
-            return filePath;
+            log.info("📄 PDF generated locally: {}", filePath);
+
+            String publicId = "invoice_order_" + order.getId();
+            String cloudinaryUrl = cloudinaryService.uploadPDF(pdfFile, publicId);
+
+            log.info("☁️  PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
+            return cloudinaryUrl;
 
         } catch (Exception e) {
-            log.error("Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
+            log.error("❌ Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
     }

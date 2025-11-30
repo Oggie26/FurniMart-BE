@@ -172,36 +172,6 @@ services:
     depends_on:
       - eureka-server
     networks:
-      - backend
-    restart: unless-stopped
-    environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING: "true"
-
-  order-service:
-    build: ./order-service
-    container_name: order-service
-    ports:
-      - "8085:8085"
-    depends_on:
-      - eureka-server
-      - order-db
-      - kafka
-    networks:
-      - backend
-    restart: unless-stopped
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/order_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: "true"
-
-  order-db:
-    image: postgres:16
-    container_name: order-db
-    restart: always
-    environment:
       POSTGRES_DB: order_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
