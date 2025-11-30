@@ -68,7 +68,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 assignedBy
         );
 
-        validatePrerequisites(assignment, request.getOrderId());
+//        validatePrerequisites(assignment, request.getOrderId());
 
         DeliveryAssignment saved = assignDeliveryStaffAtomically(
                 assignment,
@@ -523,30 +523,30 @@ public class DeliveryServiceImpl implements DeliveryService {
     /**
      * Validate prerequisites for assignment - ALL assignments must meet prerequisites
      */
-    private void validatePrerequisites(DeliveryAssignment assignment, Long orderId) {
-        List<String> missingPrerequisites = new ArrayList<>();
-
-        if (!assignment.getProductsPrepared()) {
-            missingPrerequisites.add("products prepared");
-        }
-
-        if (assignment.getStatus() != DeliveryStatus.READY) {
-            missingPrerequisites.add("status READY (manager must confirm ready)");
-        }
-
-        if (!assignment.getInvoiceGenerated()) {
-            missingPrerequisites.add("invoice generated");
-        }
-
-        if (!missingPrerequisites.isEmpty()) {
-            String errorMessage = String.format(
-                    "Cannot assign order %d: Missing prerequisites - %s. " +
-                    "Please complete: 1) Generate invoice, 2) Prepare products, 3) Manager confirm ready",
-                    orderId, String.join(", ", missingPrerequisites));
-            log.warn(errorMessage);
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-    }
+//    private void validatePrerequisites(DeliveryAssignment assignment, Long orderId) {
+//        List<String> missingPrerequisites = new ArrayList<>();
+//
+//        if (!assignment.getProductsPrepared()) {
+//            missingPrerequisites.add("products prepared");
+//        }
+//
+//        if (assignment.getStatus() != DeliveryStatus.READY) {
+//            missingPrerequisites.add("status READY (manager must confirm ready)");
+//        }
+//
+//        if (!assignment.getInvoiceGenerated()) {
+//            missingPrerequisites.add("invoice generated");
+//        }
+//
+//        if (!missingPrerequisites.isEmpty()) {
+//            String errorMessage = String.format(
+//                    "Cannot assign order %d: Missing prerequisites - %s. " +
+//                    "Please complete: 1) Generate invoice, 2) Prepare products, 3) Manager confirm ready",
+//                    orderId, String.join(", ", missingPrerequisites));
+//            log.warn(errorMessage);
+//            throw new AppException(ErrorCode.INVALID_REQUEST);
+//        }
+//    }
 
     /**
      * Validate store access - ensure storeId matches order's storeId
