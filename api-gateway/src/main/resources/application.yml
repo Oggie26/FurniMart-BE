@@ -19,7 +19,7 @@
                      - id: user-service
                        uri: lb://user-service
                        predicates:
-                         - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**
+                         - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**, /users/v3/api-docs,
                        filters: []
 
                      # PRODUCT SERVICE
@@ -88,23 +88,16 @@
      reactor.netty.http.client: DEBUG
 
  springdoc:
+   enable-native-support: true
    api-docs:
-     path: /v3/api-docs
+     enabled: true
    swagger-ui:
+     enabled: true
      path: /swagger-ui.html
+     config-url: /v3/api-docs/swagger-config
      urls:
-       - name: user-service
-         url: /api/users/v3/api-docs
-       - name: product-service
-         url: /api/products/v3/api-docs
-       - name: order-service
-         url: /api/orders/v3/api-docs
-       - name: inventory-service
-         url: /api/inventories/v3/api-docs
-       - name: notification-service
-         url: /api/notifications/v3/api-docs
-       - name: delivery-service
-         url: /api/deliveries/v3/api-docs
-       - name: ai-service
-         url: /api/ai/v3/api-docs
+       - url: /v3/api-docs
+         name: API Gateway Service
+       - url: /users/v3/api-docs
+         name: User Service
 
