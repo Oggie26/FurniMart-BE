@@ -100,6 +100,17 @@ public class OrderServiceImpl implements OrderService {
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
 
+        try {
+            UserResponse user = safeGetUser(order.getUserId());
+            AddressResponse address = safeGetAddress(order.getAddressId());
+            String pdfPath = pdfService.generateOrderPDF(order, user, address);
+            order.setPdfFilePath(pdfPath);
+            orderRepository.save(order);
+            log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
+        }
+
         return mapToResponse(order);
     }
 
@@ -135,7 +146,7 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-        // Generate PDF for the order
+        // Generate PDF for the ordergenerateOrderPDF
         try {
             UserResponse user = safeGetUser(order.getUserId());
             AddressResponse address = safeGetAddress(order.getAddressId());
