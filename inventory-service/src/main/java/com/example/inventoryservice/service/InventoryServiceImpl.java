@@ -145,6 +145,7 @@ public class InventoryServiceImpl implements InventoryService {
                                         log.info("✔️ Kafka event sent for order {}", request.getOrderId());
                                     }
                                 });
+                        inventoryRepository.save(inventory);
                     }
 
 
