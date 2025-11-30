@@ -80,3 +80,24 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     reactor.netty.http.client: DEBUG
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /api/users/v3/api-docs
+      - name: product-service
+        url: /api/products/v3/api-docs
+      - name: order-service
+        url: /api/orders/v3/api-docs
+      - name: inventory-service
+        url: /api/inventories/v3/api-docs
+      - name: notification-service
+        url: /api/notifications/v3/api-docs
+      - name: delivery-service
+        url: /api/deliveries/v3/api-docs
+      - name: ai-service
+        url: /api/ai/v3/api-docs

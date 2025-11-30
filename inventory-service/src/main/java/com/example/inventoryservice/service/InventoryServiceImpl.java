@@ -40,7 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserClient userClient;
     private final OrderClient orderClient;
     private final ProductClient productClient;
-    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
+//    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
 
 
 
@@ -142,27 +142,28 @@ public class InventoryServiceImpl implements InventoryService {
                                 throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
                             }
                         }
+                        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
 
-                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
-                                .orderId(request.getOrderId())
-                                .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
-                                .build();
+//                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
+//                                .orderId(request.getOrderId())
+//                                .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
+//                                .build();
 
-                        try {
-                            kafkaTemplate.send("update-status-order-created-topic", event).get();
-                            log.info("✔ Kafka event sent for order {}", request.getOrderId());
-                        } catch (Exception ex) {
-                            log.error("❌ Failed to send Kafka event: {}", ex.getMessage());
-
-                            try {
-                                orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
-                                log.info("✔ Order rollback to PACKAGED due to Kafka failure");
-                            } catch (Exception e) {
-                                log.error("❌ Failed to rollback order after Kafka failure: {}", e.getMessage());
-                            }
-
-                            throw new AppException(ErrorCode.EXPORT_ERROR);
-                        }
+//                        try {
+//                            kafkaTemplate.send("update-status-order-created-topic", event).get();
+//                            log.info("✔ Kafka event sent for order {}", request.getOrderId());
+//                        } catch (Exception ex) {
+//                            log.error("❌ Failed to send Kafka event: {}", ex.getMessage());
+//
+//                            try {
+//                                orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+//                                log.info("✔ Order rollback to PACKAGED due to Kafka failure");
+//                            } catch (Exception e) {
+//                                log.error("❌ Failed to rollback order after Kafka failure: {}", e.getMessage());
+//                            }
+//
+//                            throw new AppException(ErrorCode.EXPORT_ERROR);
+//                        }
                     }
 
 
