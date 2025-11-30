@@ -1,5 +1,6 @@
 package com.example.userservice.controller;
 
+import com.example.userservice.request.StaffCreateCustomerRequest;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.*;
@@ -194,6 +195,19 @@ public class UserController {
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("User deleted successfully")
+                .build();
+    }
+
+    @PostMapping("/staff/create-customer")
+    @Operation(summary = "Create customer account with delivery address (Staff only)")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
+    public ApiResponse<StaffCreateCustomerResponse> createCustomerAccountForStaff(
+            @Valid @RequestBody StaffCreateCustomerRequest request) {
+        return ApiResponse.<StaffCreateCustomerResponse>builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Customer account created successfully")
+                .data(userService.createCustomerAccountForStaff(request))
                 .build();
     }
 }

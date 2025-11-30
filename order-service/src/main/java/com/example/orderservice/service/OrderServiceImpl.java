@@ -12,6 +12,7 @@ import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.*;
+import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
@@ -166,6 +167,98 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Pre-order created successfully with ID: {}", order.getId());
         return mapToResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
+        log.info("Staff creating order for customer: {}", request.getCustomerUserId());
+        
+        // Validate customer exists
+        ApiResponse<UserResponse> customerResponse = userClient.getUserById(request.getCustomerUserId());
+        if (customerResponse == null || customerResponse.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+        
+        // Validate address exists and belongs to customer
+        ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(request.getAddressId());
+        if (addressResponse == null || addressResponse.getData() == null) {
+            throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
+        }
+        if (!addressResponse.getData().getUserId().equals(request.getCustomerUserId())) {
+            throw new AppException(ErrorCode.INVALID_ADDRESS);
+        }
+        
+        // Validate store exists
+        ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
+        if (storeResponse == null || storeResponse.getData() == null) {
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        }
+        
+        // Calculate total from order details
+        Double total = request.getOrderDetails().stream()
+                .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
+                .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
+                .sum();
+        
+        if (total <= 0) {
+            throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
+        }
+        
+        // Create order
+        Order order = Order.builder()
+                .userId(request.getCustomerUserId())
+                .storeId(request.getStoreId())
+                .addressId(request.getAddressId())
+                .total(total)
+                .status(EnumProcessOrder.PENDING)
+                .note(request.getNote())
+                .reason(request.getReason())
+                .orderDate(new Date())
+                .build();
+        
+        // Create order details
+        List<OrderDetail> orderDetails = request.getOrderDetails().stream()
+                .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
+                .map(detail -> OrderDetail.builder()
+                        .order(order)
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .price(detail.getPrice())
+                        .build())
+                .collect(Collectors.toList());
+        
+        if (orderDetails.isEmpty()) {
+            throw new AppException(ErrorCode.CART_EMPTY);
+        }
+        
+        order.setOrderDetails(orderDetails);
+        
+        // Create process order
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.PENDING);
+        process.setCreatedAt(new Date());
+        order.setProcessOrders(new ArrayList<>(List.of(process)));
+        
+        // Save order
+        Order savedOrder = orderRepository.save(order);
+        
+        // Create payment
+        Payment payment = Payment.builder()
+                .order(savedOrder)
+                .paymentMethod(request.getPaymentMethod())
+                .paymentStatus(PaymentStatus.PENDING)
+                .date(new Date())
+                .total(savedOrder.getTotal())
+                .userId(savedOrder.getUserId())
+                .transactionCode(generateTransactionCode())
+                .build();
+        paymentRepository.save(payment);
+        
+        log.info("Staff successfully created order {} for customer {}", savedOrder.getId(), request.getCustomerUserId());
+        
+        return mapToResponse(savedOrder);
     }
 
     @Override
