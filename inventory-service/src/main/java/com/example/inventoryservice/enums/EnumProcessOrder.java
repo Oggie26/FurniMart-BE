@@ -8,7 +8,6 @@ public enum EnumProcessOrder {
     MANAGER_ACCEPT,
     MANAGER_REJECT,
     READY_FOR_INVOICE,
-    MANAGER_EXPORT_ORDER,
     CONFIRMED,
     PACKAGED,
     SHIPPING,

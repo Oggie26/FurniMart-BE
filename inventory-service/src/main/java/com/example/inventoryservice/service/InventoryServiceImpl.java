@@ -40,7 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserClient userClient;
     private final OrderClient orderClient;
     private final ProductClient productClient;
-//    private final KafkaTemplate<String, ExportInventoryCreatedEvent> kafkaTemplate;
+    private final KafkaTemplate<String, ExportInventoryCreatedEvent> kafkaTemplate;
 
 
 
@@ -126,27 +126,25 @@ public class InventoryServiceImpl implements InventoryService {
                     if (remaining > 0)
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-//                    if (request.getOrderId() != null) {
-//                        ExportInventoryCreatedEvent event = ExportInventoryCreatedEvent.builder()
-//                                .orderId(request.getOrderId())
-//                                .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
-//                                .build();
-//
-//                        kafkaTemplate.send("export-inventory-created-topic", event)
-//                                .whenComplete((result, ex) -> {
-//                                    if (ex != null) {
-//                                        log.error("❌ Kafka failed for order {}: {}", request.getOrderId(), ex.getMessage());
-//
-//                                        try {
-//                                            orderClient.updateOrderStatus(event.getOrderId(), EnumProcessOrder.READY_FOR_INVOICE);                                                    request.getOrderId(),
-//                                        } catch (Exception clientEx) {
-//                                            log.error("❌ Failed to update order event fail status: {}", clientEx.getMessage());
-//                                        }
-//                                    } else {
-//                                        log.info("✔️ Kafka event sent for order {}", request.getOrderId());
-//                                    }
-//                                });
-//                    }
+                    if (request.getOrderId() != null) {
+                        ExportInventoryCreatedEvent event = ExportInventoryCreatedEvent.builder()
+                                .orderId(request.getOrderId())
+                                .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
+                                .build();
+
+                        kafkaTemplate.send("export-inventory-created-topic", event)
+                                .whenComplete((result, ex) -> {
+                                    if (ex != null) {
+                                        try {
+                                            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.READY_FOR_INVOICE);
+                                        } catch (Exception clientEx) {
+                                            log.error("❌ Failed to update order event fail status: {}", clientEx.getMessage());
+                                        }
+                                    } else {
+                                        log.info("✔️ Kafka event sent for order {}", request.getOrderId());
+                                    }
+                                });
+                    }
 
 
                     if (request.getToWarehouseId() != null) {
