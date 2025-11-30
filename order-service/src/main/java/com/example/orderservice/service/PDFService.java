@@ -8,9 +8,13 @@ import com.example.orderservice.feign.UserClient;
 import com.itextpdf.html2pdf.HtmlConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
@@ -51,7 +55,7 @@ public class PDFService {
             log.info("📄 PDF generated locally: {}", filePath);
 
             String publicId = "invoice_order_" + order.getId();
-            String cloudinaryUrl = cloudinaryService.uploadPDF(pdfFile, publicId);
+            String cloudinaryUrl = cloudinaryService.uploadPDF(convertPdfToImage(pdfFile), publicId);
 
             log.info("☁️  PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
             return cloudinaryUrl;
@@ -60,6 +64,18 @@ public class PDFService {
             log.error("❌ Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
+    }
+
+    public File convertPdfToImage(File pdfFile) throws Exception {
+        PDDocument document = PDDocument.load(pdfFile);
+        PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+        BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 200); // page 0 → 200 DPI
+        File imageFile = new File("converted.png");
+        ImageIO.write(bim, "PNG", imageFile);
+
+        document.close();
+        return imageFile;
     }
 
     private String generateOrderHTML(Order order, UserResponse user, AddressResponse address) {
