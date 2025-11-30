@@ -136,7 +136,8 @@ public class InventoryServiceImpl implements InventoryService {
                                 .whenComplete((result, ex) -> {
                                     if (ex != null) {
                                         try {
-                                            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.READY_FOR_INVOICE);
+                                            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+                                            log.info("Đã xuất thành công");
                                         } catch (Exception clientEx) {
                                             log.error("❌ Failed to update order event fail status: {}", clientEx.getMessage());
                                         }
@@ -719,7 +720,7 @@ public class InventoryServiceImpl implements InventoryService {
     private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
         return InventoryItemResponse.builder()
                 .id(item.getId())
-                .quantity(item.getQuantity())
+                .quantity(Math.abs(item.getQuantity()))
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
                 .productName(getProductName(item.getProductColorId()).getProduct().getName())
