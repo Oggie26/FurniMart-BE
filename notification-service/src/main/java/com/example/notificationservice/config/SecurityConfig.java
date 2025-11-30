@@ -36,6 +36,7 @@ public class SecurityConfig {
                                 "/api/users/info/{authId}",
                                 "/api/users/**",
                                 "/api/orders/**",
+                                "/webjars/**",
                                 "/api/inventories/total/**",
                                 "/swagger-ui.html"
                         ).permitAll()
