@@ -287,8 +287,8 @@ public class OrderServiceImpl implements OrderService {
         }
         order.getProcessOrders().add(process);
         orderRepository.save(order);
-        assignOrderService.assignOrderToStore(orderId);
         if(status.equals(EnumProcessOrder.PAYMENT)){
+            assignOrderService.assignOrderToStore(orderId);
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
                             .productColorId(detail.getProductColorId())
@@ -322,6 +322,7 @@ public class OrderServiceImpl implements OrderService {
             } catch (Exception e) {
                 log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
             }
+
         }
         return mapToResponse(order);
     }
