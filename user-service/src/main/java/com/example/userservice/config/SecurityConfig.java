@@ -37,6 +37,15 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    @Configuration
+    public static class FeignBasicAuthConfig {
+
+        @Bean
+        public BasicAuthRequestInterceptor basicAuthRequestInterceptor() {
+            return new BasicAuthRequestInterceptor("inventory-service", "password123");
+        }
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
