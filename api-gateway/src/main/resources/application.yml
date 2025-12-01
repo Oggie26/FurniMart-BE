@@ -36,12 +36,11 @@
                          - Path=/api/notifications/**
                        filters: []
 
-                     # DELIVERY SERVICE
                      - id: delivery-service
                        uri: lb://delivery-service
                        predicates:
-                         - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**
-                       filters: []
+                         - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**, /api/delivery/assignments/**
+                       filters: [ ]
 
                      # ORDER SERVICE
                      - id: order-service

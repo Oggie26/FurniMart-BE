@@ -263,7 +263,7 @@ public class VNPayService {
 
     // === MOBILE ===
     public String createPaymentUrlByMobile(Long orderId, Double amount, String ipAddress) throws Exception {
-        String mobileReturnUrl = "http://152.53.244.124:8080/api/v1/payment/vnpay-return";
+        String mobileReturnUrl = "https://furnimart.click/api/v1/payment/vnpay-return";
         return buildPaymentUrl(orderId, amount, ipAddress, mobileReturnUrl);
     }
 

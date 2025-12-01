@@ -166,7 +166,6 @@ public class UserServiceImpl implements UserService {
     public UserResponse getUserById(String id) {
         User user = userRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        
         return toUserResponse(user);
     }
 

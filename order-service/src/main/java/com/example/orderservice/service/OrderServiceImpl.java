@@ -16,6 +16,7 @@ import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.OrderService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -766,11 +767,15 @@ public class OrderServiceImpl implements OrderService {
         return "TXN-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 10000);
     }
 
-    private UserResponse safeGetUser(String userId) {
-        if (userId == null) return null;
-        ApiResponse<UserResponse> resp = userClient.getUserById(userId);
-        if (resp == null || resp.getData() == null) return null;
-        return resp.getData();
+    public UserResponse safeGetUser(String userId) {
+        try {
+            return userClient.getUserById(userId).getData();
+        } catch (FeignException.NotFound e) {
+            return null;
+        } catch (Exception e) {
+            log.error("Error fetching user {}: {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     private AddressResponse safeGetAddress(Long addressId) {
