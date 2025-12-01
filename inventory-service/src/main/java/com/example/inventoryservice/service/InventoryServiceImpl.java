@@ -596,10 +596,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public List<InventoryResponse> getPendingTransfers(String warehouseId) {
         return inventoryRepository
-                .findAllByWarehouse_IdAndPurposeAndTransferStatus(
+                .findAllByWarehouse_IdAndPurpose(
                         warehouseId,
-                        EnumPurpose.REQUEST,
-                        TransferStatus.PENDING
+                        EnumPurpose.REQUEST
                 )
                 .stream()
                 .map(this::mapToInventoryResponse)
