@@ -19,7 +19,6 @@ import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.UserResponse;
 import com.example.userservice.service.inteface.EmployeeService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -787,6 +786,22 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .map(EmployeeStore::getStoreId)
                     .collect(Collectors.toList());
 
+            // Get department from store name (first store if multiple stores assigned)
+            // Department represents the workplace/store name
+            String department = null;
+            if (!storeIds.isEmpty()) {
+                try {
+                    Optional<Store> firstStore = storeRepository.findByIdAndIsDeletedFalse(storeIds.get(0));
+                    if (firstStore.isPresent()) {
+                        department = firstStore.get().getName();
+                    }
+                } catch (Exception e) {
+                    log.warn("Error fetching store name for employee {}: {}", employee.getId(), e.getMessage());
+                    // Continue with null department if store fetch fails
+                }
+            }
+            // If no stores assigned or admin, department remains null
+
             return UserResponse.builder()
                     .id(employee.getId())
                     .birthday(employee.getBirthday())
@@ -798,7 +813,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                     .updatedAt(employee.getUpdatedAt())
                     .status(employee.getStatus())
                     .cccd(employee.getCccd())
-                    .point(null) // Employees don't have points
+                    .point(null) // Employees don't have points - removed from response
+                    .department(department) // Store name where employee works, null if not assigned or admin
                     .email(employee.getAccount().getEmail())
                     .role(employee.getAccount().getRole())
                     .storeIds(storeIds)
