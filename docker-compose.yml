@@ -68,7 +68,7 @@ services:
       - "traefik.docker.network=furnimart_net"
 
       # Router
-      - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`)"
+      - "traefik.http.routers.api-gateway.rule=Host(`furnimart.click`) && PathPrefix(`/swagger-ui`)"
       - "traefik.http.routers.api-gateway.entrypoints=websecure"
       - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"

@@ -213,7 +213,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     createInventoryItem(
                             inventory,
-                            null,
+                            itemReq.getLocationItemId(),
                             itemReq.getProductColorId(),
                             itemReq.getQuantity()
                     );
