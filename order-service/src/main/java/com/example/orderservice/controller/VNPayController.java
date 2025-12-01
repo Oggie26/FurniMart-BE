@@ -152,8 +152,6 @@ public class VNPayController {
         if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
                 if (isMobile) {
-                    // CẬP NHẬT
-
                     try {
                         orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
                         System.out.println("Đơn hàng #" + orderId + " → PAYMENT");
@@ -196,6 +194,7 @@ public class VNPayController {
 
                     response.getWriter().write(html);
                 } else {
+                    orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
                     response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
                 }
             } else {
