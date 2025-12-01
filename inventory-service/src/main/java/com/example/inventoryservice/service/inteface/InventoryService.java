@@ -22,7 +22,7 @@ public interface InventoryService {
 
     void transferStock(TransferStockRequest request);
 
-    InventoryResponse reserveStock(String productColorId, int quantity);
+    InventoryResponse reserveStock(String productColorId, int quantity, long orderId);
 
     InventoryResponse releaseReservedStock(String productColorId, int quantity);
 

@@ -1,0 +1,87 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: order-service
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    generate-ddl: true
+
+  datasource:
+    url: jdbc:postgresql://order-db:5432/order_db
+#    url: jdbc:postgresql://localhost:5432/order_db
+    username: postgres
+    password: 123456
+
+  data:
+    redis:
+      #      host: localhost
+      host: redis
+      port: 6379
+      timeout: 60000
+      connection-timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+    cache:
+      type: redis
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      auto-offset-reset: earliest
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      group-id: order-service-group
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "com.example.orderservice.event"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      backs: 1
+      retries: 3
+      properties:
+        spring.json.add.type.headers: false
+        max.request.size: 20971520
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+jwt:
+  secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
+  expiration: 3600000
+  refreshExpiration: 604800000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+#       defaultZone: http://localhost:8761/eureka
+
+vnpay:
+  tmnCode: 3MUC1EW6
+  hashSecret: O4ZM3EUFBZQMUAMB77HS4CG1IS120S1K
+  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  returnUrl: http://152.53.244.124:8080/api/v1/payment/vnpay-return
+
+# Cloudinary Configuration
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dtrmzaceb}
+  api-key: ${CLOUDINARY_API_KEY:694787457898143}
+  api-secret: ${CLOUDINARY_API_SECRET:0wVPq8zyKO1even9bpse5rSzk1U}
+
+# PDF Configuration
+app:
+  pdf:
+    directory: ./pdfs

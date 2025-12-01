@@ -40,8 +40,8 @@ public class SecurityConfig {
                                 "/api/addresses/**",
                                 "/api/orders/status/{id}",
                                 "/api/v1/payment-return/**",
-                                "/webjars/**",
                                 "/api/v1/payment/**",
+                                "/webjars/**",
                                 "/api/users/**",
                                 "/api/users/info/{authId}",
                                 "/swagger-ui.html"

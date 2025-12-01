@@ -55,7 +55,7 @@ public class OrderCreatedConsumer {
 //                        item.getQuantity(),
 //                        warehouseId
 //                );
-                    inventoryService.reserveStock(item.getProductColorId(), item.getQuantity());
+                    inventoryService.reserveStock(item.getProductColorId(), item.getQuantity(), event.getOrderId());
 
                     log.info("✅ Reserved stock for productColorId={} by {}", item.getProductColorId(), item.getQuantity());
                 } catch (Exception e) {

@@ -11,9 +11,11 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     List<Inventory> findAllByWarehouse_Id(String warehouseId);
 
-    List<Inventory> findAllByWarehouse_IdAndPurposeAndTransferStatus(
-            String warehouseId,
-            EnumPurpose purpose,
-            TransferStatus transferStatus
-    );
+//    List<Inventory> findAllByWarehouse_IdAndPurposeAndTransferStatus(
+//            String warehouseId,
+//            EnumPurpose purpose,
+//            TransferStatus transferStatus
+//    );
+List<Inventory> findAllByWarehouse_IdAndPurpose(String warehouseId, EnumPurpose purpose);
+
 }

@@ -27,7 +27,7 @@ public class InventoryItem {
     private Integer reservedQuantity = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_item_id", nullable = false)
+    @JoinColumn(name = "location_item_id")
     private LocationItem locationItem;
 
     @ManyToOne(fetch = FetchType.LAZY)

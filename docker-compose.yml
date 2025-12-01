@@ -41,8 +41,8 @@ services:
       - "./letsencrypt:/letsencrypt"
     networks:
       - backend
-  #  environment:
-  #    - DOCKER_API_VERSION=1.44
+  #    environment:
+  #      - DOCKER_API_VERSION=1.44
 
   eureka-server:
     build: ./eureka-server
@@ -61,8 +61,8 @@ services:
     networks:
       - backend
     restart: unless-stopped
-    ports:
-      - "8080:8080"
+#    ports:
+#      - "8080:8080"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
@@ -99,7 +99,8 @@ services:
   product-service:
     build: ./product-service
     container_name: product-service
-
+    ports:
+      - "8084:8084"
     depends_on:
       - eureka-server
       - product-db
@@ -131,7 +132,8 @@ services:
   user-service:
     build: ./user-service
     container_name: user-service
-
+    ports:
+      - "8086:8086"
     depends_on:
       - eureka-server
       - user-db
@@ -165,7 +167,8 @@ services:
     container_name: ai-service
     env_file:
       - .env
-
+    ports:
+      - "9000:9000"
     depends_on:
       - eureka-server
     networks:
@@ -178,7 +181,8 @@ services:
   order-service:
     build: ./order-service
     container_name: order-service
-
+    ports:
+      - "8085:8085"
     depends_on:
       - eureka-server
       - order-db
@@ -211,7 +215,8 @@ services:
   inventory-service:
     build: ./inventory-service
     container_name: inventory-service
-
+    ports:
+      - "8083:8083"
     depends_on:
       - eureka-server
       - inventory-db
@@ -243,7 +248,8 @@ services:
   notification-service:
     build: ./notification-service
     container_name: notification-service
-
+    ports:
+      - "8087:8087"
     depends_on:
       - eureka-server
       - kafka
@@ -256,7 +262,8 @@ services:
   delivery-service:
     build: ./delivery-service
     container_name: delivery-service
-
+    ports:
+      - "8089:8089"
     depends_on:
       - eureka-server
       - delivery-db

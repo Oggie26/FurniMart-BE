@@ -133,16 +133,36 @@ public class InventoryServiceImpl implements InventoryService {
                             String productColorId = detail.getProductColorId();
                             int requiredQuantity = detail.getQuantity();
 
-                            int totalExported = inventory.getInventoryItems().stream()
-                                    .filter(item -> productColorId.equals(item.getProductColorId()))
-                                    .mapToInt(item -> Math.abs(item.getQuantity()))
+                            List<InventoryItem> availableItems =
+                                    inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(
+                                            productColorId,
+                                            warehouse.getId()
+                                    );
+
+                            int totalAvailable = availableItems.stream()
+                                    .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
                                     .sum();
 
-                            if (totalExported < requiredQuantity) {
+                            if (totalAvailable < requiredQuantity) {
                                 throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
                             }
+
+                            for (InventoryItem item : availableItems) {
+                                int toDeduct = Math.min(item.getQuantity(), remaining);
+                                item.setQuantity(item.getQuantity() - toDeduct);
+
+                                if (item.getReservedQuantity() > 0) {
+                                    item.setReservedQuantity(Math.max(item.getReservedQuantity() - toDeduct, 0));
+                                }
+
+                                inventoryItemRepository.save(item);
+                                remaining -= toDeduct;
+                            }
                         }
+
                         orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+
+                    }
 
 //                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
 //                                .orderId(request.getOrderId())
@@ -164,7 +184,6 @@ public class InventoryServiceImpl implements InventoryService {
 //
 //                            throw new AppException(ErrorCode.EXPORT_ERROR);
 //                        }
-                    }
 
 
 
@@ -213,7 +232,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     createInventoryItem(
                             inventory,
-                            null,
+                            itemReq.getLocationItemId(),
                             itemReq.getProductColorId(),
                             itemReq.getQuantity()
                     );
@@ -441,11 +460,17 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse reserveStock(String productColorId, int quantity) {
-        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorId(productColorId);
+    public InventoryResponse reserveStock(String productColorId, int quantity, long orderId) {
+        OrderResponse orderInfo = getOrder(orderId);
+        Warehouse warehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderInfo.getStoreId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
         if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
         int remaining = quantity;
+        List<InventoryItem> reservedItems = new ArrayList<>();
+
         for (InventoryItem item : items) {
             int available = item.getQuantity() - item.getReservedQuantity();
             if (available <= 0) continue;
@@ -455,14 +480,22 @@ public class InventoryServiceImpl implements InventoryService {
             inventoryItemRepository.save(item);
 
             remaining -= toReserve;
+            reservedItems.add(item); // lưu lại để có thể reverse sau
             if (remaining <= 0) break;
         }
 
-        if (remaining > 0)
+        if (remaining > 0) {
+            // rollback reserved trước khi throw
+            for (InventoryItem ri : reservedItems) {
+                ri.setReservedQuantity(ri.getReservedQuantity() - Math.min(quantity, ri.getReservedQuantity()));
+                inventoryItemRepository.save(ri);
+            }
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+        }
 
         return mapToInventoryResponse(items.get(0).getInventory());
     }
+
 
     @Override
     @Transactional
@@ -563,10 +596,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public List<InventoryResponse> getPendingTransfers(String warehouseId) {
         return inventoryRepository
-                .findAllByWarehouse_IdAndPurposeAndTransferStatus(
+                .findAllByWarehouse_IdAndPurpose(
                         warehouseId,
-                        EnumPurpose.REQUEST,
-                        TransferStatus.PENDING
+                        EnumPurpose.REQUEST
                 )
                 .stream()
                 .map(this::mapToInventoryResponse)
@@ -688,25 +720,30 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private void createInventoryItem(Inventory inventory, String locationItemId, String productColorId, int quantity) {
-        if (inventory == null)
+        if (inventory == null) {
             throw new AppException(ErrorCode.INVENTORY_NOT_FOUND);
+        }
 
         LocationItem locationItem = null;
-        if (locationItemId != null) {
+
+        if (locationItemId != null && !locationItemId.isBlank()) {
             locationItem = locationItemRepository.findByIdAndIsDeletedFalse(locationItemId)
                     .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
         } else if (inventory.getType() != EnumTypes.TRANSFER) {
             throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
         }
 
-        InventoryItem item = InventoryItem.builder()
+        InventoryItem.InventoryItemBuilder builder = InventoryItem.builder()
                 .inventory(inventory)
-                .locationItem(locationItem)
                 .productColorId(productColorId)
                 .quantity(quantity)
-                .reservedQuantity(0)
-                .build();
+                .reservedQuantity(0);
 
+        if (locationItem != null) {
+            builder.locationItem(locationItem);
+        }
+
+        InventoryItem item = builder.build();
         inventoryItemRepository.save(item);
 
         if (inventory.getInventoryItems() == null) {
@@ -714,6 +751,8 @@ public class InventoryServiceImpl implements InventoryService {
         }
         inventory.getInventoryItems().add(item);
     }
+
+
 
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
@@ -744,11 +783,12 @@ public class InventoryServiceImpl implements InventoryService {
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
                 .productName(getProductName(item.getProductColorId()).getProduct().getName())
-//                .locationItem(item.getLocationItem())
-                .locationId(item.getLocationItem().getId())
+                // locationId chỉ lấy nếu locationItem khác null
+                .locationId(item.getLocationItem() != null ? item.getLocationItem().getId() : null)
                 .inventoryId(item.getInventory().getId())
                 .build();
     }
+
 
     private ProductColorResponse getProductName(String productColorId){
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
