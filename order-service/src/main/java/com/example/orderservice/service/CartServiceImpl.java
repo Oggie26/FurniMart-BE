@@ -121,12 +121,10 @@ public class CartServiceImpl implements CartService {
         Cart cart = cartRepository.findByUserId(getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
 
-        Set<CartItem> items = cart.getItems();
+        List<CartItem> itemList = new ArrayList<>(cart.getItems());
+        cartItemRepository.deleteAllInBatch(itemList);
 
-        if (items != null && !items.isEmpty()) {
-            cartItemRepository.deleteAllInBatch(items);
-            items.clear();
-        }
+        cart.getItems().clear();
     }
 
 
