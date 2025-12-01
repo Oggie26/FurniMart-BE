@@ -139,14 +139,6 @@ public class InventoryServiceImpl implements InventoryService {
                                             warehouse.getId()
                                     );
 
-                            int totalAvailable = availableItems.stream()
-                                    .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
-                                    .sum();
-
-                            if (totalAvailable < requiredQuantity) {
-                                throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-                            }
-
                             for (InventoryItem item : availableItems) {
                                 int toDeduct = Math.min(item.getQuantity(), remaining);
                                 item.setQuantity(item.getQuantity() - toDeduct);
