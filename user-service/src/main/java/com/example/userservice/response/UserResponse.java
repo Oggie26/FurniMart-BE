@@ -27,7 +27,8 @@ public class UserResponse {
     private Date birthday;
     private String avatar;
     private String cccd;
-    private Integer point;
+    private Integer point; // Only for CUSTOMER, null for employees
+    private String department; // Store name where employee works, null if not assigned or admin
     @Enumerated(EnumType.STRING)
     private EnumRole role;
     @Enumerated(EnumType.STRING)
