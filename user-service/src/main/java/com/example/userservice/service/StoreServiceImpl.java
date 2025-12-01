@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -250,6 +251,9 @@ public class StoreServiceImpl implements StoreService {
                     .map(EmployeeStore::getStoreId)
                     .collect(Collectors.toList());
             
+            // Get department from store name (current store)
+            String department = store.getName(); // Department is the store name where employee works
+            
             // Build employee response directly
             UserResponse employeeResponse = UserResponse.builder()
                     .id(employee.getId())
@@ -260,7 +264,8 @@ public class StoreServiceImpl implements StoreService {
                     .birthday(employee.getBirthday())
                     .avatar(employee.getAvatar())
                     .cccd(employee.getCccd())
-                    .point(null) // Employees don't have points
+                    .point(null) // Employees don't have points - removed from response
+                    .department(department) // Store name where employee works
                     .role(employee.getAccount().getRole())
                     .status(employee.getStatus())
                     .createdAt(employee.getCreatedAt())
@@ -437,6 +442,23 @@ public class StoreServiceImpl implements StoreService {
                 return null;
             }
 
+            // Get department from store name (first store if multiple stores assigned)
+            // Department represents the workplace/store name
+            String department = null;
+            if (!storeIds.isEmpty()) {
+                try {
+                    Optional<Store> firstStore = storeRepository.findByIdAndIsDeletedFalse(storeIds.get(0));
+                    if (firstStore.isPresent()) {
+                        department = firstStore.get().getName();
+                    }
+                } catch (Exception e) {
+                    log.warn("Error fetching store name for employee {}: {}", employee.getId(), e.getMessage());
+                    // Continue with null department if store fetch fails
+                }
+            }
+            // If no stores assigned or admin, department remains null
+            final String finalDepartment = department;
+
         return UserResponse.builder()
                 .id(employee.getId())
                 .fullName(employee.getFullName())
@@ -446,7 +468,8 @@ public class StoreServiceImpl implements StoreService {
                 .birthday(employee.getBirthday())
                 .avatar(employee.getAvatar())
                 .cccd(employee.getCccd())
-                .point(null) // Employees don't have points
+                    .point(null) // Employees don't have points - removed from response
+                    .department(finalDepartment) // Store name where employee works, null if not assigned or admin
                 .role(employee.getAccount().getRole())
                 .status(employee.getStatus())
                 .createdAt(employee.getCreatedAt())
