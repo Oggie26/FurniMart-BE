@@ -242,9 +242,10 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         assignment.setProductsPrepared(true);
         assignment.setProductsPreparedAt(LocalDateTime.now());
-        assignment.setStatus(DeliveryStatus.PREPARING);
+        assignment.setStatus(DeliveryStatus.READY);
 
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
+        orderClient.updateOrderStatus(order.getId(), EnumProcessOrder.SHIPPING);
         log.info("Products prepared for order: {}. Status set to PREPARING. Manager needs to confirm readiness.", request.getOrderId());
 
         return mapToResponse(saved);
