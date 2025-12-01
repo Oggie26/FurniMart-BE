@@ -453,15 +453,23 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryResponse reserveStock(String productColorId, int quantity, long orderId) {
+        // Lấy thông tin order
         OrderResponse orderInfo = getOrder(orderId);
-        Warehouse warehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderInfo.getStoreId())
+
+        // Lấy kho của store
+        Warehouse warehouse = warehouseRepository
+                .findByStoreIdAndIsDeletedFalse(orderInfo.getStoreId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
+        // Lấy tất cả item cùng productColorId trong kho
+        List<InventoryItem> items = inventoryItemRepository
+                .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
         if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
         int remaining = quantity;
-        List<InventoryItem> reservedItems = new ArrayList<>();
+
+        // Map lưu lượng reserve thực tế để rollback khi cần
+        Map<InventoryItem, Integer> reservedMap = new LinkedHashMap<>();
 
         for (InventoryItem item : items) {
             int available = item.getQuantity() - item.getReservedQuantity();
@@ -471,22 +479,26 @@ public class InventoryServiceImpl implements InventoryService {
             item.setReservedQuantity(item.getReservedQuantity() + toReserve);
             inventoryItemRepository.save(item);
 
+            reservedMap.put(item, toReserve);
             remaining -= toReserve;
-            reservedItems.add(item); // lưu lại để có thể reverse sau
             if (remaining <= 0) break;
         }
 
+        // Nếu không đủ stock → rollback
         if (remaining > 0) {
-            // rollback reserved trước khi throw
-            for (InventoryItem ri : reservedItems) {
-                ri.setReservedQuantity(ri.getReservedQuantity() - Math.min(quantity, ri.getReservedQuantity()));
+            for (Map.Entry<InventoryItem, Integer> entry : reservedMap.entrySet()) {
+                InventoryItem ri = entry.getKey();
+                int reservedQty = entry.getValue();
+                ri.setReservedQuantity(ri.getReservedQuantity() - reservedQty);
                 inventoryItemRepository.save(ri);
             }
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
         }
 
+        // Trả về inventory response dựa trên item đầu tiên
         return mapToInventoryResponse(items.get(0).getInventory());
     }
+
 
 
     @Override
