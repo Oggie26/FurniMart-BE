@@ -133,16 +133,23 @@ public class InventoryServiceImpl implements InventoryService {
                             String productColorId = detail.getProductColorId();
                             int requiredQuantity = detail.getQuantity();
 
-                            int totalExported = inventory.getInventoryItems().stream()
-                                    .filter(item -> productColorId.equals(item.getProductColorId()))
-                                    .mapToInt(item -> Math.abs(item.getQuantity()))
+                            List<InventoryItem> availableItems =
+                                    inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(
+                                            productColorId,
+                                            warehouse.getId()
+                                    );
+
+                            int totalAvailable = availableItems.stream()
+                                    .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
                                     .sum();
 
-                            if (totalExported < requiredQuantity) {
+                            if (totalAvailable < requiredQuantity) {
                                 throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
                             }
                         }
+
                         orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+                    }
 
 //                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
 //                                .orderId(request.getOrderId())
@@ -164,7 +171,6 @@ public class InventoryServiceImpl implements InventoryService {
 //
 //                            throw new AppException(ErrorCode.EXPORT_ERROR);
 //                        }
-                    }
 
 
 
