@@ -6,7 +6,7 @@ public enum EnumProcessOrder {
     PAYMENT,
     ASSIGN_ORDER_STORE,
     MANAGER_ACCEPT,
-    READY_FOR_INVOICE,  // Sẵn sàng để tạo PDF/hóa đơn (sau MANAGER_ACCEPT)
+    READY_FOR_INVOICE,
     MANAGER_REJECT,
     CONFIRMED,
     PACKAGED,
