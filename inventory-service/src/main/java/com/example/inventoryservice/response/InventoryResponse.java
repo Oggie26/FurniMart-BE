@@ -25,6 +25,7 @@ public class InventoryResponse {
     private String warehouseName;
     private String warehouseId;
     private Long orderId;
+    private String pdfUrl;
     private TransferStatus transferStatus;
     private List<InventoryItemResponse> itemResponseList;
 }

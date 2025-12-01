@@ -44,6 +44,9 @@ public class Inventory extends AbstractEntity {
     private String note;
 
     @Column
+    private String PdfUrl;
+
+    @Column
     private Long orderId;
 
     @Column(unique = true, nullable = false)

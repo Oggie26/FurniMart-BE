@@ -40,6 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserClient userClient;
     private final OrderClient orderClient;
     private final ProductClient productClient;
+    private final PDFService pdfService;
 //    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
 
 
@@ -209,7 +210,13 @@ public class InventoryServiceImpl implements InventoryService {
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
             }
         }
-
+        try {
+            String pdfUrl = pdfService.generateExportPDF(inventory);
+            inventory.setPdfUrl(pdfUrl);
+            inventoryRepository.save(inventory);
+        } catch (Exception e) {
+            log.error("Không thể tạo PDF cho đơn hàng {}: {}", inventory.getId(), e.getMessage());
+        }
         return mapToInventoryResponse(inventory);
     }
 
@@ -748,6 +755,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .type(inventory.getType())
                 .purpose(inventory.getPurpose())
                 .date(inventory.getDate())
+                .pdfUrl(inventory.getPdfUrl())
                 .note(inventory.getNote())
                 .transferStatus(inventory.getTransferStatus())
                 .warehouseId(inventory.getWarehouse().getId())

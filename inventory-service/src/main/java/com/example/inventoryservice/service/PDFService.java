@@ -7,7 +7,10 @@ import com.example.inventoryservice.feign.UserClient;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.ProductColorResponse;
 import com.example.inventoryservice.response.UserResponse;
+import com.itextpdf.html2pdf.ConverterProperties;
 import com.itextpdf.html2pdf.HtmlConverter;
+import com.itextpdf.html2pdf.resolver.font.DefaultFontProvider;
+import com.itextpdf.layout.font.FontProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,52 +33,79 @@ public class PDFService {
 
     private final ProductClient productClient;
     private final UserClient userClient;
+    private final CloudinaryService cloudinaryService;
 
     @Value("${app.pdf.directory:./pdfs}")
     private String pdfDirectory;
 
     public String generateExportPDF(Inventory inventory) {
+        // Tạo tên file duy nhất bằng timestamp để tránh trùng lặp
+        String fileName = "export_" + inventory.getId() + "_" + System.currentTimeMillis() + ".pdf";
+        String filePath = pdfDirectory + File.separator + fileName;
+        File pdfFile = null;
+
         try {
-            // Create PDF directory if it doesn't exist
+            // 1. Tạo thư mục chứa PDF tạm nếu chưa tồn tại
             Path pdfPath = Paths.get(pdfDirectory);
             if (!Files.exists(pdfPath)) {
                 Files.createDirectories(pdfPath);
             }
 
-            // Get employee information
+            // 2. Lấy thông tin nhân viên (có try-catch nội bộ để không làm chết luồng chính)
             UserResponse employee = getEmployee(inventory.getEmployeeId());
 
-            // Generate HTML content
+            // 3. Tạo nội dung HTML từ dữ liệu
             String htmlContent = generateExportHTML(inventory, employee);
 
-            // Generate PDF file name
-            String fileName = "export_" + inventory.getId() + "_" + System.currentTimeMillis() + ".pdf";
-            String filePath = pdfDirectory + File.separator + fileName;
+            // 4. Cấu hình Font Provider để hỗ trợ Tiếng Việt (Unicode)
+            // DefaultFontProvider(false, true, false): Không dùng font mặc định, dùng font hệ thống, không dùng font test
+            ConverterProperties properties = new ConverterProperties();
+            FontProvider fontProvider = new DefaultFontProvider(false, true, false);
+            properties.setFontProvider(fontProvider);
 
-            // Convert HTML to PDF
-            FileOutputStream outputStream = new FileOutputStream(filePath);
-            HtmlConverter.convertToPdf(htmlContent, outputStream);
-            outputStream.close();
+            // 5. Convert HTML sang PDF và lưu vào file tạm
+            // Dùng try-with-resources để tự động đóng Stream
+            try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+                HtmlConverter.convertToPdf(htmlContent, outputStream, properties);
+            }
 
-            log.info("PDF generated successfully: {}", filePath);
-            return filePath;
+            // 6. Upload file PDF lên Cloudinary
+            pdfFile = new File(filePath);
+            String publicId = "export_inventory_" + inventory.getId();
+
+            // Upload file PDF gốc (không convert sang ảnh để giữ chất lượng và text)
+            String cloudinaryUrl = cloudinaryService.uploadPDF(pdfFile, publicId);
+
+            log.info("☁️ PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
+            return cloudinaryUrl;
 
         } catch (Exception e) {
             log.error("Error generating PDF for inventory {}: {}", inventory.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
+        } finally {
+            // 7. Quan trọng: Xóa file tạm sau khi upload xong để giải phóng dung lượng server
+            if (pdfFile != null && pdfFile.exists()) {
+                try {
+                    Files.delete(pdfFile.toPath());
+                    log.info("Deleted temporary PDF file: {}", filePath);
+                } catch (IOException ex) {
+                    log.warn("Failed to delete temporary file: {}", ex.getMessage());
+                }
+            }
         }
     }
 
     private String generateExportHTML(Inventory inventory, UserResponse employee) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        
+
         StringBuilder html = new StringBuilder();
         html.append("<!DOCTYPE html>");
         html.append("<html><head>");
         html.append("<meta charset='UTF-8'>");
         html.append("<style>");
-        html.append("body { font-family: 'Times New Roman', serif; margin: 20px; line-height: 1.6; }");
+        // Ưu tiên font Unicode phổ biến
+        html.append("body { font-family: 'Times New Roman', Arial, sans-serif; margin: 20px; line-height: 1.6; }");
         html.append(".header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }");
         html.append(".header h1 { font-size: 24px; margin: 5px 0; font-weight: bold; }");
         html.append(".header h2 { font-size: 20px; margin: 5px 0; text-transform: uppercase; letter-spacing: 2px; }");
@@ -106,20 +137,27 @@ public class PDFService {
         html.append("<span class='info-label'>Mã phiếu:</span>");
         html.append("<span class='info-value'>").append(inventory.getCode() != null ? inventory.getCode() : "N/A").append("</span>");
         html.append("</div>");
+
         html.append("<div class='info-row'>");
         html.append("<span class='info-label'>Ngày xuất:</span>");
-        html.append("<span class='info-value'>").append(inventory.getDate().format(dateFormatter)).append("</span>");
+        // Xử lý null date an toàn
+        String dateStr = inventory.getDate() != null ? inventory.getDate().format(dateFormatter) : dateFormat.format(new Date());
+        html.append("<span class='info-value'>").append(dateStr).append("</span>");
         html.append("</div>");
+
         html.append("<div class='info-row'>");
         html.append("<span class='info-label'>Kho xuất:</span>");
-        html.append("<span class='info-value'>").append(inventory.getWarehouse() != null ? inventory.getWarehouse().getWarehouseName() : "N/A").append("</span>");
+        String warehouseName = inventory.getWarehouse() != null ? inventory.getWarehouse().getWarehouseName() : "N/A";
+        html.append("<span class='info-value'>").append(warehouseName).append("</span>");
         html.append("</div>");
+
         if (employee != null) {
             html.append("<div class='info-row'>");
             html.append("<span class='info-label'>Nhân viên xuất:</span>");
             html.append("<span class='info-value'>").append(employee.getFullName() != null ? employee.getFullName() : "N/A").append("</span>");
             html.append("</div>");
         }
+
         if (inventory.getOrderId() != null) {
             html.append("<div class='info-row'>");
             html.append("<span class='info-label'>Mã đơn hàng:</span>");
@@ -128,7 +166,7 @@ public class PDFService {
         }
         html.append("</div>");
 
-        // Inventory Items Table
+        // Table Header
         html.append("<div class='info-section'>");
         html.append("<h3 style='margin-bottom: 10px;'>Chi tiết sản phẩm xuất kho</h3>");
         html.append("<table>");
@@ -144,46 +182,42 @@ public class PDFService {
 
         int index = 1;
         int totalQuantity = 0;
+
+        // Table Body - Kiểm tra null list
         if (inventory.getInventoryItems() != null && !inventory.getInventoryItems().isEmpty()) {
             for (InventoryItem item : inventory.getInventoryItems()) {
+                String productName = "N/A";
+                String colorName = "N/A";
+                String locationCode = item.getLocationItem() != null ? item.getLocationItem().getCode() : "N/A";
+                int quantity = Math.abs(item.getQuantity());
+
                 try {
+                    // Gọi Feign Client lấy thông tin chi tiết
                     ProductColorResponse productColor = getProductColor(item.getProductColorId());
-                    String productName = productColor != null && productColor.getProduct() != null 
-                        ? productColor.getProduct().getName() : "N/A";
-                    String colorName = productColor != null && productColor.getColor() != null 
-                        ? productColor.getColor().getColorName() : "N/A";
-                    
-                    String locationCode = item.getLocationItem() != null 
-                        ? item.getLocationItem().getCode() : "N/A";
-                    
-                    int quantity = Math.abs(item.getQuantity()); // Export is negative, so we take absolute value
-                    totalQuantity += quantity;
-                    
-                    html.append("<tr>");
-                    html.append("<td>").append(index++).append("</td>");
-                    html.append("<td style='text-align: left;'>").append(productName).append("</td>");
-                    html.append("<td>").append(colorName).append("</td>");
-                    html.append("<td>").append(quantity).append("</td>");
-                    html.append("<td>").append(locationCode).append("</td>");
-                    html.append("<td>-</td>");
-                    html.append("</tr>");
+                    if (productColor != null) {
+                        if (productColor.getProduct() != null) productName = productColor.getProduct().getName();
+                        if (productColor.getColor() != null) colorName = productColor.getColor().getColorName();
+                    }
                 } catch (Exception e) {
-                    log.warn("Error getting product info for productColorId {}: {}", item.getProductColorId(), e.getMessage());
-                    int quantity = Math.abs(item.getQuantity());
-                    totalQuantity += quantity;
-                    html.append("<tr>");
-                    html.append("<td>").append(index++).append("</td>");
-                    html.append("<td style='text-align: left;'>N/A</td>");
-                    html.append("<td>N/A</td>");
-                    html.append("<td>").append(quantity).append("</td>");
-                    html.append("<td>").append(item.getLocationItem() != null ? item.getLocationItem().getCode() : "N/A").append("</td>");
-                    html.append("<td>-</td>");
-                    html.append("</tr>");
+                    log.warn("Error getting product info for item {}", item.getId());
                 }
+
+                totalQuantity += quantity;
+
+                html.append("<tr>");
+                html.append("<td>").append(index++).append("</td>");
+                html.append("<td style='text-align: left;'>").append(productName).append("</td>");
+                html.append("<td>").append(colorName).append("</td>");
+                html.append("<td>").append(quantity).append("</td>");
+                html.append("<td>").append(locationCode).append("</td>");
+                html.append("<td>-</td>");
+                html.append("</tr>");
             }
+        } else {
+            html.append("<tr><td colspan='6' style='text-align:center;'>Không có sản phẩm nào</td></tr>");
         }
 
-        // Total row
+        // Total Row
         html.append("<tr style='font-weight: bold; background-color: #f0f0f0;'>");
         html.append("<td colspan='3' style='text-align: right;'>TỔNG CỘNG:</td>");
         html.append("<td>").append(totalQuantity).append("</td>");
@@ -228,27 +262,24 @@ public class PDFService {
     }
 
     private ProductColorResponse getProductColor(String productColorId) {
+        if (productColorId == null) return null;
         try {
             ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
-            if (response != null && response.getData() != null) {
-                return response.getData();
-            }
+            return (response != null) ? response.getData() : null;
         } catch (Exception e) {
             log.warn("Error fetching product color {}: {}", productColorId, e.getMessage());
+            return null;
         }
-        return null;
     }
 
     private UserResponse getEmployee(String employeeId) {
+        if (employeeId == null) return null;
         try {
             ApiResponse<UserResponse> response = userClient.getUserById(employeeId);
-            if (response != null && response.getData() != null) {
-                return response.getData();
-            }
+            return (response != null) ? response.getData() : null;
         } catch (Exception e) {
             log.warn("Error fetching employee {}: {}", employeeId, e.getMessage());
+            return null;
         }
-        return null;
     }
 }
-
