@@ -698,11 +698,24 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.INVENTORY_NOT_FOUND);
 
         LocationItem locationItem = null;
+
         if (locationItemId != null) {
             locationItem = locationItemRepository.findByIdAndIsDeletedFalse(locationItemId)
                     .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
-        } else if (inventory.getType() != EnumTypes.TRANSFER) {
+        } else if (inventory.getType() == EnumTypes.IMPORT) {
             throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
+        } else if (inventory.getType() == EnumTypes.EXPORT) {
+            List<InventoryItem> availableItems = inventoryItemRepository
+                    .findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, inventory.getWarehouse().getId())
+                    .stream()
+                    .filter(i -> (i.getQuantity() - i.getReservedQuantity()) > 0)
+                    .toList();
+
+            if (availableItems.isEmpty()) {
+                throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+            }
+
+            locationItem = availableItems.get(0).getLocationItem();
         }
 
         InventoryItem.InventoryItemBuilder builder = InventoryItem.builder()
@@ -723,6 +736,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
         inventory.getInventoryItems().add(item);
     }
+
 
 
 
