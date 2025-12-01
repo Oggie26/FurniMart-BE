@@ -148,12 +148,15 @@ public class InventoryServiceImpl implements InventoryService {
                             }
 
                             for (InventoryItem item : availableItems) {
-                                int toDeduct = Math.min(item.getQuantity(), requiredQuantity);
+                                int toDeduct = Math.min(item.getQuantity(), remaining);
                                 item.setQuantity(item.getQuantity() - toDeduct);
-                                inventoryItemRepository.save(item);
 
+                                if (item.getReservedQuantity() > 0) {
+                                    item.setReservedQuantity(Math.max(item.getReservedQuantity() - toDeduct, 0));
+                                }
+
+                                inventoryItemRepository.save(item);
                                 remaining -= toDeduct;
-                                if (remaining <= 0) break;
                             }
                         }
 
