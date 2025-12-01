@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class BlogController {
 
     @PostMapping
     @Operation(summary = "Create a new blog")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BlogResponse> createBlog(@Valid @RequestBody BlogRequest request) {
         return ApiResponse.<BlogResponse>builder()
@@ -38,6 +40,7 @@ public class BlogController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update blog information")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<BlogResponse> updateBlog(@PathVariable Integer id, @Valid @RequestBody BlogRequest request) {
         return ApiResponse.<BlogResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -113,6 +116,7 @@ public class BlogController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft delete blog")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<Void> deleteBlog(@PathVariable Integer id) {
         blogService.deleteBlog(id);
         return ApiResponse.<Void>builder()
@@ -123,6 +127,7 @@ public class BlogController {
 
     @PatchMapping("/{id}/toggle-status")
     @Operation(summary = "Toggle blog status")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<Void> toggleBlogStatus(@PathVariable Integer id) {
         blogService.toggleBlogStatus(id);
         return ApiResponse.<Void>builder()
