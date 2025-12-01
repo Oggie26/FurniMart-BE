@@ -102,7 +102,7 @@ public class InventoryServiceImpl implements InventoryService {
                     if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
                     int remaining = itemReq.getQuantity();
-
+                    long checkOrderId = request.getOrderId() != null ? request.getOrderId() : 0;
                     for (InventoryItem it : items) {
                         int available = it.getQuantity() - it.getReservedQuantity();
                         if (available <= 0) continue;
@@ -131,7 +131,6 @@ public class InventoryServiceImpl implements InventoryService {
 
                         for (OrderDetailResponse detail : order.getOrderDetails()) {
                             String productColorId = detail.getProductColorId();
-                            int requiredQuantity = detail.getQuantity();
 
                             List<InventoryItem> availableItems =
                                     inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(
@@ -156,30 +155,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     }
 
-//                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
-//                                .orderId(request.getOrderId())
-//                                .enumProcessOrder(EnumProcessOrder.READY_FOR_INVOICE)
-//                                .build();
-
-//                        try {
-//                            kafkaTemplate.send("update-status-order-created-topic", event).get();
-//                            log.info("✔ Kafka event sent for order {}", request.getOrderId());
-//                        } catch (Exception ex) {
-//                            log.error("❌ Failed to send Kafka event: {}", ex.getMessage());
-//
-//                            try {
-//                                orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
-//                                log.info("✔ Order rollback to PACKAGED due to Kafka failure");
-//                            } catch (Exception e) {
-//                                log.error("❌ Failed to rollback order after Kafka failure: {}", e.getMessage());
-//                            }
-//
-//                            throw new AppException(ErrorCode.EXPORT_ERROR);
-//                        }
-
-
-
-                    if (request.getToWarehouseId() != null) {
+                    if (request.getToWarehouseId() != null && checkOrderId == 0 ) {
                         Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
