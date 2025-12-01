@@ -650,7 +650,7 @@ public class OrderServiceImpl implements OrderService {
 
         return OrderResponse.builder()
                 .id(order.getId())
-                .user(safeGetUser(order.getUserId()))
+                .user(safeGetUser(order.getUserId()) != null ? safeGetUser(order.getUserId()) : null)
                 .address(safeGetAddress(order.getAddressId()))
                 .total(order.getTotal())
                 .note(order.getNote())
