@@ -699,14 +699,17 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
         }
 
-        InventoryItem item = InventoryItem.builder()
+        InventoryItem.InventoryItemBuilder builder = InventoryItem.builder()
                 .inventory(inventory)
-                .locationItem(locationItem)
                 .productColorId(productColorId)
                 .quantity(quantity)
-                .reservedQuantity(0)
-                .build();
+                .reservedQuantity(0);
 
+        if (locationItem != null) {
+            builder.locationItem(locationItem);
+        }
+
+        InventoryItem item = builder.build();
         inventoryItemRepository.save(item);
 
         if (inventory.getInventoryItems() == null) {
@@ -714,6 +717,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
         inventory.getInventoryItems().add(item);
     }
+
 
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
