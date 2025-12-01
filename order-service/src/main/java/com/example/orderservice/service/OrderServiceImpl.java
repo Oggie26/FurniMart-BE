@@ -15,6 +15,7 @@ import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
+import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,7 @@ public class OrderServiceImpl implements OrderService {
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
+    private final CartService cartService;
 
     @Override
     @Transactional
@@ -108,7 +110,6 @@ public class OrderServiceImpl implements OrderService {
             String pdfPath = pdfService.generateOrderPDF(order, user, address);
             order.setPdfFilePath(pdfPath);
             orderRepository.save(order);
-            log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
         } catch (Exception e) {
             log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
         }
@@ -148,7 +149,6 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-        // Generate PDF for the ordergenerateOrderPDF
         try {
             UserResponse user = safeGetUser(order.getUserId());
             AddressResponse address = safeGetAddress(order.getAddressId());
@@ -158,7 +158,6 @@ public class OrderServiceImpl implements OrderService {
             log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
         } catch (Exception e) {
             log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
-            // Continue even if PDF generation fails
         }
 
         // Clear cart after creating pre-order
@@ -337,6 +336,7 @@ public class OrderServiceImpl implements OrderService {
                         .build())
                 .toList();
 
+        cartService.clearCart();
         OrderCreatedEvent event = OrderCreatedEvent.builder()
                 .email(safeGetUser(order.getUserId()).getEmail())
                 .fullName(safeGetUser(order.getUserId()).getFullName())
@@ -354,6 +354,7 @@ public class OrderServiceImpl implements OrderService {
                     .whenComplete((
                             result, ex) -> {
                         if (ex != null) {
+
                         } else {
                             log.info("Successfully sent order creation event for: {}", event.getOrderId());
                         }
@@ -409,6 +410,7 @@ public class OrderServiceImpl implements OrderService {
                 kafkaTemplate.send("order-created-topic", event)
                         .whenComplete((result, ex) -> {
                             if (ex != null) {
+                                log.error("Kafka send failed: {}", ex.getMessage());
                             } else {
                                 log.info("Successfully sent order creation event for: {}", event.getOrderId());
                             }
