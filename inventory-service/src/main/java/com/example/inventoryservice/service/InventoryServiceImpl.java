@@ -700,7 +700,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         LocationItem locationItem = null;
 
-        if (locationItemId != null) {
+        if (locationItemId != null && !locationItemId.isBlank()) {
             locationItem = locationItemRepository.findByIdAndIsDeletedFalse(locationItemId)
                     .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
         } else if (inventory.getType() != EnumTypes.TRANSFER) {
