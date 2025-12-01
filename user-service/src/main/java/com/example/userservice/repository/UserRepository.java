@@ -42,4 +42,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     // Admin-related queries
     @Query("SELECT u FROM User u WHERE u.account.role = :role AND u.isDeleted = false")
     List<User> findByAccountRoleAndIsDeletedFalse(@Param("role") EnumRole role);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.isDeleted = false")
+    Long countByIsDeletedFalse();
 }

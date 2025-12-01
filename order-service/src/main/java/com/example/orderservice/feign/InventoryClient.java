@@ -2,6 +2,7 @@ package com.example.orderservice.feign;
 
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.InventoryResponse;
+import com.example.orderservice.response.LowStockProductResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -31,5 +32,11 @@ public interface InventoryClient {
     @GetMapping("/api/inventories/stock/total-available")
     ApiResponse<Integer> getAvailableStockByProductColorId(
             @RequestParam(name = "productColorId") @NotBlank(message = "ProductColor ID is required") String productColorId
+    );
+
+    @GetMapping("/api/inventories/stock/low-stock")
+    ApiResponse<List<LowStockProductResponse>> getLowStockProducts(
+            @RequestParam(name = "storeId", required = false) String storeId,
+            @RequestParam(name = "threshold", defaultValue = "10") @Min(1) int threshold
     );
 }

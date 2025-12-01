@@ -22,6 +22,8 @@ public interface UserClient {
     @GetMapping("/api/users/account/{accountId}")
     ApiResponse<UserResponse> getUserByAccountId(@PathVariable String accountId);
 
+    @GetMapping("/api/users/count")
+    ApiResponse<Long> getTotalUsersCount();
 }
 
 

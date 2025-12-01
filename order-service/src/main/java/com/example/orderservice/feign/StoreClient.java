@@ -23,4 +23,7 @@ public interface StoreClient {
             @RequestParam double lat,
             @RequestParam double lon,
             @RequestParam(defaultValue = "5") int limit);
+
+    @GetMapping("/api/stores/count/active")
+    ApiResponse<Long> getActiveStoresCount();
 }

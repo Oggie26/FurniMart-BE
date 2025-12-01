@@ -9,13 +9,17 @@ import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
 import com.example.inventoryservice.response.ProductLocationResponse;
+import com.example.inventoryservice.service.PDFService;
 import com.example.inventoryservice.service.inteface.InventoryService;
+import com.example.inventoryservice.repository.InventoryRepository;
+import com.example.inventoryservice.enums.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +32,8 @@ import java.util.List;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final PDFService pdfService;
+    private final InventoryRepository inventoryRepository;
 
     // ==========================================================
     // 1. QUẢN LÝ PHIẾU KHO
@@ -383,6 +389,39 @@ public class InventoryController {
                 .status(200)
                 .message("Lấy danh sách yêu cầu chuyển kho đang chờ duyệt thành công")
                 .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Tạo PDF phiếu xuất kho")
+    @PostMapping("/{inventoryId}/generate-pdf")
+    @Transactional(readOnly = true)
+    public ApiResponse<String> generateExportPDF(@PathVariable Long inventoryId) {
+        var inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
+
+        // Only generate PDF for EXPORT type inventories
+        if (inventory.getType() != com.example.inventoryservice.enums.EnumTypes.EXPORT) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // Initialize lazy relationships to avoid LazyInitializationException
+        if (inventory.getWarehouse() != null) {
+            inventory.getWarehouse().getWarehouseName(); // Trigger lazy load
+        }
+        if (inventory.getInventoryItems() != null) {
+            inventory.getInventoryItems().forEach(item -> {
+                if (item.getLocationItem() != null) {
+                    item.getLocationItem().getCode(); // Trigger lazy load
+                }
+            });
+        }
+
+        String pdfPath = pdfService.generateExportPDF(inventory);
+
+        return ApiResponse.<String>builder()
+                .status(200)
+                .message("Tạo PDF phiếu xuất kho thành công")
+                .data(pdfPath)
                 .build();
     }
 }

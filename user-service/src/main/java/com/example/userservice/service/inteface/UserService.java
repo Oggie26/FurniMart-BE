@@ -63,4 +63,6 @@ public interface UserService {
     
     // Staff method to create customer account with delivery address
     StaffCreateCustomerResponse createCustomerAccountForStaff(StaffCreateCustomerRequest request);
+
+    Long getTotalUsersCount();
 }

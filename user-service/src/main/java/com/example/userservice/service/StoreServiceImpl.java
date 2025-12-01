@@ -363,6 +363,12 @@ public class StoreServiceImpl implements StoreService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Long getActiveStoresCount() {
+        return storeRepository.countByStatusAndIsDeletedFalse(com.example.userservice.enums.EnumStatus.ACTIVE);
+    }
+
     private double haversine(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371;
         double dLat = Math.toRadians(lat2 - lat1);

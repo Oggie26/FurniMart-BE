@@ -61,4 +61,6 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     @Query("SELECT s FROM Store s WHERE s.latitude IS NOT NULL AND s.longitude IS NOT NULL")
     List<Store> findAllWithCoordinates();
 
+    @Query("SELECT COUNT(s) FROM Store s WHERE s.isDeleted = false AND s.status = :status")
+    Long countByStatusAndIsDeletedFalse(@Param("status") EnumStatus status);
 }

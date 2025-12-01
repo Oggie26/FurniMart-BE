@@ -180,6 +180,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Long getTotalUsersCount() {
+        return userRepository.countByIsDeletedFalse();
+    }
+
+    @Override
     public List<UserResponse> getUsersByStatus(String status) {
         EnumStatus enumStatus = EnumStatus.valueOf(status.toUpperCase());
         List<User> users = userRepository.findByStatusAndIsDeletedFalse(enumStatus);

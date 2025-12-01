@@ -44,4 +44,6 @@ public interface StoreService {
     List<Store> getNearestStores(double lat, double lon, int limit);
 
     List<StoreDistance> findNearestStores(double lat, double lon, int limit);
+
+    Long getActiveStoresCount();
 }

@@ -211,4 +211,14 @@ public class StoreController {
                 .data(nearestStores)
                 .build();
     }
+
+    @GetMapping("/count/active")
+    @Operation(summary = "Get count of active stores")
+    public ApiResponse<Long> getActiveStoresCount() {
+        return ApiResponse.<Long>builder()
+                .status(HttpStatus.OK.value())
+                .message("Active stores count retrieved successfully")
+                .data(storeService.getActiveStoresCount())
+                .build();
+    }
 }

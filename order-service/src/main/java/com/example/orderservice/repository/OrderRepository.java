@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -126,5 +127,51 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByStoreIdWithInvoice(
             @Param("storeId") String storeId,
             Pageable pageable
+    );
+
+    // Dashboard queries
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.isDeleted = false AND o.status IN :statuses")
+    Double getTotalRevenueByStatuses(@Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses);
+
+    @Query("""
+        SELECT COALESCE(SUM(o.total), 0) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId 
+          AND o.status IN :statuses
+    """)
+    Double getTotalRevenueByStoreAndStatuses(
+            @Param("storeId") String storeId,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses
+    );
+
+    @Query("""
+        SELECT COUNT(o) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId 
+          AND o.status = :status
+    """)
+    Long countOrdersByStoreAndStatus(
+            @Param("storeId") String storeId,
+            @Param("status") com.example.orderservice.enums.EnumProcessOrder status
+    );
+
+    @Query("""
+        SELECT DATE(o.orderDate) as date, 
+               COALESCE(SUM(o.total), 0) as revenue, 
+               COUNT(o) as orderCount
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.status IN :statuses
+          AND o.orderDate >= :startDate 
+          AND o.orderDate <= :endDate
+        GROUP BY DATE(o.orderDate)
+        ORDER BY DATE(o.orderDate) ASC
+    """)
+    List<Object[]> getRevenueChartData(
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
     );
 }

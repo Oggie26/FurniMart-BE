@@ -208,6 +208,17 @@ public class UserController {
                 .status(HttpStatus.CREATED.value())
                 .message("Customer account created successfully")
                 .data(userService.createCustomerAccountForStaff(request))
+                .biuld();
+    }
+    
+    @GetMapping("/count")
+    @Operation(summary = "Get total users count")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Long> getTotalUsersCount() {
+        return ApiResponse.<Long>builder()
+                .status(HttpStatus.OK.value())
+                .message("Total users count retrieved successfully")
+                .data(userService.getTotalUsersCount())
                 .build();
     }
 }
