@@ -757,11 +757,12 @@ public class InventoryServiceImpl implements InventoryService {
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
                 .productName(getProductName(item.getProductColorId()).getProduct().getName())
-//                .locationItem(item.getLocationItem())
-                .locationId(item.getLocationItem().getId())
+                // locationId chỉ lấy nếu locationItem khác null
+                .locationId(item.getLocationItem() != null ? item.getLocationItem().getId() : null)
                 .inventoryId(item.getInventory().getId())
                 .build();
     }
+
 
     private ProductColorResponse getProductName(String productColorId){
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
