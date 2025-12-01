@@ -146,9 +146,19 @@ public class InventoryServiceImpl implements InventoryService {
                             if (totalAvailable < requiredQuantity) {
                                 throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
                             }
+
+                            for (InventoryItem item : availableItems) {
+                                int toDeduct = Math.min(item.getQuantity(), requiredQuantity);
+                                item.setQuantity(item.getQuantity() - toDeduct);
+                                inventoryItemRepository.save(item);
+
+                                remaining -= toDeduct;
+                                if (remaining <= 0) break;
+                            }
                         }
 
                         orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+
                     }
 
 //                        UpdateStatusOrderCreatedEvent event = UpdateStatusOrderCreatedEvent.builder()
@@ -447,11 +457,17 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public InventoryResponse reserveStock(String productColorId, int quantity) {
-        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorId(productColorId);
+    public InventoryResponse reserveStock(String productColorId, int quantity, long orderId) {
+        OrderResponse orderInfo = getOrder(orderId);
+        Warehouse warehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderInfo.getStoreId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
         if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
         int remaining = quantity;
+        List<InventoryItem> reservedItems = new ArrayList<>();
+
         for (InventoryItem item : items) {
             int available = item.getQuantity() - item.getReservedQuantity();
             if (available <= 0) continue;
@@ -461,14 +477,22 @@ public class InventoryServiceImpl implements InventoryService {
             inventoryItemRepository.save(item);
 
             remaining -= toReserve;
+            reservedItems.add(item); // lưu lại để có thể reverse sau
             if (remaining <= 0) break;
         }
 
-        if (remaining > 0)
+        if (remaining > 0) {
+            // rollback reserved trước khi throw
+            for (InventoryItem ri : reservedItems) {
+                ri.setReservedQuantity(ri.getReservedQuantity() - Math.min(quantity, ri.getReservedQuantity()));
+                inventoryItemRepository.save(ri);
+            }
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+        }
 
         return mapToInventoryResponse(items.get(0).getInventory());
     }
+
 
     @Override
     @Transactional

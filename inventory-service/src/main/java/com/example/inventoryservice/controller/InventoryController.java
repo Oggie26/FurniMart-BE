@@ -96,22 +96,22 @@ public class InventoryController {
                 .build();
     }
 
-    @Operation(summary = "Giữ hàng (Tạo phiếu RESERVE)")
-    @PostMapping("/reserve")
-    public ApiResponse<InventoryResponse> reserveStock(
-            @Valid @RequestBody InventoryItemRequest request) {
-
-        InventoryResponse response = inventoryService.reserveStock(
-                request.getProductColorId(),
-                request.getQuantity()
-        );
-
-        return ApiResponse.<InventoryResponse>builder()
-                .status(200)
-                .message("Giữ hàng thành công")
-                .data(response)
-                .build();
-    }
+//    @Operation(summary = "Giữ hàng (Tạo phiếu RESERVE)")
+//    @PostMapping("/reserve")
+//    public ApiResponse<InventoryResponse> reserveStock(
+//            @Valid @RequestBody InventoryItemRequest request) {
+//
+//        InventoryResponse response = inventoryService.reserveStock(
+//                request.getProductColorId(),
+//                request.getQuantity()
+//        );
+//
+//        return ApiResponse.<InventoryResponse>builder()
+//                .status(200)
+//                .message("Giữ hàng thành công")
+//                .data(response)
+//                .build();
+//    }
 
     @Operation(summary = "Bỏ giữ hàng (Tạo phiếu RELEASE)")
     @PostMapping("/release")
