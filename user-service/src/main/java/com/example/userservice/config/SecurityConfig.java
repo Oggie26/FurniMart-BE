@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/users/{id}",
+                                "/api/addresses/*",
                                 "/api//employees/profile",
                                 "/api/auth/refresh",
                                 "/api/stores",
