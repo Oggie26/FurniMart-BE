@@ -49,6 +49,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
 
+        // Lấy kho chính
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
@@ -61,17 +62,17 @@ public class InventoryServiceImpl implements InventoryService {
                 .warehouse(warehouse)
                 .build();
 
-        if(request.getType() == EnumTypes.EXPORT){
+        // Nếu là EXPORT STOCK_OUT → gắn orderId
+        boolean isStockOut = request.getType() == EnumTypes.EXPORT && request.getPurpose() == EnumPurpose.STOCK_OUT;
+        if (isStockOut && request.getOrderId() != null && request.getOrderId() > 0) {
             inventory.setOrderId(getOrder(request.getOrderId()).getId());
         }
 
         inventoryRepository.save(inventory);
-        log.info("🔍 warehouseId nhận được: {}", request.getWarehouseId());
 
         if (request.getItems() == null || request.getItems().isEmpty()) {
             return mapToInventoryResponse(inventory);
         }
-
 
         for (InventoryItemRequest itemReq : request.getItems()) {
             switch (request.getType()) {
@@ -79,7 +80,6 @@ public class InventoryServiceImpl implements InventoryService {
                 case IMPORT -> {
                     LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
                             .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
-
 
                     int actualStock = inventoryItemRepository.getActualStock(location.getId());
 
@@ -93,19 +93,16 @@ public class InventoryServiceImpl implements InventoryService {
                             itemReq.getProductColorId(),
                             itemReq.getQuantity()
                     );
-
                 }
 
                 case EXPORT -> {
                     List<InventoryItem> items = inventoryItemRepository
-                            .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(),
-                                    warehouse.getId());
+                            .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(), warehouse.getId());
 
-                    if (items.isEmpty())
-                        throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+                    if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
                     int remaining = itemReq.getQuantity();
-                    Long orderId = request.getOrderId(); // có thể null
+                    Long orderId = request.getOrderId();
 
                     // Xuất kho chính
                     for (InventoryItem it : items) {
@@ -128,23 +125,19 @@ public class InventoryServiceImpl implements InventoryService {
                         if (remaining <= 0) break;
                     }
 
-                    if (remaining > 0)
-                        throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+                    if (remaining > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-                    // Nếu có orderId hợp lệ → update order và trừ số lượng theo order
-                    if (orderId != null && orderId > 0) {
+                    // Nếu là STOCK_OUT → xử lý order
+                    if (isStockOut && orderId != null && orderId > 0) {
                         OrderResponse order = getOrder(orderId);
 
                         for (OrderDetailResponse detail : order.getOrderDetails()) {
                             String productColorId = detail.getProductColorId();
+                            int remainingOrder = detail.getQuantity();
 
-                            List<InventoryItem> availableItems =
-                                    inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(
-                                            productColorId,
-                                            warehouse.getId()
-                                    );
+                            List<InventoryItem> availableItems = inventoryItemRepository
+                                    .findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouse.getId());
 
-                            int remainingOrder = detail.getQuantity(); // số lượng cần trừ theo order
                             for (InventoryItem item : availableItems) {
                                 int toDeduct = Math.min(item.getQuantity(), remainingOrder);
                                 item.setQuantity(item.getQuantity() - toDeduct);
@@ -162,8 +155,9 @@ public class InventoryServiceImpl implements InventoryService {
                         orderClient.updateOrderStatus(orderId, EnumProcessOrder.PACKAGED);
                     }
 
-                    // Nếu không có orderId nhưng có toWarehouseId → tạo transfer
-                    if ((orderId == null || orderId == 0) && request.getToWarehouseId() != null) {
+                    // Nếu là TRANSFER_OUT → tạo inventory chuyển kho
+                    boolean isTransferOut = request.getPurpose() == EnumPurpose.TRANSFER_OUT;
+                    if (isTransferOut && request.getToWarehouseId() != null) {
                         Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
@@ -190,13 +184,8 @@ public class InventoryServiceImpl implements InventoryService {
                     }
                 }
 
-
-
                 case TRANSFER -> {
-
-                    if (request.getToWarehouseId() == null ) {
-                        throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
-                    }
+                    if (request.getToWarehouseId() == null) throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
 
                     Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
@@ -204,7 +193,6 @@ public class InventoryServiceImpl implements InventoryService {
                     inventory.setWarehouse(toWarehouse);
                     inventory.setTransferStatus(TransferStatus.PENDING);
                     inventory.setNote("Request transfer to warehouse " + toWarehouse.getWarehouseName());
-
                     inventoryRepository.save(inventory);
 
                     createInventoryItem(
@@ -218,15 +206,10 @@ public class InventoryServiceImpl implements InventoryService {
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
             }
         }
-//        try {
-//            String pdfUrl = pdfService.generateExportPDF(inventory);
-//            inventory.setPdfUrl(pdfUrl);
-//            inventoryRepository.save(inventory);
-//        } catch (Exception e) {
-//            log.error("Không thể tạo PDF cho đơn hàng {}: {}", inventory.getId(), e.getMessage());
-//        }
+
         return mapToInventoryResponse(inventory);
     }
+
 
     @Override
     @Transactional
