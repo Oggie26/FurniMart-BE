@@ -111,77 +111,77 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .build();
     }
 
-    @Override
-    @Transactional
-    public DeliveryAssignmentResponse generateInvoice(Long orderId) {
-
-        // Verify order exists and check status
-        ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(orderId);
-        if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
-            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
-        }
-
-        OrderResponse order = orderResponse.getBody().getData();
-        
-        // Check if order is at MANAGER_ACCEPT
-        if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT) {
-            log.warn("Cannot generate invoice for order {}: Order must be at MANAGER_ACCEPT. Current status: {}", 
-                    orderId, order.getStatus());
-            throw new AppException(ErrorCode.INVALID_STATUS);
-        }
-        
-        // Check if order already has READY_FOR_INVOICE in status history
-        // If yes, PDF already exists, cannot create again
-        boolean hasReadyForInvoice = false;
-        if (order.getProcessOrders() != null && !order.getProcessOrders().isEmpty()) {
-            hasReadyForInvoice = order.getProcessOrders().stream()
-                    .anyMatch(po -> po.getStatus() == EnumProcessOrder.READY_FOR_INVOICE);
-        }
-        
-        if (hasReadyForInvoice) {
-            log.warn("Cannot generate invoice for order {}: Order already has READY_FOR_INVOICE in status history. PDF already exists.", orderId);
-            throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
-        }
-
-        // Get or create delivery assignment atomically
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String assignedBy = authentication != null ? authentication.getName() : "SYSTEM";
-        DeliveryAssignment assignment = getOrCreateAssignment(orderId, order.getStoreId(), assignedBy);
-
-        // Generate PDF by calling order-service (with retry)
-        String pdfPath;
-        try {
-            pdfPath = callWithRetry(() -> {
-                ResponseEntity<ApiResponse<String>> pdfResponse = orderClient.generatePDF(orderId);
-                if (pdfResponse.getBody() != null && pdfResponse.getBody().getData() != null) {
-                    return pdfResponse.getBody().getData();
-                }
-                throw new AppException(ErrorCode.INVALID_REQUEST);
-            }, "generatePDF", 3);
-            log.info("PDF generated successfully for order {}: {}", orderId, pdfPath);
-        } catch (Exception e) {
-            log.error("Failed to generate PDF for order {} after retries: {}", orderId, e.getMessage(), e);
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-
-        // Update order status to READY_FOR_INVOICE after successful PDF generation
-        try {
-            orderClient.updateOrderStatus(orderId, EnumProcessOrder.READY_FOR_INVOICE);
-            log.info("Order {} status updated to READY_FOR_INVOICE after PDF generation", orderId);
-        } catch (Exception e) {
-            log.error("Failed to update order status for order {}: {}", orderId, e.getMessage());
-            // Don't fail the invoice generation if status update fails, but log the error
-        }
-
-        // Mark invoice as generated
-        assignment.setInvoiceGenerated(true);
-        assignment.setInvoiceGeneratedAt(LocalDateTime.now());
-
-        DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
-        log.info("Invoice generated for order: {}", orderId);
-
-        return mapToResponse(saved);
-    }
+//    @Override
+//    @Transactional
+//    public DeliveryAssignmentResponse generateInvoice(Long orderId) {
+//
+//        // Verify order exists and check status
+//        ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(orderId);
+//        if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
+//            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+//        }
+//
+//        OrderResponse order = orderResponse.getBody().getData();
+//
+//        // Check if order is at MANAGER_ACCEPT
+//        if (order.getStatus() != EnumProcessOrder.MANAGER_ACCEPT) {
+//            log.warn("Cannot generate invoice for order {}: Order must be at MANAGER_ACCEPT. Current status: {}",
+//                    orderId, order.getStatus());
+//            throw new AppException(ErrorCode.INVALID_STATUS);
+//        }
+//
+//        // Check if order already has READY_FOR_INVOICE in status history
+//        // If yes, PDF already exists, cannot create again
+//        boolean hasReadyForInvoice = false;
+//        if (order.getProcessOrders() != null && !order.getProcessOrders().isEmpty()) {
+//            hasReadyForInvoice = order.getProcessOrders().stream()
+//                    .anyMatch(po -> po.getStatus() == EnumProcessOrder.READY_FOR_INVOICE);
+//        }
+//
+//        if (hasReadyForInvoice) {
+//            log.warn("Cannot generate invoice for order {}: Order already has READY_FOR_INVOICE in status history. PDF already exists.", orderId);
+//            throw new AppException(ErrorCode.INVOICE_ALREADY_GENERATED);
+//        }
+//
+//        // Get or create delivery assignment atomically
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        String assignedBy = authentication != null ? authentication.getName() : "SYSTEM";
+//        DeliveryAssignment assignment = getOrCreateAssignment(orderId, order.getStoreId(), assignedBy);
+//
+//        // Generate PDF by calling order-service (with retry)
+//        String pdfPath;
+//        try {
+//            pdfPath = callWithRetry(() -> {
+//                ResponseEntity<ApiResponse<String>> pdfResponse = orderClient.generatePDF(orderId);
+//                if (pdfResponse.getBody() != null && pdfResponse.getBody().getData() != null) {
+//                    return pdfResponse.getBody().getData();
+//                }
+//                throw new AppException(ErrorCode.INVALID_REQUEST);
+//            }, "generatePDF", 3);
+//            log.info("PDF generated successfully for order {}: {}", orderId, pdfPath);
+//        } catch (Exception e) {
+//            log.error("Failed to generate PDF for order {} after retries: {}", orderId, e.getMessage(), e);
+//            throw new AppException(ErrorCode.INVALID_REQUEST);
+//        }
+//
+//        // Update order status to READY_FOR_INVOICE after successful PDF generation
+//        try {
+//            orderClient.updateOrderStatus(orderId, EnumProcessOrder.READY_FOR_INVOICE);
+//            log.info("Order {} status updated to READY_FOR_INVOICE after PDF generation", orderId);
+//        } catch (Exception e) {
+//            log.error("Failed to update order status for order {}: {}", orderId, e.getMessage());
+//            // Don't fail the invoice generation if status update fails, but log the error
+//        }
+//
+//        // Mark invoice as generated
+//        assignment.setInvoiceGenerated(true);
+//        assignment.setInvoiceGeneratedAt(LocalDateTime.now());
+//
+//        DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
+//        log.info("Invoice generated for order: {}", orderId);
+//
+//        return mapToResponse(saved);
+//    }
 
     @Override
     @Transactional
@@ -438,7 +438,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         try {
             ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(assignment.getOrderId());
             if (orderResponse.getBody() != null && orderResponse.getBody().getData() != null) {
-                order = sanitizeOrderResponse(orderResponse.getBody().getData());
+                order = orderResponse.getBody().getData();
             }
         } catch (Exception e) {
             log.warn("Failed to fetch order {}: {}", assignment.getOrderId(), e.getMessage());
@@ -562,51 +562,52 @@ public class DeliveryServiceImpl implements DeliveryService {
         throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 
+
     /**
      * and ensure data consistency
      */
-    private OrderResponse sanitizeOrderResponse(OrderResponse order) {
-        if (order == null) {
-            return null;
-        }
-
-        UserResponse sanitizedUser = null;
-        if (order.getUser() != null) {
-            sanitizedUser = UserResponse.builder()
-                    .id(order.getUser().getId())
-                    .fullName(order.getUser().getFullName())
-                    .email(order.getUser().getEmail())
-                    .phone(order.getUser().getPhone())
-                    .gender(order.getUser().getGender())
-                    .birthday(order.getUser().getBirthday())
-                    .avatar(order.getUser().getAvatar())
-                    // Removed: role, status, createdAt, updatedAt, cccd, point
-                    .build();
-        }
-
-        Double depositPrice = order.getDepositPrice();
-        if (depositPrice == null) {
-            depositPrice = 0.0;
-        }
-
-        return OrderResponse.builder()
-                .id(order.getId())
-                .user(sanitizedUser)
-                .storeId(order.getStoreId())
-                .address(order.getAddress())
-                .total(order.getTotal())
-                .note(order.getNote())
-                .orderDate(order.getOrderDate())
-                .status(order.getStatus())
-                .reason(order.getReason())
-                .orderDetails(order.getOrderDetails())
-                .processOrders(order.getProcessOrders())
-                .payment(order.getPayment())
-                .qrCode(order.getQrCode())
-                .depositPrice(depositPrice)
-                .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
-                .build();
-    }
+//    private OrderResponse sanitizeOrderResponse(OrderResponse order) {
+//        if (order == null) {
+//            return null;
+//        }
+//
+//        UserResponse sanitizedUser = null;
+//        if (order.getUser() != null) {
+//            sanitizedUser = UserResponse.builder()
+//                    .id(order.getUser().getId())
+//                    .fullName(order.getUser().getFullName())
+//                    .email(order.getUser().getEmail())
+//                    .phone(order.getUser().getPhone())
+//                    .gender(order.getUser().getGender())
+//                    .birthday(order.getUser().getBirthday())
+//                    .avatar(order.getUser().getAvatar())
+//                    // Removed: role, status, createdAt, updatedAt, cccd, point
+//                    .build();
+//        }
+//
+//        Double depositPrice = order.getDepositPrice();
+//        if (depositPrice == null) {
+//            depositPrice = 0.0;
+//        }
+//
+//        return OrderResponse.builder()
+//                .id(order.getId())
+//                .user(sanitizedUser)
+//                .storeId(order.getStoreId())
+//                .address(order.getAddress())
+//                .total(order.getTotal())
+//                .note(order.getNote())
+//                .orderDate(order.getOrderDate())
+//                .status(order.getStatus())
+//                .reason(order.getReason())
+//                .orderDetails(order.getOrderDetails())
+//                .processOrders(order.getProcessOrders())
+//                .payment(order.getPayment())
+//                .qrCode(order.getQrCode())
+//                .depositPrice(depositPrice)
+//                .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
+//                .build();
+//    }
 
 
 }
