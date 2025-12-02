@@ -368,65 +368,75 @@ public class OrderServiceImpl implements OrderService {
 //            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
 //        }
 //    }
-@Override
-@Transactional
-public void handlePaymentCOD(Long orderId) {
-    Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-    assignOrderService.assignOrderToStore(orderId);
+// OrderServiceImpl.java
 
-    List<OrderCreatedEvent.OrderItem> orderItems = new ArrayList<>();
-    List<String> purchasedProductIds = new ArrayList<>(); // List chứa ProductColorId để xoá
+    @Override
+    @Transactional
+    public void handlePaymentCOD(Long orderId) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-    for (OrderDetail detail : order.getOrderDetails()) {
-        ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
+        assignOrderService.assignOrderToStore(orderId);
 
-        orderItems.add(OrderCreatedEvent.OrderItem.builder()
-                .productColorId(detail.getProductColorId())
-                .quantity(detail.getQuantity())
-                .productName(productInfo.getProduct().getName())
-                .colorName(productInfo.getColor().getColorName())
-                .price(detail.getPrice())
-                .build());
+        // 1. Gom dữ liệu 1 lần
+        List<OrderCreatedEvent.OrderItem> orderItems = new ArrayList<>();
+        List<String> productIdsToRemove = new ArrayList<>();
 
-        purchasedProductIds.add(detail.getProductColorId());
-    }
+        for (OrderDetail detail : order.getOrderDetails()) {
+            ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
 
-    try {
-        if (!purchasedProductIds.isEmpty()) {
-            cartService.removeProductFromCart(purchasedProductIds);
+            // Build Kafka Item
+            orderItems.add(OrderCreatedEvent.OrderItem.builder()
+                    .productColorId(detail.getProductColorId())
+                    .quantity(detail.getQuantity())
+                    .productName(productInfo.getProduct().getName())
+                    .colorName(productInfo.getColor().getColorName())
+                    .price(detail.getPrice())
+                    .build());
+
+            // Gom ID để xóa cart
+            productIdsToRemove.add(detail.getProductColorId());
         }
-    } catch (Exception e) {
-        log.warn("Could not remove items from cart for user {}: {}", order.getUserId(), e.getMessage());
+
+        // 2. Gọi xóa cart (An toàn)
+        try {
+            if (!productIdsToRemove.isEmpty()) {
+                cartService.removeProductFromCart(productIdsToRemove);
+            }
+        } catch (Exception e) {
+            // Log lỗi nhưng KHÔNG throw tiếp, để đơn hàng vẫn thành công
+            log.error("Lỗi xóa giỏ hàng (Ignore): {}", e.getMessage());
+        }
+
+        // 3. Gửi Kafka
+        var userInfo = safeGetUser(order.getUserId());
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(userInfo.getEmail())
+                .fullName(userInfo.getFullName())
+                .orderDate(order.getOrderDate())
+                .totalPrice(order.getTotal())
+                .orderId(order.getId())
+                .storeId(order.getStoreId())
+                .addressLine(getAddress(order.getAddressId()))
+                .paymentMethod(PaymentMethod.COD)
+                .items(orderItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("order-created-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.warn("Kafka send failed: {}", ex.getMessage());
+                        } else {
+                            log.info("Kafka sent success: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Kafka error: {}", e.getMessage());
+        }
     }
 
-    var userInfo = safeGetUser(order.getUserId());
-    OrderCreatedEvent event = OrderCreatedEvent.builder()
-            .email(userInfo.getEmail())
-            .fullName(userInfo.getFullName())
-            .orderDate(order.getOrderDate())
-            .totalPrice(order.getTotal())
-            .orderId(order.getId())
-            .storeId(order.getStoreId())
-            .addressLine(getAddress(order.getAddressId()))
-            .paymentMethod(PaymentMethod.COD)
-            .items(orderItems)
-            .build();
-
-    try {
-        kafkaTemplate.send("order-created-topic", event)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        log.warn("Failed to send Kafka event: {}", ex.getMessage());
-                    } else {
-                        log.info("Successfully sent event for order: {}", event.getOrderId());
-                    }
-                });
-    } catch (Exception e) {
-        log.error("Kafka error: {}", e.getMessage());
-    }
-}
     @Override
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
