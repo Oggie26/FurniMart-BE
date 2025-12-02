@@ -110,13 +110,15 @@ public class InventoryServiceImpl implements InventoryService {
                         if (available <= 0) continue;
 
                         int toExport = Math.min(available, remaining);
-
+                        String locationItemId = (it.getLocationItem() != null)
+                                ? it.getLocationItem().getId()
+                                : null;
                         it.setQuantity(it.getQuantity() - toExport);
                         inventoryItemRepository.save(it);
 
                         createInventoryItem(
                                 inventory,
-                                it.getLocationItem().getId(),
+                                locationItemId,
                                 itemReq.getProductColorId(),
                                 -toExport
                         );
