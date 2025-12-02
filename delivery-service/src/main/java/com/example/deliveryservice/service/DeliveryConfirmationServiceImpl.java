@@ -56,7 +56,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String deliveryStaffId = authentication.getName();
 
-        // Get QR code from order service instead of generating it
         String qrCode = getQRCodeFromOrder(request.getOrderId());
 
         DeliveryConfirmation confirmation = DeliveryConfirmation.builder()
@@ -66,9 +65,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .deliveryPhotos(deliveryPhotosJson)
                 .deliveryNotes(request.getDeliveryNotes())
                 .qrCode(qrCode)
-                .deliveryLatitude(request.getDeliveryLatitude())
-                .deliveryLongitude(request.getDeliveryLongitude())
-                .deliveryAddress(request.getDeliveryAddress())
                 .status(DeliveryConfirmationStatus.DELIVERED)
                 .build();
 
@@ -221,8 +217,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .qrCodeScannedAt(confirmation.getQrCodeScannedAt())
                 .customerSignature(confirmation.getCustomerSignature())
                 .status(confirmation.getStatus())
-                .deliveryLatitude(confirmation.getDeliveryLatitude())
-                .deliveryLongitude(confirmation.getDeliveryLongitude())
                 .deliveryAddress(confirmation.getDeliveryAddress())
                 .isQrCodeScanned(confirmation.getQrCodeScannedAt() != null)
                 .createdAt(confirmation.getCreatedAt())
