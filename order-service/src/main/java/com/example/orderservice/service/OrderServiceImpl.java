@@ -326,6 +326,7 @@ public class OrderServiceImpl implements OrderService {
 
         assignOrderService.assignOrderToStore(orderId);
 
+
         List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                 .map(detail -> OrderCreatedEvent.OrderItem.builder()
                         .productColorId(detail.getProductColorId())
@@ -336,7 +337,7 @@ public class OrderServiceImpl implements OrderService {
                         .build())
                 .toList();
 
-        cartService.clearCart();
+
         OrderCreatedEvent event = OrderCreatedEvent.builder()
                 .email(safeGetUser(order.getUserId()).getEmail())
                 .fullName(safeGetUser(order.getUserId()).getFullName())
@@ -349,12 +350,16 @@ public class OrderServiceImpl implements OrderService {
                 .items(orderItems)
                 .build();
 
+        for (OrderDetail detail : order.getOrderDetails()) {
+            cartService.removeProductFromCart(Collections.singletonList(detail.getProductColorId()));
+        }
+
         try {
             kafkaTemplate.send("order-created-topic", event)
                     .whenComplete((
                             result, ex) -> {
                         if (ex != null) {
-
+                            log.info("Failed to send Kafka event {}, error: {}", event.getFullName(), ex.getMessage());
                         } else {
                             log.info("Successfully sent order creation event for: {}", event.getOrderId());
                         }
