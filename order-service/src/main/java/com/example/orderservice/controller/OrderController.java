@@ -84,6 +84,7 @@ public class OrderController {
 
             orderRepository.save(order);
             orderService.handlePaymentCOD(orderResponse.getId());
+            cartService.clearCart();
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
