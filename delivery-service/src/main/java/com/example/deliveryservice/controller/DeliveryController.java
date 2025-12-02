@@ -1,5 +1,6 @@
 package com.example.deliveryservice.controller;
 
+import com.example.deliveryservice.entity.DeliveryAssignment;
 import com.example.deliveryservice.request.AssignOrderRequest;
 import com.example.deliveryservice.request.PrepareProductsRequest;
 import com.example.deliveryservice.request.RejectAssignmentRequest;
@@ -159,7 +160,6 @@ public class DeliveryController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
     })
-    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryAssignmentResponse> getDeliveryAssignmentByOrderId(@PathVariable Long orderId) {
         return ApiResponse.<DeliveryAssignmentResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -206,7 +206,6 @@ public class DeliveryController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only BRANCH_MANAGER and DELIVERY roles are allowed")
     })
-    @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('DELIVERY')")
     public ApiResponse<DeliveryAssignmentResponse> updateDeliveryStatus(
             @Parameter(description = "Delivery assignment ID", required = true, example = "1")
             @PathVariable Long assignmentId,
@@ -283,5 +282,6 @@ public class DeliveryController {
                 .data(deliveryService.rejectAssignment(assignmentId, request.getReason(), deliveryStaffId))
                 .build();
     }
+
 }
 

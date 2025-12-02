@@ -14,7 +14,7 @@ public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssi
     Optional<DeliveryAssignment> findByOrderIdAndIsDeletedFalse(Long orderId);
     
     List<DeliveryAssignment> findByStoreIdAndIsDeletedFalse(String storeId);
-    
+
     List<DeliveryAssignment> findByDeliveryStaffIdAndIsDeletedFalse(String deliveryStaffId);
     
     List<DeliveryAssignment> findByStatusAndIsDeletedFalse(DeliveryStatus status);

@@ -4,10 +4,7 @@ import com.example.inventoryservice.entity.*;
 import com.example.inventoryservice.enums.*;
 import com.example.inventoryservice.event.UpdateStatusOrderCreatedEvent;
 import com.example.inventoryservice.exception.AppException;
-import com.example.inventoryservice.feign.AuthClient;
-import com.example.inventoryservice.feign.OrderClient;
-import com.example.inventoryservice.feign.ProductClient;
-import com.example.inventoryservice.feign.UserClient;
+import com.example.inventoryservice.feign.*;
 import com.example.inventoryservice.repository.*;
 import com.example.inventoryservice.request.InventoryItemRequest;
 import com.example.inventoryservice.request.InventoryRequest;
@@ -40,6 +37,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserClient userClient;
     private final OrderClient orderClient;
     private final ProductClient productClient;
+    private final DeliveryClient deliveryClient;
     private final PDFService pdfService;
 //    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
 
@@ -152,6 +150,7 @@ public class InventoryServiceImpl implements InventoryService {
                         }
 
                         orderClient.updateOrderStatus(orderId, EnumProcessOrder.PACKAGED);
+                        deliveryClient.updateDelivertAsiStatus(deliveryClient.getDeliveryAsiByOrderId(orderId).getData().getId(), "PREPARING");
                     }
 
                     boolean isTransferOut = request.getPurpose() == EnumPurpose.TRANSFER_OUT;
