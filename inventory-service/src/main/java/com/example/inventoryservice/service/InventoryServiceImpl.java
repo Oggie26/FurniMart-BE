@@ -127,7 +127,7 @@ public class InventoryServiceImpl implements InventoryService {
                     if (remaining > 0)
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-                    if (request.getOrderId() != null) {
+                    if (request.getOrderId() != null && checkOrderId != 0) {
                         OrderResponse order = getOrder(request.getOrderId());
 
                         for (OrderDetailResponse detail : order.getOrderDetails()) {
