@@ -318,57 +318,115 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
     }
 
-    @Override
-    @Transactional
-    public void handlePaymentCOD(Long orderId){
-        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+//    @Override
+//    @Transactional
+//    public void handlePaymentCOD(Long orderId){
+//        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+//                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+//
+//        assignOrderService.assignOrderToStore(orderId);
+//
+//
+//        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+//                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+//                        .productColorId(detail.getProductColorId())
+//                        .quantity(detail.getQuantity())
+//                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+//                        .price(detail.getPrice())
+//                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+//                        .build())
+//                .toList();
+//
+//
+//        OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                .email(safeGetUser(order.getUserId()).getEmail())
+//                .fullName(safeGetUser(order.getUserId()).getFullName())
+//                .orderDate(order.getOrderDate())
+//                .totalPrice(order.getTotal())
+//                .orderId(order.getId())
+//                .storeId(order.getStoreId())
+//                .addressLine(getAddress(order.getAddressId()))
+//                .paymentMethod(PaymentMethod.COD)
+//                .items(orderItems)
+//                .build();
+//
+//        for (OrderDetail detail : order.getOrderDetails()) {
+//            cartService.removeProductFromCart(Collections.singletonList(detail.getProductColorId()));
+//        }
+//
+//        try {
+//            kafkaTemplate.send("order-created-topic", event)
+//                    .whenComplete((
+//                            result, ex) -> {
+//                        if (ex != null) {
+//                            log.info("Failed to send Kafka event {}, error: {}", event.getFullName(), ex.getMessage());
+//                        } else {
+//                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+//                        }
+//                    });
+//        } catch (Exception e) {
+//            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+//        }
+//    }
+@Override
+@Transactional
+public void handlePaymentCOD(Long orderId) {
+    Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        assignOrderService.assignOrderToStore(orderId);
+    assignOrderService.assignOrderToStore(orderId);
 
+    List<OrderCreatedEvent.OrderItem> orderItems = new ArrayList<>();
+    List<String> purchasedProductIds = new ArrayList<>(); // List chứa ProductColorId để xoá
 
-        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                        .productColorId(detail.getProductColorId())
-                        .quantity(detail.getQuantity())
-                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                        .price(detail.getPrice())
-                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                        .build())
-                .toList();
+    for (OrderDetail detail : order.getOrderDetails()) {
+        ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
 
+        orderItems.add(OrderCreatedEvent.OrderItem.builder()
+                .productColorId(detail.getProductColorId())
+                .quantity(detail.getQuantity())
+                .productName(productInfo.getProduct().getName())
+                .colorName(productInfo.getColor().getColorName())
+                .price(detail.getPrice())
+                .build());
 
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
-                .email(safeGetUser(order.getUserId()).getEmail())
-                .fullName(safeGetUser(order.getUserId()).getFullName())
-                .orderDate(order.getOrderDate())
-                .totalPrice(order.getTotal())
-                .orderId(order.getId())
-                .storeId(order.getStoreId())
-                .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(PaymentMethod.COD)
-                .items(orderItems)
-                .build();
-
-        for (OrderDetail detail : order.getOrderDetails()) {
-            cartService.removeProductFromCart(Collections.singletonList(detail.getProductColorId()));
-        }
-
-        try {
-            kafkaTemplate.send("order-created-topic", event)
-                    .whenComplete((
-                            result, ex) -> {
-                        if (ex != null) {
-                            log.info("Failed to send Kafka event {}, error: {}", event.getFullName(), ex.getMessage());
-                        } else {
-                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
-        }
+        purchasedProductIds.add(detail.getProductColorId());
     }
 
+    try {
+        if (!purchasedProductIds.isEmpty()) {
+            cartService.removeProductFromCart(purchasedProductIds);
+        }
+    } catch (Exception e) {
+        log.warn("Could not remove items from cart for user {}: {}", order.getUserId(), e.getMessage());
+    }
+
+    var userInfo = safeGetUser(order.getUserId());
+    OrderCreatedEvent event = OrderCreatedEvent.builder()
+            .email(userInfo.getEmail())
+            .fullName(userInfo.getFullName())
+            .orderDate(order.getOrderDate())
+            .totalPrice(order.getTotal())
+            .orderId(order.getId())
+            .storeId(order.getStoreId())
+            .addressLine(getAddress(order.getAddressId()))
+            .paymentMethod(PaymentMethod.COD)
+            .items(orderItems)
+            .build();
+
+    try {
+        kafkaTemplate.send("order-created-topic", event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.warn("Failed to send Kafka event: {}", ex.getMessage());
+                    } else {
+                        log.info("Successfully sent event for order: {}", event.getOrderId());
+                    }
+                });
+    } catch (Exception e) {
+        log.error("Kafka error: {}", e.getMessage());
+    }
+}
     @Override
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status) {
