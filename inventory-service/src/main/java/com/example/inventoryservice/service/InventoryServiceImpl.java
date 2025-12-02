@@ -210,13 +210,13 @@ public class InventoryServiceImpl implements InventoryService {
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
             }
         }
-        try {
-            String pdfUrl = pdfService.generateExportPDF(inventory);
-            inventory.setPdfUrl(pdfUrl);
-            inventoryRepository.save(inventory);
-        } catch (Exception e) {
-            log.error("Không thể tạo PDF cho đơn hàng {}: {}", inventory.getId(), e.getMessage());
-        }
+//        try {
+//            String pdfUrl = pdfService.generateExportPDF(inventory);
+//            inventory.setPdfUrl(pdfUrl);
+//            inventoryRepository.save(inventory);
+//        } catch (Exception e) {
+//            log.error("Không thể tạo PDF cho đơn hàng {}: {}", inventory.getId(), e.getMessage());
+//        }
         return mapToInventoryResponse(inventory);
     }
 
