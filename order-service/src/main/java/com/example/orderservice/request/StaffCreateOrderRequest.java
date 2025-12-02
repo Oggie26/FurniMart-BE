@@ -18,14 +18,20 @@ import java.util.List;
 @AllArgsConstructor
 public class StaffCreateOrderRequest {
 
-    @NotBlank(message = "Customer userId is required")
-    private String customerUserId;
-
     @NotBlank(message = "StoreId is required")
     private String storeId;
 
-    @NotNull(message = "AddressId is required")
-    private Long addressId;
+    @NotNull
+    private String customerName;
+
+    @NotNull
+    private String phone;
+
+    @NotNull
+    private String addressLine;
+
+    @NotNull
+    private Double price;
 
     @NotEmpty(message = "Order details are required")
     @Valid

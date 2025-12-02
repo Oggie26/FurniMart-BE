@@ -21,4 +21,5 @@ public class OrderDetailRequest {
     @NotNull(message = "Price is required")
     @Min(value = 0, message = "Price must be greater or equal 0")
     private Double price;
+
 }

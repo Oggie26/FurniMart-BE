@@ -172,30 +172,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
-        log.info("Staff creating order for customer: {}", request.getCustomerUserId());
-        
-        // Validate customer exists
-        ApiResponse<UserResponse> customerResponse = userClient.getUserById(request.getCustomerUserId());
-        if (customerResponse == null || customerResponse.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
-        
-        // Validate address exists and belongs to customer
-        ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(request.getAddressId());
-        if (addressResponse == null || addressResponse.getData() == null) {
-            throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
-        }
-        if (!addressResponse.getData().getUserId().equals(request.getCustomerUserId())) {
-            throw new AppException(ErrorCode.INVALID_ADDRESS);
-        }
-        
-        // Validate store exists
+
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
         if (storeResponse == null || storeResponse.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         
-        // Calculate total from order details
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
@@ -207,9 +189,7 @@ public class OrderServiceImpl implements OrderService {
         
         // Create order
         Order order = Order.builder()
-                .userId(request.getCustomerUserId())
                 .storeId(request.getStoreId())
-                .addressId(request.getAddressId())
                 .total(total)
                 .status(EnumProcessOrder.PENDING)
                 .note(request.getNote())
@@ -256,8 +236,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         paymentRepository.save(payment);
         
-        log.info("Staff successfully created order {} for customer {}", savedOrder.getId(), request.getCustomerUserId());
-        
+
         return mapToResponse(savedOrder);
     }
 
@@ -454,6 +433,7 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
+        order.setStatus(status);
         orderRepository.save(order);
         if(status.equals(EnumProcessOrder.PAYMENT)){
             assignOrderService.assignOrderToStore(orderId);
