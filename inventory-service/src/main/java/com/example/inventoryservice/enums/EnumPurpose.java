@@ -5,5 +5,6 @@ public enum EnumPurpose {
     REQUEST,
     STOCK_OUT,
     TRANSFER_OUT,
+    REVERSE,
     MOVE
 }
