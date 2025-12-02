@@ -47,7 +47,6 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryResponse createOrUpdateInventory(InventoryRequest request) {
 
-        // Lấy kho chính
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getWarehouseId())
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
@@ -60,8 +59,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .warehouse(warehouse)
                 .build();
 
-        // Nếu là EXPORT STOCK_OUT → gắn orderId
         boolean isStockOut = request.getType() == EnumTypes.EXPORT && request.getPurpose() == EnumPurpose.STOCK_OUT;
+
         if (isStockOut && request.getOrderId() != null && request.getOrderId() > 0) {
             inventory.setOrderId(getOrder(request.getOrderId()).getId());
         }
@@ -70,6 +69,26 @@ public class InventoryServiceImpl implements InventoryService {
 
         if (request.getItems() == null || request.getItems().isEmpty()) {
             return mapToInventoryResponse(inventory);
+        }
+
+        Inventory transferInventory = null;
+        boolean isTransferOut = request.getType() == EnumTypes.EXPORT && request.getPurpose() == EnumPurpose.TRANSFER_OUT;
+
+        if (isTransferOut && request.getToWarehouseId() != null) {
+            Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+            transferInventory = Inventory.builder()
+                    .employeeId(getProfile())
+                    .type(EnumTypes.TRANSFER) // Bên kho đích sẽ là phiếu Chuyển đến (hoặc Request Import)
+                    .purpose(EnumPurpose.REQUEST)
+                    .warehouse(toWarehouse)
+                    .transferStatus(TransferStatus.PENDING)
+                    .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName() + " - Mã phiếu xuất: " + inventory.getCode())
+                    .date(LocalDate.now())
+                    .build();
+
+            inventoryRepository.save(transferInventory);
         }
 
         for (InventoryItemRequest itemReq : request.getItems()) {
@@ -94,91 +113,51 @@ public class InventoryServiceImpl implements InventoryService {
                 }
 
                 case EXPORT -> {
-                    List<InventoryItem> items = inventoryItemRepository
+                    List<InventoryItem> itemsInStock = inventoryItemRepository
                             .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(), warehouse.getId());
 
-                    if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+                    if (itemsInStock.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
-                    int remaining = itemReq.getQuantity();
-                    Long orderId = request.getOrderId();
+                    int remainingQtyToExport = itemReq.getQuantity();
 
-                    // Xuất kho chính
-                    for (InventoryItem it : items) {
-                        int available = it.getQuantity() - it.getReservedQuantity();
-                        if (available <= 0) continue;
+                    for (InventoryItem it : itemsInStock) {
+                        if (remainingQtyToExport <= 0) break;
 
-                        int toExport = Math.min(available, remaining);
+                        int currentQty = it.getQuantity();
+                        if (currentQty <= 0) continue;
+
+                        int toExport = Math.min(currentQty, remainingQtyToExport);
+
 
                         it.setQuantity(it.getQuantity() - toExport);
+
+                        if (isStockOut) {
+                            int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
+                            it.setReservedQuantity(newReserved);
+                        }
+
                         inventoryItemRepository.save(it);
 
                         createInventoryItem(
                                 inventory,
-                                itemReq.getLocationItemId(),
+                                it.getLocationItem().getId(),
                                 itemReq.getProductColorId(),
                                 -toExport
                         );
 
-                        remaining -= toExport;
-                        if (remaining <= 0) break;
-                    }
-
-                    if (remaining > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-
-                    if (isStockOut && orderId != null && orderId > 0) {
-                        OrderResponse order = getOrder(orderId);
-
-                        for (OrderDetailResponse detail : order.getOrderDetails()) {
-                            String productColorId = detail.getProductColorId();
-                            int remainingOrder = detail.getQuantity();
-
-                            List<InventoryItem> availableItems = inventoryItemRepository
-                                    .findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouse.getId());
-
-                            for (InventoryItem item : availableItems) {
-                                int toDeduct = Math.min(item.getQuantity(), remainingOrder);
-                                item.setQuantity(item.getQuantity() - toDeduct);
-
-                                if (item.getReservedQuantity() > 0) {
-                                    item.setReservedQuantity(Math.max(item.getReservedQuantity() - toDeduct, 0));
-                                }
-
-                                inventoryItemRepository.save(item);
-                                remainingOrder -= toDeduct;
-                                if (remainingOrder <= 0) break;
-                            }
-                        }
-
-                        orderClient.updateOrderStatus(orderId, EnumProcessOrder.PACKAGED);
-                        deliveryClient.updateDelivertAsiStatus(deliveryClient.getDeliveryAsiByOrderId(orderId).getData().getId(), "PREPARING");
-                    }
-
-                    boolean isTransferOut = request.getPurpose() == EnumPurpose.TRANSFER_OUT;
-                    if (isTransferOut && request.getToWarehouseId() != null) {
-                        Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
-                                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
-
-                        Inventory transferInventory = Inventory.builder()
-                                .employeeId(getProfile())
-                                .type(EnumTypes.TRANSFER)
-                                .purpose(EnumPurpose.REQUEST)
-                                .warehouse(toWarehouse)
-                                .transferStatus(TransferStatus.PENDING)
-                                .note("Transfer to warehouse " + toWarehouse.getWarehouseName())
-                                .date(LocalDate.now())
-                                .build();
-
-                        inventoryRepository.save(transferInventory);
-
-                        for (InventoryItem it : inventory.getInventoryItems()) {
+                        if (isTransferOut && transferInventory != null) {
                             createInventoryItem(
                                     transferInventory,
                                     it.getLocationItem().getId(),
-                                    it.getProductColorId(),
-                                    Math.abs(it.getQuantity())
+                                    itemReq.getProductColorId(),
+                                    Math.abs(toExport)
                             );
                         }
+
+                        remainingQtyToExport -= toExport;
                     }
+
+                    if (remainingQtyToExport > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
                 }
 
                 case TRANSFER -> {
@@ -189,7 +168,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     inventory.setWarehouse(toWarehouse);
                     inventory.setTransferStatus(TransferStatus.PENDING);
-                    inventory.setNote("Request transfer to warehouse " + toWarehouse.getWarehouseName());
+                    inventory.setNote("Yêu cầu chuyển hàng về kho " + toWarehouse.getWarehouseName());
                     inventoryRepository.save(inventory);
 
                     createInventoryItem(
@@ -203,6 +182,33 @@ public class InventoryServiceImpl implements InventoryService {
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
             }
         }
+
+        if (isStockOut && request.getOrderId() != null && request.getOrderId() > 0) {
+            try {
+                orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
+
+                var deliveryRes = deliveryClient.getDeliveryAsiByOrderId(request.getOrderId());
+                if (deliveryRes != null && deliveryRes.getData() != null) {
+                    deliveryClient.updateDelivertAsiStatus(deliveryRes.getData().getId(), "PREPARING");
+                }
+            } catch (Exception e) {
+                log.error("Error updating order/delivery status: {}", e.getMessage());
+            }
+        }
+
+//        if (request.getType() == EnumTypes.EXPORT || request.getType() == EnumTypes.TRANSFER) {
+//            try {
+//                Inventory finalInventory = inventoryRepository.findByIdWithItems(inventory.getId())
+//                        .orElse(inventory);
+//
+//                String pdfUrl = pdfService.generateExportPDF(finalInventory);
+//                inventory.setPdfUrl(pdfUrl);
+//                inventoryRepository.save(inventory);
+//
+//            } catch (Exception e) {
+//                log.error("Error generating PDF: {}", e.getMessage());
+//            }
+//        }
 
         return mapToInventoryResponse(inventory);
     }
