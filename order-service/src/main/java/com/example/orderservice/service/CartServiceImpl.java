@@ -95,37 +95,29 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void removeProductFromCart(List<String> productColorIdsToRemove) {
-        // 1. Validate đầu vào cơ bản
         if (productColorIdsToRemove == null || productColorIdsToRemove.isEmpty()) {
             return;
         }
 
         String userId = getUserId();
-        // Dùng findByUserId để tránh tạo cart rác
         Cart cart = cartRepository.findByUserId(userId).orElse(null);
 
         if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
-            return; // Cart không có gì thì coi như đã xóa thành công -> RETURN LUÔN
+            return;
         }
 
-        // 2. Lọc items cần xóa
-        // QUAN TRỌNG: Phải so sánh item.getProductColorId() với danh sách truyền vào
         List<CartItem> itemsToRemove = cart.getItems().stream()
                 .filter(item -> productColorIdsToRemove.contains(item.getProductColorId()))
                 .toList();
 
-        // 3. Nếu không tìm thấy item nào trùng khớp -> RETURN LUÔN
-        // ĐỪNG THROW EXCEPTION Ở ĐÂY (Nó sẽ gây rollback đơn hàng bên kia)
         if (itemsToRemove.isEmpty()) {
             log.warn("Không tìm thấy sản phẩm nào trong giỏ để xóa với IDs: {}", productColorIdsToRemove);
             return;
         }
 
-        // 4. Xóa
         cartItemRepository.deleteAllInBatch(itemsToRemove);
         cart.getItems().removeAll(itemsToRemove);
 
-        // 5. Update tiền
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
@@ -134,14 +126,16 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void clearCart() {
-        Cart cart = cartRepository.findByUserId(getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
+        String userId = getUserId();
+        Cart cart = cartRepository.findByUserId(userId).orElse(null);
 
-        List<CartItem> itemList = new ArrayList<>(cart.getItems());
-        if (!itemList.isEmpty()) {
-            cartItemRepository.deleteAllInBatch(itemList);
+        if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
+            return;
         }
+
+        cartItemRepository.deleteAllInBatch(cart.getItems());
         cart.getItems().clear();
+        cart.setTotalPrice(0.0);
         cartRepository.save(cart);
     }
 
