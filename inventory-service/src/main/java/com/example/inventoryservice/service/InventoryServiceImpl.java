@@ -95,15 +95,19 @@ public class InventoryServiceImpl implements InventoryService {
                     );
 
                 }
+
                 case EXPORT -> {
                     List<InventoryItem> items = inventoryItemRepository
                             .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(),
                                     warehouse.getId());
 
-                    if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+                    if (items.isEmpty())
+                        throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
                     int remaining = itemReq.getQuantity();
-                    long checkOrderId = request.getOrderId() != null ? request.getOrderId() : 0;
+                    Long orderId = request.getOrderId(); // có thể null
+
+                    // Xuất kho chính
                     for (InventoryItem it : items) {
                         int available = it.getQuantity() - it.getReservedQuantity();
                         if (available <= 0) continue;
@@ -127,8 +131,9 @@ public class InventoryServiceImpl implements InventoryService {
                     if (remaining > 0)
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-                    if (request.getOrderId() != null && checkOrderId > 0) {
-                        OrderResponse order = getOrder(request.getOrderId());
+                    // Nếu có orderId hợp lệ → update order và trừ số lượng theo order
+                    if (orderId != null && orderId > 0) {
+                        OrderResponse order = getOrder(orderId);
 
                         for (OrderDetailResponse detail : order.getOrderDetails()) {
                             String productColorId = detail.getProductColorId();
@@ -139,8 +144,9 @@ public class InventoryServiceImpl implements InventoryService {
                                             warehouse.getId()
                                     );
 
+                            int remainingOrder = detail.getQuantity(); // số lượng cần trừ theo order
                             for (InventoryItem item : availableItems) {
-                                int toDeduct = Math.min(item.getQuantity(), remaining);
+                                int toDeduct = Math.min(item.getQuantity(), remainingOrder);
                                 item.setQuantity(item.getQuantity() - toDeduct);
 
                                 if (item.getReservedQuantity() > 0) {
@@ -148,15 +154,16 @@ public class InventoryServiceImpl implements InventoryService {
                                 }
 
                                 inventoryItemRepository.save(item);
-                                remaining -= toDeduct;
+                                remainingOrder -= toDeduct;
+                                if (remainingOrder <= 0) break;
                             }
                         }
 
-                        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.PACKAGED);
-
+                        orderClient.updateOrderStatus(orderId, EnumProcessOrder.PACKAGED);
                     }
 
-                    if (request.getToWarehouseId() != null && checkOrderId == 0 ) {
+                    // Nếu không có orderId nhưng có toWarehouseId → tạo transfer
+                    if ((orderId == null || orderId == 0) && request.getToWarehouseId() != null) {
                         Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
@@ -165,7 +172,7 @@ public class InventoryServiceImpl implements InventoryService {
                                 .type(EnumTypes.TRANSFER)
                                 .purpose(EnumPurpose.REQUEST)
                                 .warehouse(toWarehouse)
-                                .transferStatus(request.getType() == EnumTypes.TRANSFER ? TransferStatus.PENDING : null)
+                                .transferStatus(TransferStatus.PENDING)
                                 .note("Transfer to warehouse " + toWarehouse.getWarehouseName())
                                 .date(LocalDate.now())
                                 .build();
@@ -184,9 +191,10 @@ public class InventoryServiceImpl implements InventoryService {
                 }
 
 
+
                 case TRANSFER -> {
 
-                    if (request.getToWarehouseId() == null) {
+                    if (request.getToWarehouseId() == null ) {
                         throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
                     }
 
