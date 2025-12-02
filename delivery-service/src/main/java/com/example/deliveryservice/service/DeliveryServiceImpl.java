@@ -455,30 +455,23 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         return DeliveryAssignmentResponse.builder()
                 .id(assignment.getId())
-                .orderId(assignment.getOrderId())
                 .storeId(assignment.getStoreId())
+                .storeName(store.getName() != null && !store.getName().isEmpty() ? store.getName() : "")
                 .deliveryStaffId(assignment.getDeliveryStaffId())
                 .assignedBy(assignment.getAssignedBy())
                 .assignedAt(assignment.getAssignedAt())
                 .estimatedDeliveryDate(assignment.getEstimatedDeliveryDate())
                 .status(assignment.getStatus())
                 .notes(assignment.getNotes())
-                .invoiceGenerated(assignment.getInvoiceGenerated())
-                .invoiceGeneratedAt(assignment.getInvoiceGeneratedAt())
                 .productsPrepared(assignment.getProductsPrepared())
                 .productsPreparedAt(assignment.getProductsPreparedAt())
                 .rejectReason(assignment.getRejectReason())
                 .rejectedAt(assignment.getRejectedAt())
                 .rejectedBy(assignment.getRejectedBy())
                 .order(order)
-                .store(store)
                 .build();
     }
 
-    /**
-     * Get or create delivery assignment atomically to prevent race conditions
-     * Uses unique constraint to handle concurrent creation attempts
-     */
     private DeliveryAssignment getOrCreateAssignment(Long orderId, String storeId, String assignedBy) {
         Optional<DeliveryAssignment> existing = deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(orderId);
         if (existing.isPresent()) {
@@ -511,45 +504,6 @@ public class DeliveryServiceImpl implements DeliveryService {
         }
     }
 
-    /**
-     * Validate prerequisites for assignment - ALL assignments must meet prerequisites
-     */
-//    private void validatePrerequisites(DeliveryAssignment assignment, Long orderId) {
-//        List<String> missingPrerequisites = new ArrayList<>();
-//
-//        if (!assignment.getProductsPrepared()) {
-//            missingPrerequisites.add("products prepared");
-//        }
-//
-//        if (assignment.getStatus() != DeliveryStatus.READY) {
-//            missingPrerequisites.add("status READY (manager must confirm ready)");
-//        }
-//
-//        if (!assignment.getInvoiceGenerated()) {
-//            missingPrerequisites.add("invoice generated");
-//        }
-//
-//        if (!missingPrerequisites.isEmpty()) {
-//            String errorMessage = String.format(
-//                    "Cannot assign order %d: Missing prerequisites - %s. " +
-//                    "Please complete: 1) Generate invoice, 2) Prepare products, 3) Manager confirm ready",
-//                    orderId, String.join(", ", missingPrerequisites));
-//            log.warn(errorMessage);
-//            throw new AppException(ErrorCode.INVALID_REQUEST);
-//        }
-//    }
-
-    /**
-     * Validate store access - ensure storeId matches order's storeId
-     */
-    private void validateStoreAccess(String requestStoreId, String orderStoreId, Long orderId) {
-        if (!requestStoreId.equals(orderStoreId)) {
-            log.warn("Store ID mismatch for order {}: Request store {}, Order store {}",
-                    orderId, requestStoreId, orderStoreId);
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
     private DeliveryAssignment assignDeliveryStaffAtomically(
             DeliveryAssignment assignment, 
             String deliveryStaffId, 
@@ -579,9 +533,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         return deliveryAssignmentRepository.save(assignment);
     }
 
-    /**
-     * Retry mechanism for external service calls
-     */
+
     private <T> T callWithRetry(java.util.function.Supplier<T> supplier, String operation, int maxRetries) {
         int attempts = 0;
         Exception lastException = null;
@@ -611,7 +563,6 @@ public class DeliveryServiceImpl implements DeliveryService {
     }
 
     /**
-     * Sanitize OrderResponse for delivery staff - remove sensitive user information
      * and ensure data consistency
      */
     private OrderResponse sanitizeOrderResponse(OrderResponse order) {
@@ -619,7 +570,6 @@ public class DeliveryServiceImpl implements DeliveryService {
             return null;
         }
 
-        // Sanitize user information - only keep essential fields for delivery
         UserResponse sanitizedUser = null;
         if (order.getUser() != null) {
             sanitizedUser = UserResponse.builder()
@@ -634,13 +584,11 @@ public class DeliveryServiceImpl implements DeliveryService {
                     .build();
         }
 
-        // Ensure depositPrice is not null (set to 0 if null)
         Double depositPrice = order.getDepositPrice();
         if (depositPrice == null) {
             depositPrice = 0.0;
         }
 
-        // Build sanitized order response
         return OrderResponse.builder()
                 .id(order.getId())
                 .user(sanitizedUser)

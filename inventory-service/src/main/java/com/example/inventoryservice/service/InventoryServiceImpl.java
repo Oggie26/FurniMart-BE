@@ -127,7 +127,6 @@ public class InventoryServiceImpl implements InventoryService {
 
                     if (remaining > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-                    // Nếu là STOCK_OUT → xử lý order
                     if (isStockOut && orderId != null && orderId > 0) {
                         OrderResponse order = getOrder(orderId);
 
@@ -155,7 +154,6 @@ public class InventoryServiceImpl implements InventoryService {
                         orderClient.updateOrderStatus(orderId, EnumProcessOrder.PACKAGED);
                     }
 
-                    // Nếu là TRANSFER_OUT → tạo inventory chuyển kho
                     boolean isTransferOut = request.getPurpose() == EnumPurpose.TRANSFER_OUT;
                     if (isTransferOut && request.getToWarehouseId() != null) {
                         Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
