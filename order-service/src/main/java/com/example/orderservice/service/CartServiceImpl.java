@@ -133,7 +133,7 @@ public class CartServiceImpl implements CartService {
             return;
         }
 
-        cartItemRepository.deleteAllInBatch(cart.getItems());
+        cartItemRepository.deleteAllByCartId(cart.getId());
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
