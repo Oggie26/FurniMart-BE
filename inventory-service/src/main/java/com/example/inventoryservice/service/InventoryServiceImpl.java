@@ -478,7 +478,6 @@ public class InventoryServiceImpl implements InventoryService {
             throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
         }
 
-        // Trả về inventory response dựa trên item đầu tiên
         return mapToInventoryResponse(items.get(0).getInventory());
     }
 
@@ -807,12 +806,19 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private OrderResponse getOrder(Long orderId) {
-        ApiResponse<OrderResponse> response = orderClient.getOderById(orderId);
-        if (response == null || response.getData() == null){
+        if (orderId == null || orderId <= 0) {
             throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
+
+        ApiResponse<OrderResponse> response = orderClient.getOderById(orderId);
+
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+        }
+
         return response.getData();
     }
+
 
     private String getProfile(){
         ApiResponse<UserResponse> response = userClient.getEmployeeProfile();
