@@ -13,9 +13,13 @@ import com.itextpdf.html2pdf.resolver.font.DefaultFontProvider;
 import com.itextpdf.layout.font.FontProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -51,14 +55,10 @@ public class PDFService {
                 Files.createDirectories(pdfPath);
             }
 
-            // 2. Lấy thông tin nhân viên (có try-catch nội bộ để không làm chết luồng chính)
             UserResponse employee = getEmployee(inventory.getEmployeeId());
 
-            // 3. Tạo nội dung HTML từ dữ liệu
             String htmlContent = generateExportHTML(inventory, employee);
 
-            // 4. Cấu hình Font Provider để hỗ trợ Tiếng Việt (Unicode)
-            // DefaultFontProvider(false, true, false): Không dùng font mặc định, dùng font hệ thống, không dùng font test
             ConverterProperties properties = new ConverterProperties();
             FontProvider fontProvider = new DefaultFontProvider(false, true, false);
             properties.setFontProvider(fontProvider);
@@ -74,7 +74,7 @@ public class PDFService {
             String publicId = "export_inventory_" + inventory.getId();
 
             // Upload file PDF gốc (không convert sang ảnh để giữ chất lượng và text)
-            String cloudinaryUrl = cloudinaryService.uploadPDF(pdfFile, publicId);
+            String cloudinaryUrl = cloudinaryService.uploadPDF(convertPdfToImage(pdfFile), publicId);
 
             log.info("☁️ PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
             return cloudinaryUrl;
@@ -93,6 +93,18 @@ public class PDFService {
                 }
             }
         }
+    }
+
+    public File convertPdfToImage(File pdfFile) throws Exception {
+        PDDocument document = PDDocument.load(pdfFile);
+        PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+        BufferedImage bim = pdfRenderer.renderImageWithDPI(0, 200); // page 0 → 200 DPI
+        File imageFile = new File("converted.png");
+        ImageIO.write(bim, "PNG", imageFile);
+
+        document.close();
+        return imageFile;
     }
 
     private String generateExportHTML(Inventory inventory, UserResponse employee) {

@@ -24,7 +24,7 @@ public class Cart {
     @Column
     private String userId;
 
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     Set<CartItem> items = new HashSet<>();
 
     @Column
