@@ -1,6 +1,6 @@
-package com.example.deliveryservice.response;
+package com.example.inventoryservice.response;
 
-import com.example.deliveryservice.enums.DeliveryStatus;
+import com.example.inventoryservice.enums.DeliveryStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,4 +29,3 @@ public class DeliveryAssignmentResponse {
     private String rejectedBy;
     private OrderResponse order;
 }
-

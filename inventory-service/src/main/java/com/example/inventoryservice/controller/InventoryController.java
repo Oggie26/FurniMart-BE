@@ -400,14 +400,12 @@ public class InventoryController {
         var inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
-        // Only generate PDF for EXPORT type inventories
         if (inventory.getType() != com.example.inventoryservice.enums.EnumTypes.EXPORT) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        // Initialize lazy relationships to avoid LazyInitializationException
         if (inventory.getWarehouse() != null) {
-            inventory.getWarehouse().getWarehouseName(); // Trigger lazy load
+            inventory.getWarehouse().getWarehouseName();
         }
         if (inventory.getInventoryItems() != null) {
             inventory.getInventoryItems().forEach(item -> {
@@ -440,6 +438,20 @@ public class InventoryController {
                 .status(200)
                 .message("Lấy danh sách sản phẩm sắp hết hàng thành công")
                 .data(alerts)
+                .build();
+    }
+
+    @Operation(summary = "Lấy danh sách phiếu giữ hàng (Pending Reservation) theo Store ID")
+    @GetMapping("/reserve/pending")
+    public ApiResponse<List<InventoryResponse>> getPendingReservations(
+            @RequestParam @NotBlank String storeId) {
+
+        List<InventoryResponse> response = inventoryService.getPendingReservations(storeId);
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách phiếu giữ hàng đang chờ xử lý thành công")
+                .data(response)
                 .build();
     }
 }

@@ -74,7 +74,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     WHERE o.isDeleted = false AND o.storeId = :storeId
       AND (
            LOWER(o.note) LIKE LOWER(CONCAT('%', :keyword, '%')) 
-        OR LOWER(o.userId) LIKE LOWER(CONCAT('%', :keyword, '%'))
         OR CAST(o.total AS string) LIKE LOWER(CONCAT('%', :keyword, '%'))
       )
     ORDER BY o.createdAt DESC

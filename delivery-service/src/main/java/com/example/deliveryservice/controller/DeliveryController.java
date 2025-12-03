@@ -1,5 +1,6 @@
 package com.example.deliveryservice.controller;
 
+import com.example.deliveryservice.entity.DeliveryAssignment;
 import com.example.deliveryservice.request.AssignOrderRequest;
 import com.example.deliveryservice.request.PrepareProductsRequest;
 import com.example.deliveryservice.request.RejectAssignmentRequest;
@@ -79,30 +80,30 @@ public class DeliveryController {
                 .build();
     }
 
-    @PostMapping("/generate-invoice/{orderId}")
-    @Operation(
-            summary = "Generate invoice for order",
-            description = "Generate an invoice (PDF) for an order. Only STAFF and BRANCH_MANAGER roles can use this API. " +
-                    "Order status must be READY_FOR_INVOICE (or MANAGER_ACCEPT for backward compatibility). " +
-                    "Each order can only have an invoice generated once. " +
-                    "After successful generation, invoiceGenerated will be set to true and PDF file will be created."
-    )
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invoice generated successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invoice already generated for this order OR Order status is not READY_FOR_INVOICE/MANAGER_ACCEPT"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Order not found with orderId: {orderId}"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
-    })
-    @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
-    public ApiResponse<DeliveryAssignmentResponse> generateInvoice(@PathVariable Long orderId) {
-        return ApiResponse.<DeliveryAssignmentResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Invoice generated successfully")
-                .data(deliveryService.generateInvoice(orderId))
-                .build();
-    }
+//    @PostMapping("/generate-invoice/{orderId}")
+//    @Operation(
+//            summary = "Generate invoice for order",
+//            description = "Generate an invoice (PDF) for an order. Only STAFF and BRANCH_MANAGER roles can use this API. " +
+//                    "Order status must be READY_FOR_INVOICE (or MANAGER_ACCEPT for backward compatibility). " +
+//                    "Each order can only have an invoice generated once. " +
+//                    "After successful generation, invoiceGenerated will be set to true and PDF file will be created."
+//    )
+//    @ApiResponses(value = {
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invoice generated successfully"),
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invoice already generated for this order OR Order status is not READY_FOR_INVOICE/MANAGER_ACCEPT"),
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Order not found with orderId: {orderId}"),
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+//            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
+//    })
+//    @ResponseStatus(HttpStatus.OK)
+//    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
+//    public ApiResponse<DeliveryAssignmentResponse> generateInvoice(@PathVariable Long orderId) {
+//        return ApiResponse.<DeliveryAssignmentResponse>builder()
+//                .status(HttpStatus.OK.value())
+//                .message("Invoice generated successfully")
+//                .data(deliveryService.generateInvoice(orderId))
+//                .build();
+//    }
 
     @PostMapping("/prepare-products")
     @Operation(
@@ -159,7 +160,6 @@ public class DeliveryController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only STAFF and BRANCH_MANAGER roles are allowed")
     })
-    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<DeliveryAssignmentResponse> getDeliveryAssignmentByOrderId(@PathVariable Long orderId) {
         return ApiResponse.<DeliveryAssignmentResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -206,7 +206,6 @@ public class DeliveryController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only BRANCH_MANAGER and DELIVERY roles are allowed")
     })
-    @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('DELIVERY')")
     public ApiResponse<DeliveryAssignmentResponse> updateDeliveryStatus(
             @Parameter(description = "Delivery assignment ID", required = true, example = "1")
             @PathVariable Long assignmentId,
@@ -283,5 +282,6 @@ public class DeliveryController {
                 .data(deliveryService.rejectAssignment(assignmentId, request.getReason(), deliveryStaffId))
                 .build();
     }
+
 }
 

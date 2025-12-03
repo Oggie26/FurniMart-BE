@@ -44,6 +44,22 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     public DeliveryConfirmationResponse createDeliveryConfirmation(DeliveryConfirmationRequest request) {
         log.info("Creating delivery confirmation for order: {}", request.getOrderId());
 
+        // 1. GỌI SANG ORDER SERVICE ĐỂ LẤY THÔNG TIN KHÁCH HÀNG (SỬA Ở ĐÂY)
+        // Giả sử bạn có hàm getOrderById trong OrderClient trả về ApiResponse<OrderResponse> hoặc OrderResponse
+        // Bạn cần lấy userId từ order này.
+        var orderResponse = orderClient.getOrderById(request.getOrderId());
+
+        // Tùy cấu trúc Feign Client của bạn mà lấy data ra (ví dụ .getData() hoặc lấy trực tiếp)
+        String customerId = null;
+        if (orderResponse != null && orderResponse.getBody().getData() != null) {
+            customerId = orderResponse.getBody().getData().getAddress().getUserId();
+        }
+
+        // Validate: Nếu không tìm thấy khách hàng thì không cho tạo xác nhận
+        if (customerId == null) {
+            throw new RuntimeException("Không tìm thấy thông tin khách hàng cho đơn hàng: " + request.getOrderId());
+        }
+
         String deliveryPhotosJson = null;
         if (request.getDeliveryPhotos() != null && !request.getDeliveryPhotos().isEmpty()) {
             try {
@@ -56,19 +72,16 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String deliveryStaffId = authentication.getName();
 
-        // Get QR code from order service instead of generating it
+        // Có thể tận dụng orderResponse ở trên để lấy QR Code luôn nếu có, đỡ phải query 2 lần
         String qrCode = getQRCodeFromOrder(request.getOrderId());
 
         DeliveryConfirmation confirmation = DeliveryConfirmation.builder()
                 .orderId(request.getOrderId())
                 .deliveryStaffId(deliveryStaffId)
-                .customerId(null)
+                .customerId(customerId) // <--- ĐÃ FIX: Truyền ID lấy từ Order Service vào
                 .deliveryPhotos(deliveryPhotosJson)
                 .deliveryNotes(request.getDeliveryNotes())
                 .qrCode(qrCode)
-                .deliveryLatitude(request.getDeliveryLatitude())
-                .deliveryLongitude(request.getDeliveryLongitude())
-                .deliveryAddress(request.getDeliveryAddress())
                 .status(DeliveryConfirmationStatus.DELIVERED)
                 .build();
 
@@ -221,8 +234,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .qrCodeScannedAt(confirmation.getQrCodeScannedAt())
                 .customerSignature(confirmation.getCustomerSignature())
                 .status(confirmation.getStatus())
-                .deliveryLatitude(confirmation.getDeliveryLatitude())
-                .deliveryLongitude(confirmation.getDeliveryLongitude())
                 .deliveryAddress(confirmation.getDeliveryAddress())
                 .isQrCodeScanned(confirmation.getQrCodeScannedAt() != null)
                 .createdAt(confirmation.getCreatedAt())

@@ -28,8 +28,6 @@ public class DeliveryConfirmationResponse {
     private LocalDateTime qrCodeScannedAt;
     private String customerSignature;
     private DeliveryConfirmationStatus status;
-    private Double deliveryLatitude;
-    private Double deliveryLongitude;
     private String deliveryAddress;
     private boolean isQrCodeScanned;
     private Date createdAt;

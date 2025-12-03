@@ -45,6 +45,11 @@ jwt:
   expiration: 3600000
   refreshExpiration: 604800000
 
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dtrmzaceb}
+  api-key: ${CLOUDINARY_API_KEY:694787457898143}
+  api-secret: ${CLOUDINARY_API_SECRET:0wVPq8zyKO1even9bpse5rSzk1U}
+
 eureka:
   client:
     service-url:

@@ -21,11 +21,6 @@ public class DeliveryConfirmationRequest {
 
     private String deliveryNotes;
 
-    private Double deliveryLatitude;
-
-    private Double deliveryLongitude;
-
-    private String deliveryAddress;
 }
 
 

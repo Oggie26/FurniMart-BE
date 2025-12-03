@@ -4,5 +4,7 @@ public enum EnumPurpose {
     STOCK_IN,
     REQUEST,
     STOCK_OUT,
+    TRANSFER_OUT,
+    RESERVE,
     MOVE
 }

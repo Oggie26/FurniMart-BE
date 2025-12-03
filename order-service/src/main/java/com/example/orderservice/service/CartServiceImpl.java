@@ -90,26 +90,34 @@ public class CartServiceImpl implements CartService {
         cartRepository.save(cart);
     }
 
+    // CartServiceImpl.java
+
     @Override
     @Transactional
-    public void removeProductFromCart(List<String> cartItemIds) {
-        if (cartItemIds == null || cartItemIds.isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
+    public void removeProductFromCart(List<String> productColorIdsToRemove) {
+        if (productColorIdsToRemove == null || productColorIdsToRemove.isEmpty()) {
+            return;
         }
 
         String userId = getUserId();
-        Cart cart = getOrCreateCartEntity(userId);
+        Cart cart = cartRepository.findByUserId(userId).orElse(null);
+
+        if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
+            return;
+        }
 
         List<CartItem> itemsToRemove = cart.getItems().stream()
-                .filter(item -> cartItemIds.contains(item.getId()))
+                .filter(item -> productColorIdsToRemove.contains(item.getProductColorId()))
                 .toList();
 
         if (itemsToRemove.isEmpty()) {
-            throw new AppException(ErrorCode.CART_ITEM_NOT_FOUND);
+            log.warn("Không tìm thấy sản phẩm nào trong giỏ để xóa với IDs: {}", productColorIdsToRemove);
+            return;
         }
 
-        cartItemRepository.deleteAll(itemsToRemove);
-        itemsToRemove.forEach(cart.getItems()::remove);
+        cartItemRepository.deleteAllInBatch(itemsToRemove);
+        cart.getItems().removeAll(itemsToRemove);
+
         cart.updateTotalPrice();
         cartRepository.save(cart);
     }
@@ -118,13 +126,19 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void clearCart() {
-        Cart cart = cartRepository.findByUserId(getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
-        cartItemRepository.deleteAll(cart.getItems());
+        String userId = getUserId();
+        Cart cart = cartRepository.findByUserId(userId).orElse(null);
+
+        if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
+            return;
+        }
+
+        cartItemRepository.deleteAllByCartId(cart.getId());
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
     }
+
 
     @Override
     public CartResponse getCartById(Long id) {

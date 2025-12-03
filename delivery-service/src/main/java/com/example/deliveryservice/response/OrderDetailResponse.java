@@ -13,6 +13,7 @@ public class OrderDetailResponse {
     private Long id;
     private String productColorId;
     private Integer quantity;
+    private ProductColorResponse productColor;
     private Double price;
 }
 

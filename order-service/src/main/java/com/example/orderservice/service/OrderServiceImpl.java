@@ -15,7 +15,9 @@ import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
+import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
     private final QRCodeService qrCodeService;
+    private final CartService cartService;
 
     @Override
     @Transactional
@@ -108,7 +111,6 @@ public class OrderServiceImpl implements OrderService {
             String pdfPath = pdfService.generateOrderPDF(order, user, address);
             order.setPdfFilePath(pdfPath);
             orderRepository.save(order);
-            log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
         } catch (Exception e) {
             log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
         }
@@ -148,7 +150,6 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
 
-        // Generate PDF for the ordergenerateOrderPDF
         try {
             UserResponse user = safeGetUser(order.getUserId());
             AddressResponse address = safeGetAddress(order.getAddressId());
@@ -158,7 +159,6 @@ public class OrderServiceImpl implements OrderService {
             log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
         } catch (Exception e) {
             log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
-            // Continue even if PDF generation fails
         }
 
         // Clear cart after creating pre-order
@@ -173,30 +173,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
-        log.info("Staff creating order for customer: {}", request.getCustomerUserId());
-        
-        // Validate customer exists
-        ApiResponse<UserResponse> customerResponse = userClient.getUserById(request.getCustomerUserId());
-        if (customerResponse == null || customerResponse.getData() == null) {
-            throw new AppException(ErrorCode.NOT_FOUND_USER);
-        }
-        
-        // Validate address exists and belongs to customer
-        ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(request.getAddressId());
-        if (addressResponse == null || addressResponse.getData() == null) {
-            throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
-        }
-        if (!addressResponse.getData().getUserId().equals(request.getCustomerUserId())) {
-            throw new AppException(ErrorCode.INVALID_ADDRESS);
-        }
-        
-        // Validate store exists
+
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
         if (storeResponse == null || storeResponse.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
         
-        // Calculate total from order details
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
@@ -211,9 +193,7 @@ public class OrderServiceImpl implements OrderService {
         
         // Create order
         Order order = Order.builder()
-                .userId(request.getCustomerUserId())
                 .storeId(request.getStoreId())
-                .addressId(request.getAddressId())
                 .total(total)
                 .status(EnumProcessOrder.MANAGER_ACCEPT)
                 .note(request.getNote())
@@ -270,8 +250,7 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         paymentRepository.save(payment);
         
-        log.info("Staff successfully created order {} for customer {}", savedOrder.getId(), request.getCustomerUserId());
-        
+
         return mapToResponse(savedOrder);
     }
 
@@ -332,27 +311,102 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
     }
 
+//    @Override
+//    @Transactional
+//    public void handlePaymentCOD(Long orderId){
+//        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+//                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+//
+//        assignOrderService.assignOrderToStore(orderId);
+//
+//
+//        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+//                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+//                        .productColorId(detail.getProductColorId())
+//                        .quantity(detail.getQuantity())
+//                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+//                        .price(detail.getPrice())
+//                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+//                        .build())
+//                .toList();
+//
+//
+//        OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                .email(safeGetUser(order.getUserId()).getEmail())
+//                .fullName(safeGetUser(order.getUserId()).getFullName())
+//                .orderDate(order.getOrderDate())
+//                .totalPrice(order.getTotal())
+//                .orderId(order.getId())
+//                .storeId(order.getStoreId())
+//                .addressLine(getAddress(order.getAddressId()))
+//                .paymentMethod(PaymentMethod.COD)
+//                .items(orderItems)
+//                .build();
+//
+//        for (OrderDetail detail : order.getOrderDetails()) {
+//            cartService.removeProductFromCart(Collections.singletonList(detail.getProductColorId()));
+//        }
+//
+//        try {
+//            kafkaTemplate.send("order-created-topic", event)
+//                    .whenComplete((
+//                            result, ex) -> {
+//                        if (ex != null) {
+//                            log.info("Failed to send Kafka event {}, error: {}", event.getFullName(), ex.getMessage());
+//                        } else {
+//                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+//                        }
+//                    });
+//        } catch (Exception e) {
+//            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+//        }
+//    }
+
+// OrderServiceImpl.java
+
     @Override
     @Transactional
-    public void handlePaymentCOD(Long orderId){
+    public void handlePaymentCOD(Long orderId) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         assignOrderService.assignOrderToStore(orderId);
 
-        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                        .productColorId(detail.getProductColorId())
-                        .quantity(detail.getQuantity())
-                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                        .price(detail.getPrice())
-                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                        .build())
-                .toList();
+        // 1. Gom dữ liệu 1 lần
+        List<OrderCreatedEvent.OrderItem> orderItems = new ArrayList<>();
+        List<String> productIdsToRemove = new ArrayList<>();
 
+        for (OrderDetail detail : order.getOrderDetails()) {
+            ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
+
+            // Build Kafka Item
+            orderItems.add(OrderCreatedEvent.OrderItem.builder()
+                    .productColorId(detail.getProductColorId())
+                    .quantity(detail.getQuantity())
+                    .productName(productInfo.getProduct().getName())
+                    .colorName(productInfo.getColor().getColorName())
+                    .price(detail.getPrice())
+                    .build());
+
+            // Gom ID để xóa cart
+            productIdsToRemove.add(detail.getProductColorId());
+        }
+
+        // 2. Gọi xóa cart (An toàn)
+        try {
+            if (!productIdsToRemove.isEmpty()) {
+                cartService.removeProductFromCart(productIdsToRemove);
+            }
+        } catch (Exception e) {
+            // Log lỗi nhưng KHÔNG throw tiếp, để đơn hàng vẫn thành công
+            log.error("Lỗi xóa giỏ hàng (Ignore): {}", e.getMessage());
+        }
+
+        // 3. Gửi Kafka
+        var userInfo = safeGetUser(order.getUserId());
         OrderCreatedEvent event = OrderCreatedEvent.builder()
-                .email(safeGetUser(order.getUserId()).getEmail())
-                .fullName(safeGetUser(order.getUserId()).getFullName())
+                .email(userInfo.getEmail())
+                .fullName(userInfo.getFullName())
                 .orderDate(order.getOrderDate())
                 .totalPrice(order.getTotal())
                 .orderId(order.getId())
@@ -364,15 +418,15 @@ public class OrderServiceImpl implements OrderService {
 
         try {
             kafkaTemplate.send("order-created-topic", event)
-                    .whenComplete((
-                            result, ex) -> {
+                    .whenComplete((result, ex) -> {
                         if (ex != null) {
+                            log.warn("Kafka send failed: {}", ex.getMessage());
                         } else {
-                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                            log.info("Kafka sent success: {}", event.getOrderId());
                         }
                     });
         } catch (Exception e) {
-            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+            log.error("Kafka error: {}", e.getMessage());
         }
     }
 
@@ -425,6 +479,7 @@ public class OrderServiceImpl implements OrderService {
                 kafkaTemplate.send("order-created-topic", event)
                         .whenComplete((result, ex) -> {
                             if (ex != null) {
+                                log.error("Kafka send failed: {}", ex.getMessage());
                             } else {
                                 log.info("Successfully sent order creation event for: {}", event.getOrderId());
                             }
@@ -667,7 +722,7 @@ public class OrderServiceImpl implements OrderService {
 
         return OrderResponse.builder()
                 .id(order.getId())
-                .user(safeGetUser(order.getUserId()))
+                .user(safeGetUser(order.getUserId()) != null ? safeGetUser(order.getUserId()) : null)
                 .address(safeGetAddress(order.getAddressId()))
                 .total(order.getTotal())
                 .note(order.getNote())
@@ -783,11 +838,15 @@ public class OrderServiceImpl implements OrderService {
         return "TXN-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 10000);
     }
 
-    private UserResponse safeGetUser(String userId) {
-        if (userId == null) return null;
-        ApiResponse<UserResponse> resp = userClient.getUserById(userId);
-        if (resp == null || resp.getData() == null) return null;
-        return resp.getData();
+    public UserResponse safeGetUser(String userId) {
+        try {
+            return userClient.getUserById(userId).getData();
+        } catch (FeignException.NotFound e) {
+            return null;
+        } catch (Exception e) {
+            log.error("Error fetching user {}: {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     private AddressResponse safeGetAddress(Long addressId) {

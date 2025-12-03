@@ -26,11 +26,14 @@ public class ProductLocationResponse {
         private String locationItemId;
         private String locationCode;
 
-        private Integer totalQuantity;
-        private Integer reserved;
+        @Builder.Default
+        private int totalQuantity = 0;
 
-        public Integer getAvailable() {
-            return totalQuantity - reserved;
+        @Builder.Default
+        private int reserved = 0;
+
+        public int getAvailable() {
+            return Math.max(0, totalQuantity - reserved);
         }
     }
 }

@@ -46,7 +46,7 @@ public class RateLimitingConfig {
     public Bucket createLoginBucket(String ip) {
         String key = "login:" + ip;
         return cache.computeIfAbsent(key, k -> Bucket.builder()
-                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(10))))
+                .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(10))))
                 .build());
     }
 
