@@ -122,7 +122,13 @@ public class WalletServiceImpl implements WalletService {
     @Transactional(readOnly = true)
     public WalletResponse getMyWallet() {
         String currentUserId = getCurrentUserId();
-        return getWalletByUserId(currentUserId);
+        Wallet wallet = walletRepository.findByUserIdAndIsDeletedFalse(currentUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        User user = userRepository.findByIdAndIsDeletedFalse(currentUserId)
+                .orElse(null);
+
+        return mapToWalletResponse(wallet, user);
     }
 
     private String getCurrentUserId() {
@@ -404,7 +410,10 @@ public class WalletServiceImpl implements WalletService {
             if (Boolean.TRUE.equals(wallet.getIsDeleted())) {
                 wallet.setIsDeleted(false);
             }
+            // Only generate code if it's truly missing (shouldn't happen for existing wallets)
+            // Don't regenerate code for existing wallets to maintain consistency
             if (wallet.getCode() == null || wallet.getCode().isBlank()) {
+                log.warn("Wallet {} for user {} has blank code, generating new one", wallet.getId(), userId);
                 wallet.setCode(generateWalletCode());
             }
             if (wallet.getBalance() == null) {
@@ -412,7 +421,7 @@ public class WalletServiceImpl implements WalletService {
             }
             wallet.setStatus(WalletStatus.ACTIVE);
             Wallet restored = walletRepository.save(wallet);
-            log.info("Restored wallet {} for user {}", restored.getId(), userId);
+            log.info("Restored wallet {} for user {} with code: {}", restored.getId(), userId, restored.getCode());
             return restored;
         }
 

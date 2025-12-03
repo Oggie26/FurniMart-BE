@@ -40,9 +40,9 @@ public class ChatBoxService {
         try {
             response = productClient.getProducts();
             int count = (response != null && response.getData() != null) ? response.getData().size() : 0;
-            log.info("✅ Gọi Product Service thành công, nhận được {} sản phẩm", count);
+            log.info("Gọi Product Service thành công, nhận được {} sản phẩm", count);
         } catch (Exception e) {
-            log.error("❌ Lỗi khi gọi Product Service qua Feign: {}", e.getMessage());
+            log.error("Lỗi khi gọi Product Service qua Feign: {}", e.getMessage());
             return "Xin lỗi, tôi chưa thể lấy dữ liệu sản phẩm từ hệ thống. Bạn thử lại sau nhé!";
         }
 
@@ -113,13 +113,13 @@ public class ChatBoxService {
                         ? reply.trim()
                         : "Xin lỗi, tôi chưa hiểu rõ câu hỏi của bạn. Bạn có thể nói cụ thể hơn không?";
             } catch (Exception e) {
-                log.error("❌ Lỗi khi gọi OpenAI API: {}", e.getMessage(), e);
+                log.error("Lỗi khi gọi OpenAI API: {}", e.getMessage(), e);
                 return "Xin lỗi, kết nối đến não bộ AI đang gặp trục trặc. Vui lòng thử lại sau nhé!";
             }
         } else {
             // --- TRƯỜNG HỢP 2: CHƯA CÓ KEY (CHẠY GIẢ LẬP) ---
             // Đây là chỗ giúp bạn test luồng Gateway -> AI Service mà không cần mua Key
-            log.warn("⚠️  Chưa có API Key - Service đang chạy ở chế độ MÔ PHỎNG");
+            log.warn("Chưa có API Key - Service đang chạy ở chế độ MÔ PHỎNG");
             String mockReply = String.format(
                 "[MÔ PHỎNG] Tôi đã nhận được câu hỏi: '%s'. " +
                 "(Hệ thống chưa cấu hình API Key. Vui lòng thêm OPENAI_API_KEY hoặc GOOGLE_API_KEY vào biến môi trường Docker để kích hoạt AI thật.)",

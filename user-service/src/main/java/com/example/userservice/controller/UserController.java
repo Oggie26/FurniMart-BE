@@ -208,7 +208,7 @@ public class UserController {
                 .status(HttpStatus.CREATED.value())
                 .message("Customer account created successfully")
                 .data(userService.createCustomerAccountForStaff(request))
-                .biuld();
+                .build();
     }
     
     @GetMapping("/count")

@@ -51,6 +51,7 @@ public class OrderServiceImpl implements OrderService {
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
+    private final QRCodeService qrCodeService;
 
     @Override
     @Transactional
@@ -205,13 +206,16 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
         }
         
+        // Generate QR code for MANAGER_ACCEPT status
+        // Note: We'll generate QR code after order is saved (need order ID)
+        
         // Create order
         Order order = Order.builder()
                 .userId(request.getCustomerUserId())
                 .storeId(request.getStoreId())
                 .addressId(request.getAddressId())
                 .total(total)
-                .status(EnumProcessOrder.PENDING)
+                .status(EnumProcessOrder.MANAGER_ACCEPT)
                 .note(request.getNote())
                 .reason(request.getReason())
                 .orderDate(new Date())
@@ -234,15 +238,25 @@ public class OrderServiceImpl implements OrderService {
         
         order.setOrderDetails(orderDetails);
         
-        // Create process order
-        ProcessOrder process = new ProcessOrder();
-        process.setOrder(order);
-        process.setStatus(EnumProcessOrder.PENDING);
-        process.setCreatedAt(new Date());
-        order.setProcessOrders(new ArrayList<>(List.of(process)));
-        
-        // Save order
+        // Save order first to get ID
         Order savedOrder = orderRepository.save(order);
+        
+        // Generate QR code for MANAGER_ACCEPT status
+        QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(savedOrder.getId());
+        savedOrder.setQrCode(qrCodeResult.getQrCodeString());
+        savedOrder.setQrCodeGeneratedAt(new Date());
+        
+        // Create process order with MANAGER_ACCEPT status
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(savedOrder);
+        process.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+        
+        savedOrder.setProcessOrders(new ArrayList<>(List.of(process)));
+        
+        // Save order again with QR code
+        savedOrder = orderRepository.save(savedOrder);
         
         // Create payment
         Payment payment = Payment.builder()

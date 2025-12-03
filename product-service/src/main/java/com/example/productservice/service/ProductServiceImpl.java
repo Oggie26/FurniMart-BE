@@ -83,7 +83,7 @@ public class ProductServiceImpl implements ProductService {
                     kafkaTemplate.send("product-create-topic", event);
                     log.info("🧠 Sent AI event for product [{}]", product.getName());
                 } catch (Exception e) {
-                    log.error("❌ Failed to send AI event for product [{}]: {}", product.getName(), e.getMessage());
+                    log.error("Failed to send AI event for product [{}]: {}", product.getName(), e.getMessage());
                 }
             }
         });

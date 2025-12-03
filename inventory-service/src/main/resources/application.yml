@@ -51,3 +51,9 @@ eureka:
       defaultZone: http://eureka-server:8761/eureka
 #       defaultZone: http://localhost:8761/eureka
 
+# Cấu hình cảnh báo sản phẩm sắp hết hàng
+inventory:
+  low-stock:
+    threshold: 10  # Ngưỡng cảnh báo mặc định (số lượng sản phẩm)
+    enabled: true  # Bật/tắt scheduled task kiểm tra low stock
+

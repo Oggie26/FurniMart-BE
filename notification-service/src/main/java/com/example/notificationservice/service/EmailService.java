@@ -68,10 +68,10 @@ public class EmailService {
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            System.out.println("✅ Đã gửi email quên mật khẩu thành công");
+            System.out.println("Đã gửi email quên mật khẩu thành công");
         } catch (MessagingException e) {
             e.printStackTrace();
-            throw new RuntimeException("❌ Lỗi khi gửi email: " + e.getMessage());
+            throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
         }
     }
 

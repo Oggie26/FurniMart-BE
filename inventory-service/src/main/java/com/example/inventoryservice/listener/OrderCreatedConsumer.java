@@ -33,18 +33,18 @@ public class OrderCreatedConsumer {
     @Transactional
     public void handleOrderCreated(OrderCreatedEvent event) {
         Long orderId = event.getOrderId();
-        log.info("📦 Received OrderCreatedEvent for order: {}", orderId);
+        log.info("Received OrderCreatedEvent for order: {}", orderId);
 
         // Kiểm tra xem order đã được xử lý chưa (idempotency check)
         if (processedMessageRepository.existsByOrderId(orderId)) {
-            log.warn("⚠️ Order {} has already been processed. Skipping duplicate processing.", orderId);
+            log.warn("Order {} has already been processed. Skipping duplicate processing.", orderId);
             return;
         }
 
         try {
             // Xử lý các items trong order
             event.getItems().forEach(item -> {
-                log.info("🔹 Processing productColorId={} quantity={}", item.getProductColorId(), item.getQuantity());
+                log.info("Processing productColorId={} quantity={}", item.getProductColorId(), item.getQuantity());
                 try {
 //                Inventory inventory = inventoryRepository.findByProductColorId(item.getProductColorId())
 //                        .orElseThrow(() -> new RuntimeException("Không tìm thấy tồn kho cho productColorId=" + item.getProductColorId()));
@@ -57,9 +57,9 @@ public class OrderCreatedConsumer {
 //                );
                     inventoryService.reserveStock(item.getProductColorId(), item.getQuantity(), event.getOrderId());
 
-                    log.info("✅ Reserved stock for productColorId={} by {}", item.getProductColorId(), item.getQuantity());
+                    log.info("Reserved stock for productColorId={} by {}", item.getProductColorId(), item.getQuantity());
                 } catch (Exception e) {
-                    log.error("❌ Error reserving stock for productColorId={} : {}", item.getProductColorId(), e.getMessage(), e);
+                    log.error("Error reserving stock for productColorId={} : {}", item.getProductColorId(), e.getMessage(), e);
                     throw new RuntimeException("Failed to reserve stock for productColorId: " + item.getProductColorId(), e);
                 }
             });
@@ -70,9 +70,9 @@ public class OrderCreatedConsumer {
                     .build();
             processedMessageRepository.save(processedMessage);
             
-            log.info("✅ Successfully processed order {} and saved processed message record", orderId);
+            log.info("Successfully processed order {} and saved processed message record", orderId);
         } catch (Exception e) {
-            log.error("❌ Error processing order {}: {}", orderId, e.getMessage(), e);
+            log.error("Error processing order {}: {}", orderId, e.getMessage(), e);
             // Không lưu ProcessedMessage nếu xử lý thất bại, để có thể retry sau
             throw e;
         }

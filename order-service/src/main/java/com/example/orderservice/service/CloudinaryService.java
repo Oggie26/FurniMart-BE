@@ -26,17 +26,17 @@ public class CloudinaryService {
             ));
 
             String url = (String) uploadResult.get("secure_url");
-            log.info("✅ PDF uploaded to Cloudinary successfully: {}", url);
+            log.info("PDF uploaded to Cloudinary successfully: {}", url);
             
             if (file.exists()) {
                 file.delete();
-                log.info("🗑️  Local file deleted: {}", file.getPath());
+                log.info("Local file deleted: {}", file.getPath());
             }
             
             return url;
             
         } catch (IOException e) {
-            log.error("❌ Error uploading PDF to Cloudinary: {}", e.getMessage(), e);
+            log.error("Error uploading PDF to Cloudinary: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload PDF to Cloudinary: " + e.getMessage());
         }
     }
@@ -47,9 +47,9 @@ public class CloudinaryService {
             Map result = cloudinary.uploader().destroy(publicId, ObjectUtils.asMap(
                     "resource_type", "raw"
             ));
-            log.info("🗑️  PDF deleted from Cloudinary: {}", publicId);
+            log.info("PDF deleted from Cloudinary: {}", publicId);
         } catch (IOException e) {
-            log.error("❌ Error deleting PDF from Cloudinary: {}", e.getMessage(), e);
+            log.error("Error deleting PDF from Cloudinary: {}", e.getMessage(), e);
         }
     }
 }

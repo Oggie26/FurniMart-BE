@@ -8,6 +8,7 @@ import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.InventoryItemResponse;
 import com.example.inventoryservice.response.InventoryResponse;
+import com.example.inventoryservice.response.LowStockAlertResponse;
 import com.example.inventoryservice.response.ProductLocationResponse;
 import com.example.inventoryservice.service.PDFService;
 import com.example.inventoryservice.service.inteface.InventoryService;
@@ -422,6 +423,20 @@ public class InventoryController {
                 .status(200)
                 .message("Tạo PDF phiếu xuất kho thành công")
                 .data(pdfPath)
+                .build();
+    }
+
+    @Operation(summary = "Lấy danh sách sản phẩm sắp hết hàng (Low Stock Alert)")
+    @GetMapping("/low-stock")
+    public ApiResponse<List<LowStockAlertResponse>> getLowStockProducts(
+            @RequestParam(required = false, defaultValue = "10") Integer threshold) {
+        
+        List<LowStockAlertResponse> alerts = inventoryService.getLowStockProducts(threshold);
+        
+        return ApiResponse.<List<LowStockAlertResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách sản phẩm sắp hết hàng thành công")
+                .data(alerts)
                 .build();
     }
 }
