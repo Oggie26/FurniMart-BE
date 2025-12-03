@@ -2,6 +2,7 @@ package com.example.inventoryservice.repository;
 
 import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.entity.InventoryItem;
+import com.example.inventoryservice.enums.EnumTypes;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -115,14 +116,15 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     @Query("SELECT COALESCE(SUM(i.quantity), 0) " +
             "FROM InventoryItem i " +
             "WHERE i.productColorId = :pci " +
-            "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
-    Integer calculateTotalPhysicalStock(@Param("pci") String pci);
+            "AND i.inventory.type NOT IN :excludedTypes") // <--- Dùng tham số
+    Integer calculateTotalPhysicalStock(@Param("pci") String pci,
+                                        @Param("excludedTypes") List<EnumTypes> excludedTypes);
 
-    // 2. Tính TỒN KHẢ DỤNG (Available = Quantity - Reserved):
-    // Chỉ tính trên item vật lý
+    // 2. Tính TỒN KHẢ DỤNG (Available)
     @Query("SELECT COALESCE(SUM(i.quantity - i.reservedQuantity), 0) " +
             "FROM InventoryItem i " +
             "WHERE i.productColorId = :pci " +
-            "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
-    Integer calculateRealAvailableStock(@Param("pci") String pci);
+            "AND i.inventory.type NOT IN :excludedTypes") // <--- Dùng tham số
+    Integer calculateRealAvailableStock(@Param("pci") String pci,
+                                        @Param("excludedTypes") List<EnumTypes> excludedTypes);
 }

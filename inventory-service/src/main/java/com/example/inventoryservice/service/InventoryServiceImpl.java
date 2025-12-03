@@ -648,20 +648,24 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         return total >= requiredQty;
     }
 
+    private static final List<EnumTypes> EXCLUDED_TYPES = List.of(
+            EnumTypes.RESERVE,   // Phiếu giữ hàng
+            EnumTypes.EXPORT,    // Phiếu xuất kho
+            EnumTypes.TRANSFER   // Phiếu chuyển kho
+    );
+
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
-        Integer total = inventoryItemRepository.calculateTotalPhysicalStock(productColorId);
+        Integer total = inventoryItemRepository.calculateTotalPhysicalStock(productColorId, EXCLUDED_TYPES);
         return total != null ? total : 0;
-//        return inventoryItemRepository.findAllByProductColorId(productColorId)
-//                .stream().mapToInt(InventoryItem::getQuantity).sum();
     }
 
     @Override
     public int getAvailableStockByProductColorId(String productColorId) {
-        Integer available = inventoryItemRepository.calculateRealAvailableStock(productColorId);
+        Integer available = inventoryItemRepository.calculateRealAvailableStock(productColorId, EXCLUDED_TYPES);
+
+        // Đảm bảo không trả về số âm
         return available != null ? Math.max(0, available) : 0;
-//        return inventoryItemRepository.findAllByProductColorId(productColorId)
-//                .stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
     }
 
     // ----------------- GET LIST -----------------
