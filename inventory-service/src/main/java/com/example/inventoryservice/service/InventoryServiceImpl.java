@@ -650,14 +650,18 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
-        return inventoryItemRepository.findAllByProductColorId(productColorId)
-                .stream().mapToInt(InventoryItem::getQuantity).sum();
+        Integer total = inventoryItemRepository.calculateTotalPhysicalStock(productColorId);
+        return total != null ? total : 0;
+//        return inventoryItemRepository.findAllByProductColorId(productColorId)
+//                .stream().mapToInt(InventoryItem::getQuantity).sum();
     }
 
     @Override
     public int getAvailableStockByProductColorId(String productColorId) {
-        return inventoryItemRepository.findAllByProductColorId(productColorId)
-                .stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
+        Integer available = inventoryItemRepository.calculateRealAvailableStock(productColorId);
+        return available != null ? Math.max(0, available) : 0;
+//        return inventoryItemRepository.findAllByProductColorId(productColorId)
+//                .stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
     }
 
     // ----------------- GET LIST -----------------
@@ -878,9 +882,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         inventory.getInventoryItems().add(item);
     }
 
-
-
-
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
@@ -896,6 +897,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .date(inventory.getDate())
                 .pdfUrl(inventory.getPdfUrl())
                 .note(inventory.getNote())
+                .orderId(inventory.getOrderId())
                 .transferStatus(inventory.getTransferStatus())
                 .warehouseId(inventory.getWarehouse().getId())
                 .warehouseName(inventory.getWarehouse().getWarehouseName())

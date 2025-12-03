@@ -97,4 +97,32 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             "AND i.locationItem IS NOT NULL " + // <--- QUAN TRỌNG: Chỉ lấy hàng có vị trí
             "ORDER BY i.reservedQuantity DESC, i.quantity DESC")
     List<InventoryItem> findItemsForExport(@Param("pci") String pci, @Param("wid") String wid);
+
+
+    @Query("SELECT COALESCE(SUM(i.quantity - i.reservedQuantity), 0) " +
+            "FROM InventoryItem i " +
+            "WHERE i.productColorId = :productColorId " +
+            "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
+    Integer getRealAvailableStock(@Param("productColorId") String productColorId);
+
+    // Nếu bạn vẫn muốn lấy List Item để làm gì đó thì dùng cái này:
+    @Query("SELECT i FROM InventoryItem i " +
+            "WHERE i.productColorId = :productColorId " +
+            "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
+    List<InventoryItem> findAllPhysicalItems(@Param("productColorId") String productColorId);
+
+
+    @Query("SELECT COALESCE(SUM(i.quantity), 0) " +
+            "FROM InventoryItem i " +
+            "WHERE i.productColorId = :pci " +
+            "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
+    Integer calculateTotalPhysicalStock(@Param("pci") String pci);
+
+    // 2. Tính TỒN KHẢ DỤNG (Available = Quantity - Reserved):
+    // Chỉ tính trên item vật lý
+    @Query("SELECT COALESCE(SUM(i.quantity - i.reservedQuantity), 0) " +
+            "FROM InventoryItem i " +
+            "WHERE i.productColorId = :pci " +
+            "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
+    Integer calculateRealAvailableStock(@Param("pci") String pci);
 }
