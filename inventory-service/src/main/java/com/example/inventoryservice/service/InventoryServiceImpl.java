@@ -443,16 +443,29 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public ProductLocationResponse getAllProductLocations(String productColorId) {
+        // 1. Lấy tất cả item liên quan đến sản phẩm này
         List<InventoryItem> items = inventoryItemRepository.findFullByProductColorId(productColorId);
 
         Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
 
         for (InventoryItem item : items) {
+            if (item.getInventory() == null || item.getInventory().getType() == null) {
+                continue;
+            }
+
+            if (EXCLUDED_TYPES.contains(item.getInventory().getType())) {
+                continue;
+            }
+
+            if (item.getLocationItem() == null) {
+                continue;
+            }
+
             LocationItem li = item.getLocationItem();
             Zone zone = li.getZone();
             Warehouse warehouse = zone.getWarehouse();
 
-            String key = li.getId();
+            String key = li.getId(); // Group theo ID vị trí kệ
 
             grouped.computeIfAbsent(key, k -> ProductLocationResponse.LocationInfo.builder()
                     .warehouseId(warehouse.getId())
@@ -467,6 +480,7 @@ public class InventoryServiceImpl implements InventoryService {
                     .build());
 
             ProductLocationResponse.LocationInfo info = grouped.get(key);
+
             info.setTotalQuantity(info.getTotalQuantity() + item.getQuantity());
             info.setReserved(info.getReserved() + item.getReservedQuantity());
         }
@@ -654,18 +668,27 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
             EnumTypes.TRANSFER   // Phiếu chuyển kho
     );
 
+    private static final List<EnumTypes> VIRTUAL_STOCK_TYPES = List.of(
+            EnumTypes.RESERVE,
+            EnumTypes.EXPORT,
+            EnumTypes.TRANSFER
+    );
+
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
-        Integer total = inventoryItemRepository.calculateTotalPhysicalStock(productColorId, EXCLUDED_TYPES);
-        return total != null ? total : 0;
+        // Sử dụng Objects.requireNonNullElse để xử lý null gọn gàng (Java 9+)
+        return Objects.requireNonNullElse(
+                inventoryItemRepository.calculateTotalPhysicalStock(productColorId, VIRTUAL_STOCK_TYPES),
+                0
+        );
     }
 
     @Override
     public int getAvailableStockByProductColorId(String productColorId) {
-        Integer available = inventoryItemRepository.calculateRealAvailableStock(productColorId, EXCLUDED_TYPES);
-
-        // Đảm bảo không trả về số âm
-        return available != null ? Math.max(0, available) : 0;
+        // Dùng Optional để xử lý null + Math.max trong 1 dòng
+        return Optional.ofNullable(inventoryItemRepository.calculateRealAvailableStock(productColorId, VIRTUAL_STOCK_TYPES))
+                .map(qty -> Math.max(0, qty)) // Đảm bảo không âm
+                .orElse(0);                   // Nếu null thì trả về 0
     }
 
     // ----------------- GET LIST -----------------
