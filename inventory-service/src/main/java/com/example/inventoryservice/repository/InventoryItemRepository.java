@@ -91,7 +91,9 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     int sumQuantityByZoneId(@Param("zoneId") String zoneId);
 
     @Query("SELECT i FROM InventoryItem i " +
-            "WHERE i.productColorId = :pci AND i.inventory.warehouse.id = :wid " +
-            "ORDER BY i.reservedQuantity DESC, i.quantity DESC") // <- Ưu tiên thằng có Reserved
+            "WHERE i.productColorId = :pci " +
+            "AND i.inventory.warehouse.id = :wid " +
+            "AND i.locationItem IS NOT NULL " + // <--- QUAN TRỌNG: Chỉ lấy hàng có vị trí
+            "ORDER BY i.reservedQuantity DESC, i.quantity DESC")
     List<InventoryItem> findItemsForExport(@Param("pci") String pci, @Param("wid") String wid);
 }

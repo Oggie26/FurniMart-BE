@@ -161,7 +161,6 @@ public class InventoryServiceImpl implements InventoryService {
 //                }
 
                 case EXPORT -> {
-                    // 1. SỬA QUERY: Ưu tiên lấy những item đang có Reserved > 0 ra trước
                     List<InventoryItem> itemsInStock = inventoryItemRepository
                             .findItemsForExport(itemReq.getProductColorId(), warehouse.getId());
 
@@ -177,16 +176,11 @@ public class InventoryServiceImpl implements InventoryService {
 
                         int toExport = Math.min(currentQty, remainingQtyToExport);
 
-                        // --- LOGIC XÓA REVERSE & TRỪ KHO ---
 
-                        // 1. Giảm tồn kho vật lý (Luôn luôn)
                         it.setQuantity(it.getQuantity() - toExport);
 
-                        // 2. Nếu là xuất bán (STOCK_OUT), giảm luôn cả ReservedQuantity (Xóa Reverse)
                         if (isStockOut) {
-                            // Chỉ trừ reserved nếu nó > 0
                             if (it.getReservedQuantity() > 0) {
-                                // Trừ đi lượng xuất, nhưng không được nhỏ hơn 0
                                 int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
                                 it.setReservedQuantity(newReserved);
                             }
