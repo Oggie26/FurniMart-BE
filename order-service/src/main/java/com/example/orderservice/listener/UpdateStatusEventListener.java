@@ -22,7 +22,7 @@ public class UpdateStatusEventListener {
             orderService.updateOrderStatus(event.getOrderId(), event.getEnumProcessOrder());
             log.info("✔ Order {} status updated to {}", event.getOrderId(), event.getEnumProcessOrder());
         } catch (Exception ex) {
-            log.error("❌ Failed to update order {} status: {}", event.getOrderId(), ex.getMessage(), ex);
+            log.error("Failed to update order {} status: {}", event.getOrderId(), ex.getMessage(), ex);
         }
     }
 }

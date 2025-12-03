@@ -401,10 +401,10 @@ public class DeliveryServiceImpl implements DeliveryService {
     private void notifyManagerAboutRejection(DeliveryAssignment assignment, String deliveryStaffId, String reason) {
         try {
             String message = String.format(
-                "⚠️ Delivery staff %s đã từ chối đơn hàng #%d.\n" +
-                "📦 Store: %s\n" +
-                "❌ Lý do: %s\n" +
-                "🔄 Vui lòng re-assign cho delivery staff khác.",
+                "Delivery staff %s đã từ chối đơn hàng #%d.\n" +
+                "Store: %s\n" +
+                "Lý do: %s\n" +
+                "Vui lòng re-assign cho delivery staff khác.",
                 deliveryStaffId,
                 assignment.getOrderId(),
                 assignment.getStoreId(),

@@ -27,7 +27,7 @@ public class OrderCreatedConsumer {
     @Transactional
     public void handleOrderCreated(OrderCreatedEvent event) {
         Long orderId = event.getOrderId();
-        log.info("📦 Received OrderCreatedEvent for order: {}", orderId);
+        log.info("Received OrderCreatedEvent for order: {}", orderId);
 
         if (processedMessageRepository.existsByOrderId(orderId)) {
             log.warn("⚠️ Order {} has already been processed. Skipping.", orderId);

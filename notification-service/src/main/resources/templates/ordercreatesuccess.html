@@ -16,7 +16,7 @@
                 <!-- Header -->
                 <tr>
                     <td style="background: linear-gradient(135deg, #235347, #2d6b5d); color: white; padding: 30px; text-align: center;">
-                        <h1 style="margin: 0; font-size: 28px;">🛋️ FurniMart</h1>
+                        <h1 style="margin: 0; font-size: 28px;">FurniMart</h1>
                         <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">
                             Nội thất hiện đại cho ngôi nhà của bạn
                         </p>
@@ -39,15 +39,15 @@
                         <div style="background: #f9fafb; border-radius: 10px; padding: 20px; margin: 25px 0;">
                             <table style="width: 100%; border-collapse: collapse;">
                                 <tr>
-                                    <td style="color: #718096;">🗓️ Ngày đặt hàng:</td>
+                                    <td style="color: #718096;">Ngày đặt hàng:</td>
                                     <td style="text-align: right;" th:text="${orderDate}"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #718096;">💳 Phương thức thanh toán:</td>
+                                    <td style="color: #718096;">Phương thức thanh toán:</td>
                                     <td style="text-align: right;" th:text="${paymentMethod}"></td>
                                 </tr>
                                 <tr>
-                                    <td style="color: #718096;">💰 Tổng tiền:</td>
+                                    <td style="color: #718096;">Tổng tiền:</td>
                                     <td style="text-align: right; font-weight: bold; color: #235347;"
                                         th:text="${#numbers.formatDecimal(totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'"></td>
                                 </tr>
@@ -56,7 +56,7 @@
 
                         <!-- Product List -->
                         <div style="margin-top: 25px;">
-                            <h3 style="color: #235347; font-size: 18px; margin-bottom: 10px;">🛍️ Sản phẩm trong đơn hàng:</h3>
+                            <h3 style="color: #235347; font-size: 18px; margin-bottom: 10px;">Sản phẩm trong đơn hàng:</h3>
                             <table style="width: 100%; border-collapse: collapse;">
                                 <thead>
                                 <tr style="background-color: #e6fffa;">
@@ -95,7 +95,7 @@
                             <span style="font-size: 12px; color: #718096;">Chúng tôi cam kết mang đến trải nghiệm tốt nhất</span>
                         </p>
                         <p style="margin-top: 10px; font-size: 12px; color: #a0aec0;">
-                            📍 123 Đường Nội Thất, Quận 1, TP.HCM | ☎️ 1900-FURNI
+                            123 Đường Nội Thất, Quận 1, TP.HCM | 1900-FURNI
                         </p>
                     </td>
                 </tr>

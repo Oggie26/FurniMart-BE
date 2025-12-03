@@ -856,6 +856,75 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         return (currentQty + additionalQty) <= maxCapacity;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<LowStockAlertResponse> getLowStockProducts(Integer threshold) {
+        // Default threshold nếu không được cung cấp
+        int defaultThreshold = threshold != null ? threshold : 10;
+        
+        log.info("Checking for low stock products with threshold: {}", defaultThreshold);
+        
+        // Lấy tất cả các productColorId duy nhất từ inventory items
+        List<String> allProductColorIds = inventoryItemRepository.findAll()
+                .stream()
+                .map(InventoryItem::getProductColorId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        List<LowStockAlertResponse> alerts = new ArrayList<>();
+        
+        for (String productColorId : allProductColorIds) {
+            try {
+                int totalStock = getTotalStockByProductColorId(productColorId);
+                int availableStock = getAvailableStockByProductColorId(productColorId);
+                int reservedStock = totalStock - availableStock;
+                
+                // Chỉ cảnh báo nếu tồn kho khả dụng <= threshold
+                if (availableStock <= defaultThreshold && availableStock >= 0) {
+                    ProductColorResponse productColor = getProductName(productColorId);
+                    
+                    String alertLevel = availableStock == 0 ? "CRITICAL" : "LOW";
+                    String message = availableStock == 0 
+                        ? String.format("Sản phẩm %s - %s đã HẾT HÀNG!", 
+                            productColor.getProduct() != null ? productColor.getProduct().getName() : "N/A",
+                            productColor.getColor() != null ? productColor.getColor().getColorName() : "N/A")
+                        : String.format("Sản phẩm %s - %s sắp hết hàng! Còn lại %d sản phẩm (ngưỡng: %d)", 
+                            productColor.getProduct() != null ? productColor.getProduct().getName() : "N/A",
+                            productColor.getColor() != null ? productColor.getColor().getColorName() : "N/A",
+                            availableStock, defaultThreshold);
+                    
+                    LowStockAlertResponse alert = LowStockAlertResponse.builder()
+                            .productColorId(productColorId)
+                            .productColor(productColor)
+                            .productName(productColor.getProduct() != null ? productColor.getProduct().getName() : null)
+                            .colorName(productColor.getColor() != null ? productColor.getColor().getColorName() : null)
+                            .currentStock(availableStock)
+                            .totalStock(totalStock)
+                            .reservedStock(reservedStock)
+                            .threshold(defaultThreshold)
+                            .alertLevel(alertLevel)
+                            .message(message)
+                            .build();
+                    
+                    alerts.add(alert);
+                }
+            } catch (Exception e) {
+                log.warn("Error checking stock for productColorId {}: {}", productColorId, e.getMessage());
+                // Continue với sản phẩm tiếp theo nếu có lỗi
+            }
+        }
+        
+        // Sắp xếp theo mức độ cảnh báo (CRITICAL trước, sau đó LOW) và tồn kho tăng dần
+        alerts.sort((a1, a2) -> {
+            int levelCompare = a2.getAlertLevel().compareTo(a1.getAlertLevel()); // CRITICAL > LOW
+            if (levelCompare != 0) return levelCompare;
+            return Integer.compare(a1.getCurrentStock(), a2.getCurrentStock()); // Stock tăng dần
+        });
+        
+        log.info("Found {} products with low stock", alerts.size());
+        return alerts;
+    }
+
 
     // ----------------- PRIVATE HELPERS -----------------
 

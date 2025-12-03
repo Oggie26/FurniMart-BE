@@ -54,17 +54,17 @@ public class EmailOrderService {
 
             helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
             helper.setTo(event.getEmail());
-            helper.setSubject("🛒 Đơn hàng #" + event.getOrderId() + " của bạn đã được thanh toán thành công!");
+            helper.setSubject("Đơn hàng #" + event.getOrderId() + " của bạn đã được thanh toán thành công!");
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            log.info("✅ Email đơn hàng gửi thành công tới {}", event.getEmail());
+            log.info("Email đơn hàng gửi thành công tới {}", event.getEmail());
 
         } catch (MessagingException e) {
-            log.error("❌ Lỗi khi gửi email: {}", e.getMessage());
+            log.error("Lỗi khi gửi email: {}", e.getMessage());
             throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
         } catch (Exception ex) {
-            log.error("❌ Lỗi xử lý dữ liệu email: {}", ex.getMessage());
+            log.error("Lỗi xử lý dữ liệu email: {}", ex.getMessage());
             throw new RuntimeException(ex);
         }
     }

@@ -18,7 +18,7 @@ public class OrderEventListener {
             containerFactory = "orderCreatedKafkaListenerContainerFactory"
     )
     public void handleOrderCreated(OrderCreatedEvent event) {
-        log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
+        log.info("Received OrderCreatedEvent for order: {}", event.getOrderId());
         orderService.sendMailToCreateOrderSuccess(event);
         for (OrderCreatedEvent.OrderItem item : event.getItems()) {
             String key = "reserved_stock:" + item.getProductColorId();

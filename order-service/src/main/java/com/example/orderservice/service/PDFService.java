@@ -57,11 +57,11 @@ public class PDFService {
             String publicId = "invoice_order_" + order.getId();
             String cloudinaryUrl = cloudinaryService.uploadPDF(convertPdfToImage(pdfFile), publicId);
 
-            log.info("☁️  PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
+            log.info("PDF uploaded to Cloudinary successfully: {}", cloudinaryUrl);
             return cloudinaryUrl;
 
         } catch (Exception e) {
-            log.error("❌ Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
+            log.error("Error generating PDF for order {}: {}", order.getId(), e.getMessage(), e);
             throw new RuntimeException("Failed to generate PDF: " + e.getMessage());
         }
     }
