@@ -1,12 +1,15 @@
 package com.example.deliveryservice.service;
 
+import com.example.deliveryservice.entity.DeliveryAssignment;
 import com.example.deliveryservice.entity.DeliveryConfirmation;
 import com.example.deliveryservice.enums.DeliveryConfirmationStatus;
+import com.example.deliveryservice.enums.DeliveryStatus;
 import com.example.deliveryservice.enums.EnumProcessOrder;
 import com.example.deliveryservice.exception.AppException;
 import com.example.deliveryservice.enums.ErrorCode;
 import com.example.deliveryservice.feign.OrderClient;
 import com.example.deliveryservice.feign.WarrantyClient;
+import com.example.deliveryservice.repository.DeliveryAssignmentRepository;
 import com.example.deliveryservice.repository.DeliveryConfirmationRepository;
 import com.example.deliveryservice.request.DeliveryConfirmationRequest;
 import com.example.deliveryservice.request.QRCodeScanRequest;
@@ -35,6 +38,7 @@ import java.util.stream.Collectors;
 public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationService {
 
     private final DeliveryConfirmationRepository deliveryConfirmationRepository;
+    private final DeliveryAssignmentRepository deliveryAssignmentRepository;
     private final ObjectMapper objectMapper;
     private final OrderClient orderClient;
     private final WarrantyClient warrantyClient;
@@ -86,10 +90,14 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .build();
 
         DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
-
+        DeliveryAssignment deliveryAssignment =  deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        deliveryAssignment.setStatus(DeliveryStatus.DELIVERED);
+        deliveryAssignmentRepository.save(deliveryAssignment);
         // Update order status and generate warranties via order-service
         try {
-            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.DELIVERED);
+            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.FINISHED);
+
             warrantyClient.generateWarranties(request.getOrderId());
         } catch (Exception ex) {
             log.warn("Post-delivery side-effects failed for order {}: {}", request.getOrderId(), ex.getMessage());
