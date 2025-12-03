@@ -23,6 +23,10 @@ public interface OrderClient {
 
     @PostMapping("/internal/orders/{orderId}/generate-pdf")
     ResponseEntity<ApiResponse<String>> generatePDF(@PathVariable("orderId") Long orderId);
+
+    @PostMapping("/api/{orderId}/confirm-cod")
+    ApiResponse<Void> confirmCodPayment(@PathVariable Long orderId);
+
 }
 
 

@@ -97,7 +97,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         // Update order status and generate warranties via order-service
         try {
             orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.FINISHED);
-
+            orderClient.confirmCodPayment(request.getOrderId());
             warrantyClient.generateWarranties(request.getOrderId());
         } catch (Exception ex) {
             log.warn("Post-delivery side-effects failed for order {}: {}", request.getOrderId(), ex.getMessage());

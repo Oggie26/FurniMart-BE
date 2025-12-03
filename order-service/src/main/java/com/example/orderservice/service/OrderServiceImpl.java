@@ -178,16 +178,17 @@ public class OrderServiceImpl implements OrderService {
         if (storeResponse == null || storeResponse.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
-        
+
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
                 .sum();
-        
+
+
         if (total <= 0) {
             throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
         }
-        
+
         Order order = Order.builder()
                 .storeId(request.getStoreId())
                 .total(total)
@@ -197,7 +198,6 @@ public class OrderServiceImpl implements OrderService {
                 .orderDate(new Date())
                 .build();
         
-        // Create order details
         List<OrderDetail> orderDetails = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .map(detail -> OrderDetail.builder()
@@ -685,6 +685,21 @@ public class OrderServiceImpl implements OrderService {
                 orders.isLast()
         );
     }
+
+    @Override
+    @Transactional
+    public boolean handleConfirmPayment(Long orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+
+        if (!PaymentMethod.COD.equals(payment.getPaymentMethod())) {
+            return false;
+        }
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        paymentRepository.save(payment);
+        return true;
+    }
+
 
     private OrderResponse mapToResponse(Order order) {
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
