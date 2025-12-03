@@ -424,4 +424,18 @@ public class InventoryController {
                 .data(pdfPath)
                 .build();
     }
+
+    @Operation(summary = "Lấy danh sách phiếu giữ hàng (Pending Reservation) theo Store ID")
+    @GetMapping("/reserve/pending")
+    public ApiResponse<List<InventoryResponse>> getPendingReservations(
+            @RequestParam @NotBlank String storeId) {
+
+        List<InventoryResponse> response = inventoryService.getPendingReservations(storeId);
+
+        return ApiResponse.<List<InventoryResponse>>builder()
+                .status(200)
+                .message("Lấy danh sách phiếu giữ hàng đang chờ xử lý thành công")
+                .data(response)
+                .build();
+    }
 }

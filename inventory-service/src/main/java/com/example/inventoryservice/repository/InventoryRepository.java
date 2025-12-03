@@ -23,4 +23,7 @@ List<Inventory> findAllByWarehouse_IdAndPurpose(String warehouseId, EnumPurpose 
 
     @Query("SELECT i FROM Inventory i LEFT JOIN FETCH i.inventoryItems it LEFT JOIN FETCH it.locationItem WHERE i.id = :id")
     Optional<Inventory> findByIdWithItems(@Param("id") Long id);
+
+    @Query("SELECT i FROM Inventory i WHERE i.warehouse.id = :warehouseId AND i.type = 'RESERVE'    ")
+    List<Inventory> findPendingReservations(@Param("warehouseId") String warehouseId);
 }

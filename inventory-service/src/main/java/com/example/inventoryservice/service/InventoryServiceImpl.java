@@ -760,6 +760,18 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
     }
 
     @Override
+    public List<InventoryResponse> getPendingReservations(String storeId) {
+        Warehouse warehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(storeId)
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+        List<Inventory> reservations = inventoryRepository.findPendingReservations(warehouse.getId());
+
+        return reservations.stream()
+                .map(this::mapToInventoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId) {
         Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));

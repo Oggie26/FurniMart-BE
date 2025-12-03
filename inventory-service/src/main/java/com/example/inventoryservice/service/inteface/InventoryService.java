@@ -55,6 +55,8 @@ public interface InventoryService {
 
     ProductLocationResponse getProductByStoreId(String storeId);
 
+    List<InventoryResponse> getPendingReservations(String storeId);
+
     ProductLocationResponse getProductLocationsByWarehouse(String productColorId, String storeId);
 
     ProductLocationResponse getAllProductLocations(String productColorId);
