@@ -574,7 +574,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         Inventory reservationTicket = Inventory.builder()
                 .employeeId("SYSTEM_AUTO")
                 .type(EnumTypes.RESERVE)
-                .purpose(EnumPurpose.REVERSE)
+                .purpose(EnumPurpose.RESERVE)
                 .date(LocalDate.now())
                 .warehouse(warehouse)
                 .orderId(orderId)

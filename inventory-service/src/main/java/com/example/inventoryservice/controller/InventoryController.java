@@ -399,14 +399,12 @@ public class InventoryController {
         var inventory = inventoryRepository.findById(inventoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
-        // Only generate PDF for EXPORT type inventories
         if (inventory.getType() != com.example.inventoryservice.enums.EnumTypes.EXPORT) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        // Initialize lazy relationships to avoid LazyInitializationException
         if (inventory.getWarehouse() != null) {
-            inventory.getWarehouse().getWarehouseName(); // Trigger lazy load
+            inventory.getWarehouse().getWarehouseName();
         }
         if (inventory.getInventoryItems() != null) {
             inventory.getInventoryItems().forEach(item -> {
