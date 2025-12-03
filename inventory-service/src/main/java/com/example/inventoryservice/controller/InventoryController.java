@@ -427,10 +427,13 @@ public class InventoryController {
     }
 
     @Operation(summary = "Lấy danh sách sản phẩm sắp hết hàng (Low Stock Alert)")
-    @GetMapping("/low-stock")
+    @GetMapping("/stock/low-stock")
     public ApiResponse<List<LowStockAlertResponse>> getLowStockProducts(
-            @RequestParam(required = false, defaultValue = "10") Integer threshold) {
+            @RequestParam(name = "storeId", required = false) String storeId,
+            @RequestParam(name = "threshold", required = false, defaultValue = "10") @Min(1) Integer threshold) {
         
+        // TODO: Filter by storeId when service method supports it
+        // Currently service method doesn't support storeId filtering
         List<LowStockAlertResponse> alerts = inventoryService.getLowStockProducts(threshold);
         
         return ApiResponse.<List<LowStockAlertResponse>>builder()
