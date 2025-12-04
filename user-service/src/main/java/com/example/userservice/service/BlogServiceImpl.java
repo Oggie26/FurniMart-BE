@@ -50,7 +50,9 @@ public class BlogServiceImpl implements BlogService {
         }
 
         String username = authentication.getName();
-        Account account = accountRepository.findByUsername(username);
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(username)
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+
         Employee employee = employeeRepository.findByAccount(account)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -80,7 +82,9 @@ public class BlogServiceImpl implements BlogService {
         }
 
         String username = authentication.getName();
-        Account account = accountRepository.findByUsername(username);
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(username)
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+
         Employee employee = employeeRepository.findByAccount(account)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
