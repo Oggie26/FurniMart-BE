@@ -200,8 +200,7 @@ public class BlogServiceImpl implements BlogService {
                 .status(blog.getStatus())
                 .employeeId(blog.getEmployee() != null ? blog.getEmployee().getId() : null)
                 .image(blog.getImage())
-                .userName(blog.getEmployee().getFullName())
-                .createdAt(blog.getCreatedAt())
+                .employeeName(blog.getEmployee() != null ? blog.getEmployee().getFullName() : "Unknown")                .createdAt(blog.getCreatedAt())
                 .updatedAt(blog.getUpdatedAt())
                 .build();
     }
