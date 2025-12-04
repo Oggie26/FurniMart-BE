@@ -35,12 +35,6 @@ public class BlogServiceImpl implements BlogService {
 
     private final BlogRepository blogRepository;
     private final EmployeeRepository employeeRepository;
-    private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
-
-
-
-
 
     @Override
     @Transactional
