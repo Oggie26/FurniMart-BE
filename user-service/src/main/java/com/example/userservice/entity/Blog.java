@@ -26,7 +26,7 @@ public class Blog extends AbstractEntity {
     @Builder.Default
     private Boolean status = true;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String image;
 
     @ManyToOne(fetch = FetchType.LAZY)
