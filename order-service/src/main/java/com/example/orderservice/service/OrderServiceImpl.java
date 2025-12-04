@@ -954,7 +954,11 @@ public class OrderServiceImpl implements OrderService {
                 .qrCode(order.getQrCode())
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .pdfFilePath(order.getPdfFilePath())
-                .deliveryConfirmationResponse(getDeliveryConfirmationResponse(order.getId()))
+                .deliveryConfirmationResponse(
+                        getDeliveryConfirmationResponse(order.getId()) != null
+                                ? getDeliveryConfirmationResponse(order.getId())
+                                : null
+                )
                 .hasPdfFile(hasPdfFile)
                 .build();
     }
