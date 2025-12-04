@@ -15,7 +15,7 @@ public class BlogResponse {
     private String name;
     private String content;
     private Boolean status;
-    private String userId;
+    private String employeeId;
     private String userName;
     private Date createdAt;
     private Date updatedAt;
