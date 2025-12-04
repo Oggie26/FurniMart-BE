@@ -1,10 +1,12 @@
 package com.example.userservice.service;
 
+import com.example.userservice.entity.Account;
 import com.example.userservice.entity.Blog;
 import com.example.userservice.entity.Employee;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
+import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.BlogRepository;
 import com.example.userservice.repository.EmployeeRepository;
 import com.example.userservice.repository.UserRepository;
@@ -18,6 +20,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,13 +35,23 @@ public class BlogServiceImpl implements BlogService {
 
     private final BlogRepository blogRepository;
     private final EmployeeRepository employeeRepository;
+    private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
 
     @Override
     @Transactional
     public BlogResponse createBlog(BlogRequest blogRequest) {
         log.info("Creating new blog with name: {}", blogRequest.getName());
-        
-        Employee employee = employeeRepository.findById(blogRequest.getEmployeeId())
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        String username = authentication.getName();
+        Account account = accountRepository.findByUsername(username);
+        Employee employee = employeeRepository.findByAccount(account)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Blog blog = Blog.builder()
@@ -58,12 +72,22 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     public BlogResponse updateBlog(Integer id, BlogRequest blogRequest) {
         log.info("Updating blog with ID: {}", id);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        String username = authentication.getName();
+        Account account = accountRepository.findByUsername(username);
+        Employee employee = employeeRepository.findByAccount(account)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         
         Blog existingBlog = blogRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BLOG_NOT_FOUND));
 
-        Employee employee = employeeRepository.findById(blogRequest.getEmployeeId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
 
         existingBlog.setName(blogRequest.getName());
         existingBlog.setContent(blogRequest.getContent());

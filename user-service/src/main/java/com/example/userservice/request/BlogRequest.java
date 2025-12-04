@@ -20,8 +20,5 @@ public class BlogRequest {
     @NotNull(message = "Status is required")
     private Boolean status;
 
-    @NotBlank(message = "User ID is required")
-    private String employeeId;
-
     private String image;
 }
