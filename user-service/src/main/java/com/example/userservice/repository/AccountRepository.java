@@ -22,5 +22,4 @@ public interface AccountRepository extends JpaRepository<Account, String> {
            "WHERE a.isDeleted = false")
     List<Account> findAllWithUserAndEmployee();
 
-    Account findByUsername(String username);
 }
