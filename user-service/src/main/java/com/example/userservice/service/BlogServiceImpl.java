@@ -39,22 +39,7 @@ public class BlogServiceImpl implements BlogService {
     private final AccountRepository accountRepository;
 
 
-    private Employee getCurrentAuthenticatedEmployee() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-
-        String username = authentication.getName(); // Đây là email/username
-
-        Account account = accountRepository.findByEmailAndIsDeletedFalse(username)
-                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
-
-        return employeeRepository.findByAccount(account)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-    }
 
 
     @Override
@@ -63,15 +48,15 @@ public class BlogServiceImpl implements BlogService {
         log.info("Creating new blog with name: {}", blogRequest.getName());
 
         // 1. Lấy nhân viên đang đăng nhập
-        Employee author = getCurrentAuthenticatedEmployee();
-
+        Employee employee = employeeRepository.findEmployeeById(blogRequest.getEmployeeId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
         // 2. Tạo Entity
         Blog blog = Blog.builder()
                 .name(blogRequest.getName())
                 .content(blogRequest.getContent())
                 .status(blogRequest.getStatus())
                 .image(blogRequest.getImage())
-                .employee(author) // Gán tác giả là người đang tạo
+                .employee(employee) // Gán tác giả là người đang tạo
                 .build();
 
         // 3. Lưu và trả về
@@ -87,27 +72,19 @@ public class BlogServiceImpl implements BlogService {
     public BlogResponse updateBlog(Integer id, BlogRequest blogRequest) {
         log.info("Updating blog with ID: {}", id);
 
-        // 1. Kiểm tra xem user có hợp lệ không (Nếu cần check quyền chủ bài viết thì check ở đây)
-        getCurrentAuthenticatedEmployee();
-
-        // 2. Tìm bài viết cũ
+        Employee employee = employeeRepository.findEmployeeById(blogRequest.getEmployeeId())
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
         Blog existingBlog = blogRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BLOG_NOT_FOUND));
 
-        // 3. Cập nhật thông tin (KHÔNG cập nhật employee/tác giả gốc)
         existingBlog.setName(blogRequest.getName());
         existingBlog.setContent(blogRequest.getContent());
         existingBlog.setStatus(blogRequest.getStatus());
-
-        // Chỉ cập nhật ảnh nếu request có gửi ảnh mới lên (Optional)
+        existingBlog.setEmployee(employee);
         if (blogRequest.getImage() != null && !blogRequest.getImage().isEmpty()) {
             existingBlog.setImage(blogRequest.getImage());
         }
 
-        // LƯU Ý: Đã xóa dòng existingBlog.setEmployee(employee);
-        // Lý do: Khi update, không nên ghi đè người tạo ban đầu bằng người đang sửa.
-
-        // 4. Lưu và trả về
         Blog updatedBlog = blogRepository.save(existingBlog);
         log.info("Blog updated successfully with ID: {}", updatedBlog.getId());
 

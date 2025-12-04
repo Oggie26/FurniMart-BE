@@ -17,6 +17,8 @@ public class BlogRequest {
     @NotBlank(message = "Blog content is required")
     private String content;
 
+    private String employeeId;
+
     @NotNull(message = "Status is required")
     private Boolean status;
 
