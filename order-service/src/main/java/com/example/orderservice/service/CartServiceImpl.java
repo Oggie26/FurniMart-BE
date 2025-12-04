@@ -188,8 +188,11 @@ public class CartServiceImpl implements CartService {
         String userId = getUserId();
         Cart cart = getOrCreateCartEntity(userId);
 
-        ProductColorResponse productColor = getProductColor(productColorId);
         int availableQuantity = getAvailableProduct(productColorId);
+
+        if (quantity > availableQuantity) {
+            throw new AppException(ErrorCode.INVALID_QUANTITY);
+        }
 
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(item -> item.getProductColorId().equals(productColorId))
@@ -197,18 +200,11 @@ public class CartServiceImpl implements CartService {
 
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
-            int newQuantity = item.getQuantity() + quantity;
 
-            if (newQuantity > availableQuantity) {
-                throw new AppException(ErrorCode.INVALID_QUANTITY);
-            }
+            item.setQuantity(quantity);
 
-            item.setQuantity(newQuantity);
         } else {
-            if (quantity > availableQuantity) {
-                throw new AppException(ErrorCode.INVALID_QUANTITY);
-            }
-
+            ProductColorResponse productColor = getProductColor(productColorId);
             addNewItemToCart(cart, productColor, quantity);
         }
 

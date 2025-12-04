@@ -68,25 +68,25 @@ public class ProductServiceImpl implements ProductService {
                 .build();
         productRepository.save(product);
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    ProductCreatedEvent event = ProductCreatedEvent.builder()
-                            .productId(product.getId())
-                            .name(product.getName())
-                            .price(product.getPrice())
-                            .categoryName(product.getCategory().getCategoryName())
-                            .description(productRequest.getDescription())
-                            .build();
-
-                    kafkaTemplate.send("product-create-topic", event);
-                    log.info("🧠 Sent AI event for product [{}]", product.getName());
-                } catch (Exception e) {
-                    log.error("Failed to send AI event for product [{}]: {}", product.getName(), e.getMessage());
-                }
-            }
-        });
+//        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+//            @Override
+//            public void afterCommit() {
+//                try {
+//                    ProductCreatedEvent event = ProductCreatedEvent.builder()
+//                            .productId(product.getId())
+//                            .name(product.getName())
+//                            .price(product.getPrice())
+//                            .categoryName(product.getCategory().getCategoryName())
+//                            .description(productRequest.getDescription())
+//                            .build();
+//
+//                    kafkaTemplate.send("product-create-topic", event);
+//                    log.info("🧠 Sent AI event for product [{}]", product.getName());
+//                } catch (Exception e) {
+//                    log.error("Failed to send AI event for product [{}]: {}", product.getName(), e.getMessage());
+//                }
+//            }
+//        });
 
         return mapToResponse(product);
     }
