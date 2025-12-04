@@ -2,6 +2,7 @@ package com.example.orderservice.service;
 
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.repository.OrderDetailRepository;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
@@ -22,6 +23,7 @@ public class BranchAnalyticsService {
     private final OrderRepository orderRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final InventoryClient inventoryClient;
+    private final ProductClient productClient;
 
     private static final List<EnumProcessOrder> COMPLETED_STATUSES = Arrays.asList(
             EnumProcessOrder.DELIVERED,
@@ -247,10 +249,22 @@ public class BranchAnalyticsService {
                         Long totalQuantity = ((Number) result[1]).longValue();
                         Double totalRevenue = ((Number) result[2]).doubleValue();
 
-                        // Get product details - this would need ProductClient
+                        // Fetch product details from ProductClient
                         String productName = "N/A";
                         String colorName = "N/A";
-                        // TODO: Fetch product details from ProductClient if needed
+                        try {
+                            ProductColorResponse productColor = getProductColor(productColorId);
+                            if (productColor != null) {
+                                if (productColor.getProduct() != null) {
+                                    productName = productColor.getProduct().getName();
+                                }
+                                if (productColor.getColor() != null) {
+                                    colorName = productColor.getColor().getColorName();
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.warn("Error fetching product details for productColorId {}: {}", productColorId, e.getMessage());
+                        }
 
                         return TopProductResponse.builder()
                                 .productColorId(productColorId)
@@ -265,6 +279,18 @@ public class BranchAnalyticsService {
             log.error("Error getting top products: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
+    }
+
+    private ProductColorResponse getProductColor(String productColorId) {
+        try {
+            ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
+            if (response != null && response.getData() != null) {
+                return response.getData();
+            }
+        } catch (Exception e) {
+            log.warn("Error fetching product color for id {}: {}", productColorId, e.getMessage());
+        }
+        return null;
     }
 }
 
