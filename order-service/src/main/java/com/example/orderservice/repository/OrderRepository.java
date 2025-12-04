@@ -173,4 +173,107 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("startDate") java.util.Date startDate,
             @Param("endDate") java.util.Date endDate
     );
+
+    @Query("""
+        SELECT COUNT(o) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId
+    """)
+    Long countByStoreId(@Param("storeId") String storeId);
+
+    @Query("""
+        SELECT COUNT(o) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.status = :status
+    """)
+    Long countByStatus(@Param("status") com.example.orderservice.enums.EnumProcessOrder status);
+
+    @Query("""
+        SELECT COUNT(o) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId
+          AND o.orderDate >= :startDate 
+          AND o.orderDate < :endDate
+    """)
+    Long countByStoreIdAndDateRange(
+            @Param("storeId") String storeId,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
+
+    @Query("""
+        SELECT COUNT(o) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId
+          AND o.status = :status
+          AND o.orderDate >= :startDate 
+          AND o.orderDate < :endDate
+    """)
+    Long countOrdersByStoreAndStatusAndDateRange(
+            @Param("storeId") String storeId,
+            @Param("status") com.example.orderservice.enums.EnumProcessOrder status,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
+
+    @Query("""
+        SELECT COALESCE(SUM(o.total), 0) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId 
+          AND o.status IN :statuses
+          AND o.orderDate >= :startDate 
+          AND o.orderDate < :endDate
+    """)
+    Double getTotalRevenueByStoreAndStatusesAndDateRange(
+            @Param("storeId") String storeId,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
+
+    @Query("""
+        SELECT COUNT(DISTINCT o.userId) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId
+          AND o.orderDate >= :startDate 
+          AND o.orderDate < :endDate
+          AND o.userId NOT IN (
+              SELECT DISTINCT o2.userId 
+              FROM Order o2 
+              WHERE o2.isDeleted = false 
+                AND o2.storeId = :storeId
+                AND o2.orderDate < :startDate
+          )
+    """)
+    Long countNewCustomersByStoreAndDateRange(
+            @Param("storeId") String storeId,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
+
+    @Query("""
+        SELECT DATE(o.orderDate) as date, 
+               COALESCE(SUM(o.total), 0) as revenue, 
+               COUNT(o) as orderCount
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.storeId = :storeId
+          AND o.status IN :statuses
+          AND o.orderDate >= :startDate 
+          AND o.orderDate <= :endDate
+        GROUP BY DATE(o.orderDate)
+        ORDER BY DATE(o.orderDate) ASC
+    """)
+    List<Object[]> getRevenueChartDataByStore(
+            @Param("storeId") String storeId,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
 }
