@@ -28,8 +28,8 @@ public class BlogController {
 
     @PostMapping
     @Operation(summary = "Create a new blog")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
     public ApiResponse<BlogResponse> createBlog(@Valid @RequestBody BlogRequest request) {
         return ApiResponse.<BlogResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -40,7 +40,7 @@ public class BlogController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update blog information")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
     public ApiResponse<BlogResponse> updateBlog(@PathVariable Integer id, @Valid @RequestBody BlogRequest request) {
         return ApiResponse.<BlogResponse>builder()
                 .status(HttpStatus.OK.value())
