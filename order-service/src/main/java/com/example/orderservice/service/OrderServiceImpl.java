@@ -954,11 +954,7 @@ public class OrderServiceImpl implements OrderService {
                 .qrCode(order.getQrCode())
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .pdfFilePath(order.getPdfFilePath())
-                .deliveryConfirmationResponse(
-                        getDeliveryConfirmationResponse(order.getId()) != null
-                                ? getDeliveryConfirmationResponse(order.getId())
-                                : null
-                )
+                .deliveryConfirmationResponse(getDeliveryConfirmationResponse(order.getId()))
                 .hasPdfFile(hasPdfFile)
                 .build();
     }
@@ -1081,12 +1077,21 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
-    private DeliveryConfirmationResponse getDeliveryConfirmationResponse(Long orderId){
-        ApiResponse<DeliveryConfirmationResponse> response = deliveryClient.getDeliveryConfirmation(orderId);
-        if (response == null || response.getData() == null) {
-            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+    private DeliveryConfirmationResponse getDeliveryConfirmationResponse(Long orderId) {
+        try {
+            ApiResponse<DeliveryConfirmationResponse> response = deliveryClient.getDeliveryConfirmation(orderId);
+
+            if (response == null || response.getData() == null) {
+                return null; // Không có thông tin thì trả về null nhẹ nhàng
+            }
+            return response.getData();
+
+        } catch (FeignException.NotFound e) {
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to fetch delivery info for order {}: {}", orderId, e.getMessage());
+            return null;
         }
-        return response.getData();
     }
 
 }
