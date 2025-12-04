@@ -91,6 +91,19 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
         
+        // Auto-create wallet for the new customer so staff workflow is consistent
+        try {
+            userRepository.flush();
+            accountRepository.flush();
+            walletService.createWalletForUser(savedUser.getId());
+            log.info("Wallet auto-created for staff-created customer: {}", savedUser.getId());
+        } catch (AppException e) {
+            log.error("Failed to auto-create wallet for staff-created customer {}: ErrorCode={}, Message={}",
+                    savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Failed to auto-create wallet for staff-created customer {}: {}", savedUser.getId(), e.getMessage(), e);
+        }
+        
         // Auto-create wallet for new customer
         // Note: Wallet creation happens in REQUIRES_NEW transaction
         // which should be able to see the flushed user
