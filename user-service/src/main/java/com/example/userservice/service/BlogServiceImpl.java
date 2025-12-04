@@ -1,10 +1,12 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.Blog;
+import com.example.userservice.entity.Employee;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.BlogRepository;
+import com.example.userservice.repository.EmployeeRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.BlogRequest;
 import com.example.userservice.response.BlogResponse;
@@ -28,21 +30,21 @@ import java.util.stream.Collectors;
 public class BlogServiceImpl implements BlogService {
 
     private final BlogRepository blogRepository;
-    private final UserRepository userRepository;
+    private final EmployeeRepository employeeRepository;
 
     @Override
     @Transactional
     public BlogResponse createBlog(BlogRequest blogRequest) {
         log.info("Creating new blog with name: {}", blogRequest.getName());
         
-        User user = userRepository.findById(blogRequest.getUserId())
+        Employee employee = employeeRepository.findById(blogRequest.getEmployeeId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Blog blog = Blog.builder()
                 .name(blogRequest.getName())
                 .content(blogRequest.getContent())
                 .status(blogRequest.getStatus())
-                .user(user)
+                .employee(employee)
                 .image(blogRequest.getImage())
                 .build();
 
@@ -60,14 +62,14 @@ public class BlogServiceImpl implements BlogService {
         Blog existingBlog = blogRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BLOG_NOT_FOUND));
 
-        User user = userRepository.findById(blogRequest.getUserId())
+        Employee employee = employeeRepository.findById(blogRequest.getEmployeeId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         existingBlog.setName(blogRequest.getName());
         existingBlog.setContent(blogRequest.getContent());
         existingBlog.setStatus(blogRequest.getStatus());
         existingBlog.setImage(blogRequest.getImage());
-        existingBlog.setUser(user);
+        existingBlog.setEmployee(employee);
 
         Blog updatedBlog = blogRepository.save(existingBlog);
         log.info("Blog updated successfully with ID: {}", updatedBlog.getId());
@@ -141,11 +143,11 @@ public class BlogServiceImpl implements BlogService {
     public PageResponse<BlogResponse> getBlogsByUserWithPagination(String userId, int page, int size) {
         log.info("Fetching blogs for user ID: {} with pagination - page: {}, size: {}", userId, page, size);
         
-        User user = userRepository.findById(userId)
+        Employee employee = employeeRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Blog> blogPage = blogRepository.findByUser(user, pageable);
+        Page<Blog> blogPage = blogRepository.findByEmployee(employee, pageable);
         
         List<BlogResponse> blogResponses = blogPage.getContent().stream()
                 .map(this::toBlogResponse)
@@ -196,9 +198,9 @@ public class BlogServiceImpl implements BlogService {
                 .name(blog.getName())
                 .content(blog.getContent())
                 .status(blog.getStatus())
-                .userId(blog.getUser().getId())
+                .userId(blog.getEmployee().getId())
                 .image(blog.getImage())
-                .userName(blog.getUser().getFullName())
+                .userName(blog.getEmployee().getFullName())
                 .createdAt(blog.getCreatedAt())
                 .updatedAt(blog.getUpdatedAt())
                 .build();

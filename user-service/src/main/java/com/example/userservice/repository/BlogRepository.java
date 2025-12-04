@@ -1,6 +1,7 @@
 package com.example.userservice.repository;
 
 import com.example.userservice.entity.Blog;
+import com.example.userservice.entity.Employee;
 import com.example.userservice.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,5 +27,5 @@ public interface BlogRepository extends JpaRepository<Blog, Integer> {
     
     Page<Blog> findByStatus(Boolean status, Pageable pageable);
     
-    Page<Blog> findByUser(User user, Pageable pageable);
+    Page<Blog> findByEmployee(Employee employee, Pageable pageable);
 }
