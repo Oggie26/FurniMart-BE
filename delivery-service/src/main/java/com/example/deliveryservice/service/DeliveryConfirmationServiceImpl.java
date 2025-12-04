@@ -140,7 +140,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         }
 
         confirmation.setQrCodeScannedAt(LocalDateTime.now());
-        confirmation.setStatus(DeliveryConfirmationStatus.CONFIRMED);
+        confirmation.setStatus(DeliveryConfirmationStatus.DELIVERED);
 
         DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
 

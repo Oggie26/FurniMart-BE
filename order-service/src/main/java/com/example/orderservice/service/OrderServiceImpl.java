@@ -7,10 +7,7 @@ import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
-import com.example.orderservice.feign.AuthClient;
-import com.example.orderservice.feign.ProductClient;
-import com.example.orderservice.feign.StoreClient;
-import com.example.orderservice.feign.UserClient;
+import com.example.orderservice.feign.*;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
@@ -55,6 +52,7 @@ public class OrderServiceImpl implements OrderService {
     private final PDFService pdfService;
     private final QRCodeService qrCodeService;
     private final CartService cartService;
+    private final DeliveryClient deliveryClient;
 
     @Override
     @Transactional
@@ -170,30 +168,159 @@ public class OrderServiceImpl implements OrderService {
         return mapToResponse(order);
     }
 
+//    @Override
+//    @Transactional
+//    public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
+//
+//        ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
+//        if (storeResponse == null || storeResponse.getData() == null) {
+//            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+//        }
+//
+//        ApiResponse<UserResponse>  userResponse = userClient.getUserById(request.getUserId());
+//        if (userResponse == null || userResponse.getData() == null) {
+//            throw new AppException(ErrorCode.NOT_FOUND_USER);
+//        }
+//
+//        ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(request.getAddressId());
+//        if (addressResponse == null || addressResponse.getData() == null) {
+//            throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
+//        }
+//
+//        Double total = request.getOrderDetails().stream()
+//                .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
+//                .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
+//                .sum();
+//
+//
+//        if (total <= 0) {
+//            throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
+//        }
+//
+//        Order order = Order.builder()
+//                .storeId(request.getStoreId())
+//                .total(total)
+//                .status(EnumProcessOrder.MANAGER_ACCEPT)
+//                .note(request.getNote())
+//                .userId(request.getUserId())
+//                .addressId(request.getAddressId())
+//                .reason(request.getReason())
+//                .orderDate(new Date())
+//                .build();
+//
+//        List<OrderDetail> orderDetails = request.getOrderDetails().stream()
+//                .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
+//                .map(detail -> OrderDetail.builder()
+//                        .order(order)
+//                        .productColorId(detail.getProductColorId())
+//                        .quantity(detail.getQuantity())
+//                        .price(detail.getPrice())
+//                        .build())
+//                .collect(Collectors.toList());
+//
+//        if (orderDetails.isEmpty()) {
+//            throw new AppException(ErrorCode.CART_EMPTY);
+//        }
+//
+//        order.setOrderDetails(orderDetails);
+//
+//        Order savedOrder = orderRepository.save(order);
+//
+//        QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(savedOrder.getId());
+//        savedOrder.setQrCode(qrCodeResult.getQrCodeString());
+//        savedOrder.setQrCodeGeneratedAt(new Date());
+//
+//        ProcessOrder process = new ProcessOrder();
+//        process.setOrder(savedOrder);
+//        process.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
+//        process.setCreatedAt(new Date());
+//        processOrderRepository.save(process);
+//
+//        savedOrder.setProcessOrders(new ArrayList<>(List.of(process)));
+//
+//        savedOrder = orderRepository.save(savedOrder);
+//        if (request.getPaymentMethod().equals(PaymentMethod.COD)){
+//            Payment payment = Payment.builder()
+//                    .order(savedOrder)
+//                    .paymentMethod(request.getPaymentMethod())
+//                    .paymentStatus(PaymentStatus.PENDING)
+//                    .date(new Date())
+//                    .total(savedOrder.getTotal())
+//                    .userId(savedOrder.getUserId())
+//                    .transactionCode(generateTransactionCode())
+//                    .build();
+//            paymentRepository.save(payment);
+//        }else{
+//            Payment payment = Payment.builder()
+//                    .order(savedOrder)
+//                    .paymentMethod(request.getPaymentMethod())
+//                    .paymentStatus(PaymentStatus.PAID)
+//                    .date(new Date())
+//                    .total(savedOrder.getTotal())
+//                    .userId(savedOrder.getUserId())
+//                    .transactionCode(generateTransactionCode())
+//                    .build();
+//            paymentRepository.save(payment);
+//        }
+//
+//        OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                .email(safeGetUser(order.getUserId()).getEmail())
+//                .fullName(safeGetUser(order.getUserId()).getFullName())
+//                .orderDate(order.getOrderDate())
+//                .totalPrice(order.getTotal())
+//                .orderId(order.getId())
+//                .storeId(order.getStoreId())
+//                .addressLine(getAddress(order.getAddressId()))
+//                .paymentMethod(order.getPayment().getPaymentMethod())
+//                .items(order.getOrderDetails())
+//                .build();
+//
+//        try {
+//            kafkaTemplate.send("order-created-topic", event)
+//                    .whenComplete((result, ex) -> {
+//                        if (ex != null) {
+//                            log.error("Kafka send failed: {}", ex.getMessage());
+//                        } else {
+//                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+//                        }
+//                    });
+//        } catch (Exception e) {
+//            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+//        }
+//        return mapToResponse(savedOrder);
+//    }
+
+
     @Override
     @Transactional
     public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
 
+        // ==========================================
+        // 1. VALIDATION & FETCH DATA
+        // ==========================================
+
+        // 1.1 Store
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
         if (storeResponse == null || storeResponse.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
 
-        ApiResponse<UserResponse>  userResponse = userClient.getUserById(request.getUserId());
+        ApiResponse<UserResponse> userResponse = userClient.getUserById(request.getUserId());
         if (userResponse == null || userResponse.getData() == null) {
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
+        UserResponse userData = userResponse.getData();
 
         ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(request.getAddressId());
         if (addressResponse == null || addressResponse.getData() == null) {
             throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
         }
 
+
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
                 .sum();
-
 
         if (total <= 0) {
             throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
@@ -209,7 +336,7 @@ public class OrderServiceImpl implements OrderService {
                 .reason(request.getReason())
                 .orderDate(new Date())
                 .build();
-        
+
         List<OrderDetail> orderDetails = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .map(detail -> OrderDetail.builder()
@@ -219,15 +346,15 @@ public class OrderServiceImpl implements OrderService {
                         .price(detail.getPrice())
                         .build())
                 .collect(Collectors.toList());
-        
+
         if (orderDetails.isEmpty()) {
             throw new AppException(ErrorCode.CART_EMPTY);
         }
-        
+
         order.setOrderDetails(orderDetails);
-        
+
         Order savedOrder = orderRepository.save(order);
-        
+
         QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(savedOrder.getId());
         savedOrder.setQrCode(qrCodeResult.getQrCodeString());
         savedOrder.setQrCodeGeneratedAt(new Date());
@@ -237,36 +364,68 @@ public class OrderServiceImpl implements OrderService {
         process.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
         process.setCreatedAt(new Date());
         processOrderRepository.save(process);
-        
+
         savedOrder.setProcessOrders(new ArrayList<>(List.of(process)));
-        
+
         savedOrder = orderRepository.save(savedOrder);
-        if (request.getPaymentMethod().equals(PaymentMethod.COD)){
-            Payment payment = Payment.builder()
-                    .order(savedOrder)
-                    .paymentMethod(request.getPaymentMethod())
-                    .paymentStatus(PaymentStatus.PENDING)
-                    .date(new Date())
-                    .total(savedOrder.getTotal())
-                    .userId(savedOrder.getUserId())
-                    .transactionCode(generateTransactionCode())
-                    .build();
-            paymentRepository.save(payment);
-        }else{
-            Payment payment = Payment.builder()
-                    .order(savedOrder)
-                    .paymentMethod(request.getPaymentMethod())
-                    .paymentStatus(PaymentStatus.PAID)
-                    .date(new Date())
-                    .total(savedOrder.getTotal())
-                    .userId(savedOrder.getUserId())
-                    .transactionCode(generateTransactionCode())
-                    .build();
-            paymentRepository.save(payment);
+
+        PaymentStatus paymentStatus = request.getPaymentMethod().equals(PaymentMethod.COD)
+                ? PaymentStatus.PENDING
+                : PaymentStatus.PAID;
+
+        Payment payment = Payment.builder()
+                .order(savedOrder)
+                .paymentMethod(request.getPaymentMethod())
+                .paymentStatus(paymentStatus)
+                .date(new Date())
+                .total(savedOrder.getTotal())
+                .userId(savedOrder.getUserId())
+                .transactionCode(generateTransactionCode())
+                .build();
+
+        paymentRepository.save(payment);
+
+        savedOrder.setPayment(payment);
+
+
+
+        List<OrderCreatedEvent.OrderItem> eventItems = savedOrder.getOrderDetails().stream()
+                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .price(detail.getPrice())
+                        .productName(detail.getProductColorId())
+                        .colorName("")
+                        .build())
+                .collect(Collectors.toList());
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(userData.getEmail())
+                .fullName(userData.getFullName())
+                .orderDate(savedOrder.getOrderDate())
+                .totalPrice(savedOrder.getTotal())
+                .orderId(savedOrder.getId())
+                .storeId(savedOrder.getStoreId())
+                .addressLine(safeGetAddress(order.getAddressId()).getAddressLine())
+                .paymentMethod(request.getPaymentMethod())
+                .items(eventItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("order-created-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.error("Kafka send failed: {}", ex.getMessage());
+                        } else {
+                            log.info("Successfully sent order creation event for orderId: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event for user {}, error: {}", userData.getFullName(), e.getMessage());
         }
+
         return mapToResponse(savedOrder);
     }
-
     @Override
     public OrderResponse getOrderById(Long id) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(id)
@@ -795,6 +954,7 @@ public class OrderServiceImpl implements OrderService {
                 .qrCode(order.getQrCode())
                 .qrCodeGeneratedAt(order.getQrCodeGeneratedAt())
                 .pdfFilePath(order.getPdfFilePath())
+                .deliveryConfirmationResponse(getDeliveryConfirmationResponse(order.getId()))
                 .hasPdfFile(hasPdfFile)
                 .build();
     }
@@ -910,6 +1070,15 @@ public class OrderServiceImpl implements OrderService {
 
     private ProductColorResponse getProductColorResponse(String id){
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData();
+    }
+
+
+    private DeliveryConfirmationResponse getDeliveryConfirmationResponse(Long orderId){
+        ApiResponse<DeliveryConfirmationResponse> response = deliveryClient.getDeliveryConfirmation(orderId);
         if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }

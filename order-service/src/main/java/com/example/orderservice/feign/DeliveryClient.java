@@ -2,6 +2,7 @@ package com.example.orderservice.feign;
 
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.DeliveryAssignmentResponse;
+import com.example.orderservice.response.DeliveryConfirmationResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,5 +17,8 @@ public interface DeliveryClient {
     
     @GetMapping("/api/delivery/assignments/order/{orderId}")
     ApiResponse<DeliveryAssignmentResponse> getDeliveryAssignmentByOrderId(@PathVariable Long orderId);
+
+    @GetMapping("/api/delivery-confirmations/order/{orderId}")
+    ApiResponse<DeliveryConfirmationResponse> getDeliveryConfirmation(@PathVariable Long orderId);
 }
 

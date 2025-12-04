@@ -119,30 +119,25 @@ public class OrderController {
 
         if (paymentMethod == PaymentMethod.VNPAY) {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            cartService.clearCart();
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Chuyển hướng sang VNPay")
-                    .redirectUrl(vnPayService.createPaymentUrlByMobile(orderResponse.getId(), orderResponse.getTotal(), clientIp))
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getTotal(), clientIp))
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
-            double deposit = Math.round((orderResponse.getTotal() * 0.3) * 100.0) / 100.0; // Làm tròn 2 số thập phân
+
+            Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+            orderRepository.save(order);
             orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
-            if (orderResponse.getTotal() > 10000000) {
-                return ApiResponse.<Void>builder()
-                        .status(HttpStatus.OK.value())
-                        .message("Đặt hàng thành công")
-                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), deposit, clientIp))
-                        .build();
-            } else {
-                orderService.handlePaymentCOD(orderResponse.getId());
-                return ApiResponse.<Void>builder()
-                        .status(HttpStatus.OK.value())
-                        .message("Đặt hàng thành công")
-                        .build();
-            }
-
+            return ApiResponse.<Void>builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Đặt hàng thành công")
+                    .build();
         }
     }
 
