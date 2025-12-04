@@ -147,7 +147,7 @@ public class AuthServiceImpl implements AuthService {
         Map<String, Object> claims;
         String storeId = "";
 
-        if (!account.getRole().equals(EnumRole.CUSTOMER)) {
+        if (!account.getRole().equals(EnumRole.CUSTOMER) && !account.getRole().equals(EnumRole.ADMIN)) {
             Employee employee = employeeRepository.findByAccountIdAndIsDeletedFalse(account.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND_USER));
 

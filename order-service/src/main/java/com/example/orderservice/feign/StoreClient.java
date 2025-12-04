@@ -26,4 +26,7 @@ public interface StoreClient {
 
     @GetMapping("/api/stores/count/active")
     ApiResponse<Long> getActiveStoresCount();
+
+    @GetMapping("/api/stores")
+    ApiResponse<List<StoreResponse>> getAllStores();
 }

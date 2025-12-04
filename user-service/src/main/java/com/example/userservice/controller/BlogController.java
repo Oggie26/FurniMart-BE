@@ -28,7 +28,8 @@ public class BlogController {
 
     @PostMapping
     @Operation(summary = "Create a new blog")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    // Allow all authenticated roles to create blogs (ADMIN, BRANCH_MANAGER, STAFF, DELIVERY, CUSTOMER)
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF') or hasRole('DELIVERY') or hasRole('CUSTOMER')")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<BlogResponse> createBlog(@Valid @RequestBody BlogRequest request) {
         return ApiResponse.<BlogResponse>builder()
