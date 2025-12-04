@@ -30,9 +30,6 @@ public class    StaffCreateOrderRequest {
     @NotNull
     private String addressLine;
 
-    @NotNull
-    private Double price;
-
     @NotEmpty(message = "Order details are required")
     @Valid
     private List<OrderDetailRequest> orderDetails;

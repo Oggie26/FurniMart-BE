@@ -28,10 +28,6 @@ public class ManagerWorkflowService {
     private final ProcessOrderRepository processOrderRepository;
     private final InventoryClient inventoryClient;
 
-    /**
-     * Create import-export order (decrease stock from warehouse to store)
-     * This simulates moving goods from warehouse to store for order preparation
-     */
     @Transactional
     public void createImportExportOrder(Long orderId, String warehouseId, String storeId) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)

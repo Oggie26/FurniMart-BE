@@ -178,20 +178,17 @@ public class OrderServiceImpl implements OrderService {
         if (storeResponse == null || storeResponse.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
-        
+
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
                 .sum();
-        
+
+
         if (total <= 0) {
             throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
         }
-        
-        // Generate QR code for MANAGER_ACCEPT status
-        // Note: We'll generate QR code after order is saved (need order ID)
-        
-        // Create order
+
         Order order = Order.builder()
                 .storeId(request.getStoreId())
                 .total(total)
@@ -201,7 +198,6 @@ public class OrderServiceImpl implements OrderService {
                 .orderDate(new Date())
                 .build();
         
-        // Create order details
         List<OrderDetail> orderDetails = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .map(detail -> OrderDetail.builder()
@@ -218,15 +214,12 @@ public class OrderServiceImpl implements OrderService {
         
         order.setOrderDetails(orderDetails);
         
-        // Save order first to get ID
         Order savedOrder = orderRepository.save(order);
         
-        // Generate QR code for MANAGER_ACCEPT status
         QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(savedOrder.getId());
         savedOrder.setQrCode(qrCodeResult.getQrCodeString());
         savedOrder.setQrCodeGeneratedAt(new Date());
-        
-        // Create process order with MANAGER_ACCEPT status
+
         ProcessOrder process = new ProcessOrder();
         process.setOrder(savedOrder);
         process.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
@@ -235,10 +228,8 @@ public class OrderServiceImpl implements OrderService {
         
         savedOrder.setProcessOrders(new ArrayList<>(List.of(process)));
         
-        // Save order again with QR code
         savedOrder = orderRepository.save(savedOrder);
         
-        // Create payment
         Payment payment = Payment.builder()
                 .order(savedOrder)
                 .paymentMethod(request.getPaymentMethod())
@@ -694,6 +685,21 @@ public class OrderServiceImpl implements OrderService {
                 orders.isLast()
         );
     }
+
+    @Override
+    @Transactional
+    public boolean handleConfirmPayment(Long orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
+
+        if (!PaymentMethod.COD.equals(payment.getPaymentMethod())) {
+            return false;
+        }
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        paymentRepository.save(payment);
+        return true;
+    }
+
 
     private OrderResponse mapToResponse(Order order) {
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);

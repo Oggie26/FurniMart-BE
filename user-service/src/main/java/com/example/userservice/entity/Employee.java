@@ -59,6 +59,9 @@ public class Employee extends AbstractEntity {
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
+    @OneToMany(mappedBy = "employee", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    List<Blog> blogs;
+
     @OneToMany(mappedBy = "employee", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<EmployeeStore> employeeStores;
 

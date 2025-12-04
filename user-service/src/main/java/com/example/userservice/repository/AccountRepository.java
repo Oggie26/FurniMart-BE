@@ -21,4 +21,5 @@ public interface AccountRepository extends JpaRepository<Account, String> {
            "LEFT JOIN FETCH a.employee e " +
            "WHERE a.isDeleted = false")
     List<Account> findAllWithUserAndEmployee();
+
 }
