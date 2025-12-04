@@ -101,7 +101,7 @@ public class BlogServiceImpl implements BlogService {
     public List<BlogResponse> getBlogsByUserId(String userId) {
         log.info("Fetching blogs for user ID: {}", userId);
         
-        List<Blog> blogs = blogRepository.findByUserId(userId);
+        List<Blog> blogs = blogRepository.findByEmployeeId(userId);
         return blogs.stream()
                 .map(this::toBlogResponse)
                 .collect(Collectors.toList());
