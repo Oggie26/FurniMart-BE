@@ -38,70 +38,79 @@ public class BlogServiceImpl implements BlogService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
 
-    @Override
-    @Transactional
-    public BlogResponse createBlog(BlogRequest blogRequest) {
-        log.info("Creating new blog with name: {}", blogRequest.getName());
 
+    private Employee getCurrentAuthenticatedEmployee() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 
-        String username = authentication.getName();
+        String username = authentication.getName(); // Đây là email/username
+
         Account account = accountRepository.findByEmailAndIsDeletedFalse(username)
                 .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        Employee employee = employeeRepository.findByAccount(account)
+        return employeeRepository.findByAccount(account)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
 
+
+    @Override
+    @Transactional
+    public BlogResponse createBlog(BlogRequest blogRequest) {
+        log.info("Creating new blog with name: {}", blogRequest.getName());
+
+        // 1. Lấy nhân viên đang đăng nhập
+        Employee author = getCurrentAuthenticatedEmployee();
+
+        // 2. Tạo Entity
         Blog blog = Blog.builder()
                 .name(blogRequest.getName())
                 .content(blogRequest.getContent())
                 .status(blogRequest.getStatus())
-                .employee(employee)
                 .image(blogRequest.getImage())
+                .employee(author) // Gán tác giả là người đang tạo
                 .build();
 
+        // 3. Lưu và trả về
         Blog savedBlog = blogRepository.save(blog);
         log.info("Blog created successfully with ID: {}", savedBlog.getId());
-        
+
         return toBlogResponse(savedBlog);
     }
+
 
     @Override
     @Transactional
     public BlogResponse updateBlog(Integer id, BlogRequest blogRequest) {
         log.info("Updating blog with ID: {}", id);
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        // 1. Kiểm tra xem user có hợp lệ không (Nếu cần check quyền chủ bài viết thì check ở đây)
+        getCurrentAuthenticatedEmployee();
 
-        String username = authentication.getName();
-        Account account = accountRepository.findByEmailAndIsDeletedFalse(username)
-                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
-
-        Employee employee = employeeRepository.findByAccount(account)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        
+        // 2. Tìm bài viết cũ
         Blog existingBlog = blogRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.BLOG_NOT_FOUND));
 
-
-
+        // 3. Cập nhật thông tin (KHÔNG cập nhật employee/tác giả gốc)
         existingBlog.setName(blogRequest.getName());
         existingBlog.setContent(blogRequest.getContent());
         existingBlog.setStatus(blogRequest.getStatus());
-        existingBlog.setImage(blogRequest.getImage());
-        existingBlog.setEmployee(employee);
 
+        // Chỉ cập nhật ảnh nếu request có gửi ảnh mới lên (Optional)
+        if (blogRequest.getImage() != null && !blogRequest.getImage().isEmpty()) {
+            existingBlog.setImage(blogRequest.getImage());
+        }
+
+        // LƯU Ý: Đã xóa dòng existingBlog.setEmployee(employee);
+        // Lý do: Khi update, không nên ghi đè người tạo ban đầu bằng người đang sửa.
+
+        // 4. Lưu và trả về
         Blog updatedBlog = blogRepository.save(existingBlog);
         log.info("Blog updated successfully with ID: {}", updatedBlog.getId());
-        
+
         return toBlogResponse(updatedBlog);
     }
 
