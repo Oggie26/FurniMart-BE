@@ -50,7 +50,7 @@ public class BlogServiceImpl implements BlogService {
                 .content(blogRequest.getContent())
                 .status(blogRequest.getStatus())
                 .image(blogRequest.getImage())
-                .employee(employee) // Gán tác giả là người đang tạo
+                .employee(employee)
                 .build();
 
         // 3. Lưu và trả về

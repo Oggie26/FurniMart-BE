@@ -233,7 +233,7 @@ public class OrderServiceImpl implements OrderService {
         Payment payment = Payment.builder()
                 .order(savedOrder)
                 .paymentMethod(request.getPaymentMethod())
-                .paymentStatus(PaymentStatus.PENDING)
+                .paymentStatus(PaymentStatus.PAID)
                 .date(new Date())
                 .total(savedOrder.getTotal())
                 .userId(savedOrder.getUserId())
@@ -363,14 +363,12 @@ public class OrderServiceImpl implements OrderService {
 
         assignOrderService.assignOrderToStore(orderId);
 
-        // 1. Gom dữ liệu 1 lần
         List<OrderCreatedEvent.OrderItem> orderItems = new ArrayList<>();
         List<String> productIdsToRemove = new ArrayList<>();
 
         for (OrderDetail detail : order.getOrderDetails()) {
             ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
 
-            // Build Kafka Item
             orderItems.add(OrderCreatedEvent.OrderItem.builder()
                     .productColorId(detail.getProductColorId())
                     .quantity(detail.getQuantity())
@@ -379,17 +377,14 @@ public class OrderServiceImpl implements OrderService {
                     .price(detail.getPrice())
                     .build());
 
-            // Gom ID để xóa cart
             productIdsToRemove.add(detail.getProductColorId());
         }
 
-        // 2. Gọi xóa cart (An toàn)
         try {
             if (!productIdsToRemove.isEmpty()) {
                 cartService.removeProductFromCart(productIdsToRemove);
             }
         } catch (Exception e) {
-            // Log lỗi nhưng KHÔNG throw tiếp, để đơn hàng vẫn thành công
             log.error("Lỗi xóa giỏ hàng (Ignore): {}", e.getMessage());
         }
 

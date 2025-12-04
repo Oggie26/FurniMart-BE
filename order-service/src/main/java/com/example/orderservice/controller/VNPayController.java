@@ -139,7 +139,7 @@ public class VNPayController {
 
         if (orderId == null || orderId.isEmpty()) orderId = "unknown";
 
-        String webUrl = "http://localhost:5173/payment-success";
+        String webUrl = "https://furnimart-web.vercel.app/payment-success";
         String mobileDeepLink = "furnimartmobileapp://order-success";
 
         boolean isMobile = userAgent != null && (

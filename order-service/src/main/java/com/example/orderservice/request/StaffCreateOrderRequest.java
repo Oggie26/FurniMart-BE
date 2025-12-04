@@ -16,7 +16,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class    StaffCreateOrderRequest {
+public class StaffCreateOrderRequest {
 
     @NotBlank(message = "StoreId is required")
     private String storeId;

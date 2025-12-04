@@ -21,13 +21,13 @@ public class Order extends AbstractEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    @Column(nullable = false)
+    @Column()
     private String userId;
 
     @Column
     private String storeId;
 
-    @Column(nullable = false)
+    @Column()
     private Long addressId;
 
     @Column(nullable = false)
