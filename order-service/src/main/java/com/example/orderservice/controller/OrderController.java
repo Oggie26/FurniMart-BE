@@ -420,6 +420,24 @@ public class OrderController {
                 .build();
     }
 
+    @PostMapping("/{orderId}/confirm-cod")
+    public ApiResponse<Void> confirmCodPayment(@PathVariable Long orderId) {
+
+        boolean success = orderService.handleConfirmPayment(orderId);
+
+        if (!success) {
+            throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
+        }
+
+        return ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Xác nhận thanh toán COD thành công")
+                .data(null)
+                .build();
+    }
+
+
+
     private String getClientIp(HttpServletRequest request) {
         String clientIp = request.getHeader("X-Forwarded-For");
         return (clientIp == null || clientIp.isEmpty()) ? request.getRemoteAddr() : clientIp;

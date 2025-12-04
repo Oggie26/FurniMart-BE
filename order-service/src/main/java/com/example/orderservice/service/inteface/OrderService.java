@@ -25,4 +25,5 @@ public interface OrderService {
     PageResponse<OrderResponse> getOrdersByStoreId(String storeId, EnumProcessOrder status, int page, int size);
     List<ProcessOrderResponse> getOrderStatusHistory(Long orderId);
     PageResponse<OrderResponse> getStoreOrdersWithInvoice(String storeId, int page, int size);
+    boolean handleConfirmPayment(Long orderId);
 }

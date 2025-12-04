@@ -1,5 +1,6 @@
 package com.example.userservice.repository;
 
+import com.example.userservice.entity.Account;
 import com.example.userservice.entity.Employee;
 import com.example.userservice.enums.EnumRole;
 import org.springframework.data.domain.Page;
@@ -128,5 +129,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
      */
     @Query("SELECT e FROM Employee e WHERE e.account.id = :accountId AND e.account.role IN ('BRANCH_MANAGER', 'DELIVERY', 'STAFF', 'ADMIN') AND e.isDeleted = false")
     Optional<Employee> findByAccountIdAndIsDeletedFalse(@Param("accountId") String accountId);
+
+    Optional<Employee> findByAccount(Account account);
 }
 
