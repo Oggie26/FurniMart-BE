@@ -27,7 +27,6 @@ public class UserController {
     @PostMapping
     @Operation(summary = "Create new user (Admin only for employee accounts)")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
         return ApiResponse.<UserResponse>builder()
                 .status(HttpStatus.CREATED.value())

@@ -22,13 +22,10 @@ public class StaffCreateOrderRequest {
     private String storeId;
 
     @NotNull
-    private String customerName;
+    private String userId;
 
     @NotNull
-    private String phone;
-
-    @NotNull
-    private String addressLine;
+    private Long addressId;
 
     @NotEmpty(message = "Order details are required")
     @Valid

@@ -179,6 +179,16 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);
         }
 
+        ApiResponse<UserResponse>  userResponse = userClient.getUserById(request.getUserId());
+        if (userResponse == null || userResponse.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+
+        ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(request.getAddressId());
+        if (addressResponse == null || addressResponse.getData() == null) {
+            throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
+        }
+
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
                 .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
@@ -194,6 +204,8 @@ public class OrderServiceImpl implements OrderService {
                 .total(total)
                 .status(EnumProcessOrder.MANAGER_ACCEPT)
                 .note(request.getNote())
+                .userId(request.getUserId())
+                .addressId(request.getAddressId())
                 .reason(request.getReason())
                 .orderDate(new Date())
                 .build();
