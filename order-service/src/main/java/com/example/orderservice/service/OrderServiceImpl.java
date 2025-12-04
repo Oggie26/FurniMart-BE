@@ -229,19 +229,29 @@ public class OrderServiceImpl implements OrderService {
         savedOrder.setProcessOrders(new ArrayList<>(List.of(process)));
         
         savedOrder = orderRepository.save(savedOrder);
-        
-        Payment payment = Payment.builder()
-                .order(savedOrder)
-                .paymentMethod(request.getPaymentMethod())
-                .paymentStatus(PaymentStatus.PAID)
-                .date(new Date())
-                .total(savedOrder.getTotal())
-                .userId(savedOrder.getUserId())
-                .transactionCode(generateTransactionCode())
-                .build();
-        paymentRepository.save(payment);
-        
-
+        if (request.getPaymentMethod().equals(PaymentMethod.COD)){
+            Payment payment = Payment.builder()
+                    .order(savedOrder)
+                    .paymentMethod(request.getPaymentMethod())
+                    .paymentStatus(PaymentStatus.PENDING)
+                    .date(new Date())
+                    .total(savedOrder.getTotal())
+                    .userId(savedOrder.getUserId())
+                    .transactionCode(generateTransactionCode())
+                    .build();
+            paymentRepository.save(payment);
+        }else{
+            Payment payment = Payment.builder()
+                    .order(savedOrder)
+                    .paymentMethod(request.getPaymentMethod())
+                    .paymentStatus(PaymentStatus.PAID)
+                    .date(new Date())
+                    .total(savedOrder.getTotal())
+                    .userId(savedOrder.getUserId())
+                    .transactionCode(generateTransactionCode())
+                    .build();
+            paymentRepository.save(payment);
+        }
         return mapToResponse(savedOrder);
     }
 
