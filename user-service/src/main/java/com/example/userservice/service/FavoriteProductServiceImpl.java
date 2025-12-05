@@ -63,7 +63,7 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
                 .findByUserIdAndProductIdAndIsDeletedFalse(userId, productId)
                 .orElseThrow(() -> new AppException(ErrorCode.FAVORITE_PRODUCT_NOT_FOUND));
 
-        favoriteProduct.setIsDeleted(true);
+        favoriteProductRepository.delete(favoriteProduct);
         favoriteProductRepository.save(favoriteProduct);
         log.info("Removed favorite product {} for user {}", productId, userId);
     }
