@@ -547,7 +547,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
     OrderResponse orerData = getOrder(orderId);
     log.info(String.valueOf(orerData));
     Warehouse warehouse = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse("02bd533b-8091-48d4-947b-722c18cf5ab1")
+            .findByStoreIdAndIsDeletedFalse(orerData.getStoreId())
             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
     List<InventoryItem> items = inventoryItemRepository
