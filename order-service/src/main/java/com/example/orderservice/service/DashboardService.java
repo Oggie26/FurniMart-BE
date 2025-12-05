@@ -91,7 +91,7 @@ public class DashboardService {
         if (branchRevenue == null) branchRevenue = 0.0;
 
         // 2. Pending Orders Count
-        Long pendingOrdersCount = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.PENDING);
+        Long pendingOrdersCount = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.PAYMENT);
 
         // 3. Shipping Orders Count
         Long shippingOrdersCount = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.SHIPPING);

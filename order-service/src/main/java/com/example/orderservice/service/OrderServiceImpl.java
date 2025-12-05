@@ -295,11 +295,6 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
 
-        // ==========================================
-        // 1. VALIDATION & FETCH DATA
-        // ==========================================
-
-        // 1.1 Store
         ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
         if (storeResponse == null || storeResponse.getData() == null) {
             throw new AppException(ErrorCode.STORE_NOT_FOUND);

@@ -16,6 +16,12 @@ spring:
 #    url: jdbc:postgresql://localhost:5432/order_db
     username: postgres
     password: 123456
+    hikari:
+      maximum-pool-size: 50      # Tăng từ 10 lên 50 kết nối (tùy RAM server)
+      minimum-idle: 10           # Luôn giữ ít nhất 10 kết nối rảnh
+      connection-timeout: 30000  # Thời gian chờ lấy kết nối (30s)
+      idle-timeout: 600000       # 10 phút không dùng thì đóng bớt
+      max-lifetime: 1800000      # 30 phút là tuổi thọ tối đa của 1 kết nối
 
   data:
     redis:
