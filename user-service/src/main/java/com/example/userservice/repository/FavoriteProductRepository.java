@@ -14,6 +14,8 @@ public interface FavoriteProductRepository extends JpaRepository<FavoriteProduct
 
     Optional<FavoriteProduct> findByUserIdAndProductIdAndIsDeletedFalse(String userId, String productId);
 
+    Optional<FavoriteProduct> findByUserIdAndProductId(String userId, String productId);
+
     List<FavoriteProduct> findByUserIdAndIsDeletedFalse(String userId);
 
     Page<FavoriteProduct> findByUserIdAndIsDeletedFalse(String userId, Pageable pageable);

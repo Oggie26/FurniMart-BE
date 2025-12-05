@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,38 +35,29 @@ public class FavoriteProductServiceImpl implements FavoriteProductService {
     public FavoriteProductResponse addFavoriteProduct(String userId, FavoriteProductRequest request) {
         log.info("Adding favorite product {} for user {}", request.getProductId(), userId);
 
-        // Verify user exists
+        // Kiểm tra user tồn tại
         userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        // Check if already favorite
-        if (favoriteProductRepository.existsByUserIdAndProductIdAndIsDeletedFalse(userId, request.getProductId())) {
+        if (favoriteProductRepository.findByUserIdAndProductId(userId, request.getProductId()).isPresent()) {
             throw new AppException(ErrorCode.PRODUCT_ALREADY_FAVORITE);
         }
-
         FavoriteProduct favoriteProduct = FavoriteProduct.builder()
-                .userId(userId)
                 .productId(request.getProductId())
+                .userId(userId)
                 .build();
+        favoriteProductRepository.save(favoriteProduct);
 
-        FavoriteProduct saved = favoriteProductRepository.save(favoriteProduct);
-        log.info("Added favorite product {} for user {}", request.getProductId(), userId);
-
-        return toResponse(saved);
+        return toResponse(favoriteProduct);
     }
 
     @Override
-    @Transactional
     public void removeFavoriteProduct(String userId, String productId) {
-        log.info("Removing favorite product {} for user {}", productId, userId);
+        userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        FavoriteProduct favoriteProduct = favoriteProductRepository
-                .findByUserIdAndProductIdAndIsDeletedFalse(userId, productId)
+        FavoriteProduct favoriteProduct = favoriteProductRepository.findByUserIdAndProductId(userId, productId)
                 .orElseThrow(() -> new AppException(ErrorCode.FAVORITE_PRODUCT_NOT_FOUND));
-
         favoriteProductRepository.delete(favoriteProduct);
-        favoriteProductRepository.save(favoriteProduct);
-        log.info("Removed favorite product {} for user {}", productId, userId);
     }
 
     @Override
