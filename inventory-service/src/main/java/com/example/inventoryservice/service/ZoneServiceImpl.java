@@ -5,6 +5,7 @@ import com.example.inventoryservice.entity.Zone;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.enums.ZoneStatus;
 import com.example.inventoryservice.exception.AppException;
+import com.example.inventoryservice.repository.InventoryItemRepository;
 import com.example.inventoryservice.repository.WarehouseRepository;
 import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.ZoneRequest;
@@ -27,6 +28,7 @@ public class ZoneServiceImpl implements ZoneService {
 
     private final ZoneRepository zoneRepository;
     private final WarehouseRepository warehouseRepository;
+    private final InventoryItemRepository inventoryItemRepository;
 
     @Override
     @Transactional
@@ -116,6 +118,7 @@ public class ZoneServiceImpl implements ZoneService {
 
         zone.setIsDeleted(true);
         zoneRepository.save(zone);
+        inventoryItemRepository.existsByZoneId(zoneId);
     }
 
     @Override

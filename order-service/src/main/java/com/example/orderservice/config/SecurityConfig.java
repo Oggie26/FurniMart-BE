@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/api/orders/status/{id}",
                                 "/api/v1/payment-return/**",
                                 "/api/v1/payment/**",
+                                "/api/delivery-confirmations/order/*",
                                 "/webjars/**",
                                 "/api/users/**",
                                 "/api/users/info/{authId}",
