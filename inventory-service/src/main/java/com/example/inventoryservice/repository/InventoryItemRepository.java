@@ -127,4 +127,14 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             "AND i.inventory.type NOT IN :excludedTypes") // <--- Dùng tham số
     Integer calculateRealAvailableStock(@Param("pci") String pci,
                                         @Param("excludedTypes") List<EnumTypes> excludedTypes);
+
+
+
+    @Query("SELECT COUNT(i) > 0 " +
+            "FROM InventoryItem i " +
+            "WHERE i.locationItem.zone.id = :zoneId " +
+            "AND i.quantity > 0") // Chỉ tính những item còn số lượng thực tế
+    boolean existsByZoneId(@Param("zoneId") String zoneId);
+
+
 }
