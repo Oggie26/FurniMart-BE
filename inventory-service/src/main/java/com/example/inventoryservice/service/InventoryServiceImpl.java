@@ -545,9 +545,9 @@ public class InventoryServiceImpl implements InventoryService {
 @Transactional
 public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
     OrderResponse orerData = getOrder(orderId);
-
+    log.info(String.valueOf(orerData));
     Warehouse warehouse = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse(orerData.getStoreId())
+            .findByStoreIdAndIsDeletedFalse("02bd533b-8091-48d4-947b-722c18cf5ab1")
             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
     List<InventoryItem> items = inventoryItemRepository
