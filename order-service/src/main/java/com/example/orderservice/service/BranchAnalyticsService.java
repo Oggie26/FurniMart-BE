@@ -50,7 +50,7 @@ public class BranchAnalyticsService {
         if (totalOrdersToday == null) totalOrdersToday = 0L;
 
         // Pending orders
-        Long pendingOrders = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.PENDING);
+        Long pendingOrders = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.ASSIGN_ORDER_STORE);
         if (pendingOrders == null) pendingOrders = 0L;
 
         // Processing orders (SHIPPING, PACKAGED, CONFIRMED)
