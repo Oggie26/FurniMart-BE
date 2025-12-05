@@ -41,8 +41,7 @@ public class OrderCreatedConsumer {
                     ReserveStockResponse response = inventoryService.reserveStock(
                             item.getProductColorId(),
                             item.getQuantity(),
-                            event.getOrderId(),
-                            event.getStoreId()
+                            event.getOrderId()
                     );
 
                     if (response.getInventory() != null) {

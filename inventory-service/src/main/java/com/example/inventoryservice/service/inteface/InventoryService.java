@@ -24,7 +24,7 @@ public interface InventoryService {
 
     void transferStock(TransferStockRequest request);
 
-    ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId, String storeId );
+    ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId );
 
     InventoryResponse releaseReservedStock(String productColorId, int quantity);
 

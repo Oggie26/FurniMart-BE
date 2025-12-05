@@ -543,17 +543,16 @@ public class InventoryServiceImpl implements InventoryService {
 //    }
 @Override
 @Transactional
-public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId, String storeId) {
-    // 1. Lấy thông tin Order và Warehouse
+public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
+    OrderResponse orerData = getOrder(orderId);
+
     Warehouse warehouse = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse(storeId)
+            .findByStoreIdAndIsDeletedFalse(orerData.getStoreId())
             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-    // 2. Tìm các item vật lý trong kho
     List<InventoryItem> items = inventoryItemRepository
             .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
 
-    // 3. Tính toán khả dụng (Logic Best Effort)
     int totalAvailable = items.stream()
             .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
             .sum();
@@ -562,10 +561,8 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
     int missingQty = quantity - actualReserve;
     int remainingToReserve = actualReserve;
 
-    // Map này để lưu lại dấu vết: Vừa lấy ở kệ nào, bao nhiêu cái? -> Để lưu vào phiếu
     Map<LocationItem, Integer> reservationLog = new HashMap<>();
 
-    // 4. THỰC HIỆN GIỮ HÀNG TRÊN KỆ VẬT LÝ
     if (actualReserve > 0) {
         for (InventoryItem item : items) {
             int availableInItem = item.getQuantity() - item.getReservedQuantity();
@@ -573,11 +570,9 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
             int toReserve = Math.min(availableInItem, remainingToReserve);
 
-            // a. Update số giữ chỗ vật lý (QUAN TRỌNG)
             item.setReservedQuantity(item.getReservedQuantity() + toReserve);
             inventoryItemRepository.save(item);
 
-            // b. Lưu vào log để tí tạo phiếu
             reservationLog.put(item.getLocationItem(), toReserve);
 
             remainingToReserve -= toReserve;
