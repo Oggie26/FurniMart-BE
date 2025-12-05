@@ -229,6 +229,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_CONSUMER_GROUP_ID: inventory-group
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+
 
   inventory-db:
     image: postgres:16
@@ -258,6 +262,9 @@ services:
     restart: unless-stopped
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_CONSUMER_GROUP_ID: notification-group
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+
 
   delivery-service:
     build: ./delivery-service
