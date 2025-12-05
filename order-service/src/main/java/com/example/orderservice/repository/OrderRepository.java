@@ -1,6 +1,7 @@
 package com.example.orderservice.repository;
 
 import com.example.orderservice.entity.Order;
+import com.example.orderservice.enums.EnumProcessOrder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -145,15 +146,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     );
 
     @Query("""
-        SELECT COUNT(o) 
-        FROM Order o 
-        WHERE o.isDeleted = false 
-          AND o.storeId = :storeId 
-          AND o.status = :status
-    """)
+    SELECT COUNT(o) 
+    FROM Order o 
+    WHERE o.isDeleted = false
+      AND o.storeId = :storeId
+      AND o.status = :status
+""")
     Long countOrdersByStoreAndStatus(
             @Param("storeId") String storeId,
-            @Param("status") com.example.orderservice.enums.EnumProcessOrder status
+            @Param("status") EnumProcessOrder status
     );
 
     @Query("""
