@@ -543,11 +543,10 @@ public class InventoryServiceImpl implements InventoryService {
 //    }
 @Override
 @Transactional
-public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
+public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId, String storeId) {
     // 1. Lấy thông tin Order và Warehouse
-    OrderResponse orderInfo = getOrder(orderId);
     Warehouse warehouse = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse(orderInfo.getStoreId())
+            .findByStoreIdAndIsDeletedFalse(storeId)
             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
     // 2. Tìm các item vật lý trong kho
