@@ -486,12 +486,19 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
-        // Update order status to ensure consistency
         order.setStatus(status);
         orderRepository.save(order);
         
         if(status.equals(EnumProcessOrder.PAYMENT)){
             assignOrderService.assignOrderToStore(orderId);
+
+            Payment payment = paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+            if (payment.getPaymentStatus().equals(PaymentStatus.PAID) || payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
+                payment.setPaymentStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
+            }
+
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> OrderCreatedEvent.OrderItem.builder()
                             .productColorId(detail.getProductColorId())
