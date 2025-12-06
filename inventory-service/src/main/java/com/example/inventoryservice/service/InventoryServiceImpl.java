@@ -557,11 +557,17 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
     int remainingToReserve = quantity;
     int totalReserved = 0;
 
+    // Dùng List để gom các item cần update (Batch Update)
+    List<InventoryItem> itemsToUpdate = new ArrayList<>();
+    // Dùng List để gom các chi tiết phiếu giữ cần insert (Batch Insert)
+    List<InventoryItem> detailsToInsert = new ArrayList<>();
+
     Map<Warehouse, Map<LocationItem, Integer>> reservationLog = new HashMap<>();
 
     for (Warehouse warehouse : warehouses) {
         if (remainingToReserve <= 0) break;
 
+        // Nên đảm bảo hàm này có JOIN FETCH inventory để tránh N+1 nếu cần truy xuất
         List<InventoryItem> items = inventoryItemRepository
                 .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
 
@@ -571,10 +577,12 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
             int toReserve = Math.min(availableInItem, remainingToReserve);
 
-            // ⚡ Trừ stock thực tế
+            // Cập nhật stock trên object
             item.setQuantity(item.getQuantity() - toReserve);
             item.setReservedQuantity(item.getReservedQuantity() + toReserve);
-            inventoryItemRepository.save(item);
+
+            // Thêm vào list update thay vì save ngay
+            itemsToUpdate.add(item);
 
             reservationLog.computeIfAbsent(warehouse, k -> new HashMap<>())
                     .merge(item.getLocationItem(), toReserve, Integer::sum);
@@ -586,6 +594,11 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         }
     }
 
+    // Thực hiện Batch Update cho Stock thực tế
+    if (!itemsToUpdate.isEmpty()) {
+        inventoryItemRepository.saveAll(itemsToUpdate);
+    }
+
     int missingQty = quantity - totalReserved;
 
     if (totalReserved > 0) {
@@ -594,13 +607,16 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .type(EnumTypes.RESERVE)
                 .purpose(EnumPurpose.RESERVE)
                 .date(LocalDate.now())
-                .warehouse(warehouses.get(0)) // warehouse chính để reference
+                .warehouse(warehouses.get(0))
                 .orderId(orderId)
                 .code("RES-" + orderId + "-" + productColorId)
                 .note("Reserved " + totalReserved + "/" + quantity + " products. Missing: " + missingQty)
                 .build();
+
+        // Save phiếu cha trước
         inventoryRepository.save(reservationTicket);
 
+        // Tạo các chi tiết phiếu (Log)
         for (Map.Entry<Warehouse, Map<LocationItem, Integer>> whEntry : reservationLog.entrySet()) {
             for (Map.Entry<LocationItem, Integer> locEntry : whEntry.getValue().entrySet()) {
                 InventoryItem ticketDetail = InventoryItem.builder()
@@ -610,15 +626,21 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                         .quantity(locEntry.getValue())
                         .reservedQuantity(0)
                         .build();
-                inventoryItemRepository.save(ticketDetail);
+                detailsToInsert.add(ticketDetail);
             }
+        }
+
+        // Thực hiện Batch Insert cho chi tiết phiếu
+        if (!detailsToInsert.isEmpty()) {
+            inventoryItemRepository.saveAll(detailsToInsert);
         }
 
         log.info("✅ Reserved {} of {} for productColorId {} in order {}. Missing: {}",
                 totalReserved, quantity, productColorId, orderId, missingQty);
 
+        // Mapping Entity sang DTO để tránh Lazy Loading Exception hoặc N+1 Query ở Controller/Consumer
         return ReserveStockResponse.builder()
-                .inventory(reservationTicket)
+                .inventory(mapToInventoryResponse(reservationTicket)) // Sử dụng hàm map có sẵn
                 .quantityReserved(totalReserved)
                 .quantityMissing(missingQty)
                 .build();
@@ -631,7 +653,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .build();
     }
 }
-
 
     @Override
     @Transactional
@@ -646,12 +667,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .orElse(null);
 
         if (reservationTicket == null) {
-            log.warn("Không tìm thấy phiếu giữ hàng cho Order: " + orderId + ", Product: " + productColorId);
-            return ReserveStockResponse.builder()
-                    .inventory(null)
-                    .quantityReserved(0)
-                    .quantityMissing(0)
-                    .build();
+            return ReserveStockResponse.builder().inventory(null).quantityReserved(0).quantityMissing(0).build();
         }
 
         List<InventoryItem> reservedLogs = inventoryItemRepository.findAllByInventoryId(reservationTicket.getId());
@@ -659,6 +675,8 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         int totalReleased = 0;
         int quantityToRelease = quantity;
 
+        List<InventoryItem> itemsToUpdate = new ArrayList<>();
+        List<InventoryItem> detailsToInsert = new ArrayList<>();
         Map<LocationItem, Integer> releaseLog = new HashMap<>();
 
         for (InventoryItem logItem : reservedLogs) {
@@ -673,20 +691,24 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                         .findByProductColorIdAndLocationItemId(productColorId, logItem.getLocationItem().getId())
                         .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
-                int newReservedQty = shelfItem.getReservedQuantity() - actualRelease;
-                if (newReservedQty < 0) newReservedQty = 0;
-
+                // Update Shelf Stock
+                int newReservedQty = Math.max(0, shelfItem.getReservedQuantity() - actualRelease);
                 shelfItem.setReservedQuantity(newReservedQty);
-                inventoryItemRepository.save(shelfItem);
+                itemsToUpdate.add(shelfItem);
 
+                // Update Log Item
                 logItem.setQuantity(quantityReservedInShelf - actualRelease);
-                inventoryItemRepository.save(logItem);
+                itemsToUpdate.add(logItem);
 
                 releaseLog.put(logItem.getLocationItem(), actualRelease);
 
                 totalReleased += actualRelease;
                 quantityToRelease -= actualRelease;
             }
+        }
+
+        if (!itemsToUpdate.isEmpty()) {
+            inventoryItemRepository.saveAll(itemsToUpdate);
         }
 
         if (totalReleased > 0) {
@@ -702,7 +724,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                     .build();
             inventoryRepository.save(releaseTicket);
 
-            // Lưu chi tiết phiếu Release
             for (Map.Entry<LocationItem, Integer> entry : releaseLog.entrySet()) {
                 InventoryItem ticketDetail = InventoryItem.builder()
                         .inventory(releaseTicket)
@@ -711,12 +732,15 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                         .quantity(entry.getValue())
                         .reservedQuantity(0)
                         .build();
-                inventoryItemRepository.save(ticketDetail);
+                detailsToInsert.add(ticketDetail);
             }
 
+            if (!detailsToInsert.isEmpty()) {
+                inventoryItemRepository.saveAll(detailsToInsert);
+            }
 
             return ReserveStockResponse.builder()
-                    .inventory(releaseTicket)
+                    .inventory(mapToInventoryResponse(releaseTicket)) // Return DTO
                     .quantityReserved(0)
                     .quantityMissing(0)
                     .build();
