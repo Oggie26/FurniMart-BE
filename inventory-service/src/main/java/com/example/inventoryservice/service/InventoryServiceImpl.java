@@ -542,26 +542,29 @@ public class InventoryServiceImpl implements InventoryService {
 @Override
 @Transactional
 public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
-    OrderResponse orderData = getOrder(orderId);
+    OrderResponse orderResponse = getOrder(orderId);
+    List<Warehouse> warehouses = warehouseRepository
+            .findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
+            .stream()
+            .sorted(Comparator.comparing(Warehouse::getId)) // có thể đổi theo khoảng cách
+            .toList();
 
-    Warehouse warehouse = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse(orderData.getStoreId())
-            .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+    if (warehouses.isEmpty()) {
+        throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+    }
 
-    List<InventoryItem> items = inventoryItemRepository
-            .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
+    int remainingToReserve = quantity;
+    int totalReserved = 0;
 
-    int totalAvailable = items.stream()
-            .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
-            .sum();
+    Map<Warehouse, Map<LocationItem, Integer>> reservationLog = new HashMap<>();
 
-    int actualReserve = Math.min(quantity, totalAvailable);
-    int missingQty = quantity - actualReserve;
-    int remainingToReserve = actualReserve;
+    // 2️⃣ Lặp từng warehouse để reserve
+    for (Warehouse warehouse : warehouses) {
+        if (remainingToReserve <= 0) break;
 
-    Map<LocationItem, Integer> reservationLog = new HashMap<>();
+        List<InventoryItem> items = inventoryItemRepository
+                .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
 
-    if (actualReserve > 0) {
         for (InventoryItem item : items) {
             int availableInItem = item.getQuantity() - item.getReservedQuantity();
             if (availableInItem <= 0) continue;
@@ -570,51 +573,58 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
             // ⚡ Trừ stock thực tế
             item.setQuantity(item.getQuantity() - toReserve);
-
-            // ⚡ Tăng reserved để track
             item.setReservedQuantity(item.getReservedQuantity() + toReserve);
-
             inventoryItemRepository.save(item);
 
-            reservationLog.put(item.getLocationItem(), toReserve);
+            // Lưu log theo warehouse + location
+            reservationLog.computeIfAbsent(warehouse, k -> new HashMap<>())
+                    .put(item.getLocationItem(), toReserve);
 
             remainingToReserve -= toReserve;
+            totalReserved += toReserve;
+
             if (remainingToReserve <= 0) break;
         }
+    }
 
-        // 4. Tạo phiếu giữ hàng
+    int missingQty = quantity - totalReserved;
+
+    if (totalReserved > 0) {
+        // 3️⃣ Tạo phiếu giữ hàng tổng
         Inventory reservationTicket = Inventory.builder()
                 .employeeId("SYSTEM_AUTO")
                 .type(EnumTypes.RESERVE)
                 .purpose(EnumPurpose.RESERVE)
                 .date(LocalDate.now())
-                .warehouse(warehouse)
+                .warehouse(warehouses.get(0)) // gắn warehouse chính để reference
                 .orderId(orderId)
                 .code("RES-" + orderId + "-" + productColorId)
-                .note("Giữ hàng tự động: " + actualReserve + "/" + quantity + " sản phẩm.")
+                .note("Reserved " + totalReserved + "/" + quantity + " products. Missing: " + missingQty)
                 .build();
         inventoryRepository.save(reservationTicket);
 
-        // 5. Lưu chi tiết phiếu (link tới location thực tế)
-        for (Map.Entry<LocationItem, Integer> entry : reservationLog.entrySet()) {
-            InventoryItem ticketDetail = InventoryItem.builder()
-                    .inventory(reservationTicket)      // Gắn phiếu giữ
-                    .locationItem(entry.getKey())      // Kệ hàng
-                    .productColorId(productColorId)
-                    .quantity(entry.getValue())        // Số lượng giữ tại kệ
-                    .reservedQuantity(0)               // Phiếu lịch sử không cần track nữa
-                    .build();
-            inventoryItemRepository.save(ticketDetail);
+        for (Map.Entry<Warehouse, Map<LocationItem, Integer>> whEntry : reservationLog.entrySet()) {
+            Warehouse wh = whEntry.getKey();
+            for (Map.Entry<LocationItem, Integer> locEntry : whEntry.getValue().entrySet()) {
+                InventoryItem ticketDetail = InventoryItem.builder()
+                        .inventory(reservationTicket)
+                        .locationItem(locEntry.getKey())
+                        .productColorId(productColorId)
+                        .quantity(locEntry.getValue())
+                        .reservedQuantity(0) // phiếu lịch sử
+                        .build();
+                inventoryItemRepository.save(ticketDetail);
+            }
         }
 
-        log.info("✅ Reserved {} of {} for productColorId {} in order {}", actualReserve, quantity, productColorId, orderId);
+        log.info("✅ Reserved {} of {} for productColorId {} in order {}. Missing: {}",
+                totalReserved, quantity, productColorId, orderId, missingQty);
 
         return ReserveStockResponse.builder()
                 .inventory(reservationTicket)
-                .quantityReserved(actualReserve)
+                .quantityReserved(totalReserved)
                 .quantityMissing(missingQty)
                 .build();
-
     } else {
         log.warn("⚠️ Out of stock for productColorId {} in order {}", productColorId, orderId);
         return ReserveStockResponse.builder()
@@ -624,8 +634,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .build();
     }
 }
-
-
 
     @Override
     @Transactional
