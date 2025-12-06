@@ -144,4 +144,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     Optional<InventoryItem> findByProductColorIdAndLocationItemId(String productColorId, String locationItemId);
 
+    @Query("SELECT ii FROM InventoryItem ii " +
+            "JOIN FETCH ii.locationItem li " +
+            "JOIN FETCH li.zone z " +
+            "JOIN FETCH z.warehouse w " +
+            "WHERE ii.productColorId = :productColorId " +
+            "AND w.storeId = :storeId " +
+            "AND ii.quantity > ii.reservedQuantity")
+    List<InventoryItem> findAvailableByProductAndStore(
+            @Param("productColorId") String productColorId,
+            @Param("storeId") String storeId
+    );
+
 }
