@@ -42,9 +42,9 @@ public class OrderCreatedConsumer {
                             event.getOrderId()
                     );
 
-                    if (response.getInventory() != null) {
+                    if (response.getReservations() != null) {
                         log.info("✅ Created Reserve Ticket: {}. Reserved: {}/{}. Missing: {}",
-                                response.getInventory(),
+                                response.getReservations(),
                                 response.getQuantityReserved(),
                                 item.getQuantity(),
                                 response.getQuantityMissing());
