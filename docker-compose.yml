@@ -376,6 +376,10 @@ services:
       - "traefik.http.routers.kafka-ui.tls.certresolver=myresolver"
       - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
 
+# 👇 MẠNG CỐ ĐỊNH
+networks:
+  backend:
+    name: furnimart_net
 
 volumes:
   user_data:
