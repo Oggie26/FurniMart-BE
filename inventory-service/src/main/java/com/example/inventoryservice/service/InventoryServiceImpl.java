@@ -643,7 +643,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         if (hasReservation) {
-            ticket.setNote("Reserved: " + actuallyReserved + " items. Status: " + transferStatus);
+            ticket.setNote("Giữ hàng: " + actuallyReserved + " items. Trạng thái: " + transferStatus );
             ticketsToCreateOut.add(ticket);
         }
 
@@ -1021,12 +1021,56 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.getInventoryItems().add(item);
     }
 
-    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
+//    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
+//        List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
+//                .orElse(Collections.emptyList())
+//                .stream()
+//                .map(this::mapToInventoryItemResponse)
+//                .toList();
+//
+//        return InventoryResponse.builder()
+//                .id(inventory.getId())
+//                .employeeId(inventory.getEmployeeId())
+//                .type(inventory.getType())
+//                .purpose(inventory.getPurpose())
+//                .date(inventory.getDate())
+//                .pdfUrl(inventory.getPdfUrl())
+//                .note(inventory.getNote())
+//                .orderId(inventory.getOrderId())
+//                .transferStatus(inventory.getTransferStatus())
+//                .warehouseId(inventory.getWarehouse().getId())
+//                .warehouseName(inventory.getWarehouse().getWarehouseName())
+//                .itemResponseList(itemResponseList)
+//                .build();
+//    }
+
+    private InventoryResponse mapToInventoryResponse(Inventory inventory) { // <--- Chỉ còn 1 tham số
+
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(this::mapToInventoryItemResponse)
-                .toList();
+                .collect(Collectors.toList());
+
+        if (itemResponseList.isEmpty()) {
+            int quantity = parseQuantityFromNote(inventory.getNote());
+
+            String extractedProductId = extractProductIdFromCode(inventory.getCode());
+
+            if (quantity > 0 && extractedProductId != null) {
+                InventoryItemResponse virtualItem = InventoryItemResponse.builder()
+                        .id(null)
+                        .quantity(quantity)
+                        .reservedQuantity(0)
+                        .productColorId(extractedProductId)
+                        .productName(extractedProductId)
+                        .locationId(inventory.getWarehouse().getId())
+                        .inventoryId(inventory.getId())
+                        .build();
+
+                itemResponseList = List.of(virtualItem);
+            }
+        }
 
         return InventoryResponse.builder()
                 .id(inventory.getId())
@@ -1044,6 +1088,31 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
+    // Hàm tách ProductID từ mã phiếu
+    private String extractProductIdFromCode(String code) {
+        try {
+            if (code != null && code.startsWith("RES-")) {
+                String[] parts = code.split("-");
+                if (parts.length >= 3) {
+                    return parts[2];
+                }
+            }
+        } catch (Exception e) {}
+        return null;
+    }
+
+    private int parseQuantityFromNote(String note) {
+        try {
+            if (note != null && note.contains("Reserved:")) {
+                String[] parts = note.split(" ");
+                for (String part : parts) {
+                    if (part.matches("\\d+")) return Integer.parseInt(part);
+                }
+            }
+        } catch (Exception e) {}
+        return 0;
+    }
+
     private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
         return InventoryItemResponse.builder()
                 .id(item.getId())
@@ -1051,7 +1120,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .reservedQuantity(item.getReservedQuantity())
                 .productColorId(item.getProductColorId())
                 .productName(getProductName(item.getProductColorId()).getProduct().getName())
-                // locationId chỉ lấy nếu locationItem khác null
                 .locationId(item.getLocationItem() != null ? item.getLocationItem().getId() : null)
                 .inventoryId(item.getInventory().getId())
                 .build();

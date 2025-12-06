@@ -51,8 +51,6 @@ public class OrderCreatedConsumer {
                     } else {
                         log.warn("⚠️ Out of Stock locally. Reserved: 0/{}", item.getQuantity());
                     }
-//                    InventoryReservedEvent successEvent = new InventoryReservedEvent(orderId);
-//                    kafkaTemplate.send("inventory-reserved-topic", successEvent);
                 } catch (Exception e) {
                     log.error("❌ Error reserving stock for item {}: {}", item.getProductColorId(), e.getMessage());
                     throw new RuntimeException("Failed to process item: " + item.getProductColorId(), e);
@@ -68,7 +66,7 @@ public class OrderCreatedConsumer {
 
         } catch (Exception e) {
             log.error("❌ Error processing order {}: {}", orderId, e.getMessage(), e);
-            throw e; // Throw để Kafka retry
+            throw e;
         }
     }
 }
