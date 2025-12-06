@@ -494,11 +494,9 @@ public class InventoryServiceImpl implements InventoryService {
     public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
         OrderResponse orderResponse = getOrder(orderId);
 
-        // Tìm Warehouse mặc định của Store được assign đơn hàng
         Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // --- 2. Lấy TẤT CẢ InventoryItem của sản phẩm này trên TOÀN HỆ THỐNG ---
         List<InventoryItem> allSystemItems = inventoryItemRepository
                 .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
 
@@ -601,25 +599,12 @@ public class InventoryServiceImpl implements InventoryService {
             int needQty,
             long orderId,
             String productColorId,
-            TransferStatus transferStatus, // Quan trọng: Phân biệt kho nhà vs kho hàng xóm
+            TransferStatus transferStatus,
             List<InventoryItem> itemsToUpdateOut,
             List<Inventory> ticketsToCreateOut
     ) {
         int actuallyReserved = 0;
-
-        // Tạo Header phiếu
-        Inventory ticket = Inventory.builder()
-                .employeeId("SYSTEM_AUTO")
-                .type(EnumTypes.RESERVE)
-                .purpose(EnumPurpose.RESERVE)
-                .date(LocalDate.now())
-                .warehouse(warehouse)
-                .orderId(orderId)
-                .code("RES-" + orderId + "-" + warehouse.getId())
-                .transferStatus(transferStatus) // Đánh dấu trạng thái chuyển hàng
-                .build();
-
-        boolean hasReservation = false;
+        List<InventoryItem> tempItemsToUpdate = new ArrayList<>();
 
         for (InventoryItem item : items) {
             if (needQty <= 0) break;
@@ -629,21 +614,28 @@ public class InventoryServiceImpl implements InventoryService {
 
             int toTake = Math.min(available, needQty);
 
-            // Update Entity InventoryItem (Trên kệ)
             item.setReservedQuantity(item.getReservedQuantity() + toTake);
-            itemsToUpdateOut.add(item);
-
-            // Logic cũ của bạn tạo new InventoryItem detail ở đây là SAI (gây duplicate stock).
-            // Chúng ta chỉ update item cũ. Nếu muốn lưu vết chi tiết, cần bảng InventoryDetail riêng.
-            // Ở đây tạm thời ghi vào Note của ticket header.
+            tempItemsToUpdate.add(item);
 
             needQty -= toTake;
             actuallyReserved += toTake;
-            hasReservation = true;
         }
 
-        if (hasReservation) {
-            ticket.setNote("Giữ hàng: " + actuallyReserved + " items. Trạng thái: " + transferStatus );
+        if (actuallyReserved > 0) {
+            itemsToUpdateOut.addAll(tempItemsToUpdate);
+
+            Inventory ticket = Inventory.builder()
+                    .employeeId("SYSTEM_AUTO")
+                    .type(EnumTypes.RESERVE)
+                    .purpose(EnumPurpose.RESERVE)
+                    .date(LocalDate.now())
+                    .warehouse(warehouse)
+                    .orderId(orderId)
+                    .code("RES_" + orderId + "_" + productColorId + "_" + warehouse.getId())
+                    .transferStatus(transferStatus)
+                    .note("Reserved: " + actuallyReserved + " items. Status: " + transferStatus)
+                    .build();
+
             ticketsToCreateOut.add(ticket);
         }
 
@@ -658,7 +650,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .filter(t -> t.getType() == EnumTypes.RESERVE)
                 .filter(t -> t.getInventoryItems().stream()
                         .anyMatch(i -> i.getProductColorId().equals(productColorId)))
-                .collect(Collectors.toList());
+                .toList();
 
         if (relevantTickets.isEmpty()) {
             return null;
