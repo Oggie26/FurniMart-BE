@@ -640,7 +640,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
         // Mapping Entity sang DTO để tránh Lazy Loading Exception hoặc N+1 Query ở Controller/Consumer
         return ReserveStockResponse.builder()
-                .inventory(mapToInventoryResponse(reservationTicket)) // Sử dụng hàm map có sẵn
+                .inventory(reservationTicket) // Sử dụng hàm map có sẵn
                 .quantityReserved(totalReserved)
                 .quantityMissing(missingQty)
                 .build();
@@ -740,7 +740,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
             }
 
             return ReserveStockResponse.builder()
-                    .inventory(mapToInventoryResponse(releaseTicket)) // Return DTO
+                    .inventory(releaseTicket) // Return DTO
                     .quantityReserved(0)
                     .quantityMissing(0)
                     .build();

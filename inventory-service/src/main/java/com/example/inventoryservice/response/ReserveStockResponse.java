@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 @Builder
 public class ReserveStockResponse {
-    private InventoryResponse inventory;
+    private Inventory inventory;
     private int quantityReserved;
     private int quantityMissing; // 0 nếu đủ
 }
