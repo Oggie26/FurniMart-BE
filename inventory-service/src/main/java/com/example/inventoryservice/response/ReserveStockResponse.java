@@ -1,13 +1,14 @@
 package com.example.inventoryservice.response;
 
-import com.example.inventoryservice.entity.Inventory;
 import lombok.Builder;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 @Builder
 public class ReserveStockResponse {
-    private Inventory inventory;
+    private List<InventoryResponse> inventory;
     private int quantityReserved;
     private int quantityMissing; // 0 nếu đủ
 }

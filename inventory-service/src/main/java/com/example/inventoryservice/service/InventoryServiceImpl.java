@@ -542,211 +542,211 @@ public class InventoryServiceImpl implements InventoryService {
 @Override
 @Transactional
 public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
-    OrderResponse orderResponse = getOrder(orderId);
+    OrderResponse orderInfo = getOrder(orderId);
+    String storeId = orderInfo.getStoreId();
 
-    List<Warehouse> warehouses = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
-            .stream()
-            .sorted(Comparator.comparing(Warehouse::getId))
-            .toList();
+    List<InventoryItem> allItems = inventoryItemRepository.findFullByProductColorId(productColorId);
 
-    if (warehouses.isEmpty()) {
-        throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+    Map<Warehouse, List<InventoryItem>> warehouseItemsMap = new HashMap<>();
+    Map<Warehouse, Integer> warehouseAvailableStock = new HashMap<>();
+
+    for (InventoryItem item : allItems) {
+        if (item.getLocationItem() == null)
+            continue;
+        Warehouse w = item.getLocationItem().getZone().getWarehouse();
+        if (storeId != null && !storeId.equals(w.getStoreId()))
+            continue;
+
+        int available = item.getQuantity() - item.getReservedQuantity();
+        if (available <= 0)
+            continue;
+
+        warehouseItemsMap.computeIfAbsent(w, k -> new ArrayList<>()).add(item);
+        warehouseAvailableStock.merge(w, available, Integer::sum);
     }
 
-    int remainingToReserve = quantity;
-    int totalReserved = 0;
-
-    // Dùng List để gom các item cần update (Batch Update)
-    List<InventoryItem> itemsToUpdate = new ArrayList<>();
-    // Dùng List để gom các chi tiết phiếu giữ cần insert (Batch Insert)
-    List<InventoryItem> detailsToInsert = new ArrayList<>();
-
-    Map<Warehouse, Map<LocationItem, Integer>> reservationLog = new HashMap<>();
-
-    for (Warehouse warehouse : warehouses) {
-        if (remainingToReserve <= 0) break;
-
-        // Nên đảm bảo hàm này có JOIN FETCH inventory để tránh N+1 nếu cần truy xuất
-        List<InventoryItem> items = inventoryItemRepository
-                .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
-
-        for (InventoryItem item : items) {
-            int availableInItem = item.getQuantity() - item.getReservedQuantity();
-            if (availableInItem <= 0) continue;
-
-            int toReserve = Math.min(availableInItem, remainingToReserve);
-
-            // Cập nhật stock trên object
-            item.setQuantity(item.getQuantity() - toReserve);
-            item.setReservedQuantity(item.getReservedQuantity() + toReserve);
-
-            // Thêm vào list update thay vì save ngay
-            itemsToUpdate.add(item);
-
-            reservationLog.computeIfAbsent(warehouse, k -> new HashMap<>())
-                    .merge(item.getLocationItem(), toReserve, Integer::sum);
-
-            remainingToReserve -= toReserve;
-            totalReserved += toReserve;
-
-            if (remainingToReserve <= 0) break;
-        }
-    }
-
-    // Thực hiện Batch Update cho Stock thực tế
-    if (!itemsToUpdate.isEmpty()) {
-        inventoryItemRepository.saveAll(itemsToUpdate);
-    }
-
-    int missingQty = quantity - totalReserved;
-
-    if (totalReserved > 0) {
-        Inventory reservationTicket = Inventory.builder()
-                .employeeId("SYSTEM_AUTO")
-                .type(EnumTypes.RESERVE)
-                .purpose(EnumPurpose.RESERVE)
-                .date(LocalDate.now())
-                .warehouse(warehouses.get(0))
-                .orderId(orderId)
-                .code("RES-" + orderId + "-" + productColorId)
-                .note("Reserved " + totalReserved + "/" + quantity + " products. Missing: " + missingQty)
-                .build();
-
-        // Save phiếu cha trước
-        inventoryRepository.save(reservationTicket);
-
-        // Tạo các chi tiết phiếu (Log)
-        for (Map.Entry<Warehouse, Map<LocationItem, Integer>> whEntry : reservationLog.entrySet()) {
-            for (Map.Entry<LocationItem, Integer> locEntry : whEntry.getValue().entrySet()) {
-                InventoryItem ticketDetail = InventoryItem.builder()
-                        .inventory(reservationTicket)
-                        .locationItem(locEntry.getKey())
-                        .productColorId(productColorId)
-                        .quantity(locEntry.getValue())
-                        .reservedQuantity(0)
-                        .build();
-                detailsToInsert.add(ticketDetail);
-            }
-        }
-
-        // Thực hiện Batch Insert cho chi tiết phiếu
-        if (!detailsToInsert.isEmpty()) {
-            inventoryItemRepository.saveAll(detailsToInsert);
-        }
-
-        log.info("✅ Reserved {} of {} for productColorId {} in order {}. Missing: {}",
-                totalReserved, quantity, productColorId, orderId, missingQty);
-
-        // Mapping Entity sang DTO để tránh Lazy Loading Exception hoặc N+1 Query ở Controller/Consumer
+    if (warehouseAvailableStock.isEmpty()) {
         return ReserveStockResponse.builder()
-                .inventory(reservationTicket) // Sử dụng hàm map có sẵn
-                .quantityReserved(totalReserved)
-                .quantityMissing(missingQty)
-                .build();
-    } else {
-        log.warn("⚠️ Out of stock for productColorId {} in order {}", productColorId, orderId);
-        return ReserveStockResponse.builder()
-                .inventory(null)
+                .inventory(new ArrayList<>())
                 .quantityReserved(0)
                 .quantityMissing(quantity)
                 .build();
     }
+
+    Warehouse selectedWarehouse = null;
+    for (Map.Entry<Warehouse, Integer> entry : warehouseAvailableStock.entrySet()) {
+        if (entry.getValue() >= quantity) {
+            selectedWarehouse = entry.getKey();
+            break;
+        }
+    }
+
+    List<Warehouse> targetWarehouses = new ArrayList<>();
+    if (selectedWarehouse != null) {
+        targetWarehouses.add(selectedWarehouse);
+    } else {
+        List<Map.Entry<Warehouse, Integer>> sorted = new ArrayList<>(warehouseAvailableStock.entrySet());
+        sorted.sort((a, b) -> b.getValue().compareTo(a.getValue()));
+
+        int needed = quantity;
+        for (Map.Entry<Warehouse, Integer> entry : sorted) {
+            targetWarehouses.add(entry.getKey());
+            needed -= entry.getValue();
+            if (needed <= 0)
+                break;
+        }
+    }
+
+    int remainingToReserve = quantity;
+    int totalReserved = 0;
+    List<Inventory> tickets = new ArrayList<>();
+    List<InventoryItem> stockToUpdate = new ArrayList<>();
+
+    for (Warehouse w : targetWarehouses) {
+        if (remainingToReserve <= 0)
+            break;
+
+        List<InventoryItem> stockItems = warehouseItemsMap.get(w);
+        int reservedInThisWarehouse = 0;
+
+        Inventory ticket = Inventory.builder()
+                .employeeId("SYSTEM_AUTO")
+                .type(EnumTypes.RESERVE)
+                .purpose(EnumPurpose.RESERVE)
+                .date(LocalDate.now())
+                .warehouse(w)
+                .orderId(orderId)
+                .code("RES-" + orderId + "-" + productColorId + "-" + w.getId())
+                .note("Auto Reserve for Order " + orderId)
+                .inventoryItems(new ArrayList<>())
+                .build();
+
+        for (InventoryItem stockItem : stockItems) {
+            int available = stockItem.getQuantity() - stockItem.getReservedQuantity();
+            if (available <= 0)
+                continue;
+
+            int toReserve = Math.min(available, remainingToReserve);
+
+            stockItem.setReservedQuantity(stockItem.getReservedQuantity() + toReserve);
+            stockToUpdate.add(stockItem);
+
+            InventoryItem detail = InventoryItem.builder()
+                    .inventory(ticket)
+                    .locationItem(stockItem.getLocationItem())
+                    .productColorId(productColorId)
+                    .quantity(toReserve)
+                    .reservedQuantity(0)
+                    .build();
+
+            ticket.getInventoryItems().add(detail);
+
+            remainingToReserve -= toReserve;
+            totalReserved += toReserve;
+            reservedInThisWarehouse += toReserve;
+
+            if (remainingToReserve <= 0)
+                break;
+        }
+
+        if (reservedInThisWarehouse > 0) {
+            tickets.add(ticket);
+        }
+    }
+
+    if (!stockToUpdate.isEmpty()) {
+        inventoryItemRepository.saveAll(stockToUpdate);
+    }
+    if (!tickets.isEmpty()) {
+        inventoryRepository.saveAll(tickets);
+    }
+
+    List<InventoryResponse> responses = tickets.stream()
+            .map(this::mapToInventoryResponse)
+            .collect(Collectors.toList());
+
+    return ReserveStockResponse.builder()
+            .inventory(responses)
+            .quantityReserved(totalReserved)
+            .quantityMissing(quantity - totalReserved)
+            .build();
 }
 
     @Override
     @Transactional
     public ReserveStockResponse releaseReservedStock(String productColorId, int quantity, Long orderId) {
-        OrderResponse orderData = getOrder(orderId);
-        Warehouse warehouse = warehouseRepository
-                .findByStoreIdAndIsDeletedFalse(orderData.getStoreId())
-                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+        List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
+        List<Inventory> relevantTickets = tickets.stream()
+                .filter(t -> t.getType() == EnumTypes.RESERVE)
+                .filter(t -> t.getInventoryItems().stream()
+                        .anyMatch(i -> i.getProductColorId().equals(productColorId)))
+                .collect(Collectors.toList());
 
-        String reserveCode = "RES-" + orderId + "-" + productColorId;
-        Inventory reservationTicket = inventoryRepository.findByCode(reserveCode)
-                .orElse(null);
-
-        if (reservationTicket == null) {
-            return ReserveStockResponse.builder().inventory(null).quantityReserved(0).quantityMissing(0).build();
+        if (relevantTickets.isEmpty()) {
+            return ReserveStockResponse.builder().inventory(new ArrayList<>()).quantityReserved(0).quantityMissing(0)
+                    .build();
         }
 
-        List<InventoryItem> reservedLogs = inventoryItemRepository.findAllByInventoryId(reservationTicket.getId());
-
-        int totalReleased = 0;
+        List<InventoryItem> stockToUpdate = new ArrayList<>();
         int quantityToRelease = quantity;
+        int totalReleased = 0;
+        Map<Warehouse, Integer> releasedPerWarehouse = new HashMap<>();
 
-        List<InventoryItem> itemsToUpdate = new ArrayList<>();
-        List<InventoryItem> detailsToInsert = new ArrayList<>();
-        Map<LocationItem, Integer> releaseLog = new HashMap<>();
+        for (Inventory ticket : relevantTickets) {
+            if (quantityToRelease <= 0)
+                break;
 
-        for (InventoryItem logItem : reservedLogs) {
-            if (quantityToRelease <= 0) break;
+            for (InventoryItem ticketItem : ticket.getInventoryItems()) {
+                if (!ticketItem.getProductColorId().equals(productColorId))
+                    continue;
 
-            int quantityReservedInShelf = logItem.getQuantity();
+                int canRelease = ticketItem.getQuantity();
+                int actualRelease = Math.min(canRelease, quantityToRelease);
 
-            if (quantityReservedInShelf > 0) {
-                int actualRelease = Math.min(quantityReservedInShelf, quantityToRelease);
+                if (actualRelease <= 0)
+                    continue;
 
-                InventoryItem shelfItem = inventoryItemRepository
-                        .findByProductColorIdAndLocationItemId(productColorId, logItem.getLocationItem().getId())
-                        .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+                InventoryItem stockItem = inventoryItemRepository
+                        .findByProductColorIdAndLocationItemId(productColorId, ticketItem.getLocationItem().getId())
+                        .orElse(null);
 
-                // Update Shelf Stock
-                int newReservedQty = Math.max(0, shelfItem.getReservedQuantity() - actualRelease);
-                shelfItem.setReservedQuantity(newReservedQty);
-                itemsToUpdate.add(shelfItem);
+                if (stockItem != null) {
+                    stockItem.setReservedQuantity(Math.max(0, stockItem.getReservedQuantity() - actualRelease));
+                    stockToUpdate.add(stockItem);
+                    totalReleased += actualRelease;
+                    quantityToRelease -= actualRelease;
+                    releasedPerWarehouse.merge(ticket.getWarehouse(), actualRelease, Integer::sum);
+                }
 
-                // Update Log Item
-                logItem.setQuantity(quantityReservedInShelf - actualRelease);
-                itemsToUpdate.add(logItem);
-
-                releaseLog.put(logItem.getLocationItem(), actualRelease);
-
-                totalReleased += actualRelease;
-                quantityToRelease -= actualRelease;
+                if (quantityToRelease <= 0)
+                    break;
             }
         }
 
-        if (!itemsToUpdate.isEmpty()) {
-            inventoryItemRepository.saveAll(itemsToUpdate);
-        }
+        inventoryItemRepository.saveAll(stockToUpdate);
 
-        if (totalReleased > 0) {
+        List<Inventory> releaseTickets = new ArrayList<>();
+        for (Map.Entry<Warehouse, Integer> entry : releasedPerWarehouse.entrySet()) {
             Inventory releaseTicket = Inventory.builder()
                     .employeeId("SYSTEM_AUTO")
                     .type(EnumTypes.RELEASE)
                     .purpose(EnumPurpose.RETURN)
                     .date(LocalDate.now())
-                    .warehouse(warehouse)
+                    .warehouse(entry.getKey())
                     .orderId(orderId)
-                    .code("REL-" + orderId + "-" + productColorId + "-" + System.currentTimeMillis())
-                    .note("Hủy giữ hàng tự động: " + totalReleased + " sản phẩm.")
+                    .code("REL-" + orderId + "-" + productColorId + "-" + entry.getKey().getId() + "-"
+                            + System.currentTimeMillis())
+                    .note("Release Stock Split: " + entry.getValue())
                     .build();
-            inventoryRepository.save(releaseTicket);
-
-            for (Map.Entry<LocationItem, Integer> entry : releaseLog.entrySet()) {
-                InventoryItem ticketDetail = InventoryItem.builder()
-                        .inventory(releaseTicket)
-                        .locationItem(entry.getKey())
-                        .productColorId(productColorId)
-                        .quantity(entry.getValue())
-                        .reservedQuantity(0)
-                        .build();
-                detailsToInsert.add(ticketDetail);
-            }
-
-            if (!detailsToInsert.isEmpty()) {
-                inventoryItemRepository.saveAll(detailsToInsert);
-            }
-
-            return ReserveStockResponse.builder()
-                    .inventory(releaseTicket) // Return DTO
-                    .quantityReserved(0)
-                    .quantityMissing(0)
-                    .build();
+            releaseTickets.add(releaseTicket);
         }
+        inventoryRepository.saveAll(releaseTickets);
 
-        return ReserveStockResponse.builder().build();
+        return ReserveStockResponse.builder()
+                .inventory(releaseTickets.stream().map(this::mapToInventoryResponse).collect(Collectors.toList()))
+                .quantityReserved(0)
+                .quantityMissing(0)
+                .build();
     }
 
     // ----------------- CHECK STOCK -----------------
