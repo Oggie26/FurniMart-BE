@@ -590,9 +590,58 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-    /**
-     * Hàm hỗ trợ xử lý logic trừ kho và tạo phiếu cho 1 Warehouse cụ thể
-     */
+//    /**
+//     * Hàm hỗ trợ xử lý logic trừ kho và tạo phiếu cho 1 Warehouse cụ thể
+//     */
+//    private int reserveAtSpecificWarehouse(
+//            Warehouse warehouse,
+//            List<InventoryItem> items,
+//            int needQty,
+//            long orderId,
+//            String productColorId,
+//            TransferStatus transferStatus,
+//            List<InventoryItem> itemsToUpdateOut,
+//            List<Inventory> ticketsToCreateOut
+//    ) {
+//        int actuallyReserved = 0;
+//        List<InventoryItem> tempItemsToUpdate = new ArrayList<>();
+//
+//        for (InventoryItem item : items) {
+//            if (needQty <= 0) break;
+//
+//            int available = item.getQuantity() - item.getReservedQuantity();
+//            if (available <= 0) continue;
+//
+//            int toTake = Math.min(available, needQty);
+//
+//            item.setReservedQuantity(item.getReservedQuantity() + toTake);
+//            tempItemsToUpdate.add(item);
+//
+//            needQty -= toTake;
+//            actuallyReserved += toTake;
+//        }
+//
+//        if (actuallyReserved > 0) {
+//            itemsToUpdateOut.addAll(tempItemsToUpdate);
+//
+//            Inventory ticket = Inventory.builder()
+//                    .employeeId("SYSTEM_AUTO")
+//                    .type(EnumTypes.RESERVE)
+//                    .purpose(EnumPurpose.RESERVE)
+//                    .date(LocalDate.now())
+//                    .warehouse(warehouse)
+//                    .orderId(orderId)
+//                    .code("RES_" + orderId + "_" + productColorId + "_" + warehouse.getId())
+//                    .transferStatus(transferStatus)
+//                    .note("Giữ hàng: " + actuallyReserved + " items. Trạng thái: " + transferStatus)
+//                    .build();
+//
+//            ticketsToCreateOut.add(ticket);
+//        }
+//
+//        return actuallyReserved;
+//    }
+
     private int reserveAtSpecificWarehouse(
             Warehouse warehouse,
             List<InventoryItem> items,
@@ -608,12 +657,10 @@ public class InventoryServiceImpl implements InventoryService {
 
         for (InventoryItem item : items) {
             if (needQty <= 0) break;
-
             int available = item.getQuantity() - item.getReservedQuantity();
             if (available <= 0) continue;
 
             int toTake = Math.min(available, needQty);
-
             item.setReservedQuantity(item.getReservedQuantity() + toTake);
             tempItemsToUpdate.add(item);
 
@@ -624,6 +671,15 @@ public class InventoryServiceImpl implements InventoryService {
         if (actuallyReserved > 0) {
             itemsToUpdateOut.addAll(tempItemsToUpdate);
 
+            String storeId = (warehouse.getStoreId() != null) ? warehouse.getStoreId() : "UNKNOWN_STORE";
+
+            String noteContent = String.format("Reserved: %d | Store: %s | Status: %s",
+                    actuallyReserved,
+                    storeId,
+                    transferStatus);
+
+            String codeGen = String.format("RES_%s_%d_%s_%s", storeId, orderId, productColorId, warehouse.getId());
+
             Inventory ticket = Inventory.builder()
                     .employeeId("SYSTEM_AUTO")
                     .type(EnumTypes.RESERVE)
@@ -631,9 +687,9 @@ public class InventoryServiceImpl implements InventoryService {
                     .date(LocalDate.now())
                     .warehouse(warehouse)
                     .orderId(orderId)
-                    .code("RES_" + orderId + "_" + productColorId + "_" + warehouse.getId())
+                    .code(codeGen)
                     .transferStatus(transferStatus)
-                    .note("Reserved: " + actuallyReserved + " items. Status: " + transferStatus)
+                    .note(noteContent)
                     .build();
 
             ticketsToCreateOut.add(ticket);
