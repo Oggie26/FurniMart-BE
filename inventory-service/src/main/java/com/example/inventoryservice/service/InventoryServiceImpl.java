@@ -542,10 +542,10 @@ public class InventoryServiceImpl implements InventoryService {
 @Override
 @Transactional
 public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
-    OrderResponse orerData = getOrder(orderId);
-    log.info(String.valueOf(orerData));
+    OrderResponse orderData = getOrder(orderId);
+
     Warehouse warehouse = warehouseRepository
-            .findByStoreIdAndIsDeletedFalse(orerData.getStoreId())
+            .findByStoreIdAndIsDeletedFalse(orderData.getStoreId())
             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
     List<InventoryItem> items = inventoryItemRepository
@@ -568,7 +568,12 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
             int toReserve = Math.min(availableInItem, remainingToReserve);
 
+            // ⚡ Trừ stock thực tế
+            item.setQuantity(item.getQuantity() - toReserve);
+
+            // ⚡ Tăng reserved để track
             item.setReservedQuantity(item.getReservedQuantity() + toReserve);
+
             inventoryItemRepository.save(item);
 
             reservationLog.put(item.getLocationItem(), toReserve);
@@ -577,6 +582,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
             if (remainingToReserve <= 0) break;
         }
 
+        // 4. Tạo phiếu giữ hàng
         Inventory reservationTicket = Inventory.builder()
                 .employeeId("SYSTEM_AUTO")
                 .type(EnumTypes.RESERVE)
@@ -589,25 +595,28 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .build();
         inventoryRepository.save(reservationTicket);
 
-        // 6. TẠO CHI TIẾT PHIẾU (Detail) -> Để Manager biết hàng nằm ở kệ nào
+        // 5. Lưu chi tiết phiếu (link tới location thực tế)
         for (Map.Entry<LocationItem, Integer> entry : reservationLog.entrySet()) {
             InventoryItem ticketDetail = InventoryItem.builder()
-                    .inventory(reservationTicket) // Gắn vào phiếu giữ
-                    .locationItem(entry.getKey()) // Gắn link tới kệ hàng thực tế
+                    .inventory(reservationTicket)      // Gắn phiếu giữ
+                    .locationItem(entry.getKey())      // Kệ hàng
                     .productColorId(productColorId)
-                    .quantity(entry.getValue())   // Số lượng giữ tại kệ này
-                    .reservedQuantity(0)          // Trong phiếu lịch sử thì reserved = 0
+                    .quantity(entry.getValue())        // Số lượng giữ tại kệ
+                    .reservedQuantity(0)               // Phiếu lịch sử không cần track nữa
                     .build();
             inventoryItemRepository.save(ticketDetail);
         }
+
+        log.info("✅ Reserved {} of {} for productColorId {} in order {}", actualReserve, quantity, productColorId, orderId);
 
         return ReserveStockResponse.builder()
                 .inventory(reservationTicket)
                 .quantityReserved(actualReserve)
                 .quantityMissing(missingQty)
                 .build();
+
     } else {
-        // Trường hợp kho không có cái nào
+        log.warn("⚠️ Out of stock for productColorId {} in order {}", productColorId, orderId);
         return ReserveStockResponse.builder()
                 .inventory(null)
                 .quantityReserved(0)
@@ -615,6 +624,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .build();
     }
 }
+
 
 
     @Override

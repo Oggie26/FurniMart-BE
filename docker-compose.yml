@@ -371,7 +371,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
-      - "traefik.http.routers.kafka-ui.rule=Host(`kafka-ui.furnimart.click`)"
+      - "traefik.http.routers.kafka-ui.rule=Host(`furnimart.click`) && PathPrefix(`/kafka-ui`)"
       - "traefik.http.routers.kafka-ui.entrypoints=websecure"
       - "traefik.http.routers.kafka-ui.tls.certresolver=myresolver"
       - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
