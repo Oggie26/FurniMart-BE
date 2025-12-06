@@ -3,7 +3,9 @@ package com.example.inventoryservice.repository;
 import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.entity.InventoryItem;
 import com.example.inventoryservice.enums.EnumTypes;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -123,15 +125,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
                                         @Param("excludedTypes") List<EnumTypes> excludedTypes);
 
     // 2. Tính TỒN KHẢ DỤNG (Available)
-    @Query("SELECT COALESCE(SUM(i.quantity - i.reservedQuantity), 0) " +
+    @Query("SELECT SUM(i.quantity - i.reservedQuantity) " + // Phải trừ Reserved
             "FROM InventoryItem i " +
-            "WHERE i.productColorId = :pci " +
-            "AND i.inventory.type NOT IN :excludedTypes") // <--- Dùng tham số
-    Integer calculateRealAvailableStock(@Param("pci") String pci,
-                                        @Param("excludedTypes") List<EnumTypes> excludedTypes);
+            "WHERE i.productColorId = :pId " +
+            "AND i.inventory.type NOT IN :virtualTypes " + // Loại bỏ hàng ảo/hàng lỗi
+            "AND (i.quantity - i.reservedQuantity) > 0")   // Chỉ cộng các dòng dương
+    Integer calculateRealAvailableStock(@Param("pId") String pId,
+                                        @Param("virtualTypes") List<EnumTypes> virtualTypes);
 
-    @Query("SELECT ii FROM InventoryItem ii JOIN FETCH ii.inventory i JOIN FETCH i.warehouse w WHERE ii.productColorId = :productColorId")
-    List<InventoryItem> findByProductColorIdWithInventoryAndWarehouse(@Param("productColorId") String productColorId);
+//    @Query("SELECT ii FROM InventoryItem ii JOIN FETCH ii.inventory i JOIN FETCH i.warehouse w WHERE ii.productColorId = :productColorId")
+//    List<InventoryItem> findByProductColorIdWithInventoryAndWarehouse(@Param("productColorId") String productColorId);
 
 
     @Query("SELECT COUNT(i) > 0 " +
@@ -155,5 +158,15 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             @Param("productColorId") String productColorId,
             @Param("storeId") String storeId
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE) // <--- QUAN TRỌNG: Khoá dòng để tránh tranh chấp khi nhiều đơn cùng đặt
+    @Query("SELECT i FROM InventoryItem i " +
+            "JOIN FETCH i.locationItem l " +       // Fetch Join để lấy luôn Location (tránh lỗi N+1)
+            "JOIN FETCH l.zone z " +               // Lấy luôn Zone
+            "JOIN FETCH z.warehouse w " +          // Lấy luôn Warehouse để Grouping ở Service
+            "WHERE i.productColorId = :productColorId " +
+            "AND (i.quantity - i.reservedQuantity) > 0 " +
+            "ORDER BY i.inventory.date ASC")       // Ưu tiên hàng nhập cũ nhất (FIFO)
+    List<InventoryItem> findByProductColorIdAndAvailableGreaterThanZero(@Param("productColorId") String productColorId);
 
 }
