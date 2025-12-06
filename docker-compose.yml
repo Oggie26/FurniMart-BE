@@ -353,6 +353,30 @@ services:
           cpus: "1.0"
           memory: 1g
 
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    ports:
+      - "9090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: ""
+    networks:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=furnimart_net"
+      - "traefik.http.routers.kafka-ui.rule=Host(`kafka-ui.furnimart.click`)"
+      - "traefik.http.routers.kafka-ui.entrypoints=websecure"
+      - "traefik.http.routers.kafka-ui.tls.certresolver=myresolver"
+      - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
+
 # 👇 MẠNG CỐ ĐỊNH
 networks:
   backend:
