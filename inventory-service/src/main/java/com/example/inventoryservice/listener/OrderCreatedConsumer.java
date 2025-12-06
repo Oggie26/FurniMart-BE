@@ -24,7 +24,6 @@ public class OrderCreatedConsumer {
             groupId = "inventory-group",
             containerFactory = "orderCreatedKafkaListenerContainerFactory"
     )
-    @Transactional
     public void handleOrderCreated(OrderCreatedEvent event) {
         Long orderId = event.getOrderId();
         log.info("Received OrderCreatedEvent for order: {}", orderId);
