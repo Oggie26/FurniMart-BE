@@ -28,4 +28,6 @@ List<Inventory> findAllByWarehouse_IdAndPurpose(String warehouseId, EnumPurpose 
     List<Inventory> findPendingReservations(@Param("warehouseId") String warehouseId);
 
     Optional<Inventory> findByCode(String code);
+
+
 }

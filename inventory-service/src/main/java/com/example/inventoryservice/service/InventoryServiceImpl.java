@@ -543,10 +543,11 @@ public class InventoryServiceImpl implements InventoryService {
 @Transactional
 public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
     OrderResponse orderResponse = getOrder(orderId);
+
     List<Warehouse> warehouses = warehouseRepository
             .findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
             .stream()
-            .sorted(Comparator.comparing(Warehouse::getId)) // có thể đổi theo khoảng cách
+            .sorted(Comparator.comparing(Warehouse::getId))
             .toList();
 
     if (warehouses.isEmpty()) {
@@ -558,7 +559,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
     Map<Warehouse, Map<LocationItem, Integer>> reservationLog = new HashMap<>();
 
-    // 2️⃣ Lặp từng warehouse để reserve
     for (Warehouse warehouse : warehouses) {
         if (remainingToReserve <= 0) break;
 
@@ -576,9 +576,8 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
             item.setReservedQuantity(item.getReservedQuantity() + toReserve);
             inventoryItemRepository.save(item);
 
-            // Lưu log theo warehouse + location
             reservationLog.computeIfAbsent(warehouse, k -> new HashMap<>())
-                    .put(item.getLocationItem(), toReserve);
+                    .merge(item.getLocationItem(), toReserve, Integer::sum);
 
             remainingToReserve -= toReserve;
             totalReserved += toReserve;
@@ -590,13 +589,12 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
     int missingQty = quantity - totalReserved;
 
     if (totalReserved > 0) {
-        // 3️⃣ Tạo phiếu giữ hàng tổng
         Inventory reservationTicket = Inventory.builder()
                 .employeeId("SYSTEM_AUTO")
                 .type(EnumTypes.RESERVE)
                 .purpose(EnumPurpose.RESERVE)
                 .date(LocalDate.now())
-                .warehouse(warehouses.get(0)) // gắn warehouse chính để reference
+                .warehouse(warehouses.get(0)) // warehouse chính để reference
                 .orderId(orderId)
                 .code("RES-" + orderId + "-" + productColorId)
                 .note("Reserved " + totalReserved + "/" + quantity + " products. Missing: " + missingQty)
@@ -604,14 +602,13 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
         inventoryRepository.save(reservationTicket);
 
         for (Map.Entry<Warehouse, Map<LocationItem, Integer>> whEntry : reservationLog.entrySet()) {
-            Warehouse wh = whEntry.getKey();
             for (Map.Entry<LocationItem, Integer> locEntry : whEntry.getValue().entrySet()) {
                 InventoryItem ticketDetail = InventoryItem.builder()
                         .inventory(reservationTicket)
                         .locationItem(locEntry.getKey())
                         .productColorId(productColorId)
                         .quantity(locEntry.getValue())
-                        .reservedQuantity(0) // phiếu lịch sử
+                        .reservedQuantity(0)
                         .build();
                 inventoryItemRepository.save(ticketDetail);
             }
@@ -634,6 +631,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .build();
     }
 }
+
 
     @Override
     @Transactional

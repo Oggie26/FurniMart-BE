@@ -129,6 +129,8 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     Integer calculateRealAvailableStock(@Param("pci") String pci,
                                         @Param("excludedTypes") List<EnumTypes> excludedTypes);
 
+    @Query("SELECT ii FROM InventoryItem ii JOIN FETCH ii.inventory i JOIN FETCH i.warehouse w WHERE ii.productColorId = :productColorId")
+    List<InventoryItem> findByProductColorIdWithInventoryAndWarehouse(@Param("productColorId") String productColorId);
 
 
     @Query("SELECT COUNT(i) > 0 " +
