@@ -9,6 +9,7 @@ import com.example.inventoryservice.response.InventoryResponse;
 import com.example.inventoryservice.response.LowStockAlertResponse;
 import com.example.inventoryservice.response.ProductLocationResponse;
 import com.example.inventoryservice.response.ReserveStockResponse;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -26,7 +27,8 @@ public interface InventoryService {
 
     ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId );
 
-    InventoryResponse releaseReservedStock(String productColorId, int quantity);
+
+    ReserveStockResponse releaseReservedStock(String productColorId, int quantity, Long orderId);
 
     boolean hasSufficientStock(String productColorId, String warehouseId, int requiredQty);
 

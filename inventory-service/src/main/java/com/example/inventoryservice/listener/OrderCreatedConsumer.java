@@ -30,7 +30,6 @@ public class OrderCreatedConsumer {
         log.info("Received OrderCreatedEvent for order: {}", orderId);
 
         if (processedMessageRepository.existsByOrderId(orderId)) {
-            log.warn("⚠️ Order {} has already been processed. Skipping.", orderId);
             return;
         }
 
@@ -53,7 +52,8 @@ public class OrderCreatedConsumer {
                     } else {
                         log.warn("⚠️ Out of Stock locally. Reserved: 0/{}", item.getQuantity());
                     }
-
+//                    InventoryReservedEvent successEvent = new InventoryReservedEvent(orderId);
+//                    kafkaTemplate.send("inventory-reserved-topic", successEvent);
                 } catch (Exception e) {
                     log.error("❌ Error reserving stock for item {}: {}", item.getProductColorId(), e.getMessage());
                     throw new RuntimeException("Failed to process item: " + item.getProductColorId(), e);

@@ -26,4 +26,6 @@ List<Inventory> findAllByWarehouse_IdAndPurpose(String warehouseId, EnumPurpose 
 
     @Query("SELECT i FROM Inventory i WHERE i.warehouse.id = :warehouseId AND i.type = 'RESERVE'    ")
     List<Inventory> findPendingReservations(@Param("warehouseId") String warehouseId);
+
+    Optional<Inventory> findByCode(String code);
 }

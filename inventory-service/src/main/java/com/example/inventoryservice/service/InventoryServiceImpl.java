@@ -2,7 +2,6 @@ package com.example.inventoryservice.service;
 
 import com.example.inventoryservice.entity.*;
 import com.example.inventoryservice.enums.*;
-import com.example.inventoryservice.event.UpdateStatusOrderCreatedEvent;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.*;
 import com.example.inventoryservice.repository.*;
@@ -14,7 +13,6 @@ import com.example.inventoryservice.service.inteface.InventoryService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -621,23 +619,94 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
     @Override
     @Transactional
-    public InventoryResponse releaseReservedStock(String productColorId, int quantity) {
-        List<InventoryItem> items = inventoryItemRepository.findAllByProductColorId(productColorId);
-        if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+    public ReserveStockResponse releaseReservedStock(String productColorId, int quantity, Long orderId) {
+        OrderResponse orderData = getOrder(orderId);
+        Warehouse warehouse = warehouseRepository
+                .findByStoreIdAndIsDeletedFalse(orderData.getStoreId())
+                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-        int remaining = quantity;
-        for (InventoryItem item : items) {
-            int reserved = item.getReservedQuantity();
-            if (reserved > 0) {
-                int toRelease = Math.min(reserved, remaining);
-                item.setReservedQuantity(reserved - toRelease);
-                inventoryItemRepository.save(item);
-                remaining -= toRelease;
-                if (remaining <= 0) break;
+        String reserveCode = "RES-" + orderId + "-" + productColorId;
+        Inventory reservationTicket = inventoryRepository.findByCode(reserveCode)
+                .orElse(null);
+
+        if (reservationTicket == null) {
+            log.warn("Không tìm thấy phiếu giữ hàng cho Order: " + orderId + ", Product: " + productColorId);
+            return ReserveStockResponse.builder()
+                    .inventory(null)
+                    .quantityReserved(0)
+                    .quantityMissing(0)
+                    .build();
+        }
+
+        List<InventoryItem> reservedLogs = inventoryItemRepository.findAllByInventoryId(reservationTicket.getId());
+
+        int totalReleased = 0;
+        int quantityToRelease = quantity;
+
+        Map<LocationItem, Integer> releaseLog = new HashMap<>();
+
+        for (InventoryItem logItem : reservedLogs) {
+            if (quantityToRelease <= 0) break;
+
+            int quantityReservedInShelf = logItem.getQuantity();
+
+            if (quantityReservedInShelf > 0) {
+                int actualRelease = Math.min(quantityReservedInShelf, quantityToRelease);
+
+                InventoryItem shelfItem = inventoryItemRepository
+                        .findByProductColorIdAndLocationItemId(productColorId, logItem.getLocationItem().getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+                int newReservedQty = shelfItem.getReservedQuantity() - actualRelease;
+                if (newReservedQty < 0) newReservedQty = 0;
+
+                shelfItem.setReservedQuantity(newReservedQty);
+                inventoryItemRepository.save(shelfItem);
+
+                logItem.setQuantity(quantityReservedInShelf - actualRelease);
+                inventoryItemRepository.save(logItem);
+
+                releaseLog.put(logItem.getLocationItem(), actualRelease);
+
+                totalReleased += actualRelease;
+                quantityToRelease -= actualRelease;
             }
         }
 
-        return mapToInventoryResponse(items.get(0).getInventory());
+        if (totalReleased > 0) {
+            Inventory releaseTicket = Inventory.builder()
+                    .employeeId("SYSTEM_AUTO")
+                    .type(EnumTypes.RELEASE)
+                    .purpose(EnumPurpose.RETURN)
+                    .date(LocalDate.now())
+                    .warehouse(warehouse)
+                    .orderId(orderId)
+                    .code("REL-" + orderId + "-" + productColorId + "-" + System.currentTimeMillis())
+                    .note("Hủy giữ hàng tự động: " + totalReleased + " sản phẩm.")
+                    .build();
+            inventoryRepository.save(releaseTicket);
+
+            // Lưu chi tiết phiếu Release
+            for (Map.Entry<LocationItem, Integer> entry : releaseLog.entrySet()) {
+                InventoryItem ticketDetail = InventoryItem.builder()
+                        .inventory(releaseTicket)
+                        .locationItem(entry.getKey())
+                        .productColorId(productColorId)
+                        .quantity(entry.getValue())
+                        .reservedQuantity(0)
+                        .build();
+                inventoryItemRepository.save(ticketDetail);
+            }
+
+
+            return ReserveStockResponse.builder()
+                    .inventory(releaseTicket)
+                    .quantityReserved(0)
+                    .quantityMissing(0)
+                    .build();
+        }
+
+        return ReserveStockResponse.builder().build();
     }
 
     // ----------------- CHECK STOCK -----------------

@@ -1,13 +1,16 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.entity.Order;
+import com.example.orderservice.entity.Payment;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
+import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
+import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.service.VNPayService;
 import com.example.orderservice.service.inteface.OrderService;
 import com.example.orderservice.util.VNPayUtils;
@@ -37,6 +40,7 @@ public class VNPayController {
 
     private final VNPayService vnPayService;
     private final OrderService orderService;
+    private final PaymentRepository paymentRepository;
 
     @GetMapping("/vnpay")
     public String createPayment(@RequestParam Double amount,
@@ -44,83 +48,6 @@ public class VNPayController {
         String returnUrl = "http://localhost:8085/api/v1/payment/vnpay-return";
         return vnPayService.createPaymentUrl(orderId, amount, returnUrl);
     }
-
-//    @GetMapping("/vnpay-return")
-//    public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
-//                            HttpServletResponse response) throws IOException {
-//
-//        String secureHash = vnpParams.remove("vnp_SecureHash");
-//        vnpParams.remove("vnp_SecureHashType");
-//
-//        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
-//
-//        String frontendUrl = "http://localhost:5173/payment-success";
-//
-//        if (signValue.equalsIgnoreCase(secureHash)) {
-//            String responseCode = vnpParams.get("vnp_ResponseCode");
-//            String orderId = vnpParams.get("vnp_TxnRef");
-//
-//            if ("00".equals(responseCode)) {
-//                Order order = orderRepository.findById(Long.parseLong(orderId))
-//                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-//                response.sendRedirect(frontendUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
-//            } else {
-//                response.sendRedirect(frontendUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
-//            }
-//        } else {
-//            response.sendRedirect(frontendUrl + "?status=invalid");
-//        }
-//    }
-
-//    @GetMapping("/vnpay-return")
-//    public void vnpayReturn(@RequestParam Map<String, String> vnpParams,
-//                            @RequestHeader(value = "User-Agent", required = false) String userAgent,
-//                            HttpServletResponse response) throws IOException {
-//
-//        String secureHash = vnpParams.remove("vnp_SecureHash");
-//        vnpParams.remove("vnp_SecureHashType");
-//
-//        String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
-//        String orderId = vnpParams.get("vnp_TxnRef");
-//        String responseCode = vnpParams.get("vnp_ResponseCode");
-//
-//        String webUrl = "http://localhost:5173/payment-success";
-//        String mobileDeepLink = "furnimartmobileapp://order-success";
-//
-//        boolean isMobile = userAgent != null && (
-//                userAgent.toLowerCase().contains("android") ||
-//                        userAgent.toLowerCase().contains("iphone") ||
-//                        userAgent.toLowerCase().contains("mobile")
-//        );
-//
-//        if (signValue.equalsIgnoreCase(secureHash)) {
-//            if ("00".equals(responseCode)) {
-//                if (isMobile) {
-//                    try {
-//                        orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
-//                        System.out.println("Đơn hàng #" + orderId + " → PAYMENT");
-//                    } catch (Exception e) {
-//                        System.err.println("Lỗi cập nhật đơn hàng: " + e.getMessage());
-//                    }
-//                    response.sendRedirect(mobileDeepLink + "?status=success&orderId=" + orderId);
-//                } else {
-//                    response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
-//                }
-//            } else {
-//                if (isMobile) {
-//                    response.sendRedirect(mobileDeepLink + "?status=failed&code=" + responseCode);
-//                } else {
-//                    response.sendRedirect(webUrl + "?status=failed&code=" + URLEncoder.encode(responseCode, StandardCharsets.UTF_8));
-//                }
-//            }
-//        } else {
-//            if (isMobile) {
-//                response.sendRedirect(mobileDeepLink + "?status=invalid");
-//            } else {
-//                response.sendRedirect(webUrl + "?status=invalid");
-//            }
-//        }
-//    }
 
     @GetMapping("/vnpay-return")
     public void vnpayReturn(
@@ -154,6 +81,10 @@ public class VNPayController {
                 if (isMobile) {
                     try {
                         orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+                        Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
+                                        .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+                        payment.setPaymentStatus(PaymentStatus.PAID);
+                        paymentRepository.save(payment);
                         System.out.println("Đơn hàng #" + orderId + " → PAYMENT");
                     } catch (Exception e) {
                         System.err.println("Lỗi cập nhật DB đơn hàng #" + orderId + ": " + e.getMessage());
@@ -195,6 +126,10 @@ public class VNPayController {
                     response.getWriter().write(html);
                 } else {
                     orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+                    Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
+                            .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+                    payment.setPaymentStatus(PaymentStatus.PAID);
+                    paymentRepository.save(payment);
                     response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
                 }
             } else {

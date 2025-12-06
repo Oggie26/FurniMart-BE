@@ -1,14 +1,18 @@
 package com.example.orderservice.service;
 
 import com.example.orderservice.entity.Order;
+import com.example.orderservice.entity.Payment;
 import com.example.orderservice.entity.ProcessOrder;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
+import com.example.orderservice.enums.PaymentMethod;
+import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
+import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.repository.ProcessOrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.AssignOrderService;
@@ -16,10 +20,12 @@ import com.example.orderservice.service.PDFService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,6 +38,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final UserClient userClient;
     private final ProcessOrderRepository processOrderRepository;
     private final QRCodeService qrCodeService;
+    private final PaymentRepository paymentRepository;
+    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
 //    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
     private final PDFService pdfService;
 
@@ -60,61 +68,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         processOrderRepository.save(process);
         orderRepository.save(order);
 
-//        try {
-//            sendManagerNotification(order);
-//        } catch (Exception e) {
-//            log.error("Failed to send manager notification for order {}: {}", orderId, e.getMessage());
-//        }
-    }
-
-//    private void sendManagerNotification(Order order) {
-//        try {
-//            StoreResponse store = getStoreResponse(order.getStoreId());
-//            if (store == null) {
-//                log.warn("Store not found for order {}", order.getId());
-//                return;
-//            }
-//
-//            AddressResponse address = safeGetAddress(order.getAddressId());
-//            String addressLine = address != null ? address.getAddressLine() : "";
-//
-//            List<OrderCreatedEvent.OrderItem> eventItems = order.getOrderDetails().stream()
-//                    .map(item -> OrderCreatedEvent.OrderItem.builder()
-//                            .productColorId(item.getProductColorId())
-//                            .productName(item.getProductColorId())
-//                            .price(item.getPrice())
-//                            .colorName(item.get())
-//                            .quantity(item.getQuantity())
-//                            .build())
-//                    .toList();
-//
-//            OrderCreatedEvent event = OrderCreatedEvent.builder()
-//                    .orderId(order.getId())
-//                    .email()
-//                    .fullName(safeGetAddress(order.getAddressId()).getName())
-//                    .orderDate(order.getOrderDate())
-//                    .totalPrice(order.getTotal())
-//                    .addressLine(addressLine)
-//                    .items(eventItems)
-//                    .storeId(order.getStoreId())
-//                    .paymentMethod(order.getPayment().getPaymentMethod())
-//                    .build();
-//
-//            // Gửi event qua Kafka
-//            kafkaTemplate.send("order-assigned-topic", event)
-//                    .whenComplete((result, ex) -> {
-//                        if (ex != null) {
-//                            log.error("Failed to send order assigned event: {}", ex.getMessage(), ex);
-//                        } else {
-//                            log.info("Successfully sent order assigned event for order: {}", order.getId());
-//                        }
-//                    });
-//        } catch (Exception e) {
-//            log.error("Error sending manager notification for order {}: {}", order.getId(), e.getMessage(), e);
-//        }
-//    }
-
-
+}
     private StoreResponse getStoreResponse(String storeId) {
         try {
             ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
@@ -157,7 +111,56 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         order.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
         order.setQrCode(qrCodeResult.getQrCodeString());
         order.setQrCodeGeneratedAt(new Date());
-        orderRepository.save(order);
+        order.setStoreId(storeId);
+        Payment payment = paymentRepository.findByOrderId(order.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        Order savedOrder = orderRepository.save(order);
+
+        if (payment.getPaymentMethod().equals(PaymentMethod.COD)) {
+            List<OrderCreatedEvent.OrderItem> eventItems = savedOrder.getOrderDetails().stream()
+                    .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                            .productColorId(detail.getProductColorId())
+                            .quantity(detail.getQuantity())
+                            .price(detail.getPrice())
+                            .productName(detail.getProductColorId())
+                            .colorName("")
+                            .build())
+                    .collect(Collectors.toList());
+
+
+            ApiResponse<UserResponse> userResponse = userClient.getUserById(order.getUserId());
+            if (userResponse == null || userResponse.getData() == null) {
+                throw new AppException(ErrorCode.NOT_FOUND_USER);
+            }
+
+            UserResponse userData = userResponse.getData();
+            OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .email(userData.getEmail())
+                    .fullName(userData.getFullName())
+                    .orderDate(savedOrder.getOrderDate())
+                    .totalPrice(savedOrder.getTotal())
+                    .orderId(savedOrder.getId())
+                    .storeId(savedOrder.getStoreId())
+                    .addressLine(safeGetAddress(order.getAddressId()).getAddressLine())
+                    .paymentMethod(order.getPayment().getPaymentMethod())
+                    .items(eventItems)
+                    .build();
+
+            try {
+                kafkaTemplate.send("order-created-topic", event)
+                        .whenComplete((result, ex) -> {
+                            if (ex != null) {
+                                log.error("Kafka send failed: {}", ex.getMessage());
+                            } else {
+                                log.info("Successfully sent order creation event for orderId: {}", event.getOrderId());
+                            }
+                        });
+            } catch (Exception e) {
+                log.error("Failed to send Kafka event for user {}, error: {}", userData.getFullName(), e.getMessage());
+            }
+
+            orderRepository.save(order);
+        }
         
 //        boolean pdfGenerated = false;
 //        try {

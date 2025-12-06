@@ -11,6 +11,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -39,4 +40,11 @@ public interface InventoryClient {
             @RequestParam(name = "storeId", required = false) String storeId,
             @RequestParam(name = "threshold", defaultValue = "10") @Min(1) int threshold
     );
+//
+//    @PostMapping("/api/inventories/reserve/{orderId}")
+//    ApiResponse<ReserveStockResponse> reserveStock(
+//            @PathVariable Long orderId,
+//            @RequestParam("productColorId") @NotBlank String productColorId,
+//            @RequestParam("quantity") @Min(1) int quantity)
+
 }

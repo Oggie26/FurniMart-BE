@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long> {
 
@@ -136,5 +137,8 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             "AND i.quantity > 0") // Chỉ tính những item còn số lượng thực tế
     boolean existsByZoneId(@Param("zoneId") String zoneId);
 
+    List<InventoryItem> findAllByInventoryId(Long inventoryId);
+
+    Optional<InventoryItem> findByProductColorIdAndLocationItemId(String productColorId, String locationItemId);
 
 }
