@@ -355,7 +355,7 @@ services:
 
 
   kafka-ui:
-    image: kafka-ui/kafka-ui:0.0.22
+    image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     restart: unless-stopped
     depends_on:
@@ -365,7 +365,7 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081 # nếu dùng schema registry
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     networks:
       - backend
     labels:
