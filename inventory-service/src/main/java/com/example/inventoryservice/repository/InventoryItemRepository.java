@@ -61,15 +61,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 """)
     int sumQuantityByLocation(@Param("locationItemId") String locationItemId);
 
-    @Query("""
-    SELECT ii
-    FROM InventoryItem ii
-    JOIN FETCH ii.locationItem li
-    JOIN FETCH li.zone z
-    JOIN FETCH z.warehouse w
-    WHERE ii.productColorId = :productColorId
-""")
+    @Query("SELECT ii FROM InventoryItem ii " +
+            "JOIN FETCH ii.inventory i " +       // <--- Eager fetch Inventory
+            "JOIN FETCH i.warehouse w " +        // <--- Eager fetch Warehouse
+            "JOIN FETCH ii.locationItem li " +   // <--- Eager fetch Location
+            "JOIN FETCH li.zone z " +            // <--- Eager fetch Zone
+            "WHERE ii.productColorId = :productColorId")
     List<InventoryItem> findFullByProductColorId(@Param("productColorId") String productColorId);
+
+    @Query("SELECT DISTINCT ii.productColorId FROM InventoryItem ii")
+    List<String> findDistinctProductColorIds();
 
     @Query("""
     SELECT ii 
