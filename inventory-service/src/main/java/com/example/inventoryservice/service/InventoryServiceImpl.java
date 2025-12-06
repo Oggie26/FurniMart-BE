@@ -772,9 +772,9 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private static final List<EnumTypes> EXCLUDED_TYPES = List.of(
-            EnumTypes.RESERVE,   // Phiếu giữ hàng
-            EnumTypes.EXPORT,    // Phiếu xuất kho
-            EnumTypes.TRANSFER   // Phiếu chuyển kho
+            EnumTypes.RESERVE,
+            EnumTypes.EXPORT,
+            EnumTypes.TRANSFER
     );
 
     private static final List<EnumTypes> VIRTUAL_STOCK_TYPES = List.of(
@@ -785,7 +785,6 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
-        // Sử dụng Objects.requireNonNullElse để xử lý null gọn gàng (Java 9+)
         return Objects.requireNonNullElse(
                 inventoryItemRepository.calculateTotalPhysicalStock(productColorId, VIRTUAL_STOCK_TYPES),
                 0
@@ -794,13 +793,12 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public int getAvailableStockByProductColorId(String productColorId) {
-        // Dùng Optional để xử lý null + Math.max trong 1 dòng
-        return Optional.ofNullable(inventoryItemRepository.calculateRealAvailableStock(productColorId, VIRTUAL_STOCK_TYPES))
-                .map(qty -> Math.max(0, qty)) // Đảm bảo không âm
-                .orElse(0);                   // Nếu null thì trả về 0
+        Integer rawStock = inventoryItemRepository.calculateRealAvailableStock(productColorId, VIRTUAL_STOCK_TYPES);
+        return Optional.ofNullable(rawStock)
+                .map(qty -> Math.max(0, qty))
+                .orElse(0);
     }
 
-    // ----------------- GET LIST -----------------
 
     @Override
     public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
