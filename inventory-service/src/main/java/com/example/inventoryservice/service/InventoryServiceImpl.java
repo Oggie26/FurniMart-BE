@@ -36,6 +36,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final OrderClient orderClient;
     private final ProductClient productClient;
     private final DeliveryClient deliveryClient;
+    private final StoreClient storeClient;
     private final PDFService pdfService;
 //    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
 
@@ -590,9 +591,9 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-//    /**
-//     * Hàm hỗ trợ xử lý logic trừ kho và tạo phiếu cho 1 Warehouse cụ thể
-//     */
+    /**
+     * Hàm hỗ trợ xử lý logic trừ kho và tạo phiếu cho 1 Warehouse cụ thể
+     */
 //    private int reserveAtSpecificWarehouse(
 //            Warehouse warehouse,
 //            List<InventoryItem> items,
@@ -623,6 +624,15 @@ public class InventoryServiceImpl implements InventoryService {
 //
 //        if (actuallyReserved > 0) {
 //            itemsToUpdateOut.addAll(tempItemsToUpdate);
+//            String storeName = "Unknown Store";
+//            try {
+//                ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(warehouse.getStoreId());
+//                if (storeResponse != null && storeResponse.getData() != null) {
+//                    storeName = storeResponse.getData().getName();
+//                }
+//            } catch (Exception e) {
+//                // Log lỗi nếu cần, không để chết luồng
+//            }
 //
 //            Inventory ticket = Inventory.builder()
 //                    .employeeId("SYSTEM_AUTO")
@@ -633,7 +643,8 @@ public class InventoryServiceImpl implements InventoryService {
 //                    .orderId(orderId)
 //                    .code("RES_" + orderId + "_" + productColorId + "_" + warehouse.getId())
 //                    .transferStatus(transferStatus)
-//                    .note("Giữ hàng: " + actuallyReserved + " items. Trạng thái: " + transferStatus)
+//                    .note("Cửa hàng: " + storeName + " | Giữ hàng: " + actuallyReserved + " items. Trạng thái: " + transferStatus + "\n" +
+//                            "Thiếu hàng: " + needQty)
 //                    .build();
 //
 //            ticketsToCreateOut.add(ticket);
@@ -641,7 +652,6 @@ public class InventoryServiceImpl implements InventoryService {
 //
 //        return actuallyReserved;
 //    }
-
     private int reserveAtSpecificWarehouse(
             Warehouse warehouse,
             List<InventoryItem> items,
@@ -655,12 +665,15 @@ public class InventoryServiceImpl implements InventoryService {
         int actuallyReserved = 0;
         List<InventoryItem> tempItemsToUpdate = new ArrayList<>();
 
+        // 1. Logic trừ kho (Giữ nguyên)
         for (InventoryItem item : items) {
             if (needQty <= 0) break;
+
             int available = item.getQuantity() - item.getReservedQuantity();
             if (available <= 0) continue;
 
             int toTake = Math.min(available, needQty);
+
             item.setReservedQuantity(item.getReservedQuantity() + toTake);
             tempItemsToUpdate.add(item);
 
@@ -671,14 +684,21 @@ public class InventoryServiceImpl implements InventoryService {
         if (actuallyReserved > 0) {
             itemsToUpdateOut.addAll(tempItemsToUpdate);
 
-            String storeId = (warehouse.getStoreId() != null) ? warehouse.getStoreId() : "UNKNOWN_STORE";
+            String storeName = "Unknown Store";
+            String storeId = (warehouse.getStoreId() != null) ? warehouse.getStoreId() : "N/A";
 
-            String noteContent = String.format("Reserved: %d | Store: %s | Status: %s",
-                    actuallyReserved,
-                    storeId,
-                    transferStatus);
+            try {
+                if (warehouse.getStoreId() != null) {
+                    ApiResponse<StoreResponse> response = storeClient.getStoreById(warehouse.getStoreId());
+                    if (response != null && response.getData() != null) {
+                        storeName = response.getData().getName();
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ Không lấy được tên store cho warehouse {}: {}", warehouse.getId(), e.getMessage());
+            }
 
-            String codeGen = String.format("RES_%s_%d_%s_%s", storeId, orderId, productColorId, warehouse.getId());
+            int missingQty = needQty;
 
             Inventory ticket = Inventory.builder()
                     .employeeId("SYSTEM_AUTO")
@@ -687,9 +707,11 @@ public class InventoryServiceImpl implements InventoryService {
                     .date(LocalDate.now())
                     .warehouse(warehouse)
                     .orderId(orderId)
-                    .code(codeGen)
+                    .code("RES_" + storeId + "_" + orderId + "_" + productColorId)
                     .transferStatus(transferStatus)
-                    .note(noteContent)
+                    .note("Cửa hàng: " + storeName + " (" + storeId + ")\n" +
+                            "Giữ hàng: " + actuallyReserved + " | Trạng thái: " + transferStatus + "\n" +
+                            "Thiếu: " + missingQty)
                     .build();
 
             ticketsToCreateOut.add(ticket);
@@ -697,7 +719,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         return actuallyReserved;
     }
-
     @Override
     @Transactional
     public ReserveStockResponse releaseReservedStock(String productColorId, int quantity, Long orderId) {
@@ -1216,13 +1237,20 @@ public class InventoryServiceImpl implements InventoryService {
         return response.getData();
     }
 
-
     private String getProfile(){
         ApiResponse<UserResponse> response = userClient.getEmployeeProfile();
         if(response == null || response.getData() == null){
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
         return response.getData().getId();
+    }
+
+    private StoreResponse getStore(String storeId) {
+        try {
+            return storeClient.getStoreById(storeId).getData();
+        } catch (Exception e) {
+            throw new AppException(ErrorCode.INVALID_WAREHOUSE_STOREID);
+        }
     }
 
 }
