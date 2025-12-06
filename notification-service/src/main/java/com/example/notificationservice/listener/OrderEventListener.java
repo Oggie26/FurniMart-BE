@@ -37,9 +37,9 @@ public class OrderEventListener {
             return;
         }
         if (order.getPayment().getPaymentMethod().equals(PaymentMethod.COD) && order.getStatus().equals(EnumProcessOrder.MANAGER_ACCEPT)){
-            orderService.sendMailToCreateOrderSuccess(event);
+            orderService.sendMailToManagerAcceptedOrder(event);
         }
-        orderService.sendMailToManagerAcceptedOrder(event);
+        orderService.sendMailToCreateOrderSuccess(event);
         for (OrderCreatedEvent.OrderItem item : event.getItems()) {
             String key = "reserved_stock:" + item.getProductColorId();
             log.info("Reserved stock key: {}", key);
