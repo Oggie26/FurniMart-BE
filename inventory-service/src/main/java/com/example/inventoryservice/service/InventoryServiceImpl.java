@@ -498,18 +498,6 @@ public class InventoryServiceImpl implements InventoryService {
         Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        String productName = "Unknown Product";
-        String colorName = "Unknown Color";
-        try {
-            var productInfo = productClient.getProductColor(productColorId);
-            if (productInfo != null && productInfo.getData() != null) {
-                productName = productInfo.getData().getProduct().getName();
-                colorName = productInfo.getData().getColor().getColorName();
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Không lấy được thông tin sản phẩm: {}", e.getMessage());
-        }
-
         List<InventoryItem> allSystemItems = inventoryItemRepository
                 .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
 
@@ -1133,25 +1121,24 @@ public class InventoryServiceImpl implements InventoryService {
                 .map(this::mapToInventoryItemResponse)
                 .collect(Collectors.toList());
 
-        if (itemResponseList.isEmpty()) {
-            int quantity = parseQuantityFromNote(inventory.getNote());
-
-            String extractedProductId = extractProductIdFromCode(inventory.getCode());
-
-            if (quantity > 0 && extractedProductId != null) {
-                InventoryItemResponse virtualItem = InventoryItemResponse.builder()
-                        .id(null)
-                        .quantity(quantity)
-                        .reservedQuantity(0)
-                        .productColorId(extractedProductId)
-                        .productName(extractedProductId)
-                        .locationId(inventory.getWarehouse().getId())
-                        .inventoryId(inventory.getId())
-                        .build();
-
-                itemResponseList = List.of(virtualItem);
-            }
-        }
+//        if (itemResponseList.isEmpty()) {
+//
+//            String extractedProductId = extractProductIdFromCode(inventory.getCode());
+//
+//            if (quantity > 0 && extractedProductId != null) {
+//                InventoryItemResponse virtualItem = InventoryItemResponse.builder()
+//                        .id(null)
+//                        .quantity(quantity)
+//                        .reservedQuantity(0)
+//                        .productColorId(extractedProductId)
+//                        .productName(extractedProductId)
+//                        .locationId(inventory.getWarehouse().getId())
+//                        .inventoryId(inventory.getId())
+//                        .build();
+//
+//                itemResponseList = List.of(virtualItem);
+//            }
+//        }
 
         return InventoryResponse.builder()
                 .id(inventory.getId())
@@ -1170,29 +1157,29 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     // Hàm tách ProductID từ mã phiếu
-    private String extractProductIdFromCode(String code) {
-        try {
-            if (code != null && code.startsWith("RES-")) {
-                String[] parts = code.split("-");
-                if (parts.length >= 3) {
-                    return parts[2];
-                }
-            }
-        } catch (Exception e) {}
-        return null;
-    }
-
-    private int parseQuantityFromNote(String note) {
-        try {
-            if (note != null && note.contains("Reserved:")) {
-                String[] parts = note.split(" ");
-                for (String part : parts) {
-                    if (part.matches("\\d+")) return Integer.parseInt(part);
-                }
-            }
-        } catch (Exception e) {}
-        return 0;
-    }
+//    private String extractProductIdFromCode(String code) {
+//        try {
+//            if (code != null && code.startsWith("RES-")) {
+//                String[] parts = code.split("-");
+//                if (parts.length >= 3) {
+//                    return parts[2];
+//                }
+//            }
+//        } catch (Exception e) {}
+//        return null;
+//    }
+//
+//    private int parseQuantityFromNote(String note) {
+//        try {
+//            if (note != null && note.contains("Reserved:")) {
+//                String[] parts = note.split(" ");
+//                for (String part : parts) {
+//                    if (part.matches("\\d+")) return Integer.parseInt(part);
+//                }
+//            }
+//        } catch (Exception e) {}
+//        return 0;
+//    }
 
     private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
         return InventoryItemResponse.builder()
