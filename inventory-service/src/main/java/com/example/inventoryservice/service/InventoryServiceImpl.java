@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
+import org.apache.commons.lang3.tuple.Pair; // đúng
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -770,9 +770,12 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
             List<Inventory> ticketsToCreateOut,
             Map<String, Integer> warehouseReservedMap,
             Map<String, String> warehouseNameCache
-            ) {
-        int actuallyReserved = 0;
-        List<InventoryItem> tempItemsToUpdate = new ArrayList<>();
+    ) {
+
+        int reservedHere = 0;
+
+        // 🔥 Danh sách CHUẨN: mỗi item lưu số lượng đã lấy
+        List<Pair<InventoryItem, Integer>> takenList = new ArrayList<>();
 
         for (InventoryItem item : items) {
             if (needQty <= 0) break;
@@ -782,28 +785,41 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
             int toTake = Math.min(available, needQty);
 
+            // update reserve vào DB item
             item.setReservedQuantity(item.getReservedQuantity() + toTake);
-            tempItemsToUpdate.add(item);
+            itemsToUpdateOut.add(item);
 
+            // lưu CHUẨN số lượng lấy
+            takenList.add(Pair.of(item, toTake));
+
+            reservedHere += toTake;
             needQty -= toTake;
-            actuallyReserved += toTake;
         }
 
-        if (actuallyReserved <= 0) return 0;
+        if (reservedHere <= 0) return 0;
 
-        itemsToUpdateOut.addAll(tempItemsToUpdate);
-
-        String storeName = "Unknown Store";
+        // ============================
+        // LẤY TÊN CỬA HÀNG
+        // ============================
+        String storeName = warehouseNameCache.getOrDefault(warehouse.getId(), "Unknown Store");
         try {
             ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(warehouse.getStoreId());
             if (storeResponse != null && storeResponse.getData() != null) {
                 storeName = storeResponse.getData().getName();
+                warehouseNameCache.put(warehouse.getId(), storeName);
             }
         } catch (Exception ignored) {}
 
-        String productName = getProductName(productColorId).getProduct().getName();
-        String colorName = getProductName(productColorId).getColor().getColorName();
+        // ============================
+        // LẤY TÊN SP + MÀU
+        // ============================
+        var pc = getProductName(productColorId);
+        String productName = pc.getProduct().getName();
+        String colorName = pc.getColor().getColorName();
 
+        // ============================
+        // SUPPORT TEXT
+        // ============================
         StringBuilder supportText = new StringBuilder();
 
         if (transferStatus == TransferStatus.FINISHED) {
@@ -821,14 +837,19 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 ? "Đủ hàng (kho chính)"
                 : "Hỗ trợ kho khác";
 
+        // ============================
+        // NOTE CHUẨN
+        // ============================
         String note =
                 "Cửa hàng: " + storeName +
-                        " | Giữ hàng: " + actuallyReserved +
+                        " | Giữ hàng: " + reservedHere +
                         " | Trạng thái: " + statusText +
                         "\nSản phẩm: " + productName + " (" + colorName + ")" +
                         supportText;
 
-        // Tạo Inventory ticket
+        // ============================
+        // TẠO PHIẾU INVENTORY
+        // ============================
         Inventory ticket = Inventory.builder()
                 .employeeId("SYSTEM_AUTO")
                 .type(EnumTypes.RESERVE)
@@ -841,37 +862,32 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .note(note)
                 .build();
 
-
-        // ===========================================
-        // TẠO INVENTORYITEM CHO PHIẾU (ITEM MỚI)
-        // ===========================================
+        // ============================
+        // TẠO TICKET ITEMS — CHUẨN 100%
+        // ============================
         List<InventoryItem> ticketItems = new ArrayList<>();
 
-        for (InventoryItem originItem : tempItemsToUpdate) {
-            int availableBefore = originItem.getQuantity() - originItem.getReservedQuantity() + actuallyReserved;
-            int taken = Math.min(originItem.getQuantity(), actuallyReserved);
-
-            if (taken <= 0) continue;
+        for (var pair : takenList) {
+            InventoryItem origin = pair.getLeft();
+            int taken = pair.getRight();
 
             InventoryItem ticketItem = InventoryItem.builder()
-                    .quantity(taken)
-                    .productColorId(originItem.getProductColorId())
+                    .quantity(taken) // 🔥 CHÍNH XÁC SỐ ĐÃ LẤY
+                    .productColorId(origin.getProductColorId())
                     .reservedQuantity(0)
-                    .locationItem(originItem.getLocationItem())
+                    .locationItem(origin.getLocationItem())
                     .inventory(ticket)
                     .build();
 
             ticketItems.add(ticketItem);
-            actuallyReserved -= taken;
-
-            if (actuallyReserved <= 0) break;
         }
 
         ticket.setInventoryItems(ticketItems);
-
         ticketsToCreateOut.add(ticket);
-        return ticketItems.stream().mapToInt(InventoryItem::getQuantity).sum();
+
+        return reservedHere;
     }
+
 
     @Override
     @Transactional
