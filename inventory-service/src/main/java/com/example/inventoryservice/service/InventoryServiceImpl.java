@@ -1170,42 +1170,48 @@ public class InventoryServiceImpl implements InventoryService {
 //    }
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
-        // 1. Map danh sách item thật (nếu có trong DB)
+        // 1. Map danh sách item thật (nếu có trong DB - trường hợp IMPORT/EXPORT)
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(this::mapToInventoryItemResponse)
                 .collect(Collectors.toList());
 
-        // 2. Logic "Tạo Item ảo" cho phiếu Giữ hàng (Khi list item rỗng)
+        // 2. Logic "Tạo Item ảo" cho phiếu Giữ hàng (RESERVE)
         if (itemResponseList.isEmpty()) {
             String note = inventory.getNote();
             String code = inventory.getCode();
 
-            // Parse số lượng (Hỗ trợ nhiều format)
+            // a. Parse Số lượng
             int quantity = parseQuantityFromNote(note);
 
-            // Parse thông tin chi tiết từ Note
-            String pName = parseValueFromNote(note, "SP:");   // Tìm chữ "SP:"
-            String cName = parseValueFromNote(note, "Màu:");  // Tìm chữ "Màu:"
+            String pName = parseValueFromNote(note, "SP:");
+             String cName = parseValueFromNote(note, "Màu:"); // Nếu muốn lấy màu
 
-            // Trích xuất Product ID từ Code (Hỗ trợ UUID)
             String extractedProductId = extractProductIdFromCode(code);
 
-            // Chỉ tạo item nếu có số lượng
-            if (quantity > 0) {
-                // Fallback: Nếu không tìm được ID/Tên thì dùng giá trị mặc định để tránh null
-                String finalPId = (extractedProductId != null) ? extractedProductId : "UNKNOWN_ID";
-                String finalPName = (!pName.equals("Unknown")) ? pName : finalPId; // Nếu ko có tên thì hiện tạm ID
-                String finalColor = (!cName.equals("Unknown")) ? cName : "";
+            if (quantity > 0 && extractedProductId != null) {
+
+                // --- FIX QUAN TRỌNG: LẤY TÊN THẬT NẾU NOTE KHÔNG CÓ ---
+                String finalProductName = pName;
+
+                // Nếu trong Note không ghi tên (như record #71) -> Gọi API lấy tên thật
+                if (finalProductName.equals("Unknown")) {
+                    try {
+                        // Gọi hàm helper có sẵn trong class của bạn
+                        finalProductName = getProductName(extractedProductId).getProduct().getName();
+                    } catch (Exception e) {
+                        finalProductName = extractedProductId; // Nếu lỗi API thì đành hiển thị ID
+                    }
+                }
+                // -------------------------------------------------------
 
                 InventoryItemResponse virtualItem = InventoryItemResponse.builder()
-                        .id(null) // Item ảo không có ID
+                        .id(null)
                         .quantity(quantity)
                         .reservedQuantity(0)
-                        .productColorId(finalPId)
-                        .productName(finalPName) // Đã lấy được tên thật từ Note
-                        // .colorName(finalColor) // Nếu DTO có field colorName thì bỏ comment dòng này
+                        .productColorId(extractedProductId)
+                        .productName(finalProductName)
                         .locationId(inventory.getWarehouse().getId())
                         .inventoryId(inventory.getId())
                         .build();
@@ -1279,25 +1285,22 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     // --- HÀM 3: Parse giá trị theo Key (Để lấy Tên SP, Màu) ---
+    // Hàm lấy giá trị từ Note (VD: lấy giá trị sau chữ "SP:")
     private String parseValueFromNote(String note, String prefix) {
         if (note == null) return "Unknown";
         try {
             int start = note.indexOf(prefix);
             if (start == -1) return "Unknown";
 
-            // Cắt chuỗi từ sau prefix
             String sub = note.substring(start + prefix.length());
-
-            // Tìm điểm kết thúc (gặp dấu "|" hoặc xuống dòng "\n")
             int end1 = sub.indexOf("|");
             int end2 = sub.indexOf("\n");
-            int end = -1;
 
+            int end = -1;
             if (end1 == -1) end = end2;
             else if (end2 == -1) end = end1;
             else end = Math.min(end1, end2);
 
-            // Trả về kết quả đã trim()
             if (end == -1) return sub.trim();
             return sub.substring(0, end).trim();
         } catch (Exception e) {}
