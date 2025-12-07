@@ -992,7 +992,7 @@ private int reserveAtSpecificWarehouse(
             .note(note)
             .build();
 
-    ticket.setInventoryItems(null);
+    ticket.setInventoryItems(items);
 
     ticketsToCreateOut.add(ticket);
 
