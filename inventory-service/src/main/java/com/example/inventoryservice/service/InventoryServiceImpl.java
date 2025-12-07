@@ -498,6 +498,18 @@ public class InventoryServiceImpl implements InventoryService {
         Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
+        String productName = "Unknown Product";
+        String colorName = "Unknown Color";
+        try {
+            var productInfo = productClient.getProductColor(productColorId);
+            if (productInfo != null && productInfo.getData() != null) {
+                productName = productInfo.getData().getProduct().getName();
+                colorName = productInfo.getData().getColor().getColorName();
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Không lấy được thông tin sản phẩm: {}", e.getMessage());
+        }
+
         List<InventoryItem> allSystemItems = inventoryItemRepository
                 .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
 
@@ -1113,26 +1125,87 @@ public class InventoryServiceImpl implements InventoryService {
 //                .build();
 //    }
 
-    private InventoryResponse mapToInventoryResponse(Inventory inventory) { // <--- Chỉ còn 1 tham số
+//    private InventoryResponse mapToInventoryResponse(Inventory inventory) { // <--- Chỉ còn 1 tham số
+//
+//        List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
+//                .orElse(Collections.emptyList())
+//                .stream()
+//                .map(this::mapToInventoryItemResponse)
+//                .collect(Collectors.toList());
+//
+//        if (itemResponseList.isEmpty()) {
+//            int quantity = parseQuantityFromNote(inventory.getNote());
+//
+//            String extractedProductId = extractProductIdFromCode(inventory.getCode());
+//
+//            if (quantity > 0 && extractedProductId != null) {
+//                InventoryItemResponse virtualItem = InventoryItemResponse.builder()
+//                        .id(null)
+//                        .quantity(quantity)
+//                        .reservedQuantity(0)
+//                        .productColorId(extractedProductId)
+//                        .productName(extractedProductId)
+//                        .locationId(inventory.getWarehouse().getId())
+//                        .inventoryId(inventory.getId())
+//                        .build();
+//
+//                itemResponseList = List.of(virtualItem);
+//            }
+//        }
+//
+//        return InventoryResponse.builder()
+//                .id(inventory.getId())
+//                .employeeId(inventory.getEmployeeId())
+//                .type(inventory.getType())
+//                .purpose(inventory.getPurpose())
+//                .date(inventory.getDate())
+//                .pdfUrl(inventory.getPdfUrl())
+//                .note(inventory.getNote())
+//                .orderId(inventory.getOrderId())
+//                .transferStatus(inventory.getTransferStatus())
+//                .warehouseId(inventory.getWarehouse().getId())
+//                .warehouseName(inventory.getWarehouse().getWarehouseName())
+//                .itemResponseList(itemResponseList)
+//                .build();
+//    }
 
+    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
+        // 1. Map danh sách item thật (nếu có trong DB)
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(this::mapToInventoryItemResponse)
                 .collect(Collectors.toList());
 
+        // 2. Logic "Tạo Item ảo" cho phiếu Giữ hàng (Khi list item rỗng)
         if (itemResponseList.isEmpty()) {
-            int quantity = parseQuantityFromNote(inventory.getNote());
+            String note = inventory.getNote();
+            String code = inventory.getCode();
 
-            String extractedProductId = extractProductIdFromCode(inventory.getCode());
+            // Parse số lượng (Hỗ trợ nhiều format)
+            int quantity = parseQuantityFromNote(note);
 
-            if (quantity > 0 && extractedProductId != null) {
+            // Parse thông tin chi tiết từ Note
+            String pName = parseValueFromNote(note, "SP:");   // Tìm chữ "SP:"
+            String cName = parseValueFromNote(note, "Màu:");  // Tìm chữ "Màu:"
+
+            // Trích xuất Product ID từ Code (Hỗ trợ UUID)
+            String extractedProductId = extractProductIdFromCode(code);
+
+            // Chỉ tạo item nếu có số lượng
+            if (quantity > 0) {
+                // Fallback: Nếu không tìm được ID/Tên thì dùng giá trị mặc định để tránh null
+                String finalPId = (extractedProductId != null) ? extractedProductId : "UNKNOWN_ID";
+                String finalPName = (!pName.equals("Unknown")) ? pName : finalPId; // Nếu ko có tên thì hiện tạm ID
+                String finalColor = (!cName.equals("Unknown")) ? cName : "";
+
                 InventoryItemResponse virtualItem = InventoryItemResponse.builder()
-                        .id(null)
+                        .id(null) // Item ảo không có ID
                         .quantity(quantity)
                         .reservedQuantity(0)
-                        .productColorId(extractedProductId)
-                        .productName(extractedProductId)
+                        .productColorId(finalPId)
+                        .productName(finalPName) // Đã lấy được tên thật từ Note
+                        // .colorName(finalColor) // Nếu DTO có field colorName thì bỏ comment dòng này
                         .locationId(inventory.getWarehouse().getId())
                         .inventoryId(inventory.getId())
                         .build();
@@ -1158,21 +1231,44 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     // Hàm tách ProductID từ mã phiếu
+    // --- HÀM 1: Trích xuất UUID từ mã phiếu (Nâng cấp Regex) ---
     private String extractProductIdFromCode(String code) {
+        if (code == null) return null;
         try {
-            if (code != null && code.startsWith("RES-")) {
-                String[] parts = code.split("-");
-                if (parts.length >= 3) {
-                    return parts[2];
+            // Cách 1: Nếu dùng format mới (RES_Store_Order_Product_Warehouse) -> Split dấu "_"
+            if (code.contains("_")) {
+                String[] parts = code.split("_");
+                // Tìm phần tử nào giống UUID (dài > 30 ký tự và có dấu "-")
+                for (String part : parts) {
+                    if (part.length() > 30 && part.contains("-")) return part;
                 }
+            }
+
+            // Cách 2: Quét Regex để tìm chuỗi UUID chuẩn (bất chấp format cũ/mới)
+            // Regex này tìm chuỗi dạng: 8so-4so-4so-4so-12so
+            java.util.regex.Pattern uuidPattern = java.util.regex.Pattern.compile("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}");
+            java.util.regex.Matcher matcher = uuidPattern.matcher(code);
+            if (matcher.find()) {
+                return matcher.group(0);
             }
         } catch (Exception e) {}
         return null;
     }
 
+    // --- HÀM 2: Parse số lượng thông minh (Hỗ trợ tiếng Việt) ---
     private int parseQuantityFromNote(String note) {
+        if (note == null) return 0;
         try {
-            if (note != null && note.contains("Reserved:")) {
+            // Regex tìm cụm từ: "Reserved:", "Giữ hàng:", "SL giữ:" theo sau là số
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(?:Reserved|Giữ hàng|SL giữ):\\s*(\\d+)");
+            java.util.regex.Matcher m = p.matcher(note);
+
+            if (m.find()) {
+                return Integer.parseInt(m.group(1)); // Lấy nhóm số tìm được
+            }
+
+            // Fallback: Logic cũ (split space) nếu regex thất bại
+            if (note.contains("Reserved:")) {
                 String[] parts = note.split(" ");
                 for (String part : parts) {
                     if (part.matches("\\d+")) return Integer.parseInt(part);
@@ -1180,6 +1276,32 @@ public class InventoryServiceImpl implements InventoryService {
             }
         } catch (Exception e) {}
         return 0;
+    }
+
+    // --- HÀM 3: Parse giá trị theo Key (Để lấy Tên SP, Màu) ---
+    private String parseValueFromNote(String note, String prefix) {
+        if (note == null) return "Unknown";
+        try {
+            int start = note.indexOf(prefix);
+            if (start == -1) return "Unknown";
+
+            // Cắt chuỗi từ sau prefix
+            String sub = note.substring(start + prefix.length());
+
+            // Tìm điểm kết thúc (gặp dấu "|" hoặc xuống dòng "\n")
+            int end1 = sub.indexOf("|");
+            int end2 = sub.indexOf("\n");
+            int end = -1;
+
+            if (end1 == -1) end = end2;
+            else if (end2 == -1) end = end1;
+            else end = Math.min(end1, end2);
+
+            // Trả về kết quả đã trim()
+            if (end == -1) return sub.trim();
+            return sub.substring(0, end).trim();
+        } catch (Exception e) {}
+        return "Unknown";
     }
 
     private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
