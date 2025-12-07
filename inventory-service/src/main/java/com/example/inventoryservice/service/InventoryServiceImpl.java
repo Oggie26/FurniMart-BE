@@ -950,33 +950,82 @@ private int reserveAtSpecificWarehouse(
     // =========================
     // 4) SUPPORT TEXT
     // =========================
-    StringBuilder supportText = new StringBuilder();
+//    StringBuilder supportText = new StringBuilder();
+//
+//    if (transferStatus == TransferStatus.FINISHED) {
+//        supportText.append("\nCác cửa hàng hỗ trợ thêm:\n");
+//
+//        warehouseReservedMap.forEach((whId, qty) -> {
+//            if (!whId.equals(warehouse.getId())) {
+//                String name = warehouseNameCache.getOrDefault(whId, "Store ?");
+//                supportText.append(" - ").append(name).append(": ").append(qty).append(" cái\n");
+//            }
+//        });
+//    }
+//
+//    String statusText = (transferStatus == TransferStatus.FINISHED)
+//            ? "Đủ hàng (kho chính)"
+//            : "Hỗ trợ kho khác";
+//
+//    // =========================
+//    // 5) NOTE CHUẨN
+//    // =========================
+//    String note =
+//            "Cửa hàng: " + storeName +
+//                    " | Giữ hàng: " + reservedHere +
+//                    " | Trạng thái: " + statusText +
+//                    "\nSản phẩm: " + productName + " (" + colorName + ")" +
+//                    supportText;
+    StringBuilder note = new StringBuilder();
 
+// Dòng đầu tiên luôn có: giữ ở đâu, bao nhiêu cái
+    note.append("Giữ hàng tại: ").append(storeName)
+            .append(" → ").append(reservedHere).append(" cái")
+            .append("\nSản phẩm: ").append(productName).append(" (").append(colorName).append(")");
+
+// ==================================================================
+// CASE 1: Đây là kho chính (FINISHED) → in danh sách kho hỗ trợ
+// ==================================================================
     if (transferStatus == TransferStatus.FINISHED) {
-        supportText.append("\nCác cửa hàng hỗ trợ thêm:\n");
+        // Nếu có ít nhất 1 kho khác góp hàng
+        boolean hasSupport = warehouseReservedMap.entrySet().stream()
+                .anyMatch(e -> !e.getKey().equals(warehouse.getId()) && e.getValue() > 0);
 
-        warehouseReservedMap.forEach((whId, qty) -> {
-            if (!whId.equals(warehouse.getId())) {
-                String name = warehouseNameCache.getOrDefault(whId, "Store ?");
-                supportText.append(" - ").append(name).append(": ").append(qty).append(" cái\n");
-            }
-        });
+        if (hasSupport) {
+            note.append("\n\nĐủ hàng nhờ các kho hỗ trợ:");
+            warehouseReservedMap.entrySet().stream()
+                    .filter(e -> !e.getKey().equals(warehouse.getId()) && e.getValue() > 0)
+                    .forEach(e -> {
+                        String name = warehouseNameCache.getOrDefault(e.getKey(), "Kho #" + e.getKey());
+                        note.append("\n• ").append(name).append(": ").append(e.getValue()).append(" cái");
+                    });
+        } else {
+            note.append("\n\nTrạng thái: Đủ hàng tại kho chính");
+        }
     }
 
-    String statusText = (transferStatus == TransferStatus.FINISHED)
-            ? "Đủ hàng (kho chính)"
-            : "Hỗ trợ kho khác";
+// ==================================================================
+// CASE 2: Đây là kho hỗ trợ (PENDING) → in rõ hỗ trợ cho kho nào
+// ==================================================================
+    else if (transferStatus == TransferStatus.PENDING) {
+        String mainStore = warehouseReservedMap.entrySet().stream()
+                .filter(e -> e.getValue() > 0 && !e.getKey().equals(warehouse.getId()))
+                .map(e -> warehouseNameCache.getOrDefault(e.getKey(), "Kho chính"))
+                .findFirst()
+                .orElse("Kho chính");
 
-    // =========================
-    // 5) NOTE CHUẨN
-    // =========================
-    String note =
-            "Cửa hàng: " + storeName +
-                    " | Giữ hàng: " + reservedHere +
-                    " | Trạng thái: " + statusText +
-                    "\nSản phẩm: " + productName + " (" + colorName + ")" +
-                    supportText;
+        note.append("\n\nHỗ trợ chuyển hàng cho: ").append(mainStore);
+        note.append("\nTrạng thái: Chờ chuyển kho");
+    }
 
+// Nếu có nhiều màu trong cùng 1 kho (hiếm nhưng vẫn hỗ trợ)
+    if (takenPerColor.size() > 1) {
+        note.append("\nChi tiết theo màu:");
+        takenPerColor.forEach((colorId, qty) -> {
+            var c = getProductName(colorId);
+            note.append("\n• ").append(c.getColor().getColorName()).append(": ").append(qty).append(" cái");
+        });
+    }
     // =========================
     // 6) TẠO PHIẾU — KHÔNG TẠO ITEM
     // =========================
@@ -989,7 +1038,7 @@ private int reserveAtSpecificWarehouse(
             .orderId(orderId)
             .code("RES_" + orderId + "_" + productColorId + "_" + warehouse.getId())
             .transferStatus(transferStatus)
-            .note(note)
+            .note(String.valueOf(note))
             .build();
 
     List<InventoryItem> ticketItems = new ArrayList<>();
