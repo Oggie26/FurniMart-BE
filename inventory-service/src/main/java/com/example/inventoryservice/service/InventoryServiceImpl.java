@@ -729,10 +729,18 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                     warehouseReservedMap,
                     warehouseNameCache
             );
-            warehouseReservedMap.put(
-                    neighbor.getId(),
-                    warehouseReservedMap.getOrDefault(neighbor.getId(), 0) + reservedAtNeighbor
-            );
+
+            if (reservedAtNeighbor > 0) {
+                warehouseReservedMap.put(
+                        neighbor.getId(),
+                        warehouseReservedMap.getOrDefault(neighbor.getId(), 0) + reservedAtNeighbor
+                );
+                log.info(warehouseNameCache.get(neighbor.getId()));
+            }
+//            warehouseReservedMap.put(
+//                    neighbor.getId(),
+//                    warehouseReservedMap.getOrDefault(neighbor.getId(), 0) + reservedAtNeighbor
+//            );
             remainingToReserve -= reservedAtNeighbor;
             totalReserved += reservedAtNeighbor;
         }
