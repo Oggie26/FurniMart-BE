@@ -903,7 +903,7 @@ private int reserveAtSpecificWarehouse(
     int reservedHere = 0;
 
     // CHỈ dùng để tính số lượng lấy (log)
-    Map<String, Integer> takenPerColor = new HashMap<>();
+    List<InventoryItem> ticketItems = new ArrayList<>();
 
     // =========================
     // 1) TRỪ VÀO reservedQuantity
@@ -923,7 +923,14 @@ private int reserveAtSpecificWarehouse(
         reservedHere += toTake;
         needQty -= toTake;
 
-        takenPerColor.merge(item.getProductColorId(), toTake, Integer::sum);
+        InventoryItem ticketItem = InventoryItem.builder()
+                .quantity(toTake)
+                .reservedQuantity(0)
+                .productColorId(item.getProductColorId())
+                .locationItem(item.getLocationItem())
+                .build();
+
+        ticketItems.add(ticketItem);
     }
 
     if (reservedHere <= 0) return 0;
@@ -980,6 +987,8 @@ private int reserveAtSpecificWarehouse(
     // =========================
     // 6) TẠO PHIẾU — KHÔNG TẠO ITEM
     // =========================
+
+
     Inventory ticket = Inventory.builder()
             .employeeId("SYSTEM_AUTO")
             .type(EnumTypes.RESERVE)
@@ -992,8 +1001,12 @@ private int reserveAtSpecificWarehouse(
             .note(note)
             .build();
 
-    ticket.setInventoryItems(items);
+    for (InventoryItem ti : ticketItems) {
+        ti.setInventory(ticket);
+        ticket.getInventoryItems().add(ti);
+    }
 
+    ticketsToCreateOut.add(ticket);
     ticketsToCreateOut.add(ticket);
 
     return reservedHere;
