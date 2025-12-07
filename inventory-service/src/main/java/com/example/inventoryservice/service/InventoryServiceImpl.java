@@ -1125,93 +1125,26 @@ public class InventoryServiceImpl implements InventoryService {
 //                .build();
 //    }
 
-//    private InventoryResponse mapToInventoryResponse(Inventory inventory) { // <--- Chỉ còn 1 tham số
-//
-//        List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
-//                .orElse(Collections.emptyList())
-//                .stream()
-//                .map(this::mapToInventoryItemResponse)
-//                .collect(Collectors.toList());
-//
-//        if (itemResponseList.isEmpty()) {
-//            int quantity = parseQuantityFromNote(inventory.getNote());
-//
-//            String extractedProductId = extractProductIdFromCode(inventory.getCode());
-//
-//            if (quantity > 0 && extractedProductId != null) {
-//                InventoryItemResponse virtualItem = InventoryItemResponse.builder()
-//                        .id(null)
-//                        .quantity(quantity)
-//                        .reservedQuantity(0)
-//                        .productColorId(extractedProductId)
-//                        .productName(extractedProductId)
-//                        .locationId(inventory.getWarehouse().getId())
-//                        .inventoryId(inventory.getId())
-//                        .build();
-//
-//                itemResponseList = List.of(virtualItem);
-//            }
-//        }
-//
-//        return InventoryResponse.builder()
-//                .id(inventory.getId())
-//                .employeeId(inventory.getEmployeeId())
-//                .type(inventory.getType())
-//                .purpose(inventory.getPurpose())
-//                .date(inventory.getDate())
-//                .pdfUrl(inventory.getPdfUrl())
-//                .note(inventory.getNote())
-//                .orderId(inventory.getOrderId())
-//                .transferStatus(inventory.getTransferStatus())
-//                .warehouseId(inventory.getWarehouse().getId())
-//                .warehouseName(inventory.getWarehouse().getWarehouseName())
-//                .itemResponseList(itemResponseList)
-//                .build();
-//    }
+    private InventoryResponse mapToInventoryResponse(Inventory inventory) { // <--- Chỉ còn 1 tham số
 
-    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
-        // 1. Map danh sách item thật (nếu có trong DB - trường hợp IMPORT/EXPORT)
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
                 .map(this::mapToInventoryItemResponse)
                 .collect(Collectors.toList());
 
-        // 2. Logic "Tạo Item ảo" cho phiếu Giữ hàng (RESERVE)
         if (itemResponseList.isEmpty()) {
-            String note = inventory.getNote();
-            String code = inventory.getCode();
+            int quantity = parseQuantityFromNote(inventory.getNote());
 
-            // a. Parse Số lượng
-            int quantity = parseQuantityFromNote(note);
-
-            String pName = parseValueFromNote(note, "SP:");
-             String cName = parseValueFromNote(note, "Màu:"); // Nếu muốn lấy màu
-
-            String extractedProductId = extractProductIdFromCode(code);
+            String extractedProductId = extractProductIdFromCode(inventory.getCode());
 
             if (quantity > 0 && extractedProductId != null) {
-
-                // --- FIX QUAN TRỌNG: LẤY TÊN THẬT NẾU NOTE KHÔNG CÓ ---
-                String finalProductName = pName;
-
-                // Nếu trong Note không ghi tên (như record #71) -> Gọi API lấy tên thật
-                if (finalProductName.equals("Unknown")) {
-                    try {
-                        // Gọi hàm helper có sẵn trong class của bạn
-                        finalProductName = getProductName(extractedProductId).getProduct().getName();
-                    } catch (Exception e) {
-                        finalProductName = extractedProductId; // Nếu lỗi API thì đành hiển thị ID
-                    }
-                }
-                // -------------------------------------------------------
-
                 InventoryItemResponse virtualItem = InventoryItemResponse.builder()
                         .id(null)
                         .quantity(quantity)
                         .reservedQuantity(0)
                         .productColorId(extractedProductId)
-                        .productName(finalProductName)
+                        .productName(extractedProductId)
                         .locationId(inventory.getWarehouse().getId())
                         .inventoryId(inventory.getId())
                         .build();
@@ -1237,44 +1170,21 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     // Hàm tách ProductID từ mã phiếu
-    // --- HÀM 1: Trích xuất UUID từ mã phiếu (Nâng cấp Regex) ---
     private String extractProductIdFromCode(String code) {
-        if (code == null) return null;
         try {
-            // Cách 1: Nếu dùng format mới (RES_Store_Order_Product_Warehouse) -> Split dấu "_"
-            if (code.contains("_")) {
-                String[] parts = code.split("_");
-                // Tìm phần tử nào giống UUID (dài > 30 ký tự và có dấu "-")
-                for (String part : parts) {
-                    if (part.length() > 30 && part.contains("-")) return part;
+            if (code != null && code.startsWith("RES-")) {
+                String[] parts = code.split("-");
+                if (parts.length >= 3) {
+                    return parts[2];
                 }
-            }
-
-            // Cách 2: Quét Regex để tìm chuỗi UUID chuẩn (bất chấp format cũ/mới)
-            // Regex này tìm chuỗi dạng: 8so-4so-4so-4so-12so
-            java.util.regex.Pattern uuidPattern = java.util.regex.Pattern.compile("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}");
-            java.util.regex.Matcher matcher = uuidPattern.matcher(code);
-            if (matcher.find()) {
-                return matcher.group(0);
             }
         } catch (Exception e) {}
         return null;
     }
 
-    // --- HÀM 2: Parse số lượng thông minh (Hỗ trợ tiếng Việt) ---
     private int parseQuantityFromNote(String note) {
-        if (note == null) return 0;
         try {
-            // Regex tìm cụm từ: "Reserved:", "Giữ hàng:", "SL giữ:" theo sau là số
-            java.util.regex.Pattern p = java.util.regex.Pattern.compile("(?:Reserved|Giữ hàng|SL giữ):\\s*(\\d+)");
-            java.util.regex.Matcher m = p.matcher(note);
-
-            if (m.find()) {
-                return Integer.parseInt(m.group(1)); // Lấy nhóm số tìm được
-            }
-
-            // Fallback: Logic cũ (split space) nếu regex thất bại
-            if (note.contains("Reserved:")) {
+            if (note != null && note.contains("Reserved:")) {
                 String[] parts = note.split(" ");
                 for (String part : parts) {
                     if (part.matches("\\d+")) return Integer.parseInt(part);
@@ -1282,29 +1192,6 @@ public class InventoryServiceImpl implements InventoryService {
             }
         } catch (Exception e) {}
         return 0;
-    }
-
-    // --- HÀM 3: Parse giá trị theo Key (Để lấy Tên SP, Màu) ---
-    // Hàm lấy giá trị từ Note (VD: lấy giá trị sau chữ "SP:")
-    private String parseValueFromNote(String note, String prefix) {
-        if (note == null) return "Unknown";
-        try {
-            int start = note.indexOf(prefix);
-            if (start == -1) return "Unknown";
-
-            String sub = note.substring(start + prefix.length());
-            int end1 = sub.indexOf("|");
-            int end2 = sub.indexOf("\n");
-
-            int end = -1;
-            if (end1 == -1) end = end2;
-            else if (end2 == -1) end = end1;
-            else end = Math.min(end1, end2);
-
-            if (end == -1) return sub.trim();
-            return sub.substring(0, end).trim();
-        } catch (Exception e) {}
-        return "Unknown";
     }
 
     private InventoryItemResponse mapToInventoryItemResponse(InventoryItem item) {
