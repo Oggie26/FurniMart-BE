@@ -45,9 +45,8 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         
         List<OrderDetail> orderDetails = orderDetailRepository.findByOrderIdAndIsDeletedFalse(orderId);
-        
+
         for (OrderDetail orderDetail : orderDetails) {
-            // Check if warranty already exists for this order detail
             if (warrantyRepository.findByOrderIdAndOrderDetailId(orderId, orderDetail.getId()).isEmpty()) {
                 Warranty warranty = Warranty.builder()
                         .orderId(orderId)
@@ -58,11 +57,12 @@ public class WarrantyServiceImpl implements WarrantyService {
                         .warrantyDurationMonths(24) // 2 years
                         .description("Standard 2-year warranty")
                         .build();
-                
+
                 warrantyRepository.save(warranty);
                 log.info("Created warranty for order detail: {}", orderDetail.getId());
             }
         }
+
     }
 
     @Override
