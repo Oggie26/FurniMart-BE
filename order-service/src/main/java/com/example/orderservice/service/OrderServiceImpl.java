@@ -27,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -442,31 +443,31 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 3. Gửi Kafka
-        var userInfo = safeGetUser(order.getUserId());
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
-                .email(userInfo.getEmail())
-                .fullName(userInfo.getFullName())
-                .orderDate(order.getOrderDate())
-                .totalPrice(order.getTotal())
-                .orderId(order.getId())
-                .storeId(order.getStoreId())
-                .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(PaymentMethod.COD)
-                .items(orderItems)
-                .build();
-
-        try {
-            kafkaTemplate.send("order-created-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.warn("Kafka send failed: {}", ex.getMessage());
-                        } else {
-                            log.info("Kafka sent success: {}", event.getOrderId());
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("Kafka error: {}", e.getMessage());
-        }
+//        var userInfo = safeGetUser(order.getUserId());
+//        OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                .email(userInfo.getEmail())
+//                .fullName(userInfo.getFullName())
+//                .orderDate(order.getOrderDate())
+//                .totalPrice(order.getTotal())
+//                .orderId(order.getId())
+//                .storeId(order.getStoreId())
+//                .addressLine(getAddress(order.getAddressId()))
+//                .paymentMethod(PaymentMethod.COD)
+//                .items(orderItems)
+//                .build();
+//
+//        try {
+//            kafkaTemplate.send("order-created-topic", event)
+//                    .whenComplete((result, ex) -> {
+//                        if (ex != null) {
+//                            log.warn("Kafka send failed: {}", ex.getMessage());
+//                        } else {
+//                            log.info("Kafka sent success: {}", event.getOrderId());
+//                        }
+//                    });
+//        } catch (Exception e) {
+//            log.error("Kafka error: {}", e.getMessage());
+//        }
     }
 
     @Override
@@ -479,7 +480,6 @@ public class OrderServiceImpl implements OrderService {
         process.setOrder(order);
         process.setStatus(status);
         process.setCreatedAt(new Date());
-
         processOrderRepository.save(process);
 
         if (order.getProcessOrders() == null) {
@@ -494,8 +494,12 @@ public class OrderServiceImpl implements OrderService {
 
             Payment payment = paymentRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-            if (payment.getPaymentStatus().equals(PaymentStatus.PAID) || payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
+
+            if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
                 payment.setPaymentStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
+            }else{
+                payment.setPaymentStatus(PaymentStatus.DEPOSITED);
                 paymentRepository.save(payment);
             }
 
@@ -535,7 +539,51 @@ public class OrderServiceImpl implements OrderService {
             }
 
         }
+        if (status.equals(EnumProcessOrder.FINISHED)) {
+            Payment payment = paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+            if (payment.getPaymentMethod() == PaymentMethod.COD && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
+                payment.setPaymentStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
+            }
+
+            var user = safeGetUser(order.getUserId());
+
+            List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                    .map(detail -> {
+                        var pc = getProductColorResponse(detail.getProductColorId());
+                        return OrderCreatedEvent.OrderItem.builder()
+                                .productColorId(detail.getProductColorId())
+                                .quantity(detail.getQuantity())
+                                .productName(pc.getProduct().getName())
+                                .price(detail.getPrice())
+                                .colorName(pc.getColor().getColorName())
+                                .build();
+                    })
+                    .toList();
+
+            OrderCreatedEvent event = OrderCreatedEvent.builder()
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .orderDate(order.getOrderDate())
+                    .totalPrice(order.getTotal())
+                    .orderId(order.getId())
+                    .storeId(order.getStoreId())
+                    .addressLine(getAddress(order.getAddressId()))
+                    .paymentMethod(order.getPayment().getPaymentMethod())
+                    .items(orderItems)
+                    .build();
+
+            kafkaTemplate.send("order-created-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) log.error("Kafka send failed: {}", ex.getMessage());
+                        else log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                    });
+        }
+
         return mapToResponse(order);
+
     }
 
     @Override
@@ -835,6 +883,7 @@ public class OrderServiceImpl implements OrderService {
                 .pdfFilePath(order.getPdfFilePath())
                 .deliveryConfirmationResponse(getDeliveryConfirmationResponse(order.getId()))
                 .hasPdfFile(hasPdfFile)
+                .depositPrice(order.getDepositPrice())
                 .build();
     }
 

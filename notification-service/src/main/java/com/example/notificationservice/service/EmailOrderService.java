@@ -43,7 +43,6 @@ public class EmailOrderService {
             String htmlContent = templateEngine.process("ordercreatesuccess", context);
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
             helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
             helper.setTo(event.getEmail());
             helper.setSubject("Đơn hàng #" + event.getOrderId() + " của bạn đã được thanh toán thành công!");

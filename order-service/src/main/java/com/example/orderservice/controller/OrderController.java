@@ -81,13 +81,14 @@ public class OrderController {
 
             Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                             .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-            orderRepository.save(order);
-            orderService.handlePaymentCOD(orderResponse.getId());
+            order.setDepositPrice(orderResponse.getTotal() * 0.1);
+//            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
+            orderRepository.save(order);
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getDepositPrice(), clientIp))
                     .build();
         }
 

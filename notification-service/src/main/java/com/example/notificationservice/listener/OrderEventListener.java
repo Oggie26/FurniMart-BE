@@ -36,14 +36,10 @@ public class OrderEventListener {
             log.warn("Order with ID {} not found. Skipping notification.", event.getOrderId());
             return;
         }
-        if (order.getPayment().getPaymentMethod().equals(PaymentMethod.COD) && order.getStatus().equals(EnumProcessOrder.MANAGER_ACCEPT)){
-            orderService.sendMailToManagerAcceptedOrder(event);
-        }else{
-            orderService.sendMailToCreateOrderSuccess(event);
-            for (OrderCreatedEvent.OrderItem item : event.getItems()) {
-                String key = "reserved_stock:" + item.getProductColorId();
-                log.info("Reserved stock key: {}", key);
-            }
+        orderService.sendMailToCreateOrderSuccess(event);
+        for (OrderCreatedEvent.OrderItem item : event.getItems()) {
+            String key = "reserved_stock:" + item.getProductColorId();
+            log.info("Reserved stock key: {}", key);
         }
     }
 

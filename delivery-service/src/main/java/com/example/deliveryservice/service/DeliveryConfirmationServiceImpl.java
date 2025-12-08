@@ -21,6 +21,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.query.Order;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -48,18 +49,13 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     public DeliveryConfirmationResponse createDeliveryConfirmation(DeliveryConfirmationRequest request) {
         log.info("Creating delivery confirmation for order: {}", request.getOrderId());
 
-        // 1. GỌI SANG ORDER SERVICE ĐỂ LẤY THÔNG TIN KHÁCH HÀNG (SỬA Ở ĐÂY)
-        // Giả sử bạn có hàm getOrderById trong OrderClient trả về ApiResponse<OrderResponse> hoặc OrderResponse
-        // Bạn cần lấy userId từ order này.
         var orderResponse = orderClient.getOrderById(request.getOrderId());
 
-        // Tùy cấu trúc Feign Client của bạn mà lấy data ra (ví dụ .getData() hoặc lấy trực tiếp)
         String customerId = null;
         if (orderResponse != null && orderResponse.getBody().getData() != null) {
             customerId = orderResponse.getBody().getData().getAddress().getUserId();
         }
 
-        // Validate: Nếu không tìm thấy khách hàng thì không cho tạo xác nhận
         if (customerId == null) {
             throw new RuntimeException("Không tìm thấy thông tin khách hàng cho đơn hàng: " + request.getOrderId());
         }
@@ -76,13 +72,12 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String deliveryStaffId = authentication.getName();
 
-        // Có thể tận dụng orderResponse ở trên để lấy QR Code luôn nếu có, đỡ phải query 2 lần
         String qrCode = getQRCodeFromOrder(request.getOrderId());
 
         DeliveryConfirmation confirmation = DeliveryConfirmation.builder()
                 .orderId(request.getOrderId())
                 .deliveryStaffId(deliveryStaffId)
-                .customerId(customerId) // <--- ĐÃ FIX: Truyền ID lấy từ Order Service vào
+                .customerId(customerId)
                 .deliveryPhotos(deliveryPhotosJson)
                 .deliveryNotes(request.getDeliveryNotes())
                 .qrCode(qrCode)
@@ -94,7 +89,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         deliveryAssignment.setStatus(DeliveryStatus.DELIVERED);
         deliveryAssignmentRepository.save(deliveryAssignment);
-        // Update order status and generate warranties via order-service
+
         try {
             orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.FINISHED);
             orderClient.confirmCodPayment(request.getOrderId());
