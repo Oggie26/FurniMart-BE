@@ -78,10 +78,11 @@ public class OrderController {
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            log.info("Order ID: {}, Total: {}, Deposit: {}", orderResponse.getId(), orderResponse.getTotal(), orderResponse.getDepositPrice());
 
             Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                             .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-            double depositPrice = orderResponse.getTotal() * 0.1;
+            double depositPrice = order.getTotal() * 0.1;
             order.setDepositPrice(depositPrice);
 //            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
@@ -89,7 +90,7 @@ public class OrderController {
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
-                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getDepositPrice(), clientIp))
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), order.getDepositPrice(), clientIp))
                     .build();
         }
 
