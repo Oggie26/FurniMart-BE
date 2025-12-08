@@ -17,15 +17,15 @@ import jakarta.validation.constraints.NotNull;
 public class RatingRequest {
 
     @NotBlank
-    private String userId; // id của customer
+    private String userId;
 
     @NotBlank
-    private String productId; // id sản phẩm
+    private String productId;
 
     @NotNull
     @Min(1)
     @Max(5)
-    private Integer score; // đánh giá từ 1-5
+    private Integer score;
 
-    private String comment; // bình luận, không bắt buộc
+    private String comment;
 }

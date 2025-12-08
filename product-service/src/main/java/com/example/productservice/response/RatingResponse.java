@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Data
 @Builder
@@ -18,5 +19,5 @@ public class RatingResponse {
     private Product product;
     private Integer score;
     private String comment;
-    private LocalDateTime createdAt;
+    private Date createdAt;
 }
