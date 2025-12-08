@@ -81,7 +81,8 @@ public class OrderController {
 
             Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                             .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-            order.setDepositPrice(orderResponse.getTotal() * 0.1);
+            double depositPrice = orderResponse.getTotal() * 0.1;
+            order.setDepositPrice(depositPrice);
 //            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
             orderRepository.save(order);
