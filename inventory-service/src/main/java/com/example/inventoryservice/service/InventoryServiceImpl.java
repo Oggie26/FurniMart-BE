@@ -852,6 +852,11 @@ private int reserveAtSpecificWarehouse(
             }
         } else {
             note.append("\n\nTrạng thái: Đủ hàng tại ").append(storeName);
+            note.append("\n\nĐủ hàng nhờ các kho hỗ trợ:");
+            for (var e : supports) {
+                String supportName = warehouseNameCache.getOrDefault(e.getKey(), "Kho #" + e.getKey());
+                note.append("\n• ").append(supportName).append(": ").append(e.getValue()).append(" cái");
+            }
         }
     }
 
