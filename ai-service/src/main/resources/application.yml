@@ -11,7 +11,7 @@ spring:
       api-key: ${GOOGLE_AI_API_KEY}
       chat:
         options:
-          model: gemini-1.5-flash
+          model: gemini-2.0-flash
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
