@@ -107,61 +107,143 @@ public class InventoryServiceImpl implements InventoryService {
                     );
                 }
 
+//                case EXPORT -> {
+//                    List<InventoryItem> itemsInStock = inventoryItemRepository
+//                            .findItemsForExport(itemReq.getProductColorId(), warehouse.getId());
+//
+//                    if (itemsInStock.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+//
+//                    int remainingQtyToExport = itemReq.getQuantity();
+//
+//                    for (InventoryItem it : itemsInStock) {
+//                        if (remainingQtyToExport <= 0) break;
+//
+//                        int currentQty = it.getQuantity();
+//                        if (currentQty <= 0) continue;
+//
+//                        int toExport = Math.min(currentQty, remainingQtyToExport);
+//
+//
+////                        it.setQuantity(it.getQuantity() - toExport);
+//                        boolean isReservedUpdated = false;
+//                        if (isStockOut) {
+//                            if (it.getReservedQuantity() > 0) {
+//                                int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
+//                                it.setReservedQuantity(newReserved);
+//                                isReservedUpdated = true;
+//                            }
+//                        }
+//
+//                        if (isReservedUpdated) {
+//                            inventoryItemRepository.save(it);
+//                        }
+//                        // Tạo lịch sử xuất kho (như cũ)
+//                        createInventoryItem(
+//                                inventory,
+//                                it.getLocationItem().getId(),
+//                                itemReq.getProductColorId(),
+//                                -toExport // Số âm thể hiện xuất
+//                        );
+//
+//                        // Logic chuyển kho (như cũ)
+//                        if (isTransferOut && transferInventory != null) {
+//
+//                            Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
+//                                    .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+//
+//                            // 2. Tạo Header phiếu yêu cầu (Status = PENDING)
+//                            Inventory transferInventory = Inventory.builder()
+//                                    .employeeId(getProfile()) // Người tạo phiếu
+//                                    .type(EnumTypes.TRANSFER)
+//                                    .purpose(EnumPurpose.REQUEST) // Mục đích: Yêu cầu nhập
+//                                    .warehouse(toWarehouse)       // Kho đích
+//                                    .transferStatus(TransferStatus.PENDING) // Chờ thủ kho đích duyệt
+//                                    .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName() + " - Mã phiếu xuất gốc: " + inventory.getCode())
+//                                    .date(LocalDate.now())
+//                                    .build();
+//
+//                            createInventoryItem(
+//                                    transferInventory,
+//                                    it.getLocationItem().getId(),
+//                                    itemReq.getProductColorId(),
+//                                    Math.abs(toExport)
+//
+//                            );
+//                        }
+//
+//                        remainingQtyToExport -= toExport;
+//                    }
+//
+//                    if (remainingQtyToExport > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+//                }
                 case EXPORT -> {
+
                     List<InventoryItem> itemsInStock = inventoryItemRepository
                             .findItemsForExport(itemReq.getProductColorId(), warehouse.getId());
 
                     if (itemsInStock.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
-                    int remainingQtyToExport = itemReq.getQuantity();
+                    int remainingQty = itemReq.getQuantity();
 
                     for (InventoryItem it : itemsInStock) {
-                        if (remainingQtyToExport <= 0) break;
+                        if (remainingQty <= 0) break;
 
-                        int currentQty = it.getQuantity();
-                        if (currentQty <= 0) continue;
+                        int available = it.getQuantity();
+                        if (available <= 0) continue;
 
-                        int toExport = Math.min(currentQty, remainingQtyToExport);
+                        int toExport = Math.min(available, remainingQty);
 
-
-//                        it.setQuantity(it.getQuantity() - toExport);
-                        boolean isReservedUpdated = false;
-                        if (isStockOut) {
-                            if (it.getReservedQuantity() > 0) {
-                                int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
-                                it.setReservedQuantity(newReserved);
-                                isReservedUpdated = true;
-                            }
-                        }
-
-                        if (isReservedUpdated) {
+                        // Giảm reserved nếu là xuất bán
+                        if (isStockOut && it.getReservedQuantity() > 0) {
+                            int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
+                            it.setReservedQuantity(newReserved);
                             inventoryItemRepository.save(it);
                         }
-                        // Tạo lịch sử xuất kho (như cũ)
+
+                        // Tạo lịch sử xuất kho thực sự (số âm)
                         createInventoryItem(
                                 inventory,
                                 it.getLocationItem().getId(),
                                 itemReq.getProductColorId(),
-                                -toExport // Số âm thể hiện xuất
+                                -toExport
                         );
 
-                        // Logic chuyển kho (như cũ)
-                        if (isTransferOut && transferInventory != null) {
-                            createInventoryItem(
-                                    transferInventory,
-                                    it.getLocationItem().getId(),
-                                    itemReq.getProductColorId(),
-                                    Math.abs(toExport)
-
-                            );
-                        }
-
-                        remainingQtyToExport -= toExport;
+                        remainingQty -= toExport;
                     }
 
-                    if (remainingQtyToExport > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-                }
+                    if (remainingQty > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
+                    // -----------------------------
+                    // CHUYỂN KHO → TẠO PHIẾU YÊU CẦU
+                    // -----------------------------
+                    if (isTransferOut && request.getToWarehouseId() != null) {
+
+                        Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
+                                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
+
+                        // Tạo phiếu yêu cầu nhập kho
+                        Inventory transferReq = Inventory.builder()
+                                .employeeId(getProfile())
+                                .type(EnumTypes.TRANSFER)
+                                .purpose(EnumPurpose.REQUEST)
+                                .warehouse(toWarehouse)
+                                .transferStatus(TransferStatus.PENDING)
+                                .date(LocalDate.now())
+                                .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName()
+                                        + " - Mã phiếu xuất: " + inventory.getCode())
+                                .build();
+
+                        inventoryRepository.save(transferReq);
+
+                        // Chi tiết hàng chờ duyệt (location = null)
+                        createInventoryItem(
+                                transferReq,
+                                null,
+                                itemReq.getProductColorId(),
+                                itemReq.getQuantity()
+                        );
+                    }
+                }
                 case TRANSFER -> {
                     if (request.getToWarehouseId() == null) throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
 
