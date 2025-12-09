@@ -7,6 +7,7 @@ import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.repository.VoucherRepository;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
@@ -46,6 +47,7 @@ public class OrderController {
     private final InventoryClient inventoryClient;
     private final ManagerWorkflowService managerWorkflowService;
     private final VoucherService voucherService;
+    private final VoucherRepository voucherRepository;
 
     @PostMapping("/checkout")
     public ApiResponse<Void> checkout(
@@ -71,12 +73,21 @@ public class OrderController {
             }
         }
 
-        VoucherResponse voucher = voucherService.getVoucherByCode(voucherCode);
+        Voucher voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode)
+                .orElse(null);
+
+        Double newVoucherPrice;
+
+        if (voucher == null) {
+            newVoucherPrice = 0.0;
+        } else {
+            newVoucherPrice = Double.valueOf(voucher.getAmount());
+        }
 
         if (paymentMethod == PaymentMethod.VNPAY) {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
             cartService.clearCart();
-            Double money = orderResponse.getTotal() - voucher.getAmount();
+            Double money = orderResponse.getTotal() - newVoucherPrice;
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Chuyển hướng sang VNPay")
@@ -87,7 +98,7 @@ public class OrderController {
             log.info("Order ID: {}, Total: {}, Deposit: {}", orderResponse.getId(), orderResponse.getTotal(), orderResponse.getDepositPrice());
 
             Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
-                            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
             double depositPrice = order.getTotal() * 0.1;
             order.setDepositPrice(depositPrice);
 //            orderService.handlePaymentCOD(orderResponse.getId());
