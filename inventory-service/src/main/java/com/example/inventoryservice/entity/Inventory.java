@@ -52,11 +52,11 @@ public class Inventory extends AbstractEntity {
     @Column(unique = true, nullable = false)
     private String code;
 
-    @Column
-    private String toWarehouseName;
-
-    @Column
+    @Column(nullable = true)
     private String toWarehouseId;
+
+    @Column(nullable = true)
+    private String toWarehouseName;
 
     @Column(name = "transfer_status")
     @Enumerated(EnumType.STRING)

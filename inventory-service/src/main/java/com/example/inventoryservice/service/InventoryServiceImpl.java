@@ -537,14 +537,15 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
     Map<Warehouse, List<InventoryItem>> warehouseMap = allSystemItems.stream()
             .collect(Collectors.groupingBy(item -> item.getLocationItem().getZone().getWarehouse()));
 
+    Map<String, String> warehouseNameCache = new HashMap<>();
+    preloadWarehouseNames(warehouseMap, warehouseNameCache);
+
     int remainingToReserve = quantity;
     int totalReserved = 0;
 
     List<InventoryItem> itemsToUpdate = new ArrayList<>();
     List<Inventory> ticketsToCreate = new ArrayList<>();
     Map<String, Integer> warehouseReservedMap = new HashMap<>();
-    Map<String, String> warehouseNameCache = new HashMap<>();
-
     // ============================================================
     // CASE 1 — Ưu tiên kho assigned
     // ============================================================
@@ -557,6 +558,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 orderId,
                 productColorId,
                 TransferStatus.FINISHED,
+                assignedWarehouse,
                 itemsToUpdate,
                 ticketsToCreate,
                 warehouseReservedMap,
@@ -593,6 +595,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                     orderId,
                     productColorId,
                     TransferStatus.PENDING,
+                    assignedWarehouse,
                     itemsToUpdate,
                     ticketsToCreate,
                     warehouseReservedMap,
@@ -640,6 +643,7 @@ private int reserveAtSpecificWarehouse(
         long orderId,
         String productColorId,
         TransferStatus transferStatus,
+        Warehouse mainAssignedWarehouse,
         List<InventoryItem> itemsToUpdateOut,
         List<Inventory> ticketsToCreateOut,
         Map<String, Integer> warehouseReservedMap,
@@ -677,14 +681,15 @@ private int reserveAtSpecificWarehouse(
     // =========================
     // 2) LẤY TÊN STORE
     // =========================
-    String storeName = warehouseNameCache.getOrDefault(warehouse.getId(), "Unknown Store");
-    try {
-        var storeResp = storeClient.getStoreById(warehouse.getStoreId());
-        if (storeResp != null && storeResp.getData() != null) {
-            storeName = storeResp.getData().getName();
-            warehouseNameCache.put(warehouse.getId(), storeName);
-        }
-    } catch (Exception ignored) {}
+    String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
+//    String storeName = warehouseNameCache.getOrDefault(warehouse.getId(), "Unknown Store");
+//    try {
+//        var storeResp = storeClient.getStoreById(warehouse.getStoreId());
+//        if (storeResp != null && storeResp.getData() != null) {
+//            storeName = storeResp.getData().getName();
+//            warehouseNameCache.put(warehouse.getId(), storeName);
+//        }
+//    } catch (Exception ignored) {}
 
     // =========================
     // 3) LẤY TÊN SP + MÀU
@@ -697,7 +702,7 @@ private int reserveAtSpecificWarehouse(
     StringBuilder note = new StringBuilder();
 
 // Dòng đầu tiên luôn có: giữ ở đâu, bao nhiêu cái
-    note.append("Giữ hàng tại: ").append(storeName)
+    note.append("Giữ hàng tại: ").append(warehouseName)
             .append(" → ").append(reservedHere).append(" cái")
             .append("\nSản phẩm: ").append(productName).append(" (").append(colorName).append(")");
 
@@ -705,41 +710,28 @@ private int reserveAtSpecificWarehouse(
 // CASE 1: Kho chính (FINISHED) → liệt kê các kho hỗ trợ khác
 // ==================================================================
     if (transferStatus == TransferStatus.FINISHED) {
-        List<Map.Entry<String, Integer>> supports = warehouseReservedMap.entrySet().stream()
-                .filter(e -> !e.getKey().equals(warehouse.getId()) && e.getValue() > 0)
+        var supports = warehouseReservedMap.entrySet().stream()
+                .filter(e -> !e.getKey().equals(warehouse.getId()))
                 .toList();
 
         if (!supports.isEmpty()) {
             note.append("\n\nĐủ hàng nhờ các kho hỗ trợ:");
             for (var e : supports) {
-                // Lấy tên kho hỗ trợ từ cache
-                String supportName = warehouseNameCache.getOrDefault(e.getKey(), "Kho #" + e.getKey());
-                note.append("\n• ").append(supportName).append(": ").append(e.getValue()).append(" cái");
+                String supName = warehouseNameCache.getOrDefault(e.getKey(), "Kho " + e.getKey());
+                note.append("\n• ").append(supName).append(": ").append(e.getValue()).append(" cái");
             }
         } else {
-            note.append("\n\nTrạng thái: Đủ hàng tại ").append(storeName);
+            note.append("\n\nTrạng thái: Đủ hàng tại ").append(warehouseName);
         }
     }
 
-// ==================================================================
-// CASE 2: Kho hỗ trợ (PENDING) → liệt kê kho được assign
-// ==================================================================
-    else if (transferStatus == TransferStatus.PENDING) {
-        List<Map.Entry<String, Integer>> supports = warehouseReservedMap.entrySet().stream()
-                .filter(e -> !e.getKey().equals(warehouse.getId()) && e.getValue() > 0)
-                .toList();
+    // ===============================================================
+    // CASE SUPPORT: kho khác → báo đang hỗ trợ chuyển
+    // ===============================================================
+    else {
+        note.append("\n\nHỗ trợ chuyển hàng cho: ")
+                .append(warehouseNameCache.get(mainAssignedWarehouse.getId()));
 
-        if (!supports.isEmpty()) {
-            note.append("\n\nHỗ trợ chuyển hàng cho: ");
-            for (int i = 0; i < supports.size(); i++) {
-                String supportName = warehouseNameCache.getOrDefault(supports.get(i).getKey(), "Kho #" + supports.get(i).getKey());
-                note.append(supportName).append(": ").append(supports.get(i).getValue()).append(" cái");
-                if (i < supports.size() - 1) note.append(", ");
-            }
-        } else {
-            // Nếu không có kho khác hỗ trợ, vẫn ghi tên kho assign
-            note.append("\n\nHỗ trợ chuyển hàng cho: ").append(storeName);
-        }
         note.append("\nTrạng thái: Chờ chuyển kho");
     }
 
@@ -791,6 +783,27 @@ private int reserveAtSpecificWarehouse(
 
     return reservedHere;
 }
+
+    private void preloadWarehouseNames(
+            Map<Warehouse, List<InventoryItem>> warehouseMap,
+            Map<String, String> warehouseNameCache
+    ) {
+        for (Warehouse w : warehouseMap.keySet()) {
+            String id = w.getId();
+            if (!warehouseNameCache.containsKey(id)) {
+                try {
+                    var resp = storeClient.getStoreById(w.getStoreId());
+                    if (resp != null && resp.getData() != null) {
+                        warehouseNameCache.put(id, resp.getData().getName());
+                    } else {
+                        warehouseNameCache.put(id, "Kho " + id);
+                    }
+                } catch (Exception e) {
+                    warehouseNameCache.put(id, "Kho " + id);
+                }
+            }
+        }
+    }
 
 
     @Override

@@ -74,6 +74,20 @@ public class Order extends AbstractEntity {
     @Column(name = "pdf_file_path")
     private String pdfFilePath;
 
-//    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
-//    private DeliveryConfirmation deliveryConfirmation;
+    @Column
+    private Date deadline;
+
+    @PrePersist
+    protected void onCreate() {
+        if (orderDate == null) {
+            orderDate = new Date();
+        }
+
+        if (deadline == null) {
+            long sevenDays = 7L * 24 * 60 * 60 * 1000;
+            deadline = new Date(orderDate.getTime() + sevenDays);
+        }
+    }
+    // @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+    // private DeliveryConfirmation deliveryConfirmation;
 }

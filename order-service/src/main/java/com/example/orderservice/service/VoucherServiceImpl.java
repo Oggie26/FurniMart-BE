@@ -206,17 +206,13 @@ public class VoucherServiceImpl implements VoucherService {
     public VoucherResponse applyVoucher(String code, Long orderId) {
         log.info("Applying voucher with code: {} to order: {}", code, orderId);
 
-        // Validate order exists
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Validate and get voucher
         VoucherResponse voucherResponse = validateVoucher(code, order.getTotal());
         
-        // Increment usage count
         incrementUsageCount(voucherResponse.getId());
 
-        // Update order with voucher (if needed, you can add voucher field to Order entity)
         log.info("Voucher applied successfully to order: {}", orderId);
 
         return voucherResponse;

@@ -30,4 +30,5 @@ public class OrderResponse {
     private DeliveryConfirmationResponse deliveryConfirmationResponse;
     private String pdfFilePath;
     private Boolean hasPdfFile;
+    private Date deadline;
 }

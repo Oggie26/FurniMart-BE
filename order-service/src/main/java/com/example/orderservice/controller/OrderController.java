@@ -1,6 +1,7 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.entity.Order;
+import com.example.orderservice.entity.Voucher;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
@@ -14,6 +15,7 @@ import com.example.orderservice.service.ManagerWorkflowService;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
+import com.example.orderservice.service.inteface.VoucherService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -43,6 +45,7 @@ public class OrderController {
     private final AssignOrderService assignOrderService;
     private final InventoryClient inventoryClient;
     private final ManagerWorkflowService managerWorkflowService;
+    private final VoucherService voucherService;
 
     @PostMapping("/checkout")
     public ApiResponse<Void> checkout(
@@ -68,13 +71,19 @@ public class OrderController {
             }
         }
 
+        VoucherResponse voucher = voucherService.getVoucherByCode(voucherCode);
+        if (voucher == null) {
+            throw new AppException(ErrorCode.VOUCHER_NOT_FOUND);
+        }
+
         if (paymentMethod == PaymentMethod.VNPAY) {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
             cartService.clearCart();
+            Double money = orderResponse.getTotal() - voucher.getAmount();
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Chuyển hướng sang VNPay")
-                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getTotal(), clientIp))
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), money, clientIp))
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);

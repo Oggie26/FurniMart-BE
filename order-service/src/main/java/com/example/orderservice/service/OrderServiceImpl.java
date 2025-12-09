@@ -140,7 +140,7 @@ public class OrderServiceImpl implements OrderService {
         List<OrderDetail> details = createOrderItemsFromCart(cart, order);
         order.setOrderDetails(details);
         order.setStatus(EnumProcessOrder.PRE_ORDER);
-        
+
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.PRE_ORDER);
@@ -188,7 +188,6 @@ public class OrderServiceImpl implements OrderService {
         if (addressResponse == null || addressResponse.getData() == null) {
             throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
         }
-
 
         Double total = request.getOrderDetails().stream()
                 .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
@@ -260,8 +259,6 @@ public class OrderServiceImpl implements OrderService {
 
         savedOrder.setPayment(payment);
 
-
-
         List<OrderCreatedEvent.OrderItem> eventItems = savedOrder.getOrderDetails().stream()
                 .map(detail -> OrderCreatedEvent.OrderItem.builder()
                         .productColorId(detail.getProductColorId())
@@ -299,6 +296,7 @@ public class OrderServiceImpl implements OrderService {
 
         return mapToResponse(savedOrder);
     }
+
     @Override
     public OrderResponse getOrderById(Long id) {
         Order order = orderRepository.findByIdAndIsDeletedFalse(id)
@@ -356,58 +354,62 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
     }
 
-//    @Override
-//    @Transactional
-//    public void handlePaymentCOD(Long orderId){
-//        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-//                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-//
-//        assignOrderService.assignOrderToStore(orderId);
-//
-//
-//        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-//                .map(detail -> OrderCreatedEvent.OrderItem.builder()
-//                        .productColorId(detail.getProductColorId())
-//                        .quantity(detail.getQuantity())
-//                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-//                        .price(detail.getPrice())
-//                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-//                        .build())
-//                .toList();
-//
-//
-//        OrderCreatedEvent event = OrderCreatedEvent.builder()
-//                .email(safeGetUser(order.getUserId()).getEmail())
-//                .fullName(safeGetUser(order.getUserId()).getFullName())
-//                .orderDate(order.getOrderDate())
-//                .totalPrice(order.getTotal())
-//                .orderId(order.getId())
-//                .storeId(order.getStoreId())
-//                .addressLine(getAddress(order.getAddressId()))
-//                .paymentMethod(PaymentMethod.COD)
-//                .items(orderItems)
-//                .build();
-//
-//        for (OrderDetail detail : order.getOrderDetails()) {
-//            cartService.removeProductFromCart(Collections.singletonList(detail.getProductColorId()));
-//        }
-//
-//        try {
-//            kafkaTemplate.send("order-created-topic", event)
-//                    .whenComplete((
-//                            result, ex) -> {
-//                        if (ex != null) {
-//                            log.info("Failed to send Kafka event {}, error: {}", event.getFullName(), ex.getMessage());
-//                        } else {
-//                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
-//                        }
-//                    });
-//        } catch (Exception e) {
-//            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
-//        }
-//    }
+    // @Override
+    // @Transactional
+    // public void handlePaymentCOD(Long orderId){
+    // Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+    // .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+    //
+    // assignOrderService.assignOrderToStore(orderId);
+    //
+    //
+    // List<OrderCreatedEvent.OrderItem> orderItems =
+    // order.getOrderDetails().stream()
+    // .map(detail -> OrderCreatedEvent.OrderItem.builder()
+    // .productColorId(detail.getProductColorId())
+    // .quantity(detail.getQuantity())
+    // .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+    // .price(detail.getPrice())
+    // .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+    // .build())
+    // .toList();
+    //
+    //
+    // OrderCreatedEvent event = OrderCreatedEvent.builder()
+    // .email(safeGetUser(order.getUserId()).getEmail())
+    // .fullName(safeGetUser(order.getUserId()).getFullName())
+    // .orderDate(order.getOrderDate())
+    // .totalPrice(order.getTotal())
+    // .orderId(order.getId())
+    // .storeId(order.getStoreId())
+    // .addressLine(getAddress(order.getAddressId()))
+    // .paymentMethod(PaymentMethod.COD)
+    // .items(orderItems)
+    // .build();
+    //
+    // for (OrderDetail detail : order.getOrderDetails()) {
+    // cartService.removeProductFromCart(Collections.singletonList(detail.getProductColorId()));
+    // }
+    //
+    // try {
+    // kafkaTemplate.send("order-created-topic", event)
+    // .whenComplete((
+    // result, ex) -> {
+    // if (ex != null) {
+    // log.info("Failed to send Kafka event {}, error: {}", event.getFullName(),
+    // ex.getMessage());
+    // } else {
+    // log.info("Successfully sent order creation event for: {}",
+    // event.getOrderId());
+    // }
+    // });
+    // } catch (Exception e) {
+    // log.error("Failed to send Kafka event {}, error: {}", event.getFullName(),
+    // e.getMessage());
+    // }
+    // }
 
-// OrderServiceImpl.java
+    // OrderServiceImpl.java
 
     @Override
     @Transactional
@@ -443,31 +445,31 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 3. Gửi Kafka
-//        var userInfo = safeGetUser(order.getUserId());
-//        OrderCreatedEvent event = OrderCreatedEvent.builder()
-//                .email(userInfo.getEmail())
-//                .fullName(userInfo.getFullName())
-//                .orderDate(order.getOrderDate())
-//                .totalPrice(order.getTotal())
-//                .orderId(order.getId())
-//                .storeId(order.getStoreId())
-//                .addressLine(getAddress(order.getAddressId()))
-//                .paymentMethod(PaymentMethod.COD)
-//                .items(orderItems)
-//                .build();
-//
-//        try {
-//            kafkaTemplate.send("order-created-topic", event)
-//                    .whenComplete((result, ex) -> {
-//                        if (ex != null) {
-//                            log.warn("Kafka send failed: {}", ex.getMessage());
-//                        } else {
-//                            log.info("Kafka sent success: {}", event.getOrderId());
-//                        }
-//                    });
-//        } catch (Exception e) {
-//            log.error("Kafka error: {}", e.getMessage());
-//        }
+        // var userInfo = safeGetUser(order.getUserId());
+        // OrderCreatedEvent event = OrderCreatedEvent.builder()
+        // .email(userInfo.getEmail())
+        // .fullName(userInfo.getFullName())
+        // .orderDate(order.getOrderDate())
+        // .totalPrice(order.getTotal())
+        // .orderId(order.getId())
+        // .storeId(order.getStoreId())
+        // .addressLine(getAddress(order.getAddressId()))
+        // .paymentMethod(PaymentMethod.COD)
+        // .items(orderItems)
+        // .build();
+        //
+        // try {
+        // kafkaTemplate.send("order-created-topic", event)
+        // .whenComplete((result, ex) -> {
+        // if (ex != null) {
+        // log.warn("Kafka send failed: {}", ex.getMessage());
+        // } else {
+        // log.info("Kafka sent success: {}", event.getOrderId());
+        // }
+        // });
+        // } catch (Exception e) {
+        // log.error("Kafka error: {}", e.getMessage());
+        // }
     }
 
     @Override
@@ -488,8 +490,8 @@ public class OrderServiceImpl implements OrderService {
         order.getProcessOrders().add(process);
         order.setStatus(status);
         orderRepository.save(order);
-        
-        if(status.equals(EnumProcessOrder.PAYMENT)){
+
+        if (status.equals(EnumProcessOrder.PAYMENT)) {
             assignOrderService.assignOrderToStore(orderId);
 
             Payment payment = paymentRepository.findByOrderId(orderId)
@@ -498,7 +500,7 @@ public class OrderServiceImpl implements OrderService {
             if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
                 payment.setPaymentStatus(PaymentStatus.PAID);
                 paymentRepository.save(payment);
-            }else{
+            } else {
                 payment.setPaymentStatus(PaymentStatus.DEPOSITED);
                 paymentRepository.save(payment);
             }
@@ -543,7 +545,8 @@ public class OrderServiceImpl implements OrderService {
             Payment payment = paymentRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-            if (payment.getPaymentMethod() == PaymentMethod.COD && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
+            if (payment.getPaymentMethod() == PaymentMethod.COD
+                    && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
                 payment.setPaymentStatus(PaymentStatus.PAID);
                 paymentRepository.save(payment);
             }
@@ -577,8 +580,10 @@ public class OrderServiceImpl implements OrderService {
 
             kafkaTemplate.send("order-created-topic", event)
                     .whenComplete((result, ex) -> {
-                        if (ex != null) log.error("Kafka send failed: {}", ex.getMessage());
-                        else log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                        if (ex != null)
+                            log.error("Kafka send failed: {}", ex.getMessage());
+                        else
+                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
                     });
         }
 
@@ -596,7 +601,7 @@ public class OrderServiceImpl implements OrderService {
         } else {
             request = "";
         }
-        
+
         Pageable pageable = PageRequest.of(page, size);
         String userId = getUserId();
 
@@ -614,8 +619,7 @@ public class OrderServiceImpl implements OrderService {
                 orders.getTotalElements(),
                 orders.getTotalPages(),
                 orders.isFirst(),
-                orders.isLast()
-        );
+                orders.isLast());
     }
 
     @Override
@@ -628,7 +632,7 @@ public class OrderServiceImpl implements OrderService {
         } else {
             request = "";
         }
-        
+
         Pageable pageable = PageRequest.of(page, size);
 
         Page<Order> orders = orderRepository.searchByKeywordNative(request, pageable);
@@ -645,8 +649,7 @@ public class OrderServiceImpl implements OrderService {
                 orders.getTotalElements(),
                 orders.getTotalPages(),
                 orders.isFirst(),
-                orders.isLast()
-        );
+                orders.isLast());
     }
 
     @Override
@@ -668,8 +671,7 @@ public class OrderServiceImpl implements OrderService {
                 orders.getTotalElements(),
                 orders.getTotalPages(),
                 orders.isFirst(),
-                orders.isLast()
-        );
+                orders.isLast());
     }
 
     @Override
@@ -689,8 +691,7 @@ public class OrderServiceImpl implements OrderService {
                 orders.getTotalElements(),
                 orders.getTotalPages(),
                 orders.isFirst(),
-                orders.isLast()
-        );
+                orders.isLast());
     }
 
     @Override
@@ -721,8 +722,7 @@ public class OrderServiceImpl implements OrderService {
                 orders.getTotalElements(),
                 orders.getTotalPages(),
                 orders.isFirst(),
-                orders.isLast()
-        );
+                orders.isLast());
     }
 
     @Override
@@ -769,7 +769,8 @@ public class OrderServiceImpl implements OrderService {
                             java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
                             hasPdfFile = pdfFile.exists();
                         } catch (Exception e) {
-                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(), e.getMessage());
+                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(),
+                                    e.getMessage());
                         }
                     }
                     // Set hasPdfFile vào response
@@ -785,8 +786,7 @@ public class OrderServiceImpl implements OrderService {
                 orders.getTotalElements(),
                 orders.getTotalPages(),
                 orders.isFirst(),
-                orders.isLast()
-        );
+                orders.isLast());
     }
 
     @Override
@@ -802,7 +802,6 @@ public class OrderServiceImpl implements OrderService {
         paymentRepository.save(payment);
         return true;
     }
-
 
     private OrderResponse mapToResponse(Order order) {
         Payment payment = paymentRepository.findByOrderId(order.getId()).orElse(null);
@@ -841,41 +840,44 @@ public class OrderServiceImpl implements OrderService {
                 .orderDetails(
                         order.getOrderDetails() != null
                                 ? order.getOrderDetails().stream()
-                                .map(detail -> {
-                                    ProductColorResponse productColor = null;
-                                    try {
-                                        productColor = getProductColorResponse(detail.getProductColorId());
-                                    } catch (Exception e) {
-                                        log.warn("Failed to get product color for {}: {}", detail.getProductColorId(), e.getMessage());
-                                    }
-                                    return OrderDetailResponse.builder()
-                                            .id(detail.getId())
-                                            .productColorId(detail.getProductColorId())
-                                            .quantity(detail.getQuantity())
-                                            .price(detail.getPrice())
-                                            .productColor(productColor)
-                                            .build();
-                                })
-                                .collect(Collectors.toList())
-                                : Collections.emptyList()
-                )
+                                        .map(detail -> {
+                                            ProductColorResponse productColor = null;
+                                            try {
+                                                productColor = getProductColorResponse(detail.getProductColorId());
+                                            } catch (Exception e) {
+                                                log.warn("Failed to get product color for {}: {}",
+                                                        detail.getProductColorId(), e.getMessage());
+                                            }
+                                            return OrderDetailResponse.builder()
+                                                    .id(detail.getId())
+                                                    .productColorId(detail.getProductColorId())
+                                                    .quantity(detail.getQuantity())
+                                                    .price(detail.getPrice())
+                                                    .productColor(productColor)
+                                                    .build();
+                                        })
+                                        .collect(Collectors.toList())
+                                : Collections.emptyList())
                 .processOrders(
                         order.getProcessOrders() != null
                                 ? order.getProcessOrders().stream()
-                                .sorted((p1, p2) -> {
-                                    if (p1.getCreatedAt() == null && p2.getCreatedAt() == null) return 0;
-                                    if (p1.getCreatedAt() == null) return 1;
-                                    if (p2.getCreatedAt() == null) return -1;
-                                    return p1.getCreatedAt().compareTo(p2.getCreatedAt()); // Sắp xếp cũ nhất trước
-                                })
-                                .map(process -> ProcessOrderResponse.builder()
-                                        .id(process.getId())
-                                        .status(process.getStatus())
-                                        .createdAt(process.getCreatedAt())
-                                        .build())
-                                .collect(Collectors.toList())
-                                : Collections.emptyList()
-                )
+                                        .sorted((p1, p2) -> {
+                                            if (p1.getCreatedAt() == null && p2.getCreatedAt() == null)
+                                                return 0;
+                                            if (p1.getCreatedAt() == null)
+                                                return 1;
+                                            if (p2.getCreatedAt() == null)
+                                                return -1;
+                                            return p1.getCreatedAt().compareTo(p2.getCreatedAt()); // Sắp xếp cũ nhất
+                                                                                                   // trước
+                                        })
+                                        .map(process -> ProcessOrderResponse.builder()
+                                                .id(process.getId())
+                                                .status(process.getStatus())
+                                                .createdAt(process.getCreatedAt())
+                                                .build())
+                                        .collect(Collectors.toList())
+                                : Collections.emptyList())
                 .payment(paymentResponse)
                 .storeId(order.getStoreId())
                 .qrCode(order.getQrCode())
@@ -961,9 +963,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private AddressResponse safeGetAddress(Long addressId) {
-        if (addressId == null) return null;
+        if (addressId == null)
+            return null;
         ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
-        if (resp == null || resp.getData() == null) return null;
+        if (resp == null || resp.getData() == null)
+            return null;
         return resp.getData();
     }
 
@@ -990,20 +994,21 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String getAddress(Long addressId) {
-        if (addressId == null) return null;
+        if (addressId == null)
+            return null;
         ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
-        if (resp == null || resp.getData() == null) return null;
+        if (resp == null || resp.getData() == null)
+            return null;
         return resp.getData().getAddressLine();
     }
 
-    private ProductColorResponse getProductColorResponse(String id){
+    private ProductColorResponse getProductColorResponse(String id) {
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
         if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
         return response.getData();
     }
-
 
     private DeliveryConfirmationResponse getDeliveryConfirmationResponse(Long orderId) {
         try {
