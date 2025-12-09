@@ -1,7 +1,6 @@
 package com.example.aiservice.service;
 
 import com.example.aiservice.response.InteriorDesignResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
