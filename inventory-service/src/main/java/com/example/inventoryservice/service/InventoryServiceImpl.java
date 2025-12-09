@@ -69,7 +69,7 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory transferInventory = null;
         boolean isTransferOut = request.getType() == EnumTypes.EXPORT && request.getPurpose() == EnumPurpose.TRANSFER_OUT;
 
-        if (isTransferOut && transferInventory != null ) {
+        if (isTransferOut && request.getToWarehouseId() != null) {
             Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                     .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
@@ -124,7 +124,6 @@ public class InventoryServiceImpl implements InventoryService {
                         int toExport = Math.min(currentQty, remainingQtyToExport);
 
 
-                        it.setQuantity(it.getQuantity() - toExport);
                         boolean isReservedUpdated = false;
                         if (isStockOut) {
                             if (it.getReservedQuantity() > 0) {
