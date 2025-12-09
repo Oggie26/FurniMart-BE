@@ -17,9 +17,13 @@ import org.springframework.web.multipart.MultipartFile;
 public class AnalyzeController {
 
     private final AnalyzeService analyzeService;
+
     @PostMapping(value = "/analyze-room", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<InteriorDesignResponse>> analyzeRoom(
-            @RequestParam("image") MultipartFile image , @RequestBody String userNote) {
+            @RequestParam("image") MultipartFile image,
+            // FIX: Đổi @RequestBody thành @RequestParam và cho phép null (required = false)
+            @RequestParam(value = "note", required = false) String userNote
+    ) {
         return ResponseEntity.ok(
                 ApiResponse.<InteriorDesignResponse>builder()
                         .status(200)

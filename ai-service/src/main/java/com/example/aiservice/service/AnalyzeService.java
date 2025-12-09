@@ -51,7 +51,7 @@ public class AnalyzeService {
         // 2. Lấy danh sách sản phẩm từ Product Service (Microservice khác)
         // Lưu ý: Trong thực tế nên dùng RAG hoặc filter bớt nếu danh sách quá dài (>100 món)
         ApiResponse<List<ProductResponse>> response = productClient.getProducts();
-        List<ProductResponse> products = response.getData();
+        List<ProductResponse> products = response.getData(); // Giả sử ApiResponse có field 'result' hoặc 'data'
 
         if (products == null || products.isEmpty()) {
             throw new RuntimeException("Kho hàng đang trống, không thể tư vấn sản phẩm!");
