@@ -11,7 +11,8 @@ spring:
       api-key: ${GOOGLE_AI_API_KEY}
       chat:
         options:
-          model: gemini-1.5-flash
+          # Model này CÓ trong danh sách JSON của bạn và Miễn phí
+          model: gemini-flash-latest
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
