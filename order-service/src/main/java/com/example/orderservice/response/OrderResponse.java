@@ -29,5 +29,5 @@ public class OrderResponse {
     private Date qrCodeGeneratedAt;
     private DeliveryConfirmationResponse deliveryConfirmationResponse;
     private String pdfFilePath;
-    private Boolean hasPdfFile; // Ghi chú: true nếu file PDF tồn tại, false nếu không tồn tại hoặc chưa có
+    private Boolean hasPdfFile;
 }

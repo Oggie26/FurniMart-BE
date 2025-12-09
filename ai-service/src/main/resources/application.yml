@@ -7,17 +7,11 @@ spring:
 
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
-      base-url: https://api.openai.com
-      chat:
-        options:
-          model: gpt-4o-mini
-
-    google:
       api-key: ${GOOGLE_AI_API_KEY}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai/
       chat:
         options:
-          model: gemini-pro
+          model: gemini-1.5-flash
           temperature: 0.7
 
   kafka:
