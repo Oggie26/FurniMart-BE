@@ -67,7 +67,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         Inventory transferInventory = null;
-        boolean isTransferOut = request.getType() == EnumTypes.EXPORT && request.getPurpose() == EnumPurpose.TRANSFER_OUT;
+        boolean isTransferOut = request.getType() == EnumTypes.EXPORT && request.getPurpose() == EnumPurpose.MOVE;
 
         if (isTransferOut && request.getToWarehouseId() != null) {
             Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
