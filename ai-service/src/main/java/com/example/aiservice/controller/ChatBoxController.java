@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/ai/chat")
+@RequestMapping("/api/ai")
 @RequiredArgsConstructor
 @Slf4j
 public class ChatBoxController {
