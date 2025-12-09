@@ -175,7 +175,7 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY}
       SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING: "true"
 
   order-service:
