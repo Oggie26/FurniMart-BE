@@ -35,10 +35,20 @@ public class ChatBoxController {
 
 
     @PostMapping(value = "/analyze-room", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<InteriorDesignResponse> analyzeRoom(@RequestParam("image") MultipartFile image) {
-        InteriorDesignResponse analysisResult = aiInteriorDesignService.analyzeRoom(image);
-        return ResponseEntity.ok(analysisResult);
+    public ResponseEntity<ApiResponse<InteriorDesignResponse>> analyzeRoom(
+            @RequestParam("image") MultipartFile image) {
+
+        InteriorDesignResponse result = aiInteriorDesignService.analyzeRoom(image);
+
+        return ResponseEntity.ok(
+                ApiResponse.<InteriorDesignResponse>builder()
+                        .status(200)
+                        .message("Room analyzed successfully")
+                        .data(result)
+                        .build()
+        );
     }
+
 
     public record ChatRequest(String message) {}
 }
