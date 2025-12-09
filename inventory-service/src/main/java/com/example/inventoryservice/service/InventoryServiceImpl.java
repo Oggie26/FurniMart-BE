@@ -124,6 +124,7 @@ public class InventoryServiceImpl implements InventoryService {
                         int toExport = Math.min(currentQty, remainingQtyToExport);
 
 
+//                        it.setQuantity(it.getQuantity() - toExport);
                         boolean isReservedUpdated = false;
                         if (isStockOut) {
                             if (it.getReservedQuantity() > 0) {
