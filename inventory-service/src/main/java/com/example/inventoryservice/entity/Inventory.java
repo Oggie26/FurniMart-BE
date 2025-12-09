@@ -52,6 +52,12 @@ public class Inventory extends AbstractEntity {
     @Column(unique = true, nullable = false)
     private String code;
 
+    @Column
+    private String toWarehouseName;
+
+    @Column
+    private String toWarehouseId;
+
     @Column(name = "transfer_status")
     @Enumerated(EnumType.STRING)
     private TransferStatus transferStatus;

@@ -125,17 +125,18 @@ public class InventoryServiceImpl implements InventoryService {
 
 
                         it.setQuantity(it.getQuantity() - toExport);
-
+                        boolean isReservedUpdated = false;
                         if (isStockOut) {
                             if (it.getReservedQuantity() > 0) {
                                 int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
                                 it.setReservedQuantity(newReserved);
+                                isReservedUpdated = true;
                             }
                         }
-                        // ------------------------------------
 
-                        inventoryItemRepository.save(it);
-
+                        if (isReservedUpdated) {
+                            inventoryItemRepository.save(it);
+                        }
                         // Tạo lịch sử xuất kho (như cũ)
                         createInventoryItem(
                                 inventory,
@@ -151,6 +152,7 @@ public class InventoryServiceImpl implements InventoryService {
                                     it.getLocationItem().getId(),
                                     itemReq.getProductColorId(),
                                     Math.abs(toExport)
+
                             );
                         }
 
@@ -1122,7 +1124,6 @@ private int reserveAtSpecificWarehouse(
                 .warehouseName(inventory.getWarehouse().getWarehouseName())
                 .itemResponseList(itemResponseList)
                 .build();
-
     }
 
     // Hàm tách ProductID từ mã phiếu
