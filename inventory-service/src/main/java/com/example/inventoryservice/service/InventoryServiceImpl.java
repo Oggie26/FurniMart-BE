@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.apache.commons.lang3.tuple.Pair; // đúng
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,9 +37,6 @@ public class InventoryServiceImpl implements InventoryService {
     private final DeliveryClient deliveryClient;
     private final StoreClient storeClient;
     private final PDFService pdfService;
-//    private final KafkaTemplate<String, UpdateStatusOrderCreatedEvent> kafkaTemplate;
-
-
 
     @Override
     @Transactional
@@ -110,54 +106,6 @@ public class InventoryServiceImpl implements InventoryService {
                             itemReq.getQuantity()
                     );
                 }
-
-//                case EXPORT -> {
-//                    List<InventoryItem> itemsInStock = inventoryItemRepository
-//                            .findAllByProductColorIdAndInventory_Warehouse_Id(itemReq.getProductColorId(), warehouse.getId());
-//
-//                    if (itemsInStock.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
-//
-//                    int remainingQtyToExport = itemReq.getQuantity();
-//
-//                    for (InventoryItem it : itemsInStock) {
-//                        if (remainingQtyToExport <= 0) break;
-//
-//                        int currentQty = it.getQuantity();
-//                        if (currentQty <= 0) continue;
-//
-//                        int toExport = Math.min(currentQty, remainingQtyToExport);
-//
-//
-//                        it.setQuantity(it.getQuantity() - toExport);
-//
-//                        if (isStockOut) {
-//                            int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
-//                            it.setReservedQuantity(newReserved);
-//                        }
-//
-//                        inventoryItemRepository.save(it);
-//
-//                        createInventoryItem(
-//                                inventory,
-//                                it.getLocationItem().getId(),
-//                                itemReq.getProductColorId(),
-//                                -toExport
-//                        );
-//
-//                        if (isTransferOut && transferInventory != null) {
-//                            createInventoryItem(
-//                                    transferInventory,
-//                                    it.getLocationItem().getId(),
-//                                    itemReq.getProductColorId(),
-//                                    Math.abs(toExport)
-//                            );
-//                        }
-//
-//                        remainingQtyToExport -= toExport;
-//                    }
-//
-//                    if (remainingQtyToExport > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
-//                }
 
                 case EXPORT -> {
                     List<InventoryItem> itemsInStock = inventoryItemRepository
@@ -574,17 +522,14 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 );
                 log.info(warehouseNameCache.get(neighbor.getId()));
             }
-//            warehouseReservedMap.put(
-//                    neighbor.getId(),
-//                    warehouseReservedMap.getOrDefault(neighbor.getId(), 0) + reservedAtNeighbor
-//            );
+
             remainingToReserve -= reservedAtNeighbor;
             totalReserved += reservedAtNeighbor;
         }
     }
 
     if (!itemsToUpdate.isEmpty()) {
-        inventoryItemRepository.saveAll(itemsToUpdate); // update reserved quantity
+        inventoryItemRepository.saveAll(itemsToUpdate);
     }
 
     if (!ticketsToCreate.isEmpty()) {
@@ -1135,30 +1080,7 @@ private int reserveAtSpecificWarehouse(
         inventory.getInventoryItems().add(item);
     }
 
-//    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
-//        List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
-//                .orElse(Collections.emptyList())
-//                .stream()
-//                .map(this::mapToInventoryItemResponse)
-//                .toList();
-//
-//        return InventoryResponse.builder()
-//                .id(inventory.getId())
-//                .employeeId(inventory.getEmployeeId())
-//                .type(inventory.getType())
-//                .purpose(inventory.getPurpose())
-//                .date(inventory.getDate())
-//                .pdfUrl(inventory.getPdfUrl())
-//                .note(inventory.getNote())
-//                .orderId(inventory.getOrderId())
-//                .transferStatus(inventory.getTransferStatus())
-//                .warehouseId(inventory.getWarehouse().getId())
-//                .warehouseName(inventory.getWarehouse().getWarehouseName())
-//                .itemResponseList(itemResponseList)
-//                .build();
-//    }
-
-    private InventoryResponse mapToInventoryResponse(Inventory inventory) { // <--- Chỉ còn 1 tham số
+    private InventoryResponse mapToInventoryResponse(Inventory inventory) {
 
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
@@ -1200,6 +1122,7 @@ private int reserveAtSpecificWarehouse(
                 .warehouseName(inventory.getWarehouse().getWarehouseName())
                 .itemResponseList(itemResponseList)
                 .build();
+
     }
 
     // Hàm tách ProductID từ mã phiếu

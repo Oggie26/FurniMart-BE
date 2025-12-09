@@ -883,6 +883,7 @@ public class OrderServiceImpl implements OrderService {
                 .pdfFilePath(order.getPdfFilePath())
                 .deliveryConfirmationResponse(getDeliveryConfirmationResponse(order.getId()))
                 .hasPdfFile(hasPdfFile)
+                .needToPay(order.getTotal() - order.getDepositPrice() != order.getTotal() ? order.getTotal() - order.getDepositPrice() : 0.0 )
                 .depositPrice(order.getDepositPrice())
                 .build();
     }
