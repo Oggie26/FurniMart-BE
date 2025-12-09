@@ -72,9 +72,6 @@ public class OrderController {
         }
 
         VoucherResponse voucher = voucherService.getVoucherByCode(voucherCode);
-        if (voucher == null) {
-            throw new AppException(ErrorCode.VOUCHER_NOT_FOUND);
-        }
 
         if (paymentMethod == PaymentMethod.VNPAY) {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
