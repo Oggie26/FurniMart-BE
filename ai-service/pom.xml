@@ -65,12 +65,6 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
-		<!-- SPRING AI: Google Gemini API -->
-		<dependency>
-			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-google-spring-boot-starter</artifactId>
-		</dependency>
-
 		<!-- Kafka -->
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
