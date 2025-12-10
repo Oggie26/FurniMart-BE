@@ -18,8 +18,16 @@ public class InventoryReservedWarehouse {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column
+    private Long orderId;
+
+    @Column
     private String warehouseId;
+
+    @Column
     private String warehouseName;
+
+    @Column
     private int reservedQuantity;
 
     @ManyToOne(fetch = FetchType.LAZY)

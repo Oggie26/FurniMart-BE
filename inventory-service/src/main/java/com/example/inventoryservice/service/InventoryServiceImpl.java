@@ -973,32 +973,34 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .transferStatus(TransferStatus.FINISHED)
                 .build();
 
+        List<InventoryReservedWarehouse> allReservedForOrder =
+                inventoryReservedWarehouseRepository.findByOrderId(orderId);
+
         InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
                 .warehouseId(warehouse.getId())
                 .warehouseName(warehouse.getWarehouseName())
                 .reservedQuantity(reservedHere)
+                .orderId(orderId)
                 .inventory(ticket)
                 .build();
 
+        allReservedForOrder.add(reserved);
 
 
-        ticket.setReservedWarehouses(List.of(reserved));
+        ticket.setReservedWarehouses(allReservedForOrder);
 
         List<InventoryItem> ticketItems = new ArrayList<>();
-
         for (var entry : takenPerColor.entrySet()) {
-
-            InventoryItem ti = InventoryItem.builder()
-                    .productColorId(entry.getKey())
-                    .quantity(entry.getValue())
-                    .inventory(ticket)
-                    .build();
-
-            ticketItems.add(ti);
+            ticketItems.add(
+                    InventoryItem.builder()
+                            .productColorId(entry.getKey())
+                            .quantity(entry.getValue())
+                            .inventory(ticket)
+                            .build()
+            );
         }
-
         ticket.setInventoryItems(ticketItems);
-        inventoryReservedWarehouseRepository.saveAll(List.of(reserved));
+        inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
         ticketsToCreateOut.add(ticket);
 
         return reservedHere;
