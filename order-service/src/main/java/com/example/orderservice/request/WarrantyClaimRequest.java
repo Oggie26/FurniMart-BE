@@ -21,5 +21,7 @@ public class WarrantyClaimRequest {
     @NotBlank(message = "Issue description cannot be blank")
     private String issueDescription;
     
+    private Long addressId; // Optional: if null, will use address from original order
+    
     private List<String> customerPhotos; // List of photo URLs
 }

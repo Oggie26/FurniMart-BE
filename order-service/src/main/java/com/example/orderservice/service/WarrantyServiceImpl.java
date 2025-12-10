@@ -6,6 +6,7 @@ import com.example.orderservice.exception.AppException;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
+import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
 import com.example.orderservice.response.WarrantyReportResponse;
@@ -155,6 +156,22 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
         }
 
+        // Determine addressId: use provided addressId or fallback to original order's address
+        Long addressId = request.getAddressId();
+        if (addressId == null) {
+            // Auto-get address from original order if addressId not provided
+            Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(warranty.getOrderId())
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+            addressId = originalOrder.getAddressId();
+            log.info("AddressId not provided, using address from original order: {}", addressId);
+        }
+
+        // Validate address exists
+        ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(addressId);
+        if (addressResponse == null || addressResponse.getData() == null) {
+            throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
+        }
+
         String customerPhotosJson = null;
         if (request.getCustomerPhotos() != null && !request.getCustomerPhotos().isEmpty()) {
             try {
@@ -167,6 +184,7 @@ public class WarrantyServiceImpl implements WarrantyService {
         WarrantyClaim claim = WarrantyClaim.builder()
                 .warrantyId(request.getWarrantyId())
                 .customerId(warranty.getCustomerId())
+                .addressId(addressId)
                 .issueDescription(request.getIssueDescription())
                 .customerPhotos(customerPhotosJson)
                 .status(WarrantyClaimStatus.PENDING)
@@ -306,10 +324,12 @@ public class WarrantyServiceImpl implements WarrantyService {
         OrderType newOrderType = OrderType.WARRANTY_RETURN;
 
         // Create new Order
+        // Use addressId from claim (customer's current address) instead of original order address
+        // Store remains the same as original order (store that handled the original order)
         Order newOrder = Order.builder()
                 .userId(originalOrder.getUserId())
-                .storeId(originalOrder.getStoreId())
-                .addressId(originalOrder.getAddressId())
+                .storeId(originalOrder.getStoreId()) // Store that handled original order will handle warranty
+                .addressId(claim.getAddressId()) // Use address from claim (customer's current address)
                 .total(0.0) // Warranty orders usually 0 cost unless paid upgrade
                 .status(EnumProcessOrder.CONFIRMED)
                 .orderDate(new Date())
@@ -478,6 +498,7 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .id(claim.getId())
                 .warrantyId(claim.getWarrantyId())
                 .customerId(claim.getCustomerId())
+                .addressId(claim.getAddressId())
                 .claimDate(claim.getClaimDate())
                 .issueDescription(claim.getIssueDescription())
                 .customerPhotos(customerPhotos)
