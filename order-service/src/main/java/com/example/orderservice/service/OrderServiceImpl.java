@@ -3,6 +3,7 @@ package com.example.orderservice.service;
 import com.example.orderservice.entity.*;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
+import com.example.orderservice.enums.OrderType;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -57,6 +58,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartService cartService;
     private final DeliveryClient deliveryClient;
     private final InventoryClient inventoryClient;
+    private final WarrantyClaimRepository warrantyClaimRepository;
     @Lazy
     private final WarrantyService warrantyService;
 
@@ -1276,32 +1278,62 @@ public class OrderServiceImpl implements OrderService {
         order.getProcessOrders().add(process);
         order.setStatus(EnumProcessOrder.RETURNED);
 
-        // 2. Refund Payment
+        // 2. Determine refund amount and handle payment
+        Double refundAmount = null;
         Payment payment = order.getPayment();
-        if (payment != null) {
-            payment.setPaymentStatus(PaymentStatus.REFUNDED);
-            paymentRepository.save(payment);
+        
+        // Check if this is a WARRANTY_RETURN order
+        if (order.getOrderType() == OrderType.WARRANTY_RETURN && order.getWarrantyClaimId() != null) {
+            // For WARRANTY_RETURN, get refundAmount from WarrantyClaim
+            WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(order.getWarrantyClaimId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
+            
+            refundAmount = claim.getRefundAmount();
+            
+            if (refundAmount == null || refundAmount <= 0) {
+                log.warn("Warranty claim {} has invalid refundAmount: {}", order.getWarrantyClaimId(), refundAmount);
+                refundAmount = 0.0;
+            }
+            
+            // Create Payment record if not exists (for warranty return orders)
+            if (payment == null) {
+                payment = Payment.builder()
+                        .order(order)
+                        .paymentMethod(PaymentMethod.VNPAY) // Warranty refunds go to wallet via VNPay
+                        .paymentStatus(PaymentStatus.REFUNDED)
+                        .date(new Date())
+                        .total(refundAmount)
+                        .userId(order.getUserId())
+                        .transactionCode("REFUND-" + orderId + "-" + System.currentTimeMillis())
+                        .build();
+                payment = paymentRepository.save(payment);
+                log.info("Created Payment record for warranty return order: {}", orderId);
+            } else {
+                payment.setPaymentStatus(PaymentStatus.REFUNDED);
+                payment.setTotal(refundAmount);
+                paymentRepository.save(payment);
+            }
+        } else {
+            // For normal return orders, use order.getTotal()
+            if (payment != null) {
+                payment.setPaymentStatus(PaymentStatus.REFUNDED);
+                paymentRepository.save(payment);
+                refundAmount = order.getTotal();
+            }
+        }
 
-            // 3. Refund to Wallet
+        // 3. Refund to Wallet (if refundAmount > 0)
+        if (refundAmount != null && refundAmount > 0) {
             try {
-                // Assuming full refund of total order value
-                Double refundAmount = order.getTotal();
                 userClient.refundToWallet(order.getUserId(), refundAmount);
-                log.info("Refunded {} to wallet for user {}", refundAmount, order.getUserId());
+                log.info("Refunded {} to wallet for user {} (order: {})", refundAmount, order.getUserId(), orderId);
             } catch (Exception e) {
                 log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
-                // Should we throw exception to rollback?
-                // YES, consistency is key. If wallet refund fails, transaction should probably
-                // fail
-                // OR we accept manual intervention.
-                // For now, I'll catch and rethrow as AppException to trigger rollback if
-                // strict.
-                // Or if we want to allow 'RETURNED' state but 'PENDING REFUND', we might need
-                // more states.
-                // Given requirements, I'll throw to ensure system consistency (no status update
-                // without refund success).
+                // Throw exception to ensure system consistency (no status update without refund success)
                 throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
             }
+        } else {
+            log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
         // 4. Restore Stock

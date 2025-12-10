@@ -39,6 +39,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final WarrantyClaimRepository warrantyClaimRepository;
     private final OrderRepository orderRepository;
     private final OrderDetailRepository orderDetailRepository;
+    private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
     @Lazy
     private final OrderService orderService;
@@ -294,8 +295,18 @@ public class WarrantyServiceImpl implements WarrantyService {
 
         orderDetailRepository.save(newDetail);
 
-        // Update Payment status to PAID (since it's warranty) or handle accordingly
-        // For now, let's assume no payment needed
+        // Create Payment record to track refund amount (actual refund happens on confirmReturn)
+        Double refundAmount = claim.getRefundAmount() != null ? claim.getRefundAmount() : 0.0;
+        Payment payment = Payment.builder()
+                .order(savedOrder)
+                .paymentMethod(PaymentMethod.VNPAY) // Refund back to wallet via refund flow
+                .paymentStatus(PaymentStatus.PENDING)
+                .date(new Date())
+                .total(refundAmount)
+                .userId(savedOrder.getUserId())
+                .transactionCode("WARRANTY-REFUND-" + savedOrder.getId())
+                .build();
+        paymentRepository.save(payment);
 
         return orderService.getOrderById(savedOrder.getId());
     }

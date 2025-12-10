@@ -220,6 +220,19 @@ public class UserController {
                 .data(userService.getTotalUsersCount())
                 .build();
     }
+    
+    @PostMapping("/{userId}/wallet/refund")
+    @Operation(summary = "Refund amount to user's wallet (creates transaction record)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    public ApiResponse<Void> refundToWallet(
+            @PathVariable String userId,
+            @RequestParam Double amount) {
+        userService.refundToWallet(userId, amount);
+        return ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Refund to wallet completed successfully")
+                .build();
+    }
 }
 
 

@@ -196,6 +196,27 @@ public class UserServiceImpl implements UserService {
     public Long getTotalUsersCount() {
         return userRepository.countByIsDeletedFalse();
     }
+    
+    @Override
+    @Transactional
+    public void refundToWallet(String userId, Double amount) {
+        log.info("Refunding {} to wallet for user: {}", amount, userId);
+        
+        if (amount == null || amount <= 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        // Get user's wallet (will create if not exists)
+        var walletResponse = walletService.getWalletByUserId(userId);
+        
+        // Deposit to wallet (this creates a transaction record)
+        String description = String.format("Hoàn tiền đơn hàng - Số tiền: %,.0f VNĐ", amount);
+        String referenceId = "REFUND-" + userId + "-" + System.currentTimeMillis();
+        
+        walletService.deposit(walletResponse.getId(), amount, description, referenceId);
+        
+        log.info("Successfully refunded {} to wallet for user: {}", amount, userId);
+    }
 
     @Override
     public List<UserResponse> getUsersByStatus(String status) {
