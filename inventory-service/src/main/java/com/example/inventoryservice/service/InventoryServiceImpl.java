@@ -73,6 +73,7 @@ public class InventoryServiceImpl implements InventoryService {
             Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                     .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
+
             transferInventory = Inventory.builder()
                     .employeeId(getProfile())
                     .type(EnumTypes.TRANSFER)
@@ -83,6 +84,8 @@ public class InventoryServiceImpl implements InventoryService {
                     .date(LocalDate.now())
                     .build();
 
+            inventory.setToWarehouseId(warehouse.getId());
+            inventory.setToWarehouseName(warehouse.getWarehouseName());
             inventoryRepository.save(transferInventory);
         }
 
@@ -253,6 +256,8 @@ public class InventoryServiceImpl implements InventoryService {
                     inventory.setWarehouse(toWarehouse);
                     inventory.setTransferStatus(TransferStatus.PENDING);
                     inventory.setNote("Yêu cầu chuyển hàng về kho " + toWarehouse.getWarehouseName());
+                    inventory.setToWarehouseId(warehouse.getId());
+                    inventory.setToWarehouseName(warehouse.getWarehouseName());
                     inventoryRepository.save(inventory);
 
                     createInventoryItem(
@@ -974,8 +979,17 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .warehouse(warehouse)
                 .orderId(orderId)
                 .note(note)
-                .transferStatus(TransferStatus.FINISHED)   // OPTION A: luôn FINISHED
+                .transferStatus(TransferStatus.FINISHED)
                 .build();
+
+        InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+                .warehouseId(warehouse.getId())
+                .warehouseName(warehouse.getWarehouseName())
+                .reservedQuantity(reservedHere)
+                .inventory(ticket) // MUST HAVE
+                .build();
+
+        ticket.setReservedWarehouses(List.of(reserved));
 
         // ============================================
         // 5) Tạo danh sách item trong phiếu
@@ -1381,24 +1395,39 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .collect(Collectors.toList());
 
         if (itemResponseList.isEmpty()) {
-            int quantity = parseQuantityFromNote(inventory.getNote());
 
+            int quantity = parseQuantityFromNote(inventory.getNote());
             String extractedProductId = extractProductIdFromCode(inventory.getCode());
 
             if (quantity > 0 && extractedProductId != null) {
-                InventoryItemResponse virtualItem = InventoryItemResponse.builder()
-                        .id(null)
-                        .quantity(quantity)
-                        .reservedQuantity(0)
-                        .productColorId(extractedProductId)
-                        .productName(extractedProductId)
-                        .locationId(inventory.getWarehouse().getId())
-                        .inventoryId(inventory.getId())
-                        .build();
 
-                itemResponseList = List.of(virtualItem);
+                itemResponseList = List.of(
+                        InventoryItemResponse.builder()
+                                .id(null)
+                                .quantity(quantity)
+                                .reservedQuantity(0)
+                                .productColorId(extractedProductId)
+                                .productName(extractedProductId)
+                                .locationId(inventory.getWarehouse() != null ?
+                                        inventory.getWarehouse().getId() : null)
+                                .inventoryId(inventory.getId())
+                                .build()
+                );
             }
         }
+
+
+        List<WarehouseReserveInfo> reservedWarehouses = Optional.ofNullable(inventory.getReservedWarehouses())
+                .orElse(Collections.emptyList())
+                .stream()
+                .map(rw -> WarehouseReserveInfo.builder()
+                        .warehouseId(rw.getWarehouseId())
+                        .warehouseName(rw.getWarehouseName())
+                        .reservedQuantity(rw.getReservedQuantity())
+                        .build()
+                )
+                .collect(Collectors.toList());
+
 
         return InventoryResponse.builder()
                 .id(inventory.getId())
@@ -1410,11 +1439,16 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .note(inventory.getNote())
                 .orderId(inventory.getOrderId())
                 .transferStatus(inventory.getTransferStatus())
-                .warehouseId(inventory.getWarehouse().getId())
-                .warehouseName(inventory.getWarehouse().getWarehouseName())
+                .warehouseId(inventory.getWarehouse() != null ? inventory.getWarehouse().getId() : null)
+                .warehouseName(inventory.getWarehouse() != null ? inventory.getWarehouse().getWarehouseName() : null)
+                .toWarehouseId(inventory.getToWarehouseId())
+                .toWarehouseName(inventory.getToWarehouseName())
                 .itemResponseList(itemResponseList)
+                .reservedWarehouses(reservedWarehouses)
+
                 .build();
     }
+
 
     // Hàm tách ProductID từ mã phiếu
     private String extractProductIdFromCode(String code) {

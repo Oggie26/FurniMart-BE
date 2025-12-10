@@ -31,4 +31,6 @@ public class InventoryResponse {
     private Integer totalQuantity;
     private TransferStatus transferStatus;
     private List<InventoryItemResponse> itemResponseList;
+    private List<WarehouseReserveInfo> reservedWarehouses;
+
 }

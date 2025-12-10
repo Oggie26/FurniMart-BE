@@ -69,6 +69,9 @@ public class Inventory extends AbstractEntity {
     @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InventoryItem> inventoryItems = new ArrayList<>();
 
+    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL)
+    private List<InventoryReservedWarehouse> reservedWarehouses;
+
     @PrePersist
     public void prePersist() {
         if (this.code == null || this.code.isEmpty()) {
