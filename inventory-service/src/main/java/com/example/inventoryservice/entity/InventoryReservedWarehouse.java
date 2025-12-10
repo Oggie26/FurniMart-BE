@@ -30,6 +30,8 @@ public class InventoryReservedWarehouse {
     @Column
     private int reservedQuantity;
 
+    private Boolean isAssignedWarehouse = false;
+
     @ManyToOne(cascade = CascadeType.PERSIST)
     private Inventory inventory;
 }
