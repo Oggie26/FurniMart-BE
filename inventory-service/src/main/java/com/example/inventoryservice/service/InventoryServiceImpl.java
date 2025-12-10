@@ -10,6 +10,7 @@ import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.*;
 import com.example.inventoryservice.service.inteface.InventoryService;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -811,7 +812,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
     }
 @Override
-@Transactional
+@Transactional(propagation = Propagation.REQUIRES_NEW)
 public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
 
     OrderResponse orderResponse = getOrder(orderId);
