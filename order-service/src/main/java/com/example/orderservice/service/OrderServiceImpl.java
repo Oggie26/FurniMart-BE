@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
-
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
     private final ProductClient productClient;
@@ -59,7 +58,6 @@ public class OrderServiceImpl implements OrderService {
     private final DeliveryClient deliveryClient;
     private final InventoryClient inventoryClient;
     private final WarrantyClaimRepository warrantyClaimRepository;
-    @Lazy
     private final WarrantyService warrantyService;
 
     @Override
