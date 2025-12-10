@@ -20,6 +20,7 @@ public class WarrantyClaimResponse {
     private Long id;
     private Long warrantyId;
     private String customerId;
+    private Long addressId;
     private LocalDateTime claimDate;
     private String issueDescription;
     private List<String> customerPhotos;

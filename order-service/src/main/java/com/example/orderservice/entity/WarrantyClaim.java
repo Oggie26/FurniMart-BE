@@ -26,6 +26,9 @@ public class WarrantyClaim extends AbstractEntity {
     @Column(name = "customer_id", nullable = false)
     private String customerId;
 
+    @Column(name = "address_id", nullable = false)
+    private Long addressId;
+
     @Column(name = "claim_date", nullable = false)
     private LocalDateTime claimDate;
 
