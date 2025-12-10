@@ -84,7 +84,7 @@ public class Warranty extends AbstractEntity {
             status = WarrantyStatus.ACTIVE;
         }
         if (warrantyDurationMonths == null) {
-            warrantyDurationMonths = 24; // 2 years default
+            warrantyDurationMonths = 12;
         }
     }
 
