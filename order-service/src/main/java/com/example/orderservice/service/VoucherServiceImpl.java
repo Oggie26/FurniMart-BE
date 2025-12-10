@@ -37,12 +37,6 @@ public class VoucherServiceImpl implements VoucherService {
             throw new AppException(ErrorCode.VOUCHER_CODE_EXISTS);
         }
 
-        // Validate order exists if orderId is provided
-        if (request.getOrderId() != null) {
-            orderRepository.findByIdAndIsDeletedFalse(request.getOrderId())
-                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-        }
-
         Voucher voucher = Voucher.builder()
                 .name(request.getName())
                 .code(request.getCode())
@@ -53,7 +47,6 @@ public class VoucherServiceImpl implements VoucherService {
                 .point(request.getPoint())
                 .type(request.getType())
                 .status(request.getStatus())
-                .orderId(request.getOrderId())
                 .usageLimit(request.getUsageLimit())
                 .minimumOrderAmount(request.getMinimumOrderAmount())
                 .build();
@@ -88,7 +81,7 @@ public class VoucherServiceImpl implements VoucherService {
         List<Voucher> vouchers = voucherRepository.findAll()
                 .stream()
                 .filter(voucher -> !voucher.getIsDeleted())
-                .collect(Collectors.toList());
+                .toList();
 
         return vouchers.stream()
                 .map(this::mapToVoucherResponse)
@@ -143,17 +136,11 @@ public class VoucherServiceImpl implements VoucherService {
         Voucher voucher = voucherRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new AppException(ErrorCode.VOUCHER_NOT_FOUND));
 
-        // Check if new code already exists (if different from current)
-        if (!voucher.getCode().equals(request.getCode()) && 
+        if (!voucher.getCode().equals(request.getCode()) &&
             voucherRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
             throw new AppException(ErrorCode.VOUCHER_CODE_EXISTS);
         }
 
-        // Validate order exists if orderId is provided
-        if (request.getOrderId() != null && !request.getOrderId().equals(voucher.getOrderId())) {
-            orderRepository.findByIdAndIsDeletedFalse(request.getOrderId())
-                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-        }
 
         voucher.setName(request.getName());
         voucher.setCode(request.getCode());
@@ -164,7 +151,6 @@ public class VoucherServiceImpl implements VoucherService {
         voucher.setPoint(request.getPoint());
         voucher.setType(request.getType());
         voucher.setStatus(request.getStatus());
-        voucher.setOrderId(request.getOrderId());
         voucher.setUsageLimit(request.getUsageLimit());
         voucher.setMinimumOrderAmount(request.getMinimumOrderAmount());
 
@@ -293,7 +279,6 @@ public class VoucherServiceImpl implements VoucherService {
                 .point(voucher.getPoint())
                 .type(voucher.getType())
                 .status(voucher.getStatus())
-                .orderId(voucher.getOrderId())
                 .usageLimit(voucher.getUsageLimit())
                 .usedCount(voucher.getUsedCount())
                 .minimumOrderAmount(voucher.getMinimumOrderAmount())
