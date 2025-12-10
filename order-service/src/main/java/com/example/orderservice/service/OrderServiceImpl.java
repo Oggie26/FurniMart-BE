@@ -30,11 +30,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -1281,9 +1281,11 @@ public class OrderServiceImpl implements OrderService {
         // 2. Determine refund amount and handle payment
         Double refundAmount = null;
         Payment payment = order.getPayment();
+        String referenceId = "ORDER-" + orderId;
         
         // Check if this is a WARRANTY_RETURN order
         if (order.getOrderType() == OrderType.WARRANTY_RETURN && order.getWarrantyClaimId() != null) {
+            referenceId = referenceId + "-CLAIM-" + order.getWarrantyClaimId();
             // For WARRANTY_RETURN, get refundAmount from WarrantyClaim
             WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(order.getWarrantyClaimId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
@@ -1292,61 +1294,84 @@ public class OrderServiceImpl implements OrderService {
             
             if (refundAmount == null || refundAmount <= 0) {
                 log.warn("Warranty claim {} has invalid refundAmount: {}", order.getWarrantyClaimId(), refundAmount);
-                refundAmount = 0.0;
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            // Prevent double refund
+            if (payment != null && PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
+                log.warn("Order {} already refunded", orderId);
+                return mapToResponse(order);
             }
             
             // Create Payment record if not exists (for warranty return orders)
             if (payment == null) {
                 payment = Payment.builder()
                         .order(order)
-                        .paymentMethod(PaymentMethod.VNPAY) // Warranty refunds go to wallet via VNPay
-                        .paymentStatus(PaymentStatus.REFUNDED)
+                        .paymentMethod(PaymentMethod.CASH) // Refund back to wallet flow
+                        .paymentStatus(PaymentStatus.REFUNDING)
                         .date(new Date())
                         .total(refundAmount)
                         .userId(order.getUserId())
-                        .transactionCode("REFUND-" + orderId + "-" + System.currentTimeMillis())
+                        .transactionCode("REFUND-" + orderId + "-" + UUID.randomUUID())
                         .build();
                 payment = paymentRepository.save(payment);
                 log.info("Created Payment record for warranty return order: {}", orderId);
             } else {
-                payment.setPaymentStatus(PaymentStatus.REFUNDED);
+                payment.setPaymentStatus(PaymentStatus.REFUNDING);
                 payment.setTotal(refundAmount);
                 paymentRepository.save(payment);
             }
         } else {
             // For normal return orders, use order.getTotal()
-            if (payment != null) {
-                payment.setPaymentStatus(PaymentStatus.REFUNDED);
+            refundAmount = order.getTotal();
+            if (payment == null) {
+                payment = Payment.builder()
+                        .order(order)
+                        .paymentMethod(PaymentMethod.CASH)
+                        .paymentStatus(PaymentStatus.REFUNDING)
+                        .date(new Date())
+                        .total(refundAmount)
+                        .userId(order.getUserId())
+                        .transactionCode("REFUND-" + orderId + "-" + UUID.randomUUID())
+                        .build();
                 paymentRepository.save(payment);
-                refundAmount = order.getTotal();
+            } else {
+                if (PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
+                    log.warn("Order {} already refunded", orderId);
+                    return mapToResponse(order);
+                }
+                payment.setPaymentStatus(PaymentStatus.REFUNDING);
+                paymentRepository.save(payment);
             }
         }
 
         // 3. Refund to Wallet (if refundAmount > 0)
         if (refundAmount != null && refundAmount > 0) {
             try {
-                userClient.refundToWallet(order.getUserId(), refundAmount);
-                log.info("Refunded {} to wallet for user {} (order: {})", refundAmount, order.getUserId(), orderId);
+                userClient.refundToWallet(order.getUserId(), refundAmount, referenceId);
+                // mark payment as refunded
+                payment.setPaymentStatus(PaymentStatus.REFUNDED);
+                paymentRepository.save(payment);
+                log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(), orderId, referenceId);
             } catch (Exception e) {
                 log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
-                // Throw exception to ensure system consistency (no status update without refund success)
+                // keep REFUNDING to indicate pending manual intervention
+                payment.setPaymentStatus(PaymentStatus.REFUNDING);
+                paymentRepository.save(payment);
                 throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
             }
         } else {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        // 4. Restore Stock
-        try {
-            for (OrderDetail detail : order.getOrderDetails()) {
+        // 4. Restore Stock (must succeed to keep consistency)
+        for (OrderDetail detail : order.getOrderDetails()) {
+            try {
                 inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
+            } catch (Exception e) {
+                log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
             }
-            log.info("Restored stock for order: {}", orderId);
-        } catch (Exception e) {
-            log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
-            // Do not fail the return process if stock update fails, just log it.
-            // Or should we fail? Usually financial consistency > inventory consistency.
-            // I will choose to NOT fail, but log ERROR clearly.
         }
 
         return mapToResponse(orderRepository.save(order));

@@ -19,6 +19,7 @@ import com.example.userservice.service.inteface.AddressService;
 import com.example.userservice.service.inteface.EmployeeService;
 import com.example.userservice.service.inteface.UserService;
 import com.example.userservice.service.inteface.WalletService;
+import com.example.userservice.repository.WalletTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,7 @@ public class UserServiceImpl implements UserService {
     private final EmployeeService employeeService;
     private final AddressService addressService;
     private final WalletService walletService;
+    private final WalletTransactionRepository walletTransactionRepository;
 
     @Override
     @Transactional
@@ -199,23 +201,31 @@ public class UserServiceImpl implements UserService {
     
     @Override
     @Transactional
-    public void refundToWallet(String userId, Double amount) {
-        log.info("Refunding {} to wallet for user: {}", amount, userId);
+    public void refundToWallet(String userId, Double amount, String referenceId) {
+        log.info("Refunding {} to wallet for user: {}, ref: {}", amount, userId, referenceId);
         
         if (amount == null || amount <= 0) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        if (referenceId == null || referenceId.isBlank()) {
+            referenceId = "REFUND-" + userId + "-" + System.currentTimeMillis();
+        }
+        
+        // Idempotency: if referenceId exists, skip double credit
+        if (walletTransactionRepository.findByReferenceIdAndIsDeletedFalse(referenceId).isPresent()) {
+            log.warn("Refund already processed for ref: {}", referenceId);
+            return;
         }
         
         // Get user's wallet (will create if not exists)
         var walletResponse = walletService.getWalletByUserId(userId);
         
         // Deposit to wallet (this creates a transaction record)
-        String description = String.format("Hoàn tiền đơn hàng - Số tiền: %,.0f VNĐ", amount);
-        String referenceId = "REFUND-" + userId + "-" + System.currentTimeMillis();
+        String description = String.format("Hoàn tiền đơn hàng - Tham chiếu: %s", referenceId);
         
         walletService.deposit(walletResponse.getId(), amount, description, referenceId);
         
-        log.info("Successfully refunded {} to wallet for user: {}", amount, userId);
+        log.info("Successfully refunded {} to wallet for user: {}, ref: {}", amount, userId, referenceId);
     }
 
     @Override

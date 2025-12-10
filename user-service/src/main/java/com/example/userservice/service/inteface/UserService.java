@@ -67,5 +67,5 @@ public interface UserService {
     Long getTotalUsersCount();
     
     // Refund to user's wallet (creates transaction record)
-    void refundToWallet(String userId, Double amount);
+    void refundToWallet(String userId, Double amount, String referenceId);
 }

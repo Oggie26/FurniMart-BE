@@ -24,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -295,18 +294,10 @@ public class WarrantyServiceImpl implements WarrantyService {
 
         orderDetailRepository.save(newDetail);
 
-        // Create Payment record to track refund amount (actual refund happens on confirmReturn)
-        Double refundAmount = claim.getRefundAmount() != null ? claim.getRefundAmount() : 0.0;
-        Payment payment = Payment.builder()
-                .order(savedOrder)
-                .paymentMethod(PaymentMethod.VNPAY) // Refund back to wallet via refund flow
-                .paymentStatus(PaymentStatus.PENDING)
-                .date(new Date())
-                .total(refundAmount)
-                .userId(savedOrder.getUserId())
-                .transactionCode("WARRANTY-REFUND-" + savedOrder.getId())
-                .build();
-        paymentRepository.save(payment);
+        // Payment will be created at confirmReturn to avoid pending records
+        if (claim.getRefundAmount() == null || claim.getRefundAmount() <= 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
         return orderService.getOrderById(savedOrder.getId());
     }
@@ -333,26 +324,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         Double totalRepairCost = warrantyClaimRepository.sumRepairCost();
         Double totalRefundAmount = warrantyClaimRepository.sumRefundAmount();
 
-        // Find recent claims
-        // Currently getAll, should limit
-        List<WarrantyClaim> recentClaims = warrantyClaimRepository.findByWarrantyIdOrderByClaimDateDesc(
-                warrantyClaimRepository.findAll().stream().findFirst().map(WarrantyClaim::getWarrantyId).orElse(0L)); // This
-                                                                                                                      // query
-                                                                                                                      // is
-                                                                                                                      // wrong
-                                                                                                                      // for
-                                                                                                                      // "recent
-                                                                                                                      // claims",
-                                                                                                                      // need
-                                                                                                                      // specific
-                                                                                                                      // query.
-                                                                                                                      // Let's
-                                                                                                                      // just
-                                                                                                                      // return
-                                                                                                                      // empty
-                                                                                                                      // list
-                                                                                                                      // or
-                                                                                                                      // all
                                                                                                                       // claims
                                                                                                                       // limited.
                                                                                                                       // For

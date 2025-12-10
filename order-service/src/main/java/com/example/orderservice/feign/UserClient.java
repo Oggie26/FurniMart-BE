@@ -29,5 +29,6 @@ public interface UserClient {
     ApiResponse<Long> getTotalUsersCount();
 
     @PostMapping("/api/users/{userId}/wallet/refund")
-    ApiResponse<Void> refundToWallet(@PathVariable String userId, @RequestParam Double amount);
+    ApiResponse<Void> refundToWallet(@PathVariable String userId, @RequestParam Double amount,
+                                     @RequestParam(required = false) String referenceId);
 }

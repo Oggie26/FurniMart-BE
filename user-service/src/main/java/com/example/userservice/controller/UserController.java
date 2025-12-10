@@ -226,8 +226,9 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<Void> refundToWallet(
             @PathVariable String userId,
-            @RequestParam Double amount) {
-        userService.refundToWallet(userId, amount);
+            @RequestParam Double amount,
+            @RequestParam(required = false) String referenceId) {
+        userService.refundToWallet(userId, amount, referenceId);
         return ApiResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Refund to wallet completed successfully")
