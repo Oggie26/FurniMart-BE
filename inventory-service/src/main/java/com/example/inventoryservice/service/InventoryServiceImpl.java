@@ -1416,7 +1416,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                         rw.getWarehouseName(),
                         rw.getReservedQuantity()
                 ))
-                .collect(Collectors.toList());
+                .toList();
 
         reservedWarehouses.addAll(dbReserved);
 
@@ -1431,7 +1431,7 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                     WarehouseReserveInfo.builder()
                             .warehouseId(mainWarehouseId)
                             .warehouseName(mainWarehouseName)
-                            .reservedQuantity(0) // default nếu kho chính không có giữ hàng
+                            .reservedQuantity(0)
                             .build()
             );
         }
@@ -1446,15 +1446,10 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .note(inventory.getNote())
                 .orderId(inventory.getOrderId())
                 .transferStatus(inventory.getTransferStatus())
-
-                // MAIN warehouse
                 .warehouseId(mainWarehouseId)
                 .warehouseName(mainWarehouseName)
-
-                // Transfer warehouse
                 .toWarehouseId(inventory.getToWarehouseId())
                 .toWarehouseName(inventory.getToWarehouseName())
-
                 .itemResponseList(itemResponseList)
                 .reservedWarehouses(reservedWarehouses)
                 .build();
