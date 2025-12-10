@@ -10,12 +10,26 @@ spring:
       ddl-auto: update
     show-sql: true
     generate-ddl: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
 
   datasource:
     url: jdbc:postgresql://inventory-db:5432/inventory_db
-#    url: jdbc:postgresql://localhost:5432/inventory_db
+#    url: jdbc:postgresql://localhost:5438/inventory_db
     username: postgres
     password: 123456
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
   kafka:
     bootstrap-servers: kafka:9092
     consumer:

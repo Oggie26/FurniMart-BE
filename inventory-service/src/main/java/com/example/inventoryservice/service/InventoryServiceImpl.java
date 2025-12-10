@@ -10,7 +10,6 @@ import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
 import com.example.inventoryservice.response.*;
 import com.example.inventoryservice.service.inteface.InventoryService;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -462,6 +461,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
+    @SuppressWarnings("unused")
     private void preloadWarehouseNames(
             Map<Warehouse, List<InventoryItem>> warehouseMap,
             Map<String, String> warehouseNameCache
