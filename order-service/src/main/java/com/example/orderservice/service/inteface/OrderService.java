@@ -12,18 +12,40 @@ import java.util.List;
 
 public interface OrderService {
     OrderResponse createOrder(Long cartId, Long addressId, PaymentMethod paymentMethod, String voucherCode);
+
     OrderResponse createPreOrder(Long cartId, Long addressId, String voucherCode);
+
     OrderResponse createOrderForStaff(StaffCreateOrderRequest request);
+
     OrderResponse getOrderById(Long id);
+
     void cancelOrder(CancelOrderRequest cancelOrderRequest);
+
     void handlePaymentCOD(Long orderId);
+
     OrderResponse updateOrderStatus(Long orderId, EnumProcessOrder status);
+
     PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size);
+
     PageResponse<OrderResponse> searchOrder(String request, int page, int size);
+
     PageResponse<OrderResponse> searchOrderByStoreId(String request, int page, int size, String storeId);
+
     PageResponse<OrderResponse> getOrdersByStatus(EnumProcessOrder status, int page, int size);
+
     PageResponse<OrderResponse> getOrdersByStoreId(String storeId, EnumProcessOrder status, int page, int size);
+
     List<ProcessOrderResponse> getOrderStatusHistory(Long orderId);
+
     PageResponse<OrderResponse> getStoreOrdersWithInvoice(String storeId, int page, int size);
+
     boolean handleConfirmPayment(Long orderId);
+
+    OrderResponse requestReturn(Long orderId, String reason, String note);
+
+    OrderResponse acceptReturn(Long orderId);
+
+    OrderResponse rejectReturn(Long orderId, String reason);
+
+    OrderResponse confirmReturn(Long orderId);
 }
