@@ -3,7 +3,6 @@ package com.example.productservice.service;
 import com.example.productservice.entity.*;
 import com.example.productservice.enums.EnumStatus;
 import com.example.productservice.enums.ErrorCode;
-import com.example.productservice.event.ProductCreatedEvent;
 import com.example.productservice.exception.AppException;
 import com.example.productservice.repository.*;
 import com.example.productservice.request.ProductRequest;
@@ -14,14 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 @Service
@@ -32,7 +25,6 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final MaterialRepository materialRepository;
-    private final KafkaTemplate<String, ProductCreatedEvent> kafkaTemplate;
 
     @Override
     @Transactional

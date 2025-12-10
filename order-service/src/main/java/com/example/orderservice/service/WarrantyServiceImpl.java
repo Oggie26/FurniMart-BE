@@ -44,7 +44,6 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final WarrantyClaimRepository warrantyClaimRepository;
     private final OrderRepository orderRepository;
     private final OrderDetailRepository orderDetailRepository;
-    private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
     private final UserClient userClient;
     @Lazy

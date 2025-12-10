@@ -1,6 +1,5 @@
 package com.example.userservice.response;
 
-import jakarta.persistence.Column;
 import lombok.*;
 
 @Getter

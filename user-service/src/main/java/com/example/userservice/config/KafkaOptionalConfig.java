@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.SendResult;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -18,18 +20,21 @@ public class KafkaOptionalConfig {
 
     @Bean
     @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @SuppressWarnings("null")
     public KafkaTemplate<String, Object> kafkaTemplate() {
 
         return new KafkaTemplate<String, Object>(null) {
             @Override
-            public CompletableFuture<SendResult<String, Object>> send(String topic, Object data) {
+            @NonNull
+            public CompletableFuture<SendResult<String, Object>> send(@NonNull String topic, @Nullable Object data) {
                 CompletableFuture<SendResult<String, Object>> future = new CompletableFuture<>();
                 future.complete(null);
                 return future;
             }
             
             @Override
-            public CompletableFuture<SendResult<String, Object>> send(String topic, String key, Object data) {
+            @NonNull
+            public CompletableFuture<SendResult<String, Object>> send(@NonNull String topic, @NonNull String key, @Nullable Object data) {
                 CompletableFuture<SendResult<String, Object>> future = new CompletableFuture<>();
                 future.complete(null);
                 return future;
@@ -39,17 +44,20 @@ public class KafkaOptionalConfig {
 
     @Bean
     @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @Nullable
     public ProducerFactory<String, Object> producerFactory() {
         return null;
     }
 
     @Bean
     @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @SuppressWarnings("null")
     public KafkaTemplate<String, AccountCreatedEvent> accountCreatedEventKafkaTemplate() {
 
         return new KafkaTemplate<String, AccountCreatedEvent>(null) {
             @Override
-            public CompletableFuture<SendResult<String, AccountCreatedEvent>> send(String topic, AccountCreatedEvent data) {
+            @NonNull
+            public CompletableFuture<SendResult<String, AccountCreatedEvent>> send(@NonNull String topic, @Nullable AccountCreatedEvent data) {
 
                 CompletableFuture<SendResult<String, AccountCreatedEvent>> future = new CompletableFuture<>();
                 future.complete(null);
@@ -60,6 +68,7 @@ public class KafkaOptionalConfig {
 
     @Bean
     @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @Nullable
     public ProducerFactory<String, AccountCreatedEvent> accountCreatedEventProducerFactory() {
         return null;
     }

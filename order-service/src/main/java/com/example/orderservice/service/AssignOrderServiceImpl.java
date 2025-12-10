@@ -16,13 +16,11 @@ import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.repository.ProcessOrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.AssignOrderService;
-import com.example.orderservice.service.PDFService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -41,7 +39,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
 //    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
-    private final PDFService pdfService;
 
     @Override
     @Transactional
@@ -69,6 +66,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         orderRepository.save(order);
 
 }
+    @SuppressWarnings("unused")
     private StoreResponse getStoreResponse(String storeId) {
         try {
             ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
@@ -182,11 +180,13 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         processOrderRepository.save(assignProcess);
     }
 
+    @SuppressWarnings("unused")
     private List<InventoryResponse> getInventoryResponse(String productId) {
         ApiResponse<List<InventoryResponse>>response =  inventoryClient.getInventoryByProduct(productId);
         return response.getData();
     }
 
+    @SuppressWarnings("unused")
     private String getStoreById(String storeId) {
         ApiResponse<StoreResponse> response = storeClient.getStoreById(storeId);
         if (response == null || response.getData() == null) {
@@ -211,6 +211,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         return resp.getData();
     }
 
+    @SuppressWarnings("unused")
     private UserResponse safeGetUser(String userId) {
         if (userId == null) return null;
         try {

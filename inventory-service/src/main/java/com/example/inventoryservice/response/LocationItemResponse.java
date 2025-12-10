@@ -1,7 +1,5 @@
 package com.example.inventoryservice.response;
 
-import com.example.inventoryservice.entity.Zone;
-import com.example.inventoryservice.enums.EnumRowLabel;
 import com.example.inventoryservice.enums.EnumStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

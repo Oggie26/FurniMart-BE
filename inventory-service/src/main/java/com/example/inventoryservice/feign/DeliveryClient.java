@@ -1,9 +1,7 @@
 package com.example.inventoryservice.feign;
 
-import com.example.inventoryservice.enums.EnumProcessOrder;
 import com.example.inventoryservice.response.ApiResponse;
 import com.example.inventoryservice.response.DeliveryAssignmentResponse;
-import com.example.inventoryservice.response.OrderResponse;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.cloud.openfeign.FeignClient;

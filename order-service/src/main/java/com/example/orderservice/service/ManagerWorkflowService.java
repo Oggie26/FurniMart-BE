@@ -12,7 +12,6 @@ import com.example.orderservice.repository.ProcessOrderRepository;
 import com.example.orderservice.response.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,8 +60,6 @@ public class ManagerWorkflowService {
                     log.warn("No inventory found for productColorId: {}", detail.getProductColorId());
                     continue;
                 }
-                
-                InventoryResponse warehouseInventory = inventories.get(0);
 
                 // Decrease stock from warehouse (this creates an export transaction)
                 // Note: In a real system, you might want to create a proper import-export order entity

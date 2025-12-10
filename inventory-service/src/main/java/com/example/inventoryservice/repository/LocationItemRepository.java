@@ -1,7 +1,6 @@
 package com.example.inventoryservice.repository;
 
 import com.example.inventoryservice.entity.LocationItem;
-import com.example.inventoryservice.enums.EnumRowLabel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

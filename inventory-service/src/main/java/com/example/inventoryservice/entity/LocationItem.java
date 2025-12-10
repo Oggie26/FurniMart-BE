@@ -1,5 +1,4 @@
 package com.example.inventoryservice.entity;
-import com.example.inventoryservice.enums.EnumRowLabel;
 import com.example.inventoryservice.enums.EnumStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

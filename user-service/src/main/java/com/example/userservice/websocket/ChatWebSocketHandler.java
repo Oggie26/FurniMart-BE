@@ -3,7 +3,6 @@ package com.example.userservice.websocket;
 import com.example.userservice.entity.ChatMessage;
 import com.example.userservice.entity.User;
 import com.example.userservice.repository.ChatParticipantRepository;
-import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.ChatMessageRequest;
 import com.example.userservice.response.ChatMessageResponse;
@@ -14,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.lang.NonNull;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,13 +38,12 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     private final Map<String, String> userSessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     
-    private final ChatRepository chatRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
     private final ChatMessageService chatMessageService;
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+    public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
         log.info("WebSocket connection established: {}", session.getId());
         
         // Extract user ID from query parameters or headers
@@ -66,7 +66,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     }
 
     @Override
-    public void handleMessage(WebSocketSession session, org.springframework.web.socket.WebSocketMessage<?> message) throws Exception {
+    public void handleMessage(@NonNull WebSocketSession session, @NonNull org.springframework.web.socket.WebSocketMessage<?> message) throws Exception {
         log.info("Received WebSocket message: {}", message.getPayload());
         
         try {
@@ -105,13 +105,13 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     }
 
     @Override
-    public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+    public void handleTransportError(@NonNull WebSocketSession session, @NonNull Throwable exception) throws Exception {
         log.error("WebSocket transport error for session: {}", session.getId(), exception);
         cleanupSession(session);
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
+    public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus closeStatus) throws Exception {
         log.info("WebSocket connection closed: {} with status: {}", session.getId(), closeStatus);
         cleanupSession(session);
     }
@@ -333,8 +333,9 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
     private String extractUserIdFromSession(WebSocketSession session) {
         // Try to get user ID from query parameters
-        if (session.getUri() != null) {
-            String query = session.getUri().getQuery();
+        URI uri = session.getUri();
+        if (uri != null) {
+            String query = uri.getQuery();
             if (query != null) {
                 String[] params = query.split("&");
                 for (String param : params) {

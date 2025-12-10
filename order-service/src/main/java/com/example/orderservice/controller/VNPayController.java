@@ -4,11 +4,8 @@ import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.Payment;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
-import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
-import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
-import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.service.VNPayService;
@@ -19,7 +16,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -34,7 +30,6 @@ import java.util.Map;
 public class VNPayController {
 
     private final OrderRepository orderRepository;
-    private final UserClient userClient;
 
     @Value("${vnpay.hashSecret}")
     private String hashSecret;

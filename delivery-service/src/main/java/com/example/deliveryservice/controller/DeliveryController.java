@@ -1,6 +1,5 @@
 package com.example.deliveryservice.controller;
 
-import com.example.deliveryservice.entity.DeliveryAssignment;
 import com.example.deliveryservice.request.AssignOrderRequest;
 import com.example.deliveryservice.request.PrepareProductsRequest;
 import com.example.deliveryservice.request.RejectAssignmentRequest;

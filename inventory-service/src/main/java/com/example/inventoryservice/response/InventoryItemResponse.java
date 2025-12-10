@@ -1,12 +1,7 @@
 package com.example.inventoryservice.response;
 
-import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.entity.LocationItem;
-import com.example.inventoryservice.enums.EnumTypes;
-import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Data
 @Builder

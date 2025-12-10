@@ -2,11 +2,9 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.User;
-import com.example.userservice.entity.Wallet;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
-import com.example.userservice.enums.WalletStatus;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;

@@ -1,11 +1,8 @@
 package com.example.productservice.repository;
 
 import com.example.productservice.entity.ProductColor;
-import com.example.productservice.response.ProductColorDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface ProductColorRepository extends JpaRepository<ProductColor, String> {

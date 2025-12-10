@@ -9,7 +9,6 @@ import com.example.inventoryservice.response.InventoryResponse;
 import com.example.inventoryservice.response.LowStockAlertResponse;
 import com.example.inventoryservice.response.ProductLocationResponse;
 import com.example.inventoryservice.response.ReserveStockResponse;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 

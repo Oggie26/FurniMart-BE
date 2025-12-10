@@ -2,7 +2,6 @@ package com.example.inventoryservice.repository;
 
 import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.enums.EnumPurpose;
-import com.example.inventoryservice.enums.TransferStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

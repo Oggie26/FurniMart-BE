@@ -1,7 +1,6 @@
 package com.example.productservice.controller;
 
 import com.example.productservice.entity.Color;
-import com.example.productservice.entity.Product;
 import com.example.productservice.enums.ErrorCode;
 import com.example.productservice.exception.AppException;
 import com.example.productservice.repository.ColorRepository;

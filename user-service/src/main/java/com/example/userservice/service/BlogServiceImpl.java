@@ -1,15 +1,11 @@
 package com.example.userservice.service;
 
-import com.example.userservice.entity.Account;
 import com.example.userservice.entity.Blog;
 import com.example.userservice.entity.Employee;
-import com.example.userservice.entity.User;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
-import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.BlogRepository;
 import com.example.userservice.repository.EmployeeRepository;
-import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.BlogRequest;
 import com.example.userservice.response.BlogResponse;
 import com.example.userservice.response.PageResponse;
@@ -20,8 +16,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

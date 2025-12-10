@@ -16,7 +16,7 @@ public class EmployeeStoreRequest {
         regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
         message = "Employee ID phải là UUID hợp lệ (ví dụ: ef5ec40c-198f-4dfb-84dc-5bf86db68940)"
     )
-    @Schema(description = "ID of the employee to add to store", example = "ef5ec40c-198f-4dfb-84dc-5bf86db68940", required = true)
+    @Schema(description = "ID of the employee to add to store", example = "ef5ec40c-198f-4dfb-84dc-5bf86db68940", requiredMode = Schema.RequiredMode.REQUIRED)
     private String employeeId;
     
     @NotBlank(message = "Store ID không được để trống")
@@ -24,7 +24,7 @@ public class EmployeeStoreRequest {
         regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
         message = "Store ID phải là UUID hợp lệ (ví dụ: 8d46e317-0596-4413-81b6-1a526398b3d7)"
     )
-    @Schema(description = "ID of the store", example = "8d46e317-0596-4413-81b6-1a526398b3d7", required = true)
+    @Schema(description = "ID of the store", example = "8d46e317-0596-4413-81b6-1a526398b3d7", requiredMode = Schema.RequiredMode.REQUIRED)
     private String storeId;
 }
 
