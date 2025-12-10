@@ -223,10 +223,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         }
 
         switch (request.getActionType()) {
-            case EXCHANGE:
-                claim.setStatus(WarrantyClaimStatus.RESOLVED);
-                claim.setExchangeProductColorId(request.getExchangeProductColorId());
-                break;
             case RETURN:
                 claim.setStatus(WarrantyClaimStatus.RESOLVED);
                 claim.setRefundAmount(request.getRefundAmount());
@@ -258,8 +254,7 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
         }
 
-        if (claim.getActionType() != WarrantyActionType.EXCHANGE
-                && claim.getActionType() != WarrantyActionType.RETURN) {
+        if (claim.getActionType() != WarrantyActionType.RETURN) {
             throw new AppException(ErrorCode.CANNOT_CREATE_WARRANTY_ORDER);
         }
 
@@ -272,8 +267,7 @@ public class WarrantyServiceImpl implements WarrantyService {
         OrderDetail originalDetail = orderDetailRepository.findById(warranty.getOrderDetailId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        OrderType newOrderType = (claim.getActionType() == WarrantyActionType.EXCHANGE) ? OrderType.WARRANTY_EXCHANGE
-                : OrderType.WARRANTY_RETURN;
+        OrderType newOrderType = OrderType.WARRANTY_RETURN;
 
         // Create new Order
         Order newOrder = Order.builder()
@@ -293,8 +287,7 @@ public class WarrantyServiceImpl implements WarrantyService {
         // Create OrderDetail
         OrderDetail newDetail = OrderDetail.builder()
                 .order(savedOrder)
-                .productColorId(claim.getExchangeProductColorId() != null ? claim.getExchangeProductColorId()
-                        : originalDetail.getProductColorId())
+                .productColorId(originalDetail.getProductColorId())
                 .quantity(1)
                 .price(0.0)
                 .build();
@@ -320,7 +313,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         Long pendingClaims = warrantyClaimRepository.countByStatusAndIsDeletedFalse(WarrantyClaimStatus.PENDING);
         Long resolvedClaims = warrantyClaimRepository.countByStatusAndIsDeletedFalse(WarrantyClaimStatus.RESOLVED);
 
-        Long exchangeCount = warrantyClaimRepository.countByActionTypeAndIsDeletedFalse(WarrantyActionType.EXCHANGE);
         Long returnCount = warrantyClaimRepository.countByActionTypeAndIsDeletedFalse(WarrantyActionType.RETURN);
         Long repairCount = warrantyClaimRepository.countByActionTypeAndIsDeletedFalse(WarrantyActionType.REPAIR);
         Long rejectedCount = warrantyClaimRepository.countByStatusAndIsDeletedFalse(WarrantyClaimStatus.REJECTED); // Or
@@ -368,7 +360,6 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .totalClaims(totalClaims)
                 .pendingClaims(pendingClaims)
                 .resolvedClaims(resolvedClaims)
-                .exchangeCount(exchangeCount)
                 .returnCount(returnCount)
                 .repairCount(repairCount)
                 .rejectedCount(rejectedCount)
@@ -478,7 +469,6 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .adminId(claim.getAdminId())
                 .actionType(claim.getActionType())
                 .repairCost(getVisibleRepairCost(claim))
-                .exchangeProductColorId(claim.getExchangeProductColorId())
                 .refundAmount(claim.getRefundAmount())
                 .createdAt(claim.getCreatedAt())
                 .updatedAt(claim.getUpdatedAt())

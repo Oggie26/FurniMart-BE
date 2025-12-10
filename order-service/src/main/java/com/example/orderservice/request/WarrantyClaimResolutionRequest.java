@@ -24,9 +24,6 @@ public class WarrantyClaimResolutionRequest {
     // For REPAIR action
     private Double repairCost;
 
-    // For EXCHANGE action
-    private String exchangeProductColorId;
-
     // For RETURN action
     private Double refundAmount;
 }

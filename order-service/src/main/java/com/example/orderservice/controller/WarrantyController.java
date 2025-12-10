@@ -163,7 +163,7 @@ public class WarrantyController {
     }
 
     @PostMapping("/claims/{claimId}/create-order")
-    @Operation(summary = "Create order from warranty claim (Exchange/Return)")
+    @Operation(summary = "Create order from warranty claim (Return)")
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
     public ApiResponse<OrderResponse> createWarrantyOrder(@PathVariable Long claimId) {
         return ApiResponse.<OrderResponse>builder()
