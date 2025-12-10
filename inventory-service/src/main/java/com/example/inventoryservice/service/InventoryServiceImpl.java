@@ -1136,7 +1136,7 @@ private int reserveAtWarehouse_OptionA(
 
     if (reservedHere <= 0) return 0;
 
-    // 2. Lấy thông tin sản phẩm
+    // 2. Thông tin sản phẩm & warehouse
     var pc = getProductName(productColorId);
     String productName = pc.getProduct().getName();
     String colorName = pc.getColor().getColorName();
@@ -1146,22 +1146,19 @@ private int reserveAtWarehouse_OptionA(
             "\nSản phẩm: " + productName + " (" + colorName + ")" +
             "\nTrạng thái: Giữ hàng thành công";
 
-    // 3. Lấy ticket Inventory hiện có cho order (nếu chưa có thì tạo mới)
-    Inventory ticket = inventoryRepository.findByOrderId(orderId)
-            .orElseGet(() -> Inventory.builder()
-                    .employeeId("SYSTEM_AUTO")
-                    .type(EnumTypes.RESERVE)
-                    .purpose(EnumPurpose.RESERVE)
-                    .date(LocalDate.now())
-                    .orderId(orderId)
-                    .transferStatus(TransferStatus.FINISHED)
-                    .build());
+    // 3. Tạo ticket riêng cho kho này
+    Inventory ticket = Inventory.builder()
+            .employeeId("SYSTEM_AUTO")
+            .type(EnumTypes.RESERVE)
+            .purpose(EnumPurpose.RESERVE)
+            .date(LocalDate.now())
+            .orderId(orderId)
+            .transferStatus(TransferStatus.FINISHED)
+            .note(note)
+            .warehouse(warehouse)
+            .build();
 
-    ticket.setNote(ticket.getNote() == null ? note : ticket.getNote() + "\n" + note);
-    ticket.setWarehouse(warehouse); // optional: lưu kho chính nếu cần
-    ticket = inventoryRepository.save(ticket);
-
-    // 4. Tạo reservedWarehouse cho kho này
+    // 4. Tạo reservedWarehouse
     InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
             .warehouseId(warehouse.getId())
             .warehouseName(warehouse.getWarehouseName())
@@ -1170,14 +1167,10 @@ private int reserveAtWarehouse_OptionA(
             .inventory(ticket)
             .build();
 
-    List<InventoryReservedWarehouse> allReservedForOrder = ticket.getReservedWarehouses();
-    if (allReservedForOrder == null) allReservedForOrder = new ArrayList<>();
-    allReservedForOrder.add(reserved);
-    ticket.setReservedWarehouses(allReservedForOrder);
+    ticket.setReservedWarehouses(List.of(reserved));
 
     // 5. Tạo InventoryItem cho ticket
-    List<InventoryItem> ticketItems = ticket.getInventoryItems();
-    if (ticketItems == null) ticketItems = new ArrayList<>();
+    List<InventoryItem> ticketItems = new ArrayList<>();
     for (var entry : takenPerColor.entrySet()) {
         ticketItems.add(
                 InventoryItem.builder()
@@ -1189,8 +1182,9 @@ private int reserveAtWarehouse_OptionA(
     }
     ticket.setInventoryItems(ticketItems);
 
-    // 6. Lưu tất cả reservedWarehouse
-    inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
+    // 6. Lưu ticket & reservedWarehouse
+    ticket = inventoryRepository.save(ticket);
+    inventoryReservedWarehouseRepository.saveAll(ticket.getReservedWarehouses());
     ticketsToCreateOut.add(ticket);
 
     return reservedHere;
@@ -1315,11 +1309,41 @@ private int reserveAtWarehouse_OptionA(
     }
 
 
+//    @Override
+//    public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
+//        return inventoryRepository.findAllByWarehouse_Id(warehouseId)
+//                .stream().map(this::mapToInventoryResponse).collect(Collectors.toList());
+//    }
+
     @Override
     public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
-        return inventoryRepository.findAllByWarehouse_Id(warehouseId)
-                .stream().map(this::mapToInventoryResponse).collect(Collectors.toList());
+        List<InventoryReservedWarehouse> reservedList =
+                inventoryReservedWarehouseRepository.findByWarehouseIdWithInventory(warehouseId);
+
+        return reservedList.stream()
+                .map(rw -> {
+                    InventoryResponse resp = mapToInventoryResponse(rw.getInventory());
+
+                    // Nếu list reservedWarehouses null, tạo mới
+                    if (resp.getReservedWarehouses() == null) {
+                        resp.setReservedWarehouses(new ArrayList<>());
+                    }
+
+                    // Thêm thông tin warehouse hiện tại
+                    resp.getReservedWarehouses().add(
+                            WarehouseReserveInfo.builder()
+                                    .warehouseId(rw.getWarehouseId())
+                                    .warehouseName(rw.getWarehouseName())
+                                    .reservedQuantity(rw.getReservedQuantity())
+                                    .build()
+                    );
+
+                    return resp;
+                })
+                .collect(Collectors.toList());
     }
+
+
 
     @Override
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
