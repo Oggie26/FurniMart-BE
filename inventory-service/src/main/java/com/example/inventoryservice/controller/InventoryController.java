@@ -21,6 +21,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/inventories")
 @RequiredArgsConstructor
@@ -450,6 +452,21 @@ public class InventoryController {
         return ApiResponse.<List<InventoryResponse>>builder()
                 .status(200)
                 .message("Lấy danh sách phiếu giữ hàng đang chờ xử lý thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Lấy view phiếu kho cho 1 warehouse (local + global RESERVE)")
+    @GetMapping("/warehouse/view")
+    public ApiResponse<InventoryWarehouseViewResponse> getWarehouseInventoryView(
+            @RequestParam String warehouseId
+    ) {
+        InventoryWarehouseViewResponse response =
+                inventoryService.getWarehouseInventoryView(warehouseId);
+
+        return ApiResponse.<InventoryWarehouseViewResponse>builder()
+                .status(200)
+                .message("Lấy view phiếu kho thành công")
                 .data(response)
                 .build();
     }

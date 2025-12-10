@@ -1671,6 +1671,32 @@ public class InventoryServiceImpl implements InventoryService {
                 .stream().map(this::mapToInventoryResponse).collect(Collectors.toList());
     }
 
+    @Override
+    public InventoryWarehouseViewResponse getWarehouseInventoryView(String warehouseId) {
+
+        // 1) Inventory của riêng kho đó
+        List<InventoryResponse> localResponses = inventoryRepository
+                .findAllByWarehouse_Id(warehouseId)
+                .stream()
+                .map(this::mapToInventoryResponse)
+                .toList();
+
+        // 2) Tất cả phiếu giữ hàng toàn hệ thống (RESERVE)
+        List<InventoryResponse> globalResponses = inventoryRepository
+                .findAllByType(EnumTypes.RESERVE)
+                .stream()
+                .map(this::mapToInventoryResponse)
+                .toList();
+
+        // 3) Trả về response Model C
+        return InventoryWarehouseViewResponse.builder()
+                .warehouseId(warehouseId)
+                .localTickets(localResponses)
+                .globalTickets(globalResponses)
+                .build();
+    }
+
+
 
 
 //    @Override

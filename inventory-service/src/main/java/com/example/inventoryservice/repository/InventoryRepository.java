@@ -2,6 +2,7 @@ package com.example.inventoryservice.repository;
 
 import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.enums.EnumPurpose;
+import com.example.inventoryservice.enums.EnumTypes;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,4 +31,8 @@ List<Inventory> findAllByWarehouse_IdAndPurpose(String warehouseId, EnumPurpose 
 
     Optional<Inventory> findByOrderIdAndWarehouseId(Long orderId, String warehouseId);
     List<Inventory> findAllByOrderId(Long orderId);
+
+    List<Inventory> findAllByType(EnumTypes type);
+
+
 }
