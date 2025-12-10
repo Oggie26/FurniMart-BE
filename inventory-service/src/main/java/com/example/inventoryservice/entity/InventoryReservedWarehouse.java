@@ -30,7 +30,6 @@ public class InventoryReservedWarehouse {
     @Column
     private int reservedQuantity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inventory_id")
+    @ManyToOne(cascade = CascadeType.PERSIST)
     private Inventory inventory;
 }
