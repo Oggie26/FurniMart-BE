@@ -1167,7 +1167,7 @@ private int reserveAtWarehouse_OptionA(
             .inventory(ticket)
             .build();
 
-    ticket.setReservedWarehouses(List.of(reserved));
+    ticket.setReservedWarehouses(new ArrayList<>(List.of(reserved)));
 
     // 5. Tạo InventoryItem cho ticket
     List<InventoryItem> ticketItems = new ArrayList<>();
