@@ -226,16 +226,16 @@ public class WarrantyController {
                                 .build();
         }
 
-//        @PostMapping("/claims/{claimId}/create-order")
-//        @Operation(summary = "Create order from warranty claim (Return)")
-//        @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
-//        public ApiResponse<OrderResponse> createWarrantyOrder(@PathVariable Long claimId) {
-//                return ApiResponse.<OrderResponse>builder()
-//                                .status(HttpStatus.CREATED.value())
-//                                .message("Warranty order created successfully")
-//                                .data(warrantyService.createWarrantyOrder(claimId))
-//                                .build();
-//        }
+        @PostMapping("/claims/{claimId}/create-order")
+        @Operation(summary = "Create order from warranty claim (Return)")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+        public ApiResponse<OrderResponse> createWarrantyOrder(@PathVariable Long claimId) {
+                return ApiResponse.<OrderResponse>builder()
+                                .status(HttpStatus.CREATED.value())
+                                .message("Warranty order created successfully")
+                                .data(warrantyService.createWarrantyOrder(claimId))
+                                .build();
+        }
 
         @GetMapping("/report")
         @Operation(summary = "Get warranty report (Admin/Manager only)")

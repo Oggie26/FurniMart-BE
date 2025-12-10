@@ -37,7 +37,9 @@ public class InventoryServiceImpl implements InventoryService {
     private final ProductClient productClient;
     private final DeliveryClient deliveryClient;
     private final StoreClient storeClient;
+    @SuppressWarnings("unused")
     private final InventoryReservedWarehouseRepository inventoryReservedWarehouseRepository;
+    @SuppressWarnings("unused")
     private final PDFService pdfService;
 
     @Override
@@ -529,42 +531,26 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-//@Override
-//@Transactional
-//public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
-//
-//    OrderResponse orderResponse = getOrder(orderId);
-//
-//    Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
-//            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-//
-//    List<InventoryItem> allSystemItems = inventoryItemRepository
-//            .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
-//
-//    Map<Warehouse, List<InventoryItem>> warehouseMap = allSystemItems.stream()
-//            .collect(Collectors.groupingBy(item -> item.getLocationItem().getZone().getWarehouse()));
-//
-//    Map<String, String> warehouseNameCache = new HashMap<>();
-//    preloadWarehouseNames(warehouseMap, warehouseNameCache);
-//
-//    int remainingToReserve = quantity;
-//    int totalReserved = 0;
-//
-//    List<InventoryItem> itemsToUpdate = new ArrayList<>();
-//    List<Inventory> ticketsToCreate = new ArrayList<>();
-//    Map<String, Integer> warehouseReservedMap = new HashMap<>();
-//    // ============================================================
-//    // CASE 1 — Ưu tiên kho assigned
-//    // ============================================================
-//    if (warehouseMap.containsKey(assignedWarehouse)) {
-//
-//        int reservedAtHome = reserveAtSpecificWarehouse(
-//                assignedWarehouse,
-//                warehouseMap.get(assignedWarehouse),
-//                remainingToReserve,
-//                orderId,
-//                productColorId,
-//                TransferStatus.FINISHED,
+    private void preloadWarehouseNames(
+            Map<Warehouse, List<InventoryItem>> warehouseMap,
+            Map<String, String> warehouseNameCache
+    ) {
+        for (Warehouse w : warehouseMap.keySet()) {
+            String id = w.getId();
+            if (!warehouseNameCache.containsKey(id)) {
+                try {
+                    var resp = storeClient.getStoreById(w.getStoreId());
+                    if (resp != null && resp.getData() != null) {
+                        warehouseNameCache.put(id, resp.getData().getName());
+                    } else {
+                        warehouseNameCache.put(id, "Kho " + id);
+                    }
+                } catch (Exception e) {
+                    warehouseNameCache.put(id, "Kho " + id);
+                }
+            }
+        }
+    }
 //                assignedWarehouse,
 //                itemsToUpdate,
 //                ticketsToCreate,
@@ -725,108 +711,8 @@ public class InventoryServiceImpl implements InventoryService {
 //            note.append("\n\nĐủ hàng nhờ các kho hỗ trợ:");
 //            for (var e : supports) {
 //                String supName = warehouseNameCache.getOrDefault(e.getKey(), "Kho " + e.getKey());
-//                note.append("\n• ").append(supName).append(": ").append(e.getValue()).append(" cái");
 //            }
-//        } else {
-//            note.append("\n\nTrạng thái: Đủ hàng tại ").append(warehouseName);
 //        }
-//    }
-//
-//    // ===============================================================
-//    // CASE SUPPORT: kho khác → báo đang hỗ trợ chuyển
-//    // ===============================================================
-//    else {
-//        note.append("\n\nHỗ trợ chuyển hàng cho: ")
-//                .append(warehouseNameCache.get(mainAssignedWarehouse.getId()));
-//
-//        note.append("\nTrạng thái: Chờ chuyển kho");
-//    }
-//
-    //// ==================================================================
-    //// Nếu có nhiều màu trong cùng 1 kho
-    //// ==================================================================
-//    if (takenPerColor.size() > 1) {
-//        note.append("\nChi tiết theo màu:");
-//        takenPerColor.forEach((colorId, qty) -> {
-//            var c = getProductName(colorId);
-//            note.append("\n• ").append(c.getColor().getColorName()).append(": ").append(qty).append(" cái");
-//        });
-//    }
-//
-//    // =========================
-//    // 6) TẠO PHIẾU — KHÔNG TẠO ITEM
-//    // =========================
-//    Inventory ticket = Inventory.builder()
-//            .employeeId("SYSTEM_AUTO")
-//            .type(EnumTypes.RESERVE)
-//            .purpose(EnumPurpose.RESERVE)
-//            .date(LocalDate.now())
-//            .warehouse(warehouse)
-//            .orderId(orderId)
-//            .code("RES_" + orderId + "_" + productColorId + "_" + warehouse.getId())
-//            .transferStatus(transferStatus)
-//            .note(String.valueOf(note))
-//            .build();
-//
-//    List<InventoryItem> ticketItems = new ArrayList<>();
-//    for (Map.Entry<String, Integer> entry : takenPerColor.entrySet()) {
-//        String colorId = entry.getKey();
-//        int qty = entry.getValue();
-//        InventoryItem ticketItem = InventoryItem.builder()
-//                .productColorId(colorId)
-//                .quantity(qty)
-//                .locationItem(null)
-//                .reservedQuantity(0)
-//                .inventory(ticket)
-//                .build();
-//
-//        ticketItems.add(ticketItem);
-//    }
-//
-//    // Gắn danh sách item vào phiếu
-//    ticket.setInventoryItems(ticketItems);
-//
-//    ticketsToCreateOut.add(ticket);
-//
-//    return reservedHere;
-//}
-//
-    private void preloadWarehouseNames(
-            Map<Warehouse, List<InventoryItem>> warehouseMap,
-            Map<String, String> warehouseNameCache
-    ) {
-        for (Warehouse w : warehouseMap.keySet()) {
-            String id = w.getId();
-            if (!warehouseNameCache.containsKey(id)) {
-                try {
-                    var resp = storeClient.getStoreById(w.getStoreId());
-                    if (resp != null && resp.getData() != null) {
-                        warehouseNameCache.put(id, resp.getData().getName());
-                    } else {
-                        warehouseNameCache.put(id, "Kho " + id);
-                    }
-                } catch (Exception e) {
-                    warehouseNameCache.put(id, "Kho " + id);
-                }
-            }
-        }
-    }
-//@Override
-//@Transactional(propagation = Propagation.REQUIRES_NEW)
-//public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
-//
-//    OrderResponse orderResponse = getOrder(orderId);
-//
-//    Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
-//            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-//
-//    List<InventoryItem> allSystemItems = inventoryItemRepository
-//            .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
-//
-//    Map<Warehouse, List<InventoryItem>> warehouseMap = allSystemItems.stream()
-//            .collect(Collectors.groupingBy(item -> item.getLocationItem().getZone().getWarehouse()));
-//
-//    // Cache store name
 //    Map<String, String> warehouseNameCache = new HashMap<>();
 //    preloadWarehouseNames(warehouseMap, warehouseNameCache);
 //
@@ -1371,16 +1257,6 @@ public class InventoryServiceImpl implements InventoryService {
 //        ticket.getInventoryItems().add(ticketItem);
 //    }
 //
-//    // 6. Lưu dữ liệu phụ
-//    // Lưu ý: InventoryItem thường được set Cascade.ALL từ Inventory, nên chỉ cần save ticket là đủ.
-//    // Nhưng ReservedWarehouse thường không cascade, nên save riêng.
-//    inventoryReservedWarehouseRepository.save(reserved);
-//
-//    // Cập nhật lại ticket vào list return (để hàm cha biết phiếu nào vừa được xử lý)
-//    ticketsToCreateOut.add(ticket);
-//
-//    return reservedHere;
-//}
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
@@ -1546,7 +1422,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         List<InventoryItem> stockToUpdate = new ArrayList<>();
         int quantityToRelease = quantity;
-        int totalReleased = 0;
         Map<Warehouse, Integer> releasedPerWarehouse = new HashMap<>();
 
         for (Inventory ticket : relevantTickets) {
@@ -1570,7 +1445,6 @@ public class InventoryServiceImpl implements InventoryService {
                 if (stockItem != null) {
                     stockItem.setReservedQuantity(Math.max(0, stockItem.getReservedQuantity() - actualRelease));
                     stockToUpdate.add(stockItem);
-                    totalReleased += actualRelease;
                     quantityToRelease -= actualRelease;
                     releasedPerWarehouse.merge(ticket.getWarehouse(), actualRelease, Integer::sum);
                 }
