@@ -1380,7 +1380,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
 
-
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
@@ -1388,7 +1387,6 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .collect(Collectors.toList());
 
         if (itemResponseList.isEmpty()) {
-
             int quantity = parseQuantityFromNote(inventory.getNote());
             String extractedProductId = extractProductIdFromCode(inventory.getCode());
 
@@ -1400,43 +1398,34 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                                 .reservedQuantity(0)
                                 .productColorId(extractedProductId)
                                 .productName(extractedProductId)
-                                .locationId(inventory.getWarehouse() != null ?
-                                        inventory.getWarehouse().getId() : null)
+                                .locationId(inventory.getWarehouse() != null ? inventory.getWarehouse().getId() : null)
                                 .inventoryId(inventory.getId())
                                 .build()
                 );
             }
         }
 
-        List<WarehouseReserveInfo> reservedWarehouses = new ArrayList<>();
+        Map<String, WarehouseReserveInfo> warehouseMap = new HashMap<>();
 
-        List<WarehouseReserveInfo> dbReserved = Optional.ofNullable(inventory.getReservedWarehouses())
+        Optional.ofNullable(inventory.getReservedWarehouses())
                 .orElse(Collections.emptyList())
-                .stream()
-                .map(rw -> new WarehouseReserveInfo(
-                        rw.getWarehouseId(),
-                        rw.getWarehouseName(),
-                        rw.getReservedQuantity()
-                ))
-                .toList();
+                .forEach(rw -> warehouseMap.put(rw.getWarehouseId(),
+                        WarehouseReserveInfo.builder()
+                                .warehouseId(rw.getWarehouseId())
+                                .warehouseName(rw.getWarehouseName())
+                                .reservedQuantity(rw.getReservedQuantity())
+                                .build()));
 
-        reservedWarehouses.addAll(dbReserved);
-
-        String mainWarehouseId = inventory.getWarehouse() != null ? inventory.getWarehouse().getId() : null;
-        String mainWarehouseName = inventory.getWarehouse() != null ? inventory.getWarehouse().getWarehouseName() : null;
-
-        boolean mainExists = reservedWarehouses.stream()
-                .anyMatch(r -> Objects.equals(r.getWarehouseId(), mainWarehouseId));
-
-        if (mainWarehouseId != null && !mainExists) {
-            reservedWarehouses.add(
-                    WarehouseReserveInfo.builder()
-                            .warehouseId(mainWarehouseId)
-                            .warehouseName(mainWarehouseName)
+        if (inventory.getWarehouse() != null) {
+            warehouseMap.computeIfAbsent(inventory.getWarehouse().getId(),
+                    id -> WarehouseReserveInfo.builder()
+                            .warehouseId(id)
+                            .warehouseName(inventory.getWarehouse().getWarehouseName())
                             .reservedQuantity(0)
-                            .build()
-            );
+                            .build());
         }
+
+        List<WarehouseReserveInfo> reservedWarehouses = new ArrayList<>(warehouseMap.values());
 
         return InventoryResponse.builder()
                 .id(inventory.getId())
@@ -1448,14 +1437,15 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
                 .note(inventory.getNote())
                 .orderId(inventory.getOrderId())
                 .transferStatus(inventory.getTransferStatus())
-                .warehouseId(mainWarehouseId)
-                .warehouseName(mainWarehouseName)
+                .warehouseId(inventory.getWarehouse() != null ? inventory.getWarehouse().getId() : null)
+                .warehouseName(inventory.getWarehouse() != null ? inventory.getWarehouse().getWarehouseName() : null)
                 .toWarehouseId(inventory.getToWarehouseId())
                 .toWarehouseName(inventory.getToWarehouseName())
                 .itemResponseList(itemResponseList)
                 .reservedWarehouses(reservedWarehouses)
                 .build();
     }
+
 
 
 
