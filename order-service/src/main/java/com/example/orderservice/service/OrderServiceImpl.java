@@ -1303,6 +1303,19 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        // 4. Restore Stock
+        try {
+            for (OrderDetail detail : order.getOrderDetails()) {
+                inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
+            }
+            log.info("Restored stock for order: {}", orderId);
+        } catch (Exception e) {
+            log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
+            // Do not fail the return process if stock update fails, just log it.
+            // Or should we fail? Usually financial consistency > inventory consistency.
+            // I will choose to NOT fail, but log ERROR clearly.
+        }
+
         return mapToResponse(orderRepository.save(order));
     }
 
