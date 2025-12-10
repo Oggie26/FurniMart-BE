@@ -1,5 +1,6 @@
 package com.example.orderservice.entity;
 
+import com.example.orderservice.enums.WarrantyActionType;
 import com.example.orderservice.enums.WarrantyClaimStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -46,6 +47,19 @@ public class WarrantyClaim extends AbstractEntity {
 
     @Column(name = "resolution_photos", columnDefinition = "TEXT")
     private String resolutionPhotos; // JSON array of photo URLs
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action_type")
+    private WarrantyActionType actionType;
+
+    @Column(name = "repair_cost")
+    private Double repairCost; // Only visible to Admin/Manager
+
+    @Column(name = "exchange_product_color_id")
+    private String exchangeProductColorId; // For exchange orders
+
+    @Column(name = "refund_amount")
+    private Double refundAmount; // For return orders
 
     @Column(name = "resolved_date")
     private LocalDateTime resolvedDate;

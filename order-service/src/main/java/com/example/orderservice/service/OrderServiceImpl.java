@@ -169,6 +169,134 @@ public class OrderServiceImpl implements OrderService {
         return mapToResponse(order);
     }
 
+    // @Override
+    // @Transactional
+    // public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
+    //
+    // ApiResponse<StoreResponse> storeResponse =
+    // storeClient.getStoreById(request.getStoreId());
+    // if (storeResponse == null || storeResponse.getData() == null) {
+    // throw new AppException(ErrorCode.STORE_NOT_FOUND);
+    // }
+    //
+    // ApiResponse<UserResponse> userResponse =
+    // userClient.getUserById(request.getUserId());
+    // if (userResponse == null || userResponse.getData() == null) {
+    // throw new AppException(ErrorCode.NOT_FOUND_USER);
+    // }
+    //
+    // ApiResponse<AddressResponse> addressResponse =
+    // userClient.getAddressById(request.getAddressId());
+    // if (addressResponse == null || addressResponse.getData() == null) {
+    // throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
+    // }
+    //
+    // Double total = request.getOrderDetails().stream()
+    // .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
+    // .mapToDouble(detail -> detail.getPrice() * detail.getQuantity())
+    // .sum();
+    //
+    //
+    // if (total <= 0) {
+    // throw new AppException(ErrorCode.INVALID_ORDER_TOTAL);
+    // }
+    //
+    // Order order = Order.builder()
+    // .storeId(request.getStoreId())
+    // .total(total)
+    // .status(EnumProcessOrder.MANAGER_ACCEPT)
+    // .note(request.getNote())
+    // .userId(request.getUserId())
+    // .addressId(request.getAddressId())
+    // .reason(request.getReason())
+    // .orderDate(new Date())
+    // .build();
+    //
+    // List<OrderDetail> orderDetails = request.getOrderDetails().stream()
+    // .filter(detail -> detail.getPrice() != null && detail.getQuantity() != null)
+    // .map(detail -> OrderDetail.builder()
+    // .order(order)
+    // .productColorId(detail.getProductColorId())
+    // .quantity(detail.getQuantity())
+    // .price(detail.getPrice())
+    // .build())
+    // .collect(Collectors.toList());
+    //
+    // if (orderDetails.isEmpty()) {
+    // throw new AppException(ErrorCode.CART_EMPTY);
+    // }
+    //
+    // order.setOrderDetails(orderDetails);
+    //
+    // Order savedOrder = orderRepository.save(order);
+    //
+    // QRCodeService.QRCodeResult qrCodeResult =
+    // qrCodeService.generateQRCode(savedOrder.getId());
+    // savedOrder.setQrCode(qrCodeResult.getQrCodeString());
+    // savedOrder.setQrCodeGeneratedAt(new Date());
+    //
+    // ProcessOrder process = new ProcessOrder();
+    // process.setOrder(savedOrder);
+    // process.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
+    // process.setCreatedAt(new Date());
+    // processOrderRepository.save(process);
+    //
+    // savedOrder.setProcessOrders(new ArrayList<>(List.of(process)));
+    //
+    // savedOrder = orderRepository.save(savedOrder);
+    // if (request.getPaymentMethod().equals(PaymentMethod.COD)){
+    // Payment payment = Payment.builder()
+    // .order(savedOrder)
+    // .paymentMethod(request.getPaymentMethod())
+    // .paymentStatus(PaymentStatus.PENDING)
+    // .date(new Date())
+    // .total(savedOrder.getTotal())
+    // .userId(savedOrder.getUserId())
+    // .transactionCode(generateTransactionCode())
+    // .build();
+    // paymentRepository.save(payment);
+    // }else{
+    // Payment payment = Payment.builder()
+    // .order(savedOrder)
+    // .paymentMethod(request.getPaymentMethod())
+    // .paymentStatus(PaymentStatus.PAID)
+    // .date(new Date())
+    // .total(savedOrder.getTotal())
+    // .userId(savedOrder.getUserId())
+    // .transactionCode(generateTransactionCode())
+    // .build();
+    // paymentRepository.save(payment);
+    // }
+    //
+    // OrderCreatedEvent event = OrderCreatedEvent.builder()
+    // .email(safeGetUser(order.getUserId()).getEmail())
+    // .fullName(safeGetUser(order.getUserId()).getFullName())
+    // .orderDate(order.getOrderDate())
+    // .totalPrice(order.getTotal())
+    // .orderId(order.getId())
+    // .storeId(order.getStoreId())
+    // .addressLine(getAddress(order.getAddressId()))
+    // .paymentMethod(order.getPayment().getPaymentMethod())
+    // .items(order.getOrderDetails())
+    // .build();
+    //
+    // try {
+    // kafkaTemplate.send("order-created-topic", event)
+    // .whenComplete((result, ex) -> {
+    // if (ex != null) {
+    // log.error("Kafka send failed: {}", ex.getMessage());
+    // } else {
+    // log.info("Successfully sent order creation event for: {}",
+    // event.getOrderId());
+    // }
+    // });
+    // } catch (Exception e) {
+    // log.error("Failed to send Kafka event {}, error: {}", event.getFullName(),
+    // e.getMessage());
+    // }
+    // return mapToResponse(savedOrder);
+    // }
+
     @Override
     @Transactional
     public OrderResponse createOrderForStaff(StaffCreateOrderRequest request) {
@@ -886,6 +1014,8 @@ public class OrderServiceImpl implements OrderService {
                 .deliveryConfirmationResponse(getDeliveryConfirmationResponse(order.getId()))
                 .hasPdfFile(hasPdfFile)
                 .depositPrice(order.getDepositPrice())
+                .orderType(order.getOrderType())
+                .warrantyClaimId(order.getWarrantyClaimId())
                 .build();
     }
 
