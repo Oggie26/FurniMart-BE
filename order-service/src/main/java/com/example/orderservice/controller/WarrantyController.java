@@ -1,8 +1,11 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.request.WarrantyClaimRequest;
+import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.ApiResponse;
+import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
+import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
 import com.example.orderservice.service.inteface.WarrantyService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -141,6 +145,44 @@ public class WarrantyController {
                 .status(HttpStatus.OK.value())
                 .message("Warranty claim status updated successfully")
                 .data(warrantyService.updateWarrantyClaimStatus(claimId, status, adminResponse, resolutionNotes))
+                .build();
+    }
+
+    @PostMapping("/claims/{claimId}/resolve")
+    @Operation(summary = "Resolve warranty claim with action (Admin/Staff)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+    public ApiResponse<WarrantyClaimResponse> resolveWarrantyClaim(
+            @PathVariable Long claimId,
+            @RequestBody WarrantyClaimResolutionRequest request) {
+        request.setClaimId(claimId); // Ensure claim ID matches path variable
+        return ApiResponse.<WarrantyClaimResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Warranty claim resolved successfully")
+                .data(warrantyService.resolveWarrantyClaim(request))
+                .build();
+    }
+
+    @PostMapping("/claims/{claimId}/create-order")
+    @Operation(summary = "Create order from warranty claim (Exchange/Return)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+    public ApiResponse<OrderResponse> createWarrantyOrder(@PathVariable Long claimId) {
+        return ApiResponse.<OrderResponse>builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Warranty order created successfully")
+                .data(warrantyService.createWarrantyOrder(claimId))
+                .build();
+    }
+
+    @GetMapping("/report")
+    @Operation(summary = "Get warranty report (Admin/Manager only)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    public ApiResponse<WarrantyReportResponse> getWarrantyReport(
+            @RequestParam(required = false) LocalDateTime startDate,
+            @RequestParam(required = false) LocalDateTime endDate) {
+        return ApiResponse.<WarrantyReportResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Warranty report retrieved successfully")
+                .data(warrantyService.getWarrantyReport(startDate, endDate))
                 .build();
     }
 }
