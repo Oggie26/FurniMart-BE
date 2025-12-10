@@ -56,6 +56,7 @@ public class OrderServiceImpl implements OrderService {
     private final QRCodeService qrCodeService;
     private final CartService cartService;
     private final DeliveryClient deliveryClient;
+    private final InventoryClient inventoryClient;
     @Lazy
     private final WarrantyService warrantyService;
 
