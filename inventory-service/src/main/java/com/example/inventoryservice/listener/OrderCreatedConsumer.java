@@ -4,7 +4,6 @@ import com.example.inventoryservice.entity.ProcessedMessage;
 import com.example.inventoryservice.event.OrderCreatedEvent;
 import com.example.inventoryservice.repository.ProcessedMessageRepository;
 import com.example.inventoryservice.response.ReserveStockResponse;
-import com.example.inventoryservice.service.InventoryServiceImpl;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,6 +107,11 @@ public class OrderCreatedConsumer {
                                 item.getQuantity(),
                                 orderId
                         );
+
+                log.info("✅ Reserved: {}/{} for productColorId={}",
+                        response.getTotalReserved(),
+                        item.getQuantity(),
+                        item.getProductColorId());
             });
 
             // 3. Lưu lại processed message
