@@ -14,10 +14,12 @@ import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
+import com.example.orderservice.service.inteface.WarrantyService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -54,6 +56,8 @@ public class OrderServiceImpl implements OrderService {
     private final QRCodeService qrCodeService;
     private final CartService cartService;
     private final DeliveryClient deliveryClient;
+    @Lazy
+    private final WarrantyService warrantyService;
 
     @Override
     @Transactional
@@ -618,6 +622,15 @@ public class OrderServiceImpl implements OrderService {
         order.getProcessOrders().add(process);
         order.setStatus(status);
         orderRepository.save(order);
+
+        if (status.equals(EnumProcessOrder.DELIVERED) || status.equals(EnumProcessOrder.FINISHED)) {
+            try {
+                warrantyService.createWarrantiesForOrder(orderId);
+                log.info("Warranties created for order: {}", orderId);
+            } catch (Exception e) {
+                log.error("Failed to create warranties for order: {}", orderId, e);
+            }
+        }
 
         if (status.equals(EnumProcessOrder.PAYMENT)) {
             assignOrderService.assignOrderToStore(orderId);
