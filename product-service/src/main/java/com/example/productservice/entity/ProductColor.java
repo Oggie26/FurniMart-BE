@@ -30,9 +30,11 @@ public class ProductColor extends AbstractEntity{
     private Color color;
 
     @OneToMany(mappedBy = "productColor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ProductImage> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "productColor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ProductModel3D> models3D = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)

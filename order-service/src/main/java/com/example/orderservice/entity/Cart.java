@@ -1,6 +1,5 @@
 package com.example.orderservice.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -25,9 +24,11 @@ public class Cart {
     private String userId;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @Builder.Default
     Set<CartItem> items = new HashSet<>();
 
     @Column
+    @Builder.Default
     private Double totalPrice = 0.0;
 
     public void updateTotalPrice() {

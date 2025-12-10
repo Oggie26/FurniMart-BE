@@ -36,5 +36,6 @@ public class Material extends AbstractEntity {
 
     @ManyToMany(mappedBy = "materials", fetch = FetchType.LAZY)
     @JsonIgnore
+    @Builder.Default
     private List<Product> products = new ArrayList<>();
 }

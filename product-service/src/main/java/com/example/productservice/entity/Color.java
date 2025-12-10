@@ -1,6 +1,5 @@
 package com.example.productservice.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,6 +26,7 @@ public class Color extends AbstractEntity {
     private String hexCode;
 
     @OneToMany(mappedBy = "color", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ProductColor> productColors = new ArrayList<>();
 
 }

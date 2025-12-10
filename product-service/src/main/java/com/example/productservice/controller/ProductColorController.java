@@ -2,7 +2,6 @@ package com.example.productservice.controller;
 
 import com.example.productservice.request.ProductColorRequest;
 import com.example.productservice.response.ApiResponse;
-import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductColorResponse;
 import com.example.productservice.service.inteface.ProductColorService;
 import io.swagger.v3.oas.annotations.Operation;

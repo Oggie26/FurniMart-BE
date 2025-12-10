@@ -2,16 +2,17 @@ package com.example.productservice.repository;
 
 import com.example.productservice.entity.Color;
 import org.springframework.data.domain.Page;
-
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.lang.NonNull;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
 public interface ColorRepository extends JpaRepository<Color, String> {
-    Optional<Color> findById(String colorId);
+    @NonNull
+    Optional<Color> findById(@NonNull String colorId);
     Optional<Color> findByColorNameAndIsDeletedFalse(String colorName);
     @Query(value = """
         SELECT * FROM colors 

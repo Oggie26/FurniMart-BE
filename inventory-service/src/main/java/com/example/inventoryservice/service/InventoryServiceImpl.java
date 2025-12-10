@@ -38,7 +38,6 @@ public class InventoryServiceImpl implements InventoryService {
     private final DeliveryClient deliveryClient;
     private final StoreClient storeClient;
     private final InventoryReservedWarehouseRepository inventoryReservedWarehouseRepository;
-    private final PDFService pdfService;
 
     @Override
     @Transactional
@@ -1399,6 +1398,7 @@ private int reserveAtWarehouse_OptionA(
 
         List<InventoryItem> stockToUpdate = new ArrayList<>();
         int quantityToRelease = quantity;
+        @SuppressWarnings("unused")
         int totalReleased = 0;
         Map<Warehouse, Integer> releasedPerWarehouse = new HashMap<>();
 
@@ -1940,6 +1940,7 @@ private int reserveAtWarehouse_OptionA(
         return response.getData().getId();
     }
 
+    @SuppressWarnings("unused")
     private StoreResponse getStore(String storeId) {
         try {
             return storeClient.getStoreById(storeId).getData();

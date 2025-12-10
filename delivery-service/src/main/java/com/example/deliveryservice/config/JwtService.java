@@ -48,11 +48,19 @@ public class JwtService {
     }
 
     public String extractUsername(String token) {
-        return parseToken(token).getBody().getSubject();
+        Jws<Claims> claimsJws = parseToken(token);
+        if (claimsJws == null || claimsJws.getBody() == null) {
+            throw new JwtException("Invalid token: missing claims");
+        }
+        return claimsJws.getBody().getSubject();
     }
 
     public Date extractExpiration(String token) {
-        return parseToken(token).getBody().getExpiration();
+        Jws<Claims> claimsJws = parseToken(token);
+        if (claimsJws == null || claimsJws.getBody() == null) {
+            throw new JwtException("Invalid token: missing claims");
+        }
+        return claimsJws.getBody().getExpiration();
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

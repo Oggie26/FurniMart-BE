@@ -1,14 +1,11 @@
 package com.example.productservice.entity;
 
-import com.example.productservice.entity.AbstractEntity;
-import com.example.productservice.entity.Product;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 
 @Getter

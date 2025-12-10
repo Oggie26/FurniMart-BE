@@ -1,8 +1,6 @@
 package com.example.notificationservice.listener;
 
-import com.example.notificationservice.enums.EnumProcessOrder;
 import com.example.notificationservice.enums.ErrorCode;
-import com.example.notificationservice.enums.PaymentMethod;
 import com.example.notificationservice.event.OrderCreatedEvent;
 import com.example.notificationservice.exception.AppException;
 import com.example.notificationservice.feign.OrderClient;

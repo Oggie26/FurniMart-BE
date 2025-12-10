@@ -1,8 +1,6 @@
 package com.example.productservice.service.inteface;
 
 import com.example.productservice.request.ProductColorRequest;
-import com.example.productservice.response.MaterialResponse;
-import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductColorResponse;
 
 import java.util.List;

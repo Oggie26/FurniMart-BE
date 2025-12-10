@@ -1,6 +1,5 @@
 package com.example.orderservice.response;
 
-import com.example.orderservice.enums.WarrantyStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

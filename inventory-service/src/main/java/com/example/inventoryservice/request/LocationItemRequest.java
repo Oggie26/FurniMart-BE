@@ -1,12 +1,10 @@
 package com.example.inventoryservice.request;
 
-import com.example.inventoryservice.enums.EnumRowLabel;
 import com.example.inventoryservice.enums.EnumStatus;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -2,7 +2,6 @@ package com.example.userservice.config;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
@@ -34,7 +33,10 @@ public class RateLimitingConfig {
      */
     private Bucket createNewBucket() {
         return Bucket.builder()
-                .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1))))
+                .addLimit(Bandwidth.builder()
+                        .capacity(10)
+                        .refillIntervally(10, Duration.ofMinutes(1))
+                        .build())
                 .build();
     }
 
@@ -46,7 +48,10 @@ public class RateLimitingConfig {
     public Bucket createLoginBucket(String ip) {
         String key = "login:" + ip;
         return cache.computeIfAbsent(key, k -> Bucket.builder()
-                .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(10))))
+                .addLimit(Bandwidth.builder()
+                        .capacity(10)
+                        .refillIntervally(10, Duration.ofMinutes(10))
+                        .build())
                 .build());
     }
 

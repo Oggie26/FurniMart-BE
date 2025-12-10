@@ -1,8 +1,6 @@
 package com.example.userservice.repository;
 
 import com.example.userservice.entity.Chat;
-import com.example.userservice.entity.User;
-import com.example.userservice.enums.EnumStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

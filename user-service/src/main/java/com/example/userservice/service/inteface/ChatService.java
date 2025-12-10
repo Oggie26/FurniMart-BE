@@ -1,6 +1,5 @@
 package com.example.userservice.service.inteface;
 
-import com.example.userservice.entity.Chat;
 import com.example.userservice.request.ChatRequest;
 import com.example.userservice.response.ChatResponse;
 import com.example.userservice.response.PageResponse;

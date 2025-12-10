@@ -4,7 +4,6 @@ import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.OrderDetail;
 import com.example.orderservice.response.*;
 import com.example.orderservice.feign.ProductClient;
-import com.example.orderservice.feign.UserClient;
 import com.itextpdf.html2pdf.HtmlConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

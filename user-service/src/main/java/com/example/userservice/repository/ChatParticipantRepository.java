@@ -2,8 +2,6 @@ package com.example.userservice.repository;
 
 import com.example.userservice.entity.Chat;
 import com.example.userservice.entity.ChatParticipant;
-import com.example.userservice.entity.User;
-import com.example.userservice.enums.EnumStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

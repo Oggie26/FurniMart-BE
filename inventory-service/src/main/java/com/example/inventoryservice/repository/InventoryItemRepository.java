@@ -1,6 +1,5 @@
 package com.example.inventoryservice.repository;
 
-import com.example.inventoryservice.entity.Inventory;
 import com.example.inventoryservice.entity.InventoryItem;
 import com.example.inventoryservice.enums.EnumTypes;
 import jakarta.persistence.LockModeType;

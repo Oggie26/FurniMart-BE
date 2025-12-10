@@ -15,7 +15,6 @@ import com.example.userservice.request.StaffCreateCustomerRequest;
 import com.example.userservice.request.UserRequest;
 import com.example.userservice.request.UserUpdateRequest;
 import com.example.userservice.response.*;
-import com.example.userservice.service.inteface.AddressService;
 import com.example.userservice.service.inteface.EmployeeService;
 import com.example.userservice.service.inteface.UserService;
 import com.example.userservice.service.inteface.WalletService;
@@ -45,7 +44,6 @@ public class UserServiceImpl implements UserService {
     private final AddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeService employeeService;
-    private final AddressService addressService;
     private final WalletService walletService;
     private final WalletTransactionRepository walletTransactionRepository;
 

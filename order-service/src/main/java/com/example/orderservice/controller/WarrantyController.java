@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/warranties")
@@ -271,7 +272,7 @@ public class WarrantyController {
 
                 // For non-admin users, verify they can only access their own data
                 String currentUserId = getCurrentUserId();
-                if (!currentUserId.equals(customerId)) {
+                if (!Objects.equals(currentUserId, customerId)) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
         }
@@ -324,7 +325,7 @@ public class WarrantyController {
                                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
 
                 String currentUserId = getCurrentUserId();
-                if (!warranty.getCustomerId().equals(currentUserId)) {
+                if (!Objects.equals(warranty.getCustomerId(), currentUserId)) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
         }
@@ -352,7 +353,7 @@ public class WarrantyController {
                                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
                 String currentUserId = getCurrentUserId();
-                if (!order.getUserId().equals(currentUserId)) {
+                if (!Objects.equals(order.getUserId(), currentUserId)) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
         }

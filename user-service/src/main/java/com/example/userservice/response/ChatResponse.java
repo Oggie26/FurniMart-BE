@@ -1,7 +1,6 @@
 package com.example.userservice.response;
 
 import com.example.userservice.entity.Chat;
-import com.example.userservice.entity.ChatMessage;
 import com.example.userservice.enums.EnumStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

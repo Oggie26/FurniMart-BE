@@ -16,7 +16,6 @@ import com.example.orderservice.service.ManagerWorkflowService;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
-import com.example.orderservice.service.inteface.VoucherService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -46,7 +45,6 @@ public class OrderController {
         private final AssignOrderService assignOrderService;
         private final InventoryClient inventoryClient;
         private final ManagerWorkflowService managerWorkflowService;
-        private final VoucherService voucherService;
         private final VoucherRepository voucherRepository;
 
         @PostMapping("/checkout")
