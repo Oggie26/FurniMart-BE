@@ -5,7 +5,6 @@ import com.example.inventoryservice.enums.EnumTypes;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Data

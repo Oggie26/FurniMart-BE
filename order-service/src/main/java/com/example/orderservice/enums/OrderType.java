@@ -2,6 +2,5 @@ package com.example.orderservice.enums;
 
 public enum OrderType {
     NORMAL,
-    WARRANTY_RETURN,
-    WARRANTY_EXCHANGE
+    WARRANTY_RETURN
 }

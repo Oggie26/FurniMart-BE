@@ -21,9 +21,10 @@ public class GlobalExceptionHandler {
     private static final String MIN_ATTRIBUTE = "min";
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
-        String enumKey = exception.getFieldError() != null
-                ? exception.getFieldError().getDefaultMessage()
+    public ResponseEntity<ApiResponse<Void>> handlingValidation(MethodArgumentNotValidException exception) {
+        var fieldError = exception.getFieldError();
+        String enumKey = fieldError != null && fieldError.getDefaultMessage() != null
+                ? fieldError.getDefaultMessage()
                 : ErrorCode.INVALID_KEY.name();
 
         ErrorCode errorCode = ErrorCode.INVALID_KEY;
@@ -38,7 +39,9 @@ public class GlobalExceptionHandler {
                         .get(0)
                         .unwrap(jakarta.validation.ConstraintViolation.class);
 
-                attributes = constraintViolation.getConstraintDescriptor().getAttributes();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> constraintAttributes = (Map<String, Object>) constraintViolation.getConstraintDescriptor().getAttributes();
+                attributes = constraintAttributes;
                 log.info("Validation attributes: {}", attributes);
             }
         } catch (IllegalArgumentException e) {
@@ -47,7 +50,7 @@ public class GlobalExceptionHandler {
             log.error("Lỗi khi phân tích validation exception", ex);
         }
 
-        ApiResponse apiResponse = new ApiResponse();
+        ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setStatus(errorCode.getCode());  // Lấy mã lỗi từ ErrorCode
         apiResponse.setMessage(
                 (attributes != null)
@@ -59,9 +62,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
         // Tạo đối tượng lỗi mặc định
-        ApiResponse apiResponse = new ApiResponse();
+        ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setStatus(ErrorCode.INVALID_JSON.getCode());
 
         // Cung cấp thông điệp lỗi chi tiết

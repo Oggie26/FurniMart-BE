@@ -18,7 +18,8 @@ public class CloudinaryService {
 
     public String uploadPDF(File file, String publicId) {
         try {
-            Map uploadResult = cloudinary.uploader().upload(file, ObjectUtils.asMap(
+            @SuppressWarnings("unchecked")
+            Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file, ObjectUtils.asMap(
                     "resource_type", "raw",  // "raw" cho file PDF
                     "public_id", publicId,
                     "folder", "furnimart/invoices"  // Lưu trong folder invoices
@@ -43,7 +44,8 @@ public class CloudinaryService {
 
     public void deletePDF(String publicId) {
         try {
-            Map result = cloudinary.uploader().destroy(publicId, ObjectUtils.asMap(
+            @SuppressWarnings({"unchecked", "unused"})
+            Map<String, Object> result = (Map<String, Object>) cloudinary.uploader().destroy(publicId, ObjectUtils.asMap(
                     "resource_type", "raw"
             ));
             log.info("🗑️  PDF deleted from Cloudinary: {}", publicId);

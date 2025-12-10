@@ -28,8 +28,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
-        String enumKey = ex.getFieldError() != null
-                ? ex.getFieldError().getDefaultMessage()
+        var fieldError = ex.getFieldError();
+        String enumKey = (fieldError != null && fieldError.getDefaultMessage() != null)
+                ? fieldError.getDefaultMessage()
                 : ErrorCode.INVALID_KEY.name();
 
         ErrorCode errorCode = ErrorCode.INVALID_KEY;
@@ -44,7 +45,8 @@ public class GlobalExceptionHandler {
                 Object violation = ex.getBindingResult().getAllErrors().get(0)
                         .unwrap(ConstraintViolation.class);
                 ConstraintViolation<?> constraintViolation = (ConstraintViolation<?>) violation;
-                attributes = constraintViolation.getConstraintDescriptor().getAttributes();
+                Map<String, Object> constraintAttributes = (Map<String, Object>) constraintViolation.getConstraintDescriptor().getAttributes();
+                attributes = constraintAttributes;
                 log.debug("Validation attributes: {}", attributes);
             }
         } catch (IllegalArgumentException e) {

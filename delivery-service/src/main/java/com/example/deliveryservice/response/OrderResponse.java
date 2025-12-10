@@ -1,6 +1,5 @@
 package com.example.deliveryservice.response;
 
-import com.example.deliveryservice.enums.EnumProcessOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

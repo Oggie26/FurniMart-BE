@@ -742,9 +742,9 @@ public class InventoryServiceImpl implements InventoryService {
 //        note.append("\nTrạng thái: Chờ chuyển kho");
 //    }
 //
-//// ==================================================================
-//// Nếu có nhiều màu trong cùng 1 kho
-//// ==================================================================
+    //// ==================================================================
+    //// Nếu có nhiều màu trong cùng 1 kho
+    //// ==================================================================
 //    if (takenPerColor.size() > 1) {
 //        note.append("\nChi tiết theo màu:");
 //        takenPerColor.forEach((colorId, qty) -> {
@@ -1189,7 +1189,7 @@ public class InventoryServiceImpl implements InventoryService {
 //    return reservedHere;
 //}
 
-//    private int reserveAtWarehouse_OptionA(
+    //    private int reserveAtWarehouse_OptionA(
 //            Warehouse warehouse,
 //            List<InventoryItem> items,
 //            int needQty,
@@ -1381,56 +1381,35 @@ public class InventoryServiceImpl implements InventoryService {
 //
 //    return reservedHere;
 //}
-@Override
-@Transactional(propagation = Propagation.REQUIRES_NEW)
-public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
 
-    OrderResponse orderResponse = getOrder(orderId);
+        OrderResponse orderResponse = getOrder(orderId);
 
-    Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
-            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        Warehouse assignedWarehouse = warehouseRepository.findByStoreIdAndIsDeletedFalse(orderResponse.getStoreId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-    List<InventoryItem> allSystemItems = inventoryItemRepository
-            .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
+        List<InventoryItem> allSystemItems = inventoryItemRepository
+                .findByProductColorIdAndAvailableGreaterThanZero(productColorId);
 
-    Map<Warehouse, List<InventoryItem>> warehouseMap = allSystemItems.stream()
-            .collect(Collectors.groupingBy(item -> item.getLocationItem().getZone().getWarehouse()));
+        Map<Warehouse, List<InventoryItem>> warehouseMap = allSystemItems.stream()
+                .collect(Collectors.groupingBy(item -> item.getLocationItem().getZone().getWarehouse()));
 
-    Map<String, String> warehouseNameCache = new HashMap<>();
-    preloadWarehouseNames(warehouseMap, warehouseNameCache);
+        Map<String, String> warehouseNameCache = new HashMap<>();
+        preloadWarehouseNames(warehouseMap, warehouseNameCache);
 
-    int remaining = quantity;
-    int totalReserved = 0;
+        int remaining = quantity;
+        int totalReserved = 0;
 
-    List<InventoryItem> itemsToUpdate = new ArrayList<>();
-    List<Inventory> ticketList = new ArrayList<>();
+        List<InventoryItem> itemsToUpdate = new ArrayList<>();
+        List<Inventory> ticketList = new ArrayList<>();
 
-    if (warehouseMap.containsKey(assignedWarehouse)) {
-
-        int reserved = reserveAtWarehouse_OptionA(
-                assignedWarehouse,
-                warehouseMap.get(assignedWarehouse),
-                remaining,
-                orderId,
-                productColorId,
-                warehouseNameCache,
-                itemsToUpdate,
-                ticketList
-        );
-
-        totalReserved += reserved;
-        remaining -= reserved;
-
-        warehouseMap.remove(assignedWarehouse);
-    }
-
-    if (remaining > 0) {
-        for (var entry : warehouseMap.entrySet()) {
-            if (remaining <= 0) break;
+        if (warehouseMap.containsKey(assignedWarehouse)) {
 
             int reserved = reserveAtWarehouse_OptionA(
-                    entry.getKey(),
-                    entry.getValue(),
+                    assignedWarehouse,
+                    warehouseMap.get(assignedWarehouse),
                     remaining,
                     orderId,
                     productColorId,
@@ -1441,16 +1420,37 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 
             totalReserved += reserved;
             remaining -= reserved;
+
+            warehouseMap.remove(assignedWarehouse);
         }
+
+        if (remaining > 0) {
+            for (var entry : warehouseMap.entrySet()) {
+                if (remaining <= 0) break;
+
+                int reserved = reserveAtWarehouse_OptionA(
+                        entry.getKey(),
+                        entry.getValue(),
+                        remaining,
+                        orderId,
+                        productColorId,
+                        warehouseNameCache,
+                        itemsToUpdate,
+                        ticketList
+                );
+
+                totalReserved += reserved;
+                remaining -= reserved;
+            }
+        }
+
+        inventoryItemRepository.saveAll(itemsToUpdate);
+
+        // NEW: chỉ save 1 lần (cha) → Cascade.ALL lo phần con
+        inventoryRepository.saveAll(ticketList);
+
+        return buildResponse(ticketList, totalReserved, quantity);
     }
-
-    inventoryItemRepository.saveAll(itemsToUpdate);
-
-    // NEW: chỉ save 1 lần (cha) → Cascade.ALL lo phần con
-    inventoryRepository.saveAll(ticketList);
-
-    return buildResponse(ticketList, totalReserved, quantity);
-}
     private int reserveAtWarehouse_OptionA(
             Warehouse warehouse,
             List<InventoryItem> items,

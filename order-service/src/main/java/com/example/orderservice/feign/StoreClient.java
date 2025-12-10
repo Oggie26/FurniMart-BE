@@ -3,7 +3,6 @@ package com.example.orderservice.feign;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.StoreDistance;
 import com.example.orderservice.response.StoreResponse;
-import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

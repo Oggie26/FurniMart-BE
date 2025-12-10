@@ -143,7 +143,8 @@ public class ZoneServiceImpl implements ZoneService {
 
     @Override
     public List<ZoneResponse> getZonesById(String warehouseId) {
-        Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(warehouseId)
+        // Validate warehouse exists
+        warehouseRepository.findByIdAndIsDeletedFalse(warehouseId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
         List<Zone> zones = zoneRepository.findByWarehouseIdAndIsDeletedFalse(warehouseId);

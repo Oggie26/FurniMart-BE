@@ -3,6 +3,7 @@ package com.example.orderservice.service.inteface;
 import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.OrderResponse;
+import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
 import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
@@ -27,6 +28,9 @@ public interface WarrantyService {
 
     // Get warranties by order
     List<WarrantyResponse> getWarrantiesByOrder(Long orderId);
+
+    // Get warranties by store
+    PageResponse<WarrantyResponse> getWarrantiesByStore(String storeId, int page, int size);
 
     // Create warranty claim
     WarrantyClaimResponse createWarrantyClaim(WarrantyClaimRequest request);

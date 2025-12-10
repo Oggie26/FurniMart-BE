@@ -1,9 +1,7 @@
 package com.example.inventoryservice.exception;
 
 import com.example.inventoryservice.enums.ErrorCode;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter

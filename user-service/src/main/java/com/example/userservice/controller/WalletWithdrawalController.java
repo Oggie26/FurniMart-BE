@@ -48,7 +48,6 @@ public class WalletWithdrawalController {
             String referenceId = params.get("vnp_TxnRef");
             String responseCode = params.get("vnp_ResponseCode");
             String transactionNo = params.get("vnp_TransactionNo");
-            String amount = params.get("vnp_Amount");
 
             log.info("Processing withdrawal callback: Reference={}, ResponseCode={}, TransactionNo={}", 
                     referenceId, responseCode, transactionNo);

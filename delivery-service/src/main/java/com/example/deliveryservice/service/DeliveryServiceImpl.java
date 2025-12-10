@@ -1,7 +1,6 @@
 package com.example.deliveryservice.service;
 
 import com.example.deliveryservice.entity.DeliveryAssignment;
-import com.example.deliveryservice.entity.DeliveryConfirmation;
 import com.example.deliveryservice.enums.DeliveryStatus;
 import com.example.deliveryservice.enums.EnumProcessOrder;
 import com.example.deliveryservice.enums.ErrorCode;
@@ -47,10 +46,14 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         OrderResponse order = callWithRetry(() -> {
             ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
-            if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
+            if (orderResponse == null) {
                 throw new AppException(ErrorCode.ORDER_NOT_FOUND);
             }
-            return orderResponse.getBody().getData();
+            var body = orderResponse.getBody();
+            if (body == null || body.getData() == null) {
+                throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+            }
+            return body.getData();
         }, "getOrderById", 3);
 
         callWithRetry(() -> {
@@ -191,11 +194,15 @@ public class DeliveryServiceImpl implements DeliveryService {
         log.info("Preparing products for order: {}", request.getOrderId());
 
         ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(request.getOrderId());
-        if (orderResponse.getBody() == null || orderResponse.getBody().getData() == null) {
+        if (orderResponse == null) {
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+        }
+        var body = orderResponse.getBody();
+        if (body == null || body.getData() == null) {
             throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
 
-        OrderResponse order = orderResponse.getBody().getData();
+        OrderResponse order = body.getData();
         
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String preparedBy = authentication != null ? authentication.getName() : "SYSTEM";
@@ -439,8 +446,11 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         try {
             ResponseEntity<ApiResponse<OrderResponse>> orderResponse = orderClient.getOrderById(assignment.getOrderId());
-            if (orderResponse.getBody() != null && orderResponse.getBody().getData() != null) {
-                order = orderResponse.getBody().getData();
+            if (orderResponse != null) {
+                var body = orderResponse.getBody();
+                if (body != null && body.getData() != null) {
+                    order = body.getData();
+                }
             }
         } catch (Exception e) {
             log.warn("Failed to fetch order {}: {}", assignment.getOrderId(), e.getMessage());
@@ -458,7 +468,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         return DeliveryAssignmentResponse.builder()
                 .id(assignment.getId())
                 .storeId(assignment.getStoreId())
-                .storeName(store.getName() != null && !store.getName().isEmpty() ? store.getName() : "")
+                .storeName(store != null && store.getName() != null && !store.getName().isEmpty() ? store.getName() : "")
                 .deliveryStaffId(assignment.getDeliveryStaffId())
                 .assignedBy(assignment.getAssignedBy())
                 .assignedAt(assignment.getAssignedAt())

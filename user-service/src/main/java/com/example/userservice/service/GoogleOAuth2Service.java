@@ -166,13 +166,19 @@ public class GoogleOAuth2Service {
         private String googleId;
 
         // Manual getters (Lombok not working in Docker build)
+        @SuppressWarnings("unused")
         public String getEmail() { return email; }
+        @SuppressWarnings("unused")
         public void setEmail(String email) { this.email = email; }
         public String getName() { return name; }
+        @SuppressWarnings("unused")
         public void setName(String name) { this.name = name; }
         public String getPicture() { return picture; }
+        @SuppressWarnings("unused")
         public void setPicture(String picture) { this.picture = picture; }
+        @SuppressWarnings("unused")
         public String getGoogleId() { return googleId; }
+        @SuppressWarnings("unused")
         public void setGoogleId(String googleId) { this.googleId = googleId; }
 
         // Builder pattern

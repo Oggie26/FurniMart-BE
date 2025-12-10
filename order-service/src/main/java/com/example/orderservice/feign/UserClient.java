@@ -7,10 +7,10 @@ import com.example.orderservice.response.UserResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-@FeignClient(
-        name = "user-service",
-        configuration = FeignClientInterceptor.class
-)
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@FeignClient(name = "user-service", configuration = FeignClientInterceptor.class)
 public interface UserClient {
 
     @GetMapping("/api/addresses/{id}")
@@ -27,8 +27,8 @@ public interface UserClient {
 
     @GetMapping("/api/users/count")
     ApiResponse<Long> getTotalUsersCount();
+
+    @PostMapping("/api/users/{userId}/wallet/refund")
+    ApiResponse<Void> refundToWallet(@PathVariable String userId, @RequestParam Double amount,
+                                     @RequestParam(required = false) String referenceId);
 }
-
-
-
-

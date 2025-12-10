@@ -2,7 +2,6 @@ package com.example.inventoryservice.config;
 
 import com.example.inventoryservice.event.OrderCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

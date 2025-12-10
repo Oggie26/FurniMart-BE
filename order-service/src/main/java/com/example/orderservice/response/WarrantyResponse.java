@@ -1,6 +1,5 @@
 package com.example.orderservice.response;
 
-import com.example.orderservice.enums.WarrantyStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +13,7 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WarrantyResponse {
-    
+
     private Long id;
     private Long orderId;
     private Long orderDetailId;
@@ -23,7 +22,9 @@ public class WarrantyResponse {
     private LocalDateTime deliveryDate;
     private LocalDateTime warrantyStartDate;
     private LocalDateTime warrantyEndDate;
-    private WarrantyStatus status;
+    private String status; // String representation of WarrantyStatus
+    private String address;
+    private String storeId;
     private Integer warrantyDurationMonths;
     private String description;
     private Integer claimCount;

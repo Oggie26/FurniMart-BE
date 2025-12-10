@@ -1,6 +1,5 @@
 package com.example.productservice.response;
 
-import com.example.productservice.entity.ProductColor;
 import com.example.productservice.enums.EnumStatus;
 import lombok.*;
 

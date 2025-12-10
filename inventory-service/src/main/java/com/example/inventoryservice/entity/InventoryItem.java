@@ -24,6 +24,7 @@ public class InventoryItem {
     private String productColorId;
 
     @Column
+    @Builder.Default
     private Integer reservedQuantity = 0;
 
     @ManyToOne(fetch = FetchType.LAZY)

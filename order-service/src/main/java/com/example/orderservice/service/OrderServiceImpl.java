@@ -3,6 +3,7 @@ package com.example.orderservice.service;
 import com.example.orderservice.entity.*;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
+import com.example.orderservice.enums.OrderType;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -14,10 +15,12 @@ import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
+import com.example.orderservice.service.inteface.WarrantyService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,11 +30,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,6 +57,10 @@ public class OrderServiceImpl implements OrderService {
     private final QRCodeService qrCodeService;
     private final CartService cartService;
     private final DeliveryClient deliveryClient;
+    private final InventoryClient inventoryClient;
+    private final WarrantyClaimRepository warrantyClaimRepository;
+    @Lazy
+    private final WarrantyService warrantyService;
 
     @Override
     @Transactional
@@ -619,6 +626,15 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(status);
         orderRepository.save(order);
 
+        if (status.equals(EnumProcessOrder.DELIVERED) || status.equals(EnumProcessOrder.FINISHED)) {
+            try {
+                warrantyService.createWarrantiesForOrder(orderId);
+                log.info("Warranties created for order: {}", orderId);
+            } catch (Exception e) {
+                log.error("Failed to create warranties for order: {}", orderId, e);
+            }
+        }
+
         if (status.equals(EnumProcessOrder.PAYMENT)) {
             assignOrderService.assignOrderToStore(orderId);
 
@@ -1155,6 +1171,210 @@ public class OrderServiceImpl implements OrderService {
             log.warn("Failed to fetch delivery info for order {}: {}", orderId, e.getMessage());
             return null;
         }
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse requestReturn(Long orderId, String reason, String note) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Validation: Order must be DELIVERED or FINISHED
+        if (!EnumProcessOrder.DELIVERED.equals(order.getStatus())
+                && !EnumProcessOrder.FINISHED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        // Validation: Return window (e.g. 7 days from last status update/created date
+        // of status)
+        // Assuming implementation simply checks status for now or simple date check if
+        // strictly required.
+        // For MVP/Demo: Allow request if status is correct.
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURN_REQUESTED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
+        }
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURN_REQUESTED);
+        order.setReason(reason);
+        order.setNote(note); // Append or set note? user request note.
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse acceptReturn(Long orderId) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!EnumProcessOrder.RETURN_REQUESTED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURN_ACCEPTED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURN_ACCEPTED);
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse rejectReturn(Long orderId, String reason) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!EnumProcessOrder.RETURN_REQUESTED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURN_REJECTED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURN_REJECTED);
+        // Maybe append reason to order note or somewhere specific?
+        // Current requirement doesn't specify where to store rejection reason aside
+        // from log or overwriting reason/note.
+        // I will append it to note for visibility.
+        String existingNote = order.getNote() != null ? order.getNote() : "";
+        order.setNote(existingNote + " | REJECT REASON: " + reason);
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse confirmReturn(Long orderId) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!EnumProcessOrder.RETURN_ACCEPTED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        // 1. Update Order Status
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURNED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURNED);
+
+        // 2. Determine refund amount and handle payment
+        Double refundAmount = null;
+        Payment payment = order.getPayment();
+        String referenceId = "ORDER-" + orderId;
+        
+        // Check if this is a WARRANTY_RETURN order
+        if (order.getOrderType() == OrderType.WARRANTY_RETURN && order.getWarrantyClaimId() != null) {
+            referenceId = referenceId + "-CLAIM-" + order.getWarrantyClaimId();
+            // For WARRANTY_RETURN, get refundAmount from WarrantyClaim
+            WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(order.getWarrantyClaimId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
+            
+            refundAmount = claim.getRefundAmount();
+            
+            if (refundAmount == null || refundAmount <= 0) {
+                log.warn("Warranty claim {} has invalid refundAmount: {}", order.getWarrantyClaimId(), refundAmount);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            
+            // Prevent double refund
+            if (payment != null && PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
+                log.warn("Order {} already refunded", orderId);
+                return mapToResponse(order);
+            }
+            
+            // Create Payment record if not exists (for warranty return orders)
+            if (payment == null) {
+                payment = Payment.builder()
+                        .order(order)
+                        .paymentMethod(PaymentMethod.CASH) // Refund back to wallet flow
+                        .paymentStatus(PaymentStatus.REFUNDING)
+                        .date(new Date())
+                        .total(refundAmount)
+                        .userId(order.getUserId())
+                        .transactionCode("REFUND-" + orderId + "-" + UUID.randomUUID())
+                        .build();
+                payment = paymentRepository.save(payment);
+                log.info("Created Payment record for warranty return order: {}", orderId);
+            } else {
+                payment.setPaymentStatus(PaymentStatus.REFUNDING);
+                payment.setTotal(refundAmount);
+                paymentRepository.save(payment);
+            }
+        } else {
+            // For normal return orders, use order.getTotal()
+            refundAmount = order.getTotal();
+            if (payment == null) {
+                payment = Payment.builder()
+                        .order(order)
+                        .paymentMethod(PaymentMethod.CASH)
+                        .paymentStatus(PaymentStatus.REFUNDING)
+                        .date(new Date())
+                        .total(refundAmount)
+                        .userId(order.getUserId())
+                        .transactionCode("REFUND-" + orderId + "-" + UUID.randomUUID())
+                        .build();
+                paymentRepository.save(payment);
+            } else {
+                if (PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
+                    log.warn("Order {} already refunded", orderId);
+                    return mapToResponse(order);
+                }
+                payment.setPaymentStatus(PaymentStatus.REFUNDING);
+                paymentRepository.save(payment);
+            }
+        }
+
+        // 3. Refund to Wallet (if refundAmount > 0)
+        if (refundAmount != null && refundAmount > 0) {
+            try {
+                userClient.refundToWallet(order.getUserId(), refundAmount, referenceId);
+                // mark payment as refunded
+                payment.setPaymentStatus(PaymentStatus.REFUNDED);
+                paymentRepository.save(payment);
+                log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(), orderId, referenceId);
+            } catch (Exception e) {
+                log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
+                // keep REFUNDING to indicate pending manual intervention
+                payment.setPaymentStatus(PaymentStatus.REFUNDING);
+                paymentRepository.save(payment);
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            }
+        } else {
+            log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
+        }
+
+        // 4. Restore Stock (must succeed to keep consistency)
+        for (OrderDetail detail : order.getOrderDetails()) {
+            try {
+                inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
+            } catch (Exception e) {
+                log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            }
+        }
+
+        return mapToResponse(orderRepository.save(order));
     }
 
 }

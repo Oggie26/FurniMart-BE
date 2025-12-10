@@ -1,6 +1,5 @@
 package com.example.orderservice.event;
 
-import com.example.orderservice.entity.Payment;
 import com.example.orderservice.enums.PaymentMethod;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

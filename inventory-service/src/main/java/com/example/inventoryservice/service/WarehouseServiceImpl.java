@@ -1,17 +1,11 @@
 package com.example.inventoryservice.service;
 
-import com.example.inventoryservice.entity.LocationItem;
 import com.example.inventoryservice.entity.Warehouse;
-import com.example.inventoryservice.entity.Zone;
-import com.example.inventoryservice.enums.EnumStatus;
 import com.example.inventoryservice.enums.ErrorCode;
 import com.example.inventoryservice.enums.WarehouseStatus;
-import com.example.inventoryservice.enums.ZoneStatus;
 import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.feign.StoreClient;
-import com.example.inventoryservice.repository.LocationItemRepository;
 import com.example.inventoryservice.repository.WarehouseRepository;
-import com.example.inventoryservice.repository.ZoneRepository;
 import com.example.inventoryservice.request.WarehouseRequest;
 import com.example.inventoryservice.response.PageResponse;
 import com.example.inventoryservice.response.StoreResponse;
@@ -34,8 +28,6 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final StoreClient storeClient;
-    private final ZoneRepository zoneRepository;
-    private final LocationItemRepository locationItemRepository;
 
     @Override
     @Transactional

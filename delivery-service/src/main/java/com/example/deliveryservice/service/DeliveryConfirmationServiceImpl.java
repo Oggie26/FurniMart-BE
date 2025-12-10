@@ -21,7 +21,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.query.Order;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -52,8 +51,11 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         var orderResponse = orderClient.getOrderById(request.getOrderId());
 
         String customerId = null;
-        if (orderResponse != null && orderResponse.getBody().getData() != null) {
-            customerId = orderResponse.getBody().getData().getAddress().getUserId();
+        if (orderResponse != null) {
+            var body = orderResponse.getBody();
+            if (body != null && body.getData() != null && body.getData().getAddress() != null) {
+                customerId = body.getData().getAddress().getUserId();
+            }
         }
 
         if (customerId == null) {
@@ -198,10 +200,13 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     private String getQRCodeFromOrder(Long orderId) {
         try {
             ResponseEntity<ApiResponse<OrderResponse>> response = orderClient.getOrderById(orderId);
-            if (response.getBody() != null && response.getBody().getData() != null) {
-                String qrCode = response.getBody().getData().getQrCode();
-                if (qrCode != null && !qrCode.isEmpty()) {
-                    return qrCode;
+            if (response != null) {
+                var body = response.getBody();
+                if (body != null && body.getData() != null) {
+                    String qrCode = body.getData().getQrCode();
+                    if (qrCode != null && !qrCode.isEmpty()) {
+                        return qrCode;
+                    }
                 }
             }
             log.warn("QR code not found for order: {}", orderId);

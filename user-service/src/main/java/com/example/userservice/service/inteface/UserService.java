@@ -65,4 +65,7 @@ public interface UserService {
     StaffCreateCustomerResponse createCustomerAccountForStaff(StaffCreateCustomerRequest request);
 
     Long getTotalUsersCount();
+    
+    // Refund to user's wallet (creates transaction record)
+    void refundToWallet(String userId, Double amount, String referenceId);
 }

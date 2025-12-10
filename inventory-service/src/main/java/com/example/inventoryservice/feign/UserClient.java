@@ -1,7 +1,6 @@
 package com.example.inventoryservice.feign;
 
 import com.example.inventoryservice.response.ApiResponse;
-import com.example.inventoryservice.response.StaffResponse;
 import com.example.inventoryservice.response.UserResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

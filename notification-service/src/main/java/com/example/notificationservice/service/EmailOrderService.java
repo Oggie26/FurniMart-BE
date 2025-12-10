@@ -1,9 +1,6 @@
 package com.example.notificationservice.service;
 
 import com.example.notificationservice.event.OrderCreatedEvent;
-import com.example.notificationservice.feign.AuthClient;
-import com.example.notificationservice.feign.OrderClient;
-import com.example.notificationservice.feign.UserClient;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +18,6 @@ public class EmailOrderService {
 
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
-    private final UserClient userClient;
-    private final OrderClient orderClient;
-    private final AuthClient authClient;
 
     public void sendMailToCreateOrderSuccess(OrderCreatedEvent event) {
         try {

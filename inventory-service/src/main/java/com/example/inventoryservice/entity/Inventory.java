@@ -5,7 +5,6 @@ import com.example.inventoryservice.enums.EnumTypes;
 import com.example.inventoryservice.enums.TransferStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -67,9 +66,11 @@ public class Inventory extends AbstractEntity {
     private Warehouse warehouse;
 
     @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<InventoryItem> inventoryItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<InventoryReservedWarehouse> reservedWarehouses = new ArrayList<>();
 
 

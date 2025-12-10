@@ -16,16 +16,16 @@ import java.util.Date;
 @Schema(description = "Response for employee-store relationship")
 public class EmployeeStoreResponse {
     
-    @Schema(description = "Employee ID", example = "ef5ec40c-198f-4dfb-84dc-5bf86db68940", required = true)
+    @Schema(description = "Employee ID", example = "ef5ec40c-198f-4dfb-84dc-5bf86db68940", requiredMode = Schema.RequiredMode.REQUIRED)
     private String employeeId;
     
-    @Schema(description = "Store ID", example = "8d46e317-0596-4413-81b6-1a526398b3d7", required = true)
+    @Schema(description = "Store ID", example = "8d46e317-0596-4413-81b6-1a526398b3d7", requiredMode = Schema.RequiredMode.REQUIRED)
     private String storeId;
     
-    @Schema(description = "Employee information", required = true)
+    @Schema(description = "Employee information", requiredMode = Schema.RequiredMode.REQUIRED)
     private UserResponse employee;
     
-    @Schema(description = "Store information", required = true)
+    @Schema(description = "Store information", requiredMode = Schema.RequiredMode.REQUIRED)
     private StoreResponse store;
     
     @Schema(description = "Creation timestamp")

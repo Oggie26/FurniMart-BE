@@ -1,14 +1,9 @@
 package com.example.productservice.event;
 
-import com.example.productservice.response.MaterialResponse;
-import com.example.productservice.response.ProductColorDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
