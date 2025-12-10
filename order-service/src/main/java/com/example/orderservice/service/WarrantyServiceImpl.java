@@ -23,8 +23,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -66,7 +64,7 @@ public class WarrantyServiceImpl implements WarrantyService {
             if (warrantyRepository.findByOrderIdAndOrderDetailId(orderId, orderDetail.getId()).isEmpty()) {
                 String address = null;
                 try {
-                    AddressResponse addressResponse = userClient.getAddressById(order.getAddressId()).getResult();
+                    AddressResponse addressResponse = userClient.getAddressById(order.getAddressId()).getData();
                     if (addressResponse != null) {
                         address = addressResponse.getAddressLine();
                     }
@@ -138,11 +136,11 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .collect(Collectors.toList());
 
         return PageResponse.<WarrantyResponse>builder()
-                .currentPage(page)
-                .pageSize(size)
+                .number(page)
+                .size(size)
                 .totalPages(warrantyPage.getTotalPages())
                 .totalElements(warrantyPage.getTotalElements())
-                .data(responses)
+                .content(responses)
                 .build();
     }
 
@@ -440,13 +438,12 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .deliveryDate(warranty.getDeliveryDate())
                 .warrantyStartDate(warranty.getWarrantyStartDate())
                 .warrantyEndDate(warranty.getWarrantyEndDate())
-                .status(warranty.getStatus())
+                .status(warranty.getStatus().name())
                 .warrantyDurationMonths(warranty.getWarrantyDurationMonths())
                 .description(warranty.getDescription())
                 .claimCount(warranty.getClaimCount())
                 .maxClaims(warranty.getMaxClaims())
                 .isActive(warranty.isActive())
-                .canClaimWarranty(warranty.canClaimWarranty())
                 .canClaimWarranty(warranty.canClaimWarranty())
                 .createdAt(warranty.getCreatedAt())
                 .updatedAt(warranty.getUpdatedAt())

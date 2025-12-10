@@ -3,6 +3,7 @@ package com.example.orderservice.service.inteface;
 import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.OrderResponse;
+import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
 import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
