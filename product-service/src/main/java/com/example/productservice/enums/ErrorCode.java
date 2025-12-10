@@ -47,6 +47,7 @@ public enum  ErrorCode {
     HEX_CODE_NOT_FOUND(1230, "Hex code not found", HttpStatus.NOT_FOUND),
     PRODUCT_COLOR_NOT_FOUND(1231, "Product color not found", HttpStatus.NOT_FOUND),
     COLOR_ALREADY_EXISTS(1232, "Color already exists", HttpStatus.BAD_REQUEST),
+    RATING_NOT_FOUND(1233, "Rating not found", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -1,4 +1,3 @@
-
 package com.example.aiservice.response;
 
 import com.example.aiservice.enums.EnumStatus;
@@ -18,16 +17,16 @@ public class ProductResponse {
     private Double price;
     private String code;
     private String thumbnailImage;
-    private String slug;
     private Double weight;
     private Double height;
-    private EnumStatus status;
     private Double width;
     private Double length;
     private String categoryName;
-    private List<ColorResponse> color;
-    private String materialName;
-    private List<ImageResponse> images;
-    private List<Image3DResponse> images3d;
-
+    private String userId;
+    private String fullName;
+    private Long categoryId;
+    private String slug;
+    private EnumStatus status;
+    private List<ProductColorDTO> productColors;
+    private List<MaterialResponse> materials;
 }

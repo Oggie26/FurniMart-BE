@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -24,13 +23,11 @@ public class OrderCreatedConsumer {
             groupId = "inventory-group",
             containerFactory = "orderCreatedKafkaListenerContainerFactory"
     )
-    @Transactional
     public void handleOrderCreated(OrderCreatedEvent event) {
         Long orderId = event.getOrderId();
         log.info("Received OrderCreatedEvent for order: {}", orderId);
 
         if (processedMessageRepository.existsByOrderId(orderId)) {
-            log.warn("⚠️ Order {} has already been processed. Skipping.", orderId);
             return;
         }
 
@@ -44,16 +41,15 @@ public class OrderCreatedConsumer {
                             event.getOrderId()
                     );
 
-                    if (response.getInventory() != null) {
+                    if (response.getReservations() != null) {
                         log.info("✅ Created Reserve Ticket: {}. Reserved: {}/{}. Missing: {}",
-                                response.getInventory().getCode(),
+                                response.getReservations(),
                                 response.getQuantityReserved(),
                                 item.getQuantity(),
                                 response.getQuantityMissing());
                     } else {
                         log.warn("⚠️ Out of Stock locally. Reserved: 0/{}", item.getQuantity());
                     }
-
                 } catch (Exception e) {
                     log.error("❌ Error reserving stock for item {}: {}", item.getProductColorId(), e.getMessage());
                     throw new RuntimeException("Failed to process item: " + item.getProductColorId(), e);
@@ -69,7 +65,7 @@ public class OrderCreatedConsumer {
 
         } catch (Exception e) {
             log.error("❌ Error processing order {}: {}", orderId, e.getMessage(), e);
-            throw e; // Throw để Kafka retry
+            throw e;
         }
     }
 }

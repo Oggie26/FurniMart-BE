@@ -1,11 +1,13 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.entity.Order;
+import com.example.orderservice.entity.Voucher;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.repository.VoucherRepository;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
@@ -14,6 +16,7 @@ import com.example.orderservice.service.ManagerWorkflowService;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
+import com.example.orderservice.service.inteface.VoucherService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -43,6 +46,8 @@ public class OrderController {
     private final AssignOrderService assignOrderService;
     private final InventoryClient inventoryClient;
     private final ManagerWorkflowService managerWorkflowService;
+    private final VoucherService voucherService;
+    private final VoucherRepository voucherRepository;
 
     @PostMapping("/checkout")
     public ApiResponse<Void> checkout(
@@ -68,26 +73,41 @@ public class OrderController {
             }
         }
 
+        Voucher voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode)
+                .orElse(null);
+
+        Double newVoucherPrice;
+
+        if (voucher == null) {
+            newVoucherPrice = 0.0;
+        } else {
+            newVoucherPrice = Double.valueOf(voucher.getAmount());
+        }
+
         if (paymentMethod == PaymentMethod.VNPAY) {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
             cartService.clearCart();
+            Double money = orderResponse.getTotal() - newVoucherPrice;
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Chuyển hướng sang VNPay")
-                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), orderResponse.getTotal(), clientIp))
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), money, clientIp))
                     .build();
         } else {
             OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+            log.info("Order ID: {}, Total: {}, Deposit: {}", orderResponse.getId(), orderResponse.getTotal(), orderResponse.getDepositPrice());
 
             Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
-                            .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-            orderRepository.save(order);
-            orderService.handlePaymentCOD(orderResponse.getId());
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+            double depositPrice = order.getTotal() * 0.1;
+            order.setDepositPrice(depositPrice);
+//            orderService.handlePaymentCOD(orderResponse.getId());
             cartService.clearCart();
+            orderRepository.save(order);
             return ApiResponse.<Void>builder()
                     .status(HttpStatus.OK.value())
                     .message("Đặt hàng thành công")
+                    .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), order.getDepositPrice(), clientIp))
                     .build();
         }
 

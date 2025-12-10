@@ -61,9 +61,6 @@ public class Product extends AbstractEntity {
     @Column
     private Double length;
 
-//    @Column(nullable = false)
-//    private String userId;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     @JsonIgnore
@@ -81,6 +78,8 @@ public class Product extends AbstractEntity {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductColor> productColors = new ArrayList<>();
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
+    private List<Rating> ratings;
 
     @PrePersist
     @PreUpdate

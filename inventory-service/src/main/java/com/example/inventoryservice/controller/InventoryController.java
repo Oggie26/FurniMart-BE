@@ -5,11 +5,7 @@ import com.example.inventoryservice.exception.AppException;
 import com.example.inventoryservice.request.InventoryItemRequest;
 import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
-import com.example.inventoryservice.response.ApiResponse;
-import com.example.inventoryservice.response.InventoryItemResponse;
-import com.example.inventoryservice.response.InventoryResponse;
-import com.example.inventoryservice.response.LowStockAlertResponse;
-import com.example.inventoryservice.response.ProductLocationResponse;
+import com.example.inventoryservice.response.*;
 import com.example.inventoryservice.service.PDFService;
 import com.example.inventoryservice.service.inteface.InventoryService;
 import com.example.inventoryservice.repository.InventoryRepository;
@@ -103,34 +99,37 @@ public class InventoryController {
                 .build();
     }
 
-//    @Operation(summary = "Giữ hàng (Tạo phiếu RESERVE)")
-//    @PostMapping("/reserve")
-//    public ApiResponse<InventoryResponse> reserveStock(
-//            @Valid @RequestBody InventoryItemRequest request) {
-//
-//        InventoryResponse response = inventoryService.reserveStock(
-//                request.getProductColorId(),
-//                request.getQuantity()
-//        );
-//
-//        return ApiResponse.<InventoryResponse>builder()
-//                .status(200)
-//                .message("Giữ hàng thành công")
-//                .data(response)
-//                .build();
-//    }
+    @PostMapping("/reserve/{orderId}")
+    public ApiResponse<ReserveStockResponse> reserveStock(
+            @PathVariable Long orderId,
+            @RequestParam("productColorId") @NotBlank String productColorId,
+            @RequestParam("quantity") @Min(1) int quantity)  {
 
-    @Operation(summary = "Bỏ giữ hàng (Tạo phiếu RELEASE)")
-    @PostMapping("/release")
-    public ApiResponse<InventoryResponse> releaseReservedStock(
-            @Valid @RequestBody InventoryItemRequest request) {
-
-        InventoryResponse response = inventoryService.releaseReservedStock(
-                request.getProductColorId(),
-                request.getQuantity()
+        ReserveStockResponse response = inventoryService.reserveStock(
+                productColorId,
+                quantity,
+                orderId
         );
 
-        return ApiResponse.<InventoryResponse>builder()
+        return ApiResponse.<ReserveStockResponse>builder()
+                .status(200)
+                .message("Giữ hàng thành công")
+                .data(response)
+                .build();
+    }
+
+    @Operation(summary = "Bỏ giữ hàng (Tạo phiếu RELEASE)")
+    @PostMapping("/release/{orderId}")
+    public ApiResponse<ReserveStockResponse> releaseReservedStock(
+            @Valid @RequestBody InventoryItemRequest request, @PathVariable Long orderId) {
+
+        ReserveStockResponse response = inventoryService.releaseReservedStock(
+                request.getProductColorId(),
+                request.getQuantity(),
+                orderId
+        );
+
+        return ApiResponse.<ReserveStockResponse>builder()
                 .status(200)
                 .message("Bỏ giữ hàng thành công")
                 .data(response)

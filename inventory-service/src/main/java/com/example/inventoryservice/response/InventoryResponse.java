@@ -24,8 +24,13 @@ public class InventoryResponse {
     private String note;
     private String warehouseName;
     private String warehouseId;
+    private String toWarehouseName;
+    private String toWarehouseId;
     private Long orderId;
     private String pdfUrl;
+    private Integer totalQuantity;
     private TransferStatus transferStatus;
     private List<InventoryItemResponse> itemResponseList;
+    private List<WarehouseReserveInfo> reservedWarehouses;
+
 }

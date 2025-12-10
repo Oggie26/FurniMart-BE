@@ -11,16 +11,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class OpenAIConfig {
 
-    // ==============================================================================
-    // 🔴 KHU VỰC CẤU HÌNH API KEY (BẠN SẼ ĐIỀN VÀO ĐÂY SAU)
-    // ==============================================================================
-    // API Key được lấy từ biến môi trường OPENAI_API_KEY hoặc GOOGLE_API_KEY
-    // Cấu hình trong: application.yml hoặc Docker environment variable
-    // 
-    // Spring AI sẽ tự động tạo OpenAiChatModel bean nếu có API key hợp lệ
-    // Nếu không có key, bean sẽ không được tạo và service sẽ chạy ở mock mode
-    // ==============================================================================
-
     @Value("${spring.ai.openai.api-key:dummy_key}")
     private String openaiApiKey;
 

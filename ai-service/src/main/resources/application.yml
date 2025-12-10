@@ -7,23 +7,23 @@ spring:
 
   ai:
     openai:
-      base-url: https://api.openai.com
-
-      api-key: ${OPENAI_API_KEY:dummy_key} # Ưu tiên OPENAI_API_KEY, sau đó GOOGLE_API_KEY, cuối cùng là dummy_key
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai/
+      api-key: ${GOOGLE_AI_API_KEY}
       chat:
         options:
-          model: gpt-4o-mini # model nhỏ, tốc độ cao
+          model: gemini-flash-latest
 
   kafka:
-    bootstrap-servers: kafka:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
     consumer:
       group-id: ai-service-group
       auto-offset-reset: earliest
       enable-auto-commit: false
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.example.aiservice.event"
+        spring.json.trusted.packages: "com.example.aiservice.event,com.example.aiservice.dto"
+        spring.json.type.mapping: "*"
 
 springdoc:
   swagger-ui:

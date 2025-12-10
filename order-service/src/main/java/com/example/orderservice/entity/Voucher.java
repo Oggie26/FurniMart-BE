@@ -49,8 +49,8 @@ public class Voucher extends AbstractEntity {
     @Column(nullable = false)
     private Boolean status;
 
-    @Column(name = "order_id")
-    private Long orderId;
+//    @Column(name = "order_id")
+//    private Long orderId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", insertable = false, updatable = false)

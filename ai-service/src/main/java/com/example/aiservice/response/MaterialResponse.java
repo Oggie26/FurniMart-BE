@@ -1,0 +1,21 @@
+package com.example.aiservice.response;
+
+
+
+import com.example.aiservice.enums.EnumStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class MaterialResponse {
+    private Long id;
+    private String image;
+    private String materialName;
+    private String description;
+    private EnumStatus status;
+}

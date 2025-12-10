@@ -52,6 +52,12 @@ public class Inventory extends AbstractEntity {
     @Column(unique = true, nullable = false)
     private String code;
 
+    @Column(nullable = true)
+    private String toWarehouseId;
+
+    @Column(nullable = true)
+    private String toWarehouseName;
+
     @Column(name = "transfer_status")
     @Enumerated(EnumType.STRING)
     private TransferStatus transferStatus;
@@ -62,6 +68,9 @@ public class Inventory extends AbstractEntity {
 
     @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InventoryItem> inventoryItems = new ArrayList<>();
+
+    @OneToMany(mappedBy = "inventory", cascade = CascadeType.ALL)
+    private List<InventoryReservedWarehouse> reservedWarehouses;
 
     @PrePersist
     public void prePersist() {
