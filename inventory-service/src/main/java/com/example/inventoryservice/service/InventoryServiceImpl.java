@@ -1005,6 +1005,104 @@ public ReserveStockResponse reserveStock(String productColorId, int quantity, lo
 //
 //        return reservedHere;
 //    }
+//private int reserveAtWarehouse_OptionA(
+//        Warehouse warehouse,
+//        List<InventoryItem> items,
+//        int needQty,
+//        long orderId,
+//        String productColorId,
+//        Map<String, String> warehouseNameCache,
+//        List<InventoryItem> itemsToUpdateOut,
+//        List<Inventory> ticketsToCreateOut
+//) {
+//    int reservedHere = 0;
+//    Map<String, Integer> takenPerColor = new HashMap<>();
+//
+//    // 1. Duyệt qua các InventoryItem để reserve
+//    for (InventoryItem item : items) {
+//        if (needQty <= 0) break;
+//
+//        int available = item.getQuantity() - item.getReservedQuantity();
+//        if (available <= 0) continue;
+//
+//        int take = Math.min(available, needQty);
+//        item.setReservedQuantity(item.getReservedQuantity() + take);
+//        itemsToUpdateOut.add(item);
+//
+//        reservedHere += take;
+//        needQty -= take;
+//
+//        takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
+//    }
+//
+//    if (reservedHere <= 0) return 0;
+//
+//    // 2. Lấy thông tin sản phẩm
+//    var pc = getProductName(productColorId);
+//    String productName = pc.getProduct().getName();
+//    String colorName = pc.getColor().getColorName();
+//    String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
+//
+//    String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + " cái" +
+//            "\nSản phẩm: " + productName + " (" + colorName + ")" +
+//            "\nTrạng thái: Giữ hàng thành công";
+//
+//    // 3. Tạo ticket Inventory và persist trước
+//    Inventory ticket = Inventory.builder()
+//            .employeeId("SYSTEM_AUTO")
+//            .type(EnumTypes.RESERVE)
+//            .purpose(EnumPurpose.RESERVE)
+//            .date(LocalDate.now())
+//            .warehouse(warehouse)
+//            .orderId(orderId)
+//            .note(note)
+//            .transferStatus(TransferStatus.FINISHED)
+//            .build();
+//
+//    ticket = inventoryRepository.save(ticket);
+//
+//    // 4. Lấy danh sách warehouse đã reserve trước đó
+//    List<InventoryReservedWarehouse> allReservedForOrder =
+//            inventoryReservedWarehouseRepository.findByOrderId(orderId);
+//    if (allReservedForOrder == null) {
+//        allReservedForOrder = new ArrayList<>();
+//    }
+//
+//    // 5. Tạo InventoryReservedWarehouse mới
+//    InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+//            .warehouseId(warehouse.getId())
+//            .warehouseName(warehouse.getWarehouseName())
+//            .reservedQuantity(reservedHere)
+//            .orderId(orderId)
+//            .inventory(ticket)
+//            .build();
+//
+//    allReservedForOrder.add(reserved);
+//
+//    // 6. Gán reserved warehouses vào ticket
+//    ticket.setReservedWarehouses(allReservedForOrder);
+//
+//    // 7. Tạo các InventoryItem riêng cho ticket
+//    List<InventoryItem> ticketItems = new ArrayList<>();
+//    for (var entry : takenPerColor.entrySet()) {
+//        InventoryItem ticketItem = InventoryItem.builder()
+//                .productColorId(entry.getKey())
+//                .quantity(entry.getValue())
+//                .inventory(ticket)
+//                .build();
+//        ticketItems.add(ticketItem);
+//    }
+//    ticket.setInventoryItems(ticketItems);
+//
+//    // 8. Persist các reserved warehouse và ticket items
+//    inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
+//    inventoryItemRepository.saveAll(ticketItems);
+//
+//    // 9. Thêm ticket vào danh sách output
+//    ticketsToCreateOut.add(ticket);
+//
+//    return reservedHere;
+//}
 private int reserveAtWarehouse_OptionA(
         Warehouse warehouse,
         List<InventoryItem> items,
@@ -1018,7 +1116,7 @@ private int reserveAtWarehouse_OptionA(
     int reservedHere = 0;
     Map<String, Integer> takenPerColor = new HashMap<>();
 
-    // 1. Duyệt qua các InventoryItem để reserve
+    // 1. Reserve từng item trong kho
     for (InventoryItem item : items) {
         if (needQty <= 0) break;
 
@@ -1047,28 +1145,22 @@ private int reserveAtWarehouse_OptionA(
             "\nSản phẩm: " + productName + " (" + colorName + ")" +
             "\nTrạng thái: Giữ hàng thành công";
 
-    // 3. Tạo ticket Inventory và persist trước
-    Inventory ticket = Inventory.builder()
-            .employeeId("SYSTEM_AUTO")
-            .type(EnumTypes.RESERVE)
-            .purpose(EnumPurpose.RESERVE)
-            .date(LocalDate.now())
-            .warehouse(warehouse)
-            .orderId(orderId)
-            .note(note)
-            .transferStatus(TransferStatus.FINISHED)
-            .build();
+    // 3. Lấy ticket Inventory hiện có cho order (nếu chưa có thì tạo mới)
+    Inventory ticket = inventoryRepository.findByOrderId(orderId)
+            .orElseGet(() -> Inventory.builder()
+                    .employeeId("SYSTEM_AUTO")
+                    .type(EnumTypes.RESERVE)
+                    .purpose(EnumPurpose.RESERVE)
+                    .date(LocalDate.now())
+                    .orderId(orderId)
+                    .transferStatus(TransferStatus.FINISHED)
+                    .build());
 
+    ticket.setNote(ticket.getNote() == null ? note : ticket.getNote() + "\n" + note);
+    ticket.setWarehouse(warehouse); // optional: lưu kho chính nếu cần
     ticket = inventoryRepository.save(ticket);
 
-    // 4. Lấy danh sách warehouse đã reserve trước đó
-    List<InventoryReservedWarehouse> allReservedForOrder =
-            inventoryReservedWarehouseRepository.findByOrderId(orderId);
-    if (allReservedForOrder == null) {
-        allReservedForOrder = new ArrayList<>();
-    }
-
-    // 5. Tạo InventoryReservedWarehouse mới
+    // 4. Tạo reservedWarehouse cho kho này
     InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
             .warehouseId(warehouse.getId())
             .warehouseName(warehouse.getWarehouseName())
@@ -1077,28 +1169,27 @@ private int reserveAtWarehouse_OptionA(
             .inventory(ticket)
             .build();
 
+    List<InventoryReservedWarehouse> allReservedForOrder = ticket.getReservedWarehouses();
+    if (allReservedForOrder == null) allReservedForOrder = new ArrayList<>();
     allReservedForOrder.add(reserved);
-
-    // 6. Gán reserved warehouses vào ticket
     ticket.setReservedWarehouses(allReservedForOrder);
 
-    // 7. Tạo các InventoryItem riêng cho ticket
-    List<InventoryItem> ticketItems = new ArrayList<>();
+    // 5. Tạo InventoryItem cho ticket
+    List<InventoryItem> ticketItems = ticket.getInventoryItems();
+    if (ticketItems == null) ticketItems = new ArrayList<>();
     for (var entry : takenPerColor.entrySet()) {
-        InventoryItem ticketItem = InventoryItem.builder()
-                .productColorId(entry.getKey())
-                .quantity(entry.getValue())
-                .inventory(ticket)
-                .build();
-        ticketItems.add(ticketItem);
+        ticketItems.add(
+                InventoryItem.builder()
+                        .productColorId(entry.getKey())
+                        .quantity(entry.getValue())
+                        .inventory(ticket)
+                        .build()
+        );
     }
     ticket.setInventoryItems(ticketItems);
 
-    // 8. Persist các reserved warehouse và ticket items
+    // 6. Lưu tất cả reservedWarehouse
     inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
-    inventoryItemRepository.saveAll(ticketItems);
-
-    // 9. Thêm ticket vào danh sách output
     ticketsToCreateOut.add(ticket);
 
     return reservedHere;
