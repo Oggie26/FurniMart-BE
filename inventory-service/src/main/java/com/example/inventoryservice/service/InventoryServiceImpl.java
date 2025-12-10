@@ -1635,9 +1635,6 @@ private int reserveAtWarehouse_OptionA(
                 .build();
     }
 
-
-
-
     // Hàm tách ProductID từ mã phiếu
     private String extractProductIdFromCode(String code) {
         try {
@@ -1659,7 +1656,7 @@ private int reserveAtWarehouse_OptionA(
                     if (part.matches("\\d+")) return Integer.parseInt(part);
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
         return 0;
     }
 
@@ -1678,7 +1675,7 @@ private int reserveAtWarehouse_OptionA(
 
     private ProductColorResponse getProductName(String productColorId){
         ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
-        if(response.getData() == null || response == null){
+        if(response.getData() == null){
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
         return response.getData();

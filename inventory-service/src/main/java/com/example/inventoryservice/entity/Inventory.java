@@ -40,22 +40,22 @@ public class Inventory extends AbstractEntity {
     @Column(nullable = false)
     private LocalDate date;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "text")
     private String note;
 
-    @Column
-    private String PdfUrl;
+    @Column(columnDefinition = "text")
+    private String pdfUrl;
 
     @Column
     private Long orderId;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, columnDefinition = "text")
     private String code;
 
-    @Column(nullable = true)
+    @Column()
     private String toWarehouseId;
 
-    @Column(nullable = true)
+    @Column()
     private String toWarehouseName;
 
     @Column(name = "transfer_status")
