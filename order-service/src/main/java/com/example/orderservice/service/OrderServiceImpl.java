@@ -1170,4 +1170,140 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    @Override
+    @Transactional
+    public OrderResponse requestReturn(Long orderId, String reason, String note) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Validation: Order must be DELIVERED or FINISHED
+        if (!EnumProcessOrder.DELIVERED.equals(order.getStatus())
+                && !EnumProcessOrder.FINISHED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        // Validation: Return window (e.g. 7 days from last status update/created date
+        // of status)
+        // Assuming implementation simply checks status for now or simple date check if
+        // strictly required.
+        // For MVP/Demo: Allow request if status is correct.
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURN_REQUESTED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
+        }
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURN_REQUESTED);
+        order.setReason(reason);
+        order.setNote(note); // Append or set note? user request note.
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse acceptReturn(Long orderId) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!EnumProcessOrder.RETURN_REQUESTED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURN_ACCEPTED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURN_ACCEPTED);
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse rejectReturn(Long orderId, String reason) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!EnumProcessOrder.RETURN_REQUESTED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURN_REJECTED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURN_REJECTED);
+        // Maybe append reason to order note or somewhere specific?
+        // Current requirement doesn't specify where to store rejection reason aside
+        // from log or overwriting reason/note.
+        // I will append it to note for visibility.
+        String existingNote = order.getNote() != null ? order.getNote() : "";
+        order.setNote(existingNote + " | REJECT REASON: " + reason);
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse confirmReturn(Long orderId) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (!EnumProcessOrder.RETURN_ACCEPTED.equals(order.getStatus())) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        // 1. Update Order Status
+        ProcessOrder process = new ProcessOrder();
+        process.setOrder(order);
+        process.setStatus(EnumProcessOrder.RETURNED);
+        process.setCreatedAt(new Date());
+        processOrderRepository.save(process);
+
+        order.getProcessOrders().add(process);
+        order.setStatus(EnumProcessOrder.RETURNED);
+
+        // 2. Refund Payment
+        Payment payment = order.getPayment();
+        if (payment != null) {
+            payment.setPaymentStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(payment);
+
+            // 3. Refund to Wallet
+            try {
+                // Assuming full refund of total order value
+                Double refundAmount = order.getTotal();
+                userClient.refundToWallet(order.getUserId(), refundAmount);
+                log.info("Refunded {} to wallet for user {}", refundAmount, order.getUserId());
+            } catch (Exception e) {
+                log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
+                // Should we throw exception to rollback?
+                // YES, consistency is key. If wallet refund fails, transaction should probably
+                // fail
+                // OR we accept manual intervention.
+                // For now, I'll catch and rethrow as AppException to trigger rollback if
+                // strict.
+                // Or if we want to allow 'RETURNED' state but 'PENDING REFUND', we might need
+                // more states.
+                // Given requirements, I'll throw to ensure system consistency (no status update
+                // without refund success).
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            }
+        }
+
+        return mapToResponse(orderRepository.save(order));
+    }
+
 }
