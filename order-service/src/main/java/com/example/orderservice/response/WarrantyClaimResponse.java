@@ -1,5 +1,6 @@
 package com.example.orderservice.response;
 
+import com.example.orderservice.enums.WarrantyActionType;
 import com.example.orderservice.enums.WarrantyClaimStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WarrantyClaimResponse {
-    
+
     private Long id;
     private Long warrantyId;
     private String customerId;
@@ -28,6 +29,11 @@ public class WarrantyClaimResponse {
     private List<String> resolutionPhotos;
     private LocalDateTime resolvedDate;
     private String adminId;
+    private WarrantyActionType actionType;
+    private Double repairCost; // null for customers, populated for admin
+    private String exchangeProductColorId;
+    private Double refundAmount;
+    private Long warrantyOrderId; // If exchange/return order was created
     private Date createdAt;
     private Date updatedAt;
 }

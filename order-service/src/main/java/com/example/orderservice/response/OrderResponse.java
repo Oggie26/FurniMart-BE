@@ -1,6 +1,7 @@
 package com.example.orderservice.response;
 
 import com.example.orderservice.enums.EnumProcessOrder;
+import com.example.orderservice.enums.OrderType;
 import lombok.*;
 
 import java.util.Date;
@@ -29,6 +30,8 @@ public class OrderResponse {
     private Date qrCodeGeneratedAt;
     private DeliveryConfirmationResponse deliveryConfirmationResponse;
     private String pdfFilePath;
-    private Boolean hasPdfFile;
     private Date deadline;
+    private Boolean hasPdfFile; // Ghi chú: true nếu file PDF tồn tại, false nếu không tồn tại hoặc chưa có
+    private OrderType orderType;
+    private Long warrantyClaimId;
 }

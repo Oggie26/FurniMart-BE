@@ -1,6 +1,7 @@
 package com.example.orderservice.entity;
 
 import com.example.orderservice.enums.EnumProcessOrder;
+import com.example.orderservice.enums.OrderType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -88,6 +89,14 @@ public class Order extends AbstractEntity {
             deadline = new Date(orderDate.getTime() + sevenDays);
         }
     }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type")
+    @Builder.Default
+    private OrderType orderType = OrderType.NORMAL;
+
+    @Column(name = "warranty_claim_id")
+    private Long warrantyClaimId; // Reference to original warranty claim
+
     // @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     // private DeliveryConfirmation deliveryConfirmation;
 }
