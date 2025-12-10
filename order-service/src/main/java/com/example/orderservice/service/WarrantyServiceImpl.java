@@ -24,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,6 +38,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final WarrantyClaimRepository warrantyClaimRepository;
     private final OrderRepository orderRepository;
     private final OrderDetailRepository orderDetailRepository;
+    private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
     @Lazy
     private final OrderService orderService;
@@ -223,10 +223,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         }
 
         switch (request.getActionType()) {
-            case EXCHANGE:
-                claim.setStatus(WarrantyClaimStatus.RESOLVED);
-                claim.setExchangeProductColorId(request.getExchangeProductColorId());
-                break;
             case RETURN:
                 claim.setStatus(WarrantyClaimStatus.RESOLVED);
                 claim.setRefundAmount(request.getRefundAmount());
@@ -258,8 +254,7 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
         }
 
-        if (claim.getActionType() != WarrantyActionType.EXCHANGE
-                && claim.getActionType() != WarrantyActionType.RETURN) {
+        if (claim.getActionType() != WarrantyActionType.RETURN) {
             throw new AppException(ErrorCode.CANNOT_CREATE_WARRANTY_ORDER);
         }
 
@@ -272,8 +267,7 @@ public class WarrantyServiceImpl implements WarrantyService {
         OrderDetail originalDetail = orderDetailRepository.findById(warranty.getOrderDetailId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        OrderType newOrderType = (claim.getActionType() == WarrantyActionType.EXCHANGE) ? OrderType.WARRANTY_EXCHANGE
-                : OrderType.WARRANTY_RETURN;
+        OrderType newOrderType = OrderType.WARRANTY_RETURN;
 
         // Create new Order
         Order newOrder = Order.builder()
@@ -293,16 +287,17 @@ public class WarrantyServiceImpl implements WarrantyService {
         // Create OrderDetail
         OrderDetail newDetail = OrderDetail.builder()
                 .order(savedOrder)
-                .productColorId(claim.getExchangeProductColorId() != null ? claim.getExchangeProductColorId()
-                        : originalDetail.getProductColorId())
+                .productColorId(originalDetail.getProductColorId())
                 .quantity(1)
                 .price(0.0)
                 .build();
 
         orderDetailRepository.save(newDetail);
 
-        // Update Payment status to PAID (since it's warranty) or handle accordingly
-        // For now, let's assume no payment needed
+        // Payment will be created at confirmReturn to avoid pending records
+        if (claim.getRefundAmount() == null || claim.getRefundAmount() <= 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
         return orderService.getOrderById(savedOrder.getId());
     }
@@ -320,7 +315,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         Long pendingClaims = warrantyClaimRepository.countByStatusAndIsDeletedFalse(WarrantyClaimStatus.PENDING);
         Long resolvedClaims = warrantyClaimRepository.countByStatusAndIsDeletedFalse(WarrantyClaimStatus.RESOLVED);
 
-        Long exchangeCount = warrantyClaimRepository.countByActionTypeAndIsDeletedFalse(WarrantyActionType.EXCHANGE);
         Long returnCount = warrantyClaimRepository.countByActionTypeAndIsDeletedFalse(WarrantyActionType.RETURN);
         Long repairCount = warrantyClaimRepository.countByActionTypeAndIsDeletedFalse(WarrantyActionType.REPAIR);
         Long rejectedCount = warrantyClaimRepository.countByStatusAndIsDeletedFalse(WarrantyClaimStatus.REJECTED); // Or
@@ -330,26 +324,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         Double totalRepairCost = warrantyClaimRepository.sumRepairCost();
         Double totalRefundAmount = warrantyClaimRepository.sumRefundAmount();
 
-        // Find recent claims
-        // Currently getAll, should limit
-        List<WarrantyClaim> recentClaims = warrantyClaimRepository.findByWarrantyIdOrderByClaimDateDesc(
-                warrantyClaimRepository.findAll().stream().findFirst().map(WarrantyClaim::getWarrantyId).orElse(0L)); // This
-                                                                                                                      // query
-                                                                                                                      // is
-                                                                                                                      // wrong
-                                                                                                                      // for
-                                                                                                                      // "recent
-                                                                                                                      // claims",
-                                                                                                                      // need
-                                                                                                                      // specific
-                                                                                                                      // query.
-                                                                                                                      // Let's
-                                                                                                                      // just
-                                                                                                                      // return
-                                                                                                                      // empty
-                                                                                                                      // list
-                                                                                                                      // or
-                                                                                                                      // all
                                                                                                                       // claims
                                                                                                                       // limited.
                                                                                                                       // For
@@ -368,7 +342,6 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .totalClaims(totalClaims)
                 .pendingClaims(pendingClaims)
                 .resolvedClaims(resolvedClaims)
-                .exchangeCount(exchangeCount)
                 .returnCount(returnCount)
                 .repairCount(repairCount)
                 .rejectedCount(rejectedCount)
@@ -478,7 +451,6 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .adminId(claim.getAdminId())
                 .actionType(claim.getActionType())
                 .repairCost(getVisibleRepairCost(claim))
-                .exchangeProductColorId(claim.getExchangeProductColorId())
                 .refundAmount(claim.getRefundAmount())
                 .createdAt(claim.getCreatedAt())
                 .updatedAt(claim.getUpdatedAt())

@@ -15,7 +15,6 @@ public class WarrantyReportResponse {
     private Long totalClaims;
     private Long pendingClaims;
     private Long resolvedClaims;
-    private Long exchangeCount;
     private Long returnCount;
     private Long repairCount;
     private Long rejectedCount;

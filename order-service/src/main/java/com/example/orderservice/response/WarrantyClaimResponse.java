@@ -31,9 +31,8 @@ public class WarrantyClaimResponse {
     private String adminId;
     private WarrantyActionType actionType;
     private Double repairCost; // null for customers, populated for admin
-    private String exchangeProductColorId;
     private Double refundAmount;
-    private Long warrantyOrderId; // If exchange/return order was created
+    private Long warrantyOrderId; // If return order was created
     private Date createdAt;
     private Date updatedAt;
 }
