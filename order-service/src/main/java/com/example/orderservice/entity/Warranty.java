@@ -31,6 +31,12 @@ public class Warranty extends AbstractEntity {
     @Column(name = "customer_id", nullable = false)
     private String customerId;
 
+    @Column(name = "address")
+    private String address;
+
+    @Column(name = "store_id")
+    private String storeId;
+
     @Column(name = "delivery_date", nullable = false)
     private LocalDateTime deliveryDate;
 
@@ -83,9 +89,9 @@ public class Warranty extends AbstractEntity {
     }
 
     public boolean isActive() {
-        return status == WarrantyStatus.ACTIVE && 
-               LocalDateTime.now().isBefore(warrantyEndDate) &&
-               claimCount < maxClaims;
+        return status == WarrantyStatus.ACTIVE &&
+                LocalDateTime.now().isBefore(warrantyEndDate) &&
+                claimCount < maxClaims;
     }
 
     public boolean canClaimWarranty() {

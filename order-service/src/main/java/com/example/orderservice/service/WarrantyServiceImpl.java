@@ -10,11 +10,19 @@ import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
 import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
+import com.example.orderservice.response.AddressResponse;
+import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.service.inteface.OrderService;
 import com.example.orderservice.service.inteface.WarrantyService;
+import com.example.orderservice.feign.UserClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -40,6 +48,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final OrderDetailRepository orderDetailRepository;
     private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
+    private final UserClient userClient;
     @Lazy
     private final OrderService orderService;
 
@@ -55,6 +64,16 @@ public class WarrantyServiceImpl implements WarrantyService {
 
         for (OrderDetail orderDetail : orderDetails) {
             if (warrantyRepository.findByOrderIdAndOrderDetailId(orderId, orderDetail.getId()).isEmpty()) {
+                String address = null;
+                try {
+                    AddressResponse addressResponse = userClient.getAddressById(order.getAddressId()).getResult();
+                    if (addressResponse != null) {
+                        address = addressResponse.getAddressLine();
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to fetch address for warranty creation: {}", e.getMessage());
+                }
+
                 Warranty warranty = Warranty.builder()
                         .orderId(orderId)
                         .orderDetailId(orderDetail.getId())
@@ -63,6 +82,8 @@ public class WarrantyServiceImpl implements WarrantyService {
                         .deliveryDate(LocalDateTime.now()) // This should be set when order is actually delivered
                         .warrantyDurationMonths(24) // 2 years
                         .description("Standard 2-year warranty")
+                        .address(address)
+                        .storeId(order.getStoreId())
                         .build();
 
                 warrantyRepository.save(warranty);
@@ -105,6 +126,24 @@ public class WarrantyServiceImpl implements WarrantyService {
         return warranties.stream()
                 .map(this::toWarrantyResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public PageResponse<WarrantyResponse> getWarrantiesByStore(String storeId, int page, int size) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+        Page<Warranty> warrantyPage = warrantyRepository.findByStoreIdAndIsDeletedFalse(storeId, pageable);
+
+        List<WarrantyResponse> responses = warrantyPage.getContent().stream()
+                .map(this::toWarrantyResponse)
+                .collect(Collectors.toList());
+
+        return PageResponse.<WarrantyResponse>builder()
+                .currentPage(page)
+                .pageSize(size)
+                .totalPages(warrantyPage.getTotalPages())
+                .totalElements(warrantyPage.getTotalElements())
+                .data(responses)
+                .build();
     }
 
     @Override
@@ -324,13 +363,13 @@ public class WarrantyServiceImpl implements WarrantyService {
         Double totalRepairCost = warrantyClaimRepository.sumRepairCost();
         Double totalRefundAmount = warrantyClaimRepository.sumRefundAmount();
 
-                                                                                                                      // claims
-                                                                                                                      // limited.
-                                                                                                                      // For
-                                                                                                                      // simplicity,
-                                                                                                                      // retrieving
-                                                                                                                      // first
-                                                                                                                      // 10
+        // claims
+        // limited.
+        // For
+        // simplicity,
+        // retrieving
+        // first
+        // 10
         List<WarrantyClaim> allClaims = warrantyClaimRepository.findByIsDeletedFalse();
         List<WarrantyClaimResponse> recentResponse = allClaims.stream()
                 .sorted((c1, c2) -> c2.getClaimDate().compareTo(c1.getClaimDate()))
@@ -408,8 +447,11 @@ public class WarrantyServiceImpl implements WarrantyService {
                 .maxClaims(warranty.getMaxClaims())
                 .isActive(warranty.isActive())
                 .canClaimWarranty(warranty.canClaimWarranty())
+                .canClaimWarranty(warranty.canClaimWarranty())
                 .createdAt(warranty.getCreatedAt())
                 .updatedAt(warranty.getUpdatedAt())
+                .address(warranty.getAddress())
+                .storeId(warranty.getStoreId())
                 .build();
     }
 

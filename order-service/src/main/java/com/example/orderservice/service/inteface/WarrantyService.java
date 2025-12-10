@@ -28,6 +28,9 @@ public interface WarrantyService {
     // Get warranties by order
     List<WarrantyResponse> getWarrantiesByOrder(Long orderId);
 
+    // Get warranties by store
+    PageResponse<WarrantyResponse> getWarrantiesByStore(String storeId, int page, int size);
+
     // Create warranty claim
     WarrantyClaimResponse createWarrantyClaim(WarrantyClaimRequest request);
 
