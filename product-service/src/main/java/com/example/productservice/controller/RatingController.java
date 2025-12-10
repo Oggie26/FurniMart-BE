@@ -23,14 +23,14 @@ public class RatingController {
 
     private final RatingService ratingService;
 
-    @PostMapping
+    @PostMapping("/{orderId}")
     @Operation(summary = "Tạo đánh giá cho sản phẩm")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<RatingResponse> createRating(@Valid @RequestBody RatingRequest ratingRequest) {
+    public ApiResponse<RatingResponse> createRating(@Valid @RequestBody RatingRequest ratingRequest,@PathVariable Long orderId) {
         return ApiResponse.<RatingResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Tạo đánh giá thành công")
-                .data(ratingService.createRating(ratingRequest))
+                .data(ratingService.createRating(ratingRequest, orderId))
                 .build();
     }
 

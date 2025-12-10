@@ -29,7 +29,6 @@ List<Inventory> findAllByWarehouse_IdAndPurpose(String warehouseId, EnumPurpose 
 
     Optional<Inventory> findByCode(String code);
 
-    Optional<Inventory> findByOrderId(Long orderId);
-
+    Optional<Inventory> findByOrderIdAndWarehouseId(Long orderId, String warehouseId);
     List<Inventory> findAllByOrderId(Long orderId);
 }

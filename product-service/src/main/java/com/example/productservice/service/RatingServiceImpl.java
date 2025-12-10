@@ -12,7 +12,6 @@ import com.example.productservice.enums.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,7 +24,7 @@ public class RatingServiceImpl implements RatingService {
     private final ProductRepository productRepository;
 
     @Override
-    public RatingResponse createRating(RatingRequest request) {
+    public RatingResponse createRating(RatingRequest request, Long orderId) {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
