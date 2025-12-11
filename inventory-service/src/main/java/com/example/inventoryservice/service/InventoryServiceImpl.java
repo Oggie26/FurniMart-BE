@@ -1496,7 +1496,9 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public void rollbackInventoryTicket(Long orderId) {
 
-        Inventory ticket = inventoryRepository.findByOrderId(orderId)
+        Inventory ticket = inventoryRepository.findAllByOrderId(orderId)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         Warehouse warehouse = ticket.getWarehouse();
