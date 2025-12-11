@@ -1207,7 +1207,7 @@ public class InventoryServiceImpl implements InventoryService {
                     productColorId,
                     quantity - totalReserved,
                     orderId,
-                    isAssigned // <--- FIX: Truyền tham số này xuống
+                    isAssigned
             );
 
             if (reservedHere > 0) {
@@ -1226,7 +1226,6 @@ public class InventoryServiceImpl implements InventoryService {
             if (totalReserved >= quantity) break;
         }
 
-        // --- (1) Build global overview ---
         StringBuilder globalOverview = new StringBuilder("\n--- TỔNG THỂ GIỮ HÀNG ---\n");
         for (WarehouseReserveInfo info : globalList) {
             globalOverview.append(String.format(
@@ -1237,7 +1236,6 @@ public class InventoryServiceImpl implements InventoryService {
             ));
         }
 
-        // --- (2) Build per-warehouse print content ---
         Map<String, String> printContentByWarehouse = new HashMap<>();
         for (WarehouseReserveInfo info : globalList) {
 
@@ -1258,7 +1256,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .totalNeeded(quantity)
                 .totalReserved(totalReserved)
                 .globalReservations(globalList)
-                .warehousePrintContentMap(printContentByWarehouse) // <--- sửa
+                .warehousePrintContentMap(printContentByWarehouse)
                 .build();
     }
 
@@ -1286,7 +1284,6 @@ public class InventoryServiceImpl implements InventoryService {
             int take = Math.min(available, needQty);
 
             item.setReservedQuantity(item.getReservedQuantity() + take);
-            inventoryItemRepository.save(item);
 
             needQty -= take;
             reservedHere += take;
@@ -1294,6 +1291,8 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         if (reservedHere <= 0) return 0;
+
+        inventoryItemRepository.saveAll(items);
 
         Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId, warehouse.getId())
                 .orElseGet(() -> Inventory.builder()
@@ -1310,7 +1309,6 @@ public class InventoryServiceImpl implements InventoryService {
                         .build()
                 );
 
-        // --- FIX: LƯU TRẠNG THÁI ASSIGNED VÀO DB ---
         ticket.getReservedWarehouses().add(
                 InventoryReservedWarehouse.builder()
                         .warehouseId(warehouse.getId())
@@ -1333,6 +1331,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         inventoryRepository.save(ticket);
+
         return reservedHere;
     }
 
