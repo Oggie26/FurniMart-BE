@@ -52,7 +52,6 @@ public class OrderServiceImpl implements OrderService {
     private final AuthClient authClient;
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
-    private final KafkaTemplate<String , OrderCancelRollbackStockEvent>  kafkaTemplate2;
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
     private final QRCodeService qrCodeService;
@@ -360,19 +359,7 @@ public class OrderServiceImpl implements OrderService {
             log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
         }
 
-        OrderCancelRollbackStockEvent rollbackEvent =
-                OrderCancelRollbackStockEvent.builder()
-                        .orderId(order.getId())
-                        .items(order.getOrderDetails().stream()
-                                .map(d -> OrderCancelRollbackStockEvent.Item.builder()
-                                        .productColorId(d.getProductColorId())
-                                        .quantity(d.getQuantity())
-                                        .build())
-                                .toList()
-                        )
-                        .build();
-
-        kafkaTemplate2.send("order-cancel-rollback-topic", rollbackEvent);
+       inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);

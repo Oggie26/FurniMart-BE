@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -470,4 +471,32 @@ public class InventoryController {
                 .data(response)
                 .build();
     }
+
+    @Operation(summary = "Rollback phiếu kho cho một order")
+    @DeleteMapping("/rollback/{orderId}")
+    public ApiResponse<Void> rollbackInventory(@PathVariable Long orderId) {
+        try {
+            inventoryService.rollbackInventoryTicket(orderId);
+            return ApiResponse.<Void>builder()
+                    .status(200)
+                    .message("Rollback inventory cho order " + orderId + " thành công")
+                    .data(null)
+                    .build();
+        } catch (AppException e) {
+            // Nếu có lỗi nghiệp vụ
+            return ApiResponse.<Void>builder()
+                    .status(400)
+                    .message(e.getMessage())
+                    .data(null)
+                    .build();
+        } catch (Exception e) {
+            // Nếu lỗi hệ thống
+            return ApiResponse.<Void>builder()
+                    .status(500)
+                    .message("Rollback thất bại: " + e.getMessage())
+                    .data(null)
+                    .build();
+        }
+    }
+
 }
