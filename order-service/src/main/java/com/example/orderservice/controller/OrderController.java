@@ -8,6 +8,7 @@ import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.repository.VoucherRepository;
+import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
@@ -16,6 +17,7 @@ import com.example.orderservice.service.ManagerWorkflowService;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -478,6 +480,18 @@ public class OrderController {
                                 .message("Xác nhận đã nhận hàng trả và hoàn tiền thành công")
                                 .data(orderService.confirmReturn(orderId))
                                 .build();
+        }
+
+        @Operation(summary = "Hủy đơn hàng")
+        @PostMapping("/cancel")
+        public ApiResponse<Void> cancelOrder(@Valid @RequestBody CancelOrderRequest cancelOrderRequest) {
+                orderService.cancelOrder(cancelOrderRequest);
+
+                return ApiResponse.<Void>builder()
+                        .status(200)
+                        .message("Hủy đơn hàng thành công cho orderId: " + cancelOrderRequest.getOrderId())
+                        .data(null)
+                        .build();
         }
 
         private String getClientIp(HttpServletRequest request) {
