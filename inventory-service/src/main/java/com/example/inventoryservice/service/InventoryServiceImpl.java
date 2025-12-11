@@ -1201,12 +1201,13 @@ public class InventoryServiceImpl implements InventoryService {
         int totalReserved = 0;
 
         for (Warehouse wh : warehouses) {
-
+            boolean isAssigned = wh.getId().equals(assignedWarehouseId);
             int reservedHere = reserveAtWarehouse(
                     wh,
                     productColorId,
                     quantity - totalReserved,
-                    orderId
+                    orderId,
+                    isAssigned // <--- FIX: Truyền tham số này xuống
             );
 
             if (reservedHere > 0) {
@@ -1265,19 +1266,18 @@ public class InventoryServiceImpl implements InventoryService {
             Warehouse warehouse,
             String productColorId,
             int needQty,
-            long orderId
+            long orderId,
+            boolean isAssigned // <--- FIX: Nhận tham số mới
     ) {
         if (needQty <= 0) return 0;
 
-        // Lấy tất cả item của kho này có productColorId
         List<InventoryItem> items = inventoryItemRepository
-                .findFullByProductColorIdAndWarehouseId(productColorId,warehouse.getId());
+                .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
 
         int reservedHere = 0;
-
-        // Dùng để tạo inventory ticket
         Map<String, Integer> takenPerColor = new HashMap<>();
 
+        // Logic trừ tồn kho (First-In-First-Out hoặc logic tùy chọn của bạn)
         for (InventoryItem item : items) {
             if (needQty <= 0) break;
 
@@ -1291,14 +1291,11 @@ public class InventoryServiceImpl implements InventoryService {
 
             needQty -= take;
             reservedHere += take;
-
             takenPerColor.merge(productColorId, take, Integer::sum);
         }
 
-        // Nếu kho này không giữ gì thì không tạo phiếu
         if (reservedHere <= 0) return 0;
 
-        // Tìm phiếu theo order + warehouse
         Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId, warehouse.getId())
                 .orElseGet(() -> Inventory.builder()
                         .employeeId("SYSTEM_AUTO")
@@ -1314,7 +1311,7 @@ public class InventoryServiceImpl implements InventoryService {
                         .build()
                 );
 
-        // Ghi chi tiết kho giữ bao nhiêu
+        // --- FIX: LƯU TRẠNG THÁI ASSIGNED VÀO DB ---
         ticket.getReservedWarehouses().add(
                 InventoryReservedWarehouse.builder()
                         .warehouseId(warehouse.getId())
@@ -1322,10 +1319,10 @@ public class InventoryServiceImpl implements InventoryService {
                         .reservedQuantity(reservedHere)
                         .orderId(orderId)
                         .inventory(ticket)
+                        .isAssignedWarehouse(isAssigned)
                         .build()
         );
 
-        // Add từng màu vào phiếu
         for (var entry : takenPerColor.entrySet()) {
             ticket.getInventoryItems().add(
                     InventoryItem.builder()
@@ -1337,7 +1334,6 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         inventoryRepository.save(ticket);
-
         return reservedHere;
     }
 
@@ -1872,31 +1868,22 @@ public class InventoryServiceImpl implements InventoryService {
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
 
+        // Map Items
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
-                .map(this::mapToInventoryItemResponse)
+                .map(item -> InventoryItemResponse.builder()
+                        .id(item.getId())
+                        .quantity(item.getQuantity())
+                        .reservedQuantity(item.getReservedQuantity())
+                        .productColorId(item.getProductColorId())
+                        .productName(item.getProductColorId())
+                        .locationId(item.getLocationItem() != null ? item.getLocationItem().getId() : null)
+                        .inventoryId(item.getInventory().getId())
+                        .build())
                 .collect(Collectors.toList());
 
-        if (itemResponseList.isEmpty()) {
-            int quantity = parseQuantityFromNote(inventory.getNote());
-            String extractedProductId = extractProductIdFromCode(inventory.getCode());
-
-            if (quantity > 0 && extractedProductId != null) {
-                itemResponseList = List.of(
-                        InventoryItemResponse.builder()
-                                .id(null)
-                                .quantity(quantity)
-                                .reservedQuantity(0)
-                                .productColorId(extractedProductId)
-                                .productName(extractedProductId)
-                                .locationId(inventory.getWarehouse() != null ? inventory.getWarehouse().getId() : null)
-                                .inventoryId(inventory.getId())
-                                .build()
-                );
-            }
-        }
-
+        // Map Reserved Warehouses
         Map<String, WarehouseReserveInfo> warehouseMap = new HashMap<>();
 
         Optional.ofNullable(inventory.getReservedWarehouses())
@@ -1906,14 +1893,18 @@ public class InventoryServiceImpl implements InventoryService {
                                 .warehouseId(rw.getWarehouseId())
                                 .warehouseName(rw.getWarehouseName())
                                 .reservedQuantity(rw.getReservedQuantity())
+                                // --- FIX: Đọc từ DB lên Response ---
+                                .isAssignedWarehouse(rw.getIsAssignedWarehouse())
                                 .build()));
 
+        // Đảm bảo kho gốc luôn hiển thị (dù sl=0)
         if (inventory.getWarehouse() != null) {
             warehouseMap.computeIfAbsent(inventory.getWarehouse().getId(),
                     id -> WarehouseReserveInfo.builder()
                             .warehouseId(id)
                             .warehouseName(inventory.getWarehouse().getWarehouseName())
                             .reservedQuantity(0)
+                            .isAssignedWarehouse(false)
                             .build());
         }
 
@@ -1938,7 +1929,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-    // Hàm tách ProductID từ mã phiếu
     private String extractProductIdFromCode(String code) {
         try {
             if (code != null && code.startsWith("RES-")) {
