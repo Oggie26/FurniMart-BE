@@ -151,11 +151,11 @@ public class VNPayController {
 
                     response.getWriter().write(html);
                 } else {
-                    orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
-                    Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
-                            .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
-                    payment.setPaymentStatus(PaymentStatus.PAID);
-                    paymentRepository.save(payment);
+//                    orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+//                    Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
+//                            .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+//                    payment.setPaymentStatus(PaymentStatus.PAID);
+//                    paymentRepository.save(payment);
                     response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
                 }
             } else {
