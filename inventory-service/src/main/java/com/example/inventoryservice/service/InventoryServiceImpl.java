@@ -1548,27 +1548,35 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public InventoryWarehouseViewResponse getWarehouseInventoryView(String warehouseId) {
 
-        // 1) Inventory của riêng kho đó
+        // Phiếu của kho đang login
         List<InventoryResponse> localResponses = inventoryRepository
                 .findAllByWarehouse_Id(warehouseId)
                 .stream()
                 .map(this::mapToInventoryResponse)
                 .toList();
 
-        // 2) Tất cả phiếu giữ hàng toàn hệ thống (RESERVE)
+        // Phiếu global: những kho CÓ THAM GIA giữ hàng (có reserved quantity > 0)
         List<InventoryResponse> globalResponses = inventoryRepository
                 .findAllByType(EnumTypes.RESERVE)
                 .stream()
                 .map(this::mapToInventoryResponse)
+                .filter(ticket ->
+                        ticket.getReservedWarehouses() != null &&
+                                ticket.getReservedWarehouses().stream()
+                                        .anyMatch(r ->
+                                                r.getReservedQuantity() > 0 &&
+                                                        !warehouseId.equals(r.getWarehouseId())
+                                        )
+                )
                 .toList();
 
-        // 3) Trả về response Model C
         return InventoryWarehouseViewResponse.builder()
                 .warehouseId(warehouseId)
                 .localTickets(localResponses)
                 .globalTickets(globalResponses)
                 .build();
     }
+
 
 
 
