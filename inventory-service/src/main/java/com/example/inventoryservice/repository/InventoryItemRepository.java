@@ -168,9 +168,9 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     // Update trừ số lượng giữ (Atomic Update - Tránh Race Condition)
     @Modifying
-    @Query("UPDATE InventoryItem i SET i.reservedQuantity = i.reservedQuantity - :quantity " +
-            "WHERE i.productColorId = :productColorId AND i.inventory.warehouse.id = :warehouseId")
-    void decreaseReservedQuantity(@Param("productColorId") String productColorId,
-                                  @Param("warehouseId") String warehouseId,
-                                  @Param("quantity") int quantity);
+    @Query("UPDATE InventoryItem i SET i.reservedQuantity = i.reservedQuantity - :qty " +
+            "WHERE i.productColorId = :sku AND i.inventory.warehouse.id = :whId")
+    int decreaseReservedQuantity(@Param("sku") String sku,
+                                 @Param("whId") String whId,
+                                 @Param("qty") int qty);
 }

@@ -333,36 +333,9 @@ public class OrderServiceImpl implements OrderService {
         }
         order.getProcessOrders().add(process);
 
-//        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-//                .map(detail -> OrderCreatedEvent.OrderItem.builder()
-//                        .productColorId(detail.getProductColorId())
-//                        .quantity(detail.getQuantity())
-//                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-//                        .price(detail.getPrice())
-//                        .build())
-//                .toList();
-//
-//        // 5. Build Event Object
-//        OrderCreatedEvent event = OrderCreatedEvent.builder()
-//                .email(safeGetUser(order.getUserId()).getEmail())
-//                .fullName(safeGetUser(order.getUserId()).getFullName())
-//                .orderDate(order.getOrderDate())
-//                .totalPrice(order.getTotal())
-//                .orderId(order.getId())
-//                .storeId(order.getStoreId())
-//                .items(orderItems)
-//                .build();
-//
-//        try {
-//            kafkaTemplate.send("order-cancel-topic", event);
-//            log.info("Sent cancel event for order: {}", order.getId());
-//        } catch (Exception e) {
-//            log.error("Failed to send Kafka event: {}", e.getMessage());
-//        }
-
-        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
         processOrderRepository.save(process);
         orderRepository.save(order);
+        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
     }
 
     @Override

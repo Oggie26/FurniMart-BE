@@ -1411,21 +1411,30 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public void rollbackInventoryTicket(Long orderId) {
 
-        Inventory ticket = inventoryRepository.findAllByOrderId(orderId)
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
+        Inventory ticket = inventoryRepository.findByOrderId(orderId);
+        if (ticket == null) {
+            log.warn("🛑 Rollback thất bại: Không tìm thấy ticket cho Order {}", orderId);
+            return;
+        }
 
         String warehouseId = ticket.getWarehouse().getId();
+        log.info("🔍 Bắt đầu rollback Ticket {} tại Kho {}", ticket.getId(), warehouseId);
+
         List<InventoryItem> itemsToDelete = ticket.getInventoryItems();
 
         for (InventoryItem item : itemsToDelete) {
-            inventoryItemRepository.decreaseReservedQuantity(
+            int rows = inventoryItemRepository.decreaseReservedQuantity(
                     item.getProductColorId(),
                     warehouseId,
                     item.getQuantity()
             );
+
+            if (rows == 0) {
+                log.error("❌ UPDATE 0 ROWS: Có vẻ sản phẩm [{}] không tồn tại ở kho [{}] (hoặc sai ID).",
+                        item.getProductColorId(), warehouseId);
+            } else {
+                log.info("✅ Đã hoàn lại {} cái cho sản phẩm {}", item.getQuantity(), item.getProductColorId());
+            }
         }
 
         if (ticket.getReservedWarehouses() != null && !ticket.getReservedWarehouses().isEmpty()) {
@@ -1435,7 +1444,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventoryItemRepository.deleteAllInBatch(itemsToDelete);
         inventoryRepository.delete(ticket);
 
-        log.info("🗑 Rollback inventory for order {} done", orderId);
+        log.info("🗑 Rollback DONE cho order {}", orderId);
     }
 
 
