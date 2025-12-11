@@ -6,6 +6,7 @@ import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.OrderType;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
+import com.example.orderservice.event.OrderCancelRollbackStockEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.*;
@@ -166,7 +167,6 @@ public class OrderServiceImpl implements OrderService {
             log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
         }
 
-        // Clear cart after creating pre-order
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
@@ -311,7 +311,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
     public void cancelOrder(CancelOrderRequest cancelOrderRequest) {
+
         Order order = orderRepository.findByIdAndIsDeletedFalse(cancelOrderRequest.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         order.setStatus(EnumProcessOrder.CANCELLED);
@@ -348,6 +350,7 @@ public class OrderServiceImpl implements OrderService {
             kafkaTemplate.send("order-cancel-topic", event)
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
+                            log.info("");
                         } else {
                             log.info("Successfully sent order cancel event for: {}", event.getOrderId());
                         }
@@ -355,6 +358,20 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
         }
+
+        OrderCancelRollbackStockEvent rollbackEvent =
+                OrderCancelRollbackStockEvent.builder()
+                        .orderId(order.getId())
+                        .items(order.getOrderDetails().stream()
+                                .map(d -> OrderCancelRollbackStockEvent.Item.builder()
+                                        .productColorId(d.getProductColorId())
+                                        .quantity(d.getQuantity())
+                                        .build())
+                                .toList()
+                        )
+                        .build();
+
+        kafkaTemplate.send("order-cancel-rollback-topic", rollbackEvent);
 
         processOrderRepository.save(process);
         orderRepository.save(order);
@@ -392,33 +409,6 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("Lỗi xóa giỏ hàng (Ignore): {}", e.getMessage());
         }
-
-        // 3. Gửi Kafka
-        // var userInfo = safeGetUser(order.getUserId());
-        // OrderCreatedEvent event = OrderCreatedEvent.builder()
-        // .email(userInfo.getEmail())
-        // .fullName(userInfo.getFullName())
-        // .orderDate(order.getOrderDate())
-        // .totalPrice(order.getTotal())
-        // .orderId(order.getId())
-        // .storeId(order.getStoreId())
-        // .addressLine(getAddress(order.getAddressId()))
-        // .paymentMethod(PaymentMethod.COD)
-        // .items(orderItems)
-        // .build();
-        //
-        // try {
-        // kafkaTemplate.send("order-created-topic", event)
-        // .whenComplete((result, ex) -> {
-        // if (ex != null) {
-        // log.warn("Kafka send failed: {}", ex.getMessage());
-        // } else {
-        // log.info("Kafka sent success: {}", event.getOrderId());
-        // }
-        // });
-        // } catch (Exception e) {
-        // log.error("Kafka error: {}", e.getMessage());
-        // }
     }
 
     @Override

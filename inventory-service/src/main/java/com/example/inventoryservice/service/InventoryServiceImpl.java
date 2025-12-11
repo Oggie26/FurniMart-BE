@@ -36,9 +36,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final ProductClient productClient;
     private final DeliveryClient deliveryClient;
     private final StoreClient storeClient;
-    @SuppressWarnings("unused")
-    private final InventoryReservedWarehouseRepository inventoryReservedWarehouseRepository;
-    @SuppressWarnings("unused")
+    private final InventoryReservedWarehouseRepository reservedWarehouseRepository;
     private final PDFService pdfService;
 
     @Override
@@ -158,7 +156,6 @@ public class InventoryServiceImpl implements InventoryService {
                         Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-                        // Tạo phiếu yêu cầu nhập kho
                         Inventory transferReq = Inventory.builder()
                                 .employeeId(getProfile())
                                 .type(EnumTypes.TRANSFER)
@@ -172,7 +169,6 @@ public class InventoryServiceImpl implements InventoryService {
 
                         inventoryRepository.save(transferReq);
 
-                        // Chi tiết hàng chờ duyệt (location = null)
                         createInventoryItem(
                                 transferReq,
                                 null,
@@ -1496,6 +1492,44 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public void rollbackInventoryTicket(Long orderId) {
+
+        Inventory ticket = inventoryRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        Warehouse warehouse = ticket.getWarehouse();
+
+        for (InventoryItem item : ticket.getInventoryItems()) {
+
+            InventoryItem source = inventoryItemRepository
+                    .findFullByProductColorIdAndWarehouseId(
+                            item.getProductColorId(),
+                            warehouse.getId()
+                    )
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+
+            if (source != null) {
+                source.setReservedQuantity(
+                        source.getReservedQuantity() - item.getQuantity()
+                );
+                inventoryItemRepository.save(source);
+            }
+
+            inventoryItemRepository.delete(item);
+        }
+
+        reservedWarehouseRepository.deleteAll(ticket.getReservedWarehouses());
+
+        inventoryRepository.delete(ticket);
+
+        log.info("🗑 Rollback inventory for order {} done", orderId);
+    }
+
+
     // ----------------- CHECK STOCK -----------------
 
     @Override
@@ -1548,7 +1582,6 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public InventoryWarehouseViewResponse getWarehouseInventoryView(String warehouseId) {
 
-        // Phiếu của kho đang login
         List<InventoryResponse> localResponses = inventoryRepository
                 .findAllByWarehouse_Id(warehouseId)
                 .stream()
@@ -1567,10 +1600,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .globalTickets(globalResponses)
                 .build();
     }
-
-
-
-
 
 //    @Override
 //    public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {

@@ -252,10 +252,6 @@ public class WarrantyController {
 
         // ========== HELPER METHODS ==========
 
-        /**
-         * Verify that the current user can access the specified customer's data.
-         * Customers can only access their own data, while ADMIN can access any customer's data.
-         */
         private void verifyCustomerAccess(String customerId) {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {
@@ -277,9 +273,7 @@ public class WarrantyController {
                 }
         }
 
-        /**
-         * Get the current authenticated user's ID
-         */
+
         private String getCurrentUserId() {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()
@@ -302,10 +296,6 @@ public class WarrantyController {
                 return userIdResponse.getData().getId();
         }
 
-        /**
-         * Verify that the current user owns the specified warranty.
-         * Customers can only access their own warranties, while ADMIN can access any warranty.
-         */
         private void verifyWarrantyOwnership(Long warrantyId) {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {

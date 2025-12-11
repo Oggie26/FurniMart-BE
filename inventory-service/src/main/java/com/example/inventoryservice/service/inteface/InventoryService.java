@@ -64,4 +64,6 @@ public interface InventoryService {
     List<LowStockAlertResponse> getLowStockProducts(Integer threshold);
 
     InventoryWarehouseViewResponse getWarehouseInventoryView(String warehouseId);
+
+    void rollbackInventoryTicket(Long orderId);
 }
