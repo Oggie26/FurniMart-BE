@@ -316,6 +316,11 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdAndIsDeletedFalse(cancelOrderRequest.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (order.getStatus() == EnumProcessOrder.CANCELLED) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
         order.setStatus(EnumProcessOrder.CANCELLED);
 
         ProcessOrder process = new ProcessOrder();
@@ -325,48 +330,37 @@ public class OrderServiceImpl implements OrderService {
 
         if (order.getProcessOrders() == null) {
             order.setProcessOrders(new ArrayList<>());
-        } else {
-            order.getProcessOrders().clear();
         }
         order.getProcessOrders().add(process);
 
-        // Build Kafka event
-        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                        .productColorId(detail.getProductColorId())
-                        .quantity(detail.getQuantity())
-                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                        .price(detail.getPrice())
-                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                        .build())
-                .toList();
+//        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+//                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+//                        .productColorId(detail.getProductColorId())
+//                        .quantity(detail.getQuantity())
+//                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+//                        .price(detail.getPrice())
+//                        .build())
+//                .toList();
+//
+//        // 5. Build Event Object
+//        OrderCreatedEvent event = OrderCreatedEvent.builder()
+//                .email(safeGetUser(order.getUserId()).getEmail())
+//                .fullName(safeGetUser(order.getUserId()).getFullName())
+//                .orderDate(order.getOrderDate())
+//                .totalPrice(order.getTotal())
+//                .orderId(order.getId())
+//                .storeId(order.getStoreId())
+//                .items(orderItems)
+//                .build();
+//
+//        try {
+//            kafkaTemplate.send("order-cancel-topic", event);
+//            log.info("Sent cancel event for order: {}", order.getId());
+//        } catch (Exception e) {
+//            log.error("Failed to send Kafka event: {}", e.getMessage());
+//        }
 
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
-                .email(safeGetUser(order.getUserId()).getEmail())
-                .fullName(safeGetUser(order.getUserId()).getFullName())
-                .orderDate(order.getOrderDate())
-                .totalPrice(order.getTotal())
-                .orderId(order.getId())
-                .storeId(order.getStoreId())
-                .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(order.getPayment().getPaymentMethod())
-                .items(orderItems)
-                .build();
-
-        try {
-            kafkaTemplate.send("order-cancel-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.info("");
-                        } else {
-                            log.info("Successfully sent order cancel event for: {}", event.getOrderId());
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
-        }
         inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-
         processOrderRepository.save(process);
         orderRepository.save(order);
     }

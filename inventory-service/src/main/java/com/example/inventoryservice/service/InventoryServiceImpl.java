@@ -1267,7 +1267,7 @@ public class InventoryServiceImpl implements InventoryService {
             String productColorId,
             int needQty,
             long orderId,
-            boolean isAssigned // <--- FIX: Nhận tham số mới
+            boolean isAssigned
     ) {
         if (needQty <= 0) return 0;
 
@@ -1277,7 +1277,6 @@ public class InventoryServiceImpl implements InventoryService {
         int reservedHere = 0;
         Map<String, Integer> takenPerColor = new HashMap<>();
 
-        // Logic trừ tồn kho (First-In-First-Out hoặc logic tùy chọn của bạn)
         for (InventoryItem item : items) {
             if (needQty <= 0) break;
 
@@ -1336,86 +1335,6 @@ public class InventoryServiceImpl implements InventoryService {
         inventoryRepository.save(ticket);
         return reservedHere;
     }
-
-
-//    private int reserveAtWarehouse_OptionA(
-//            Warehouse warehouse,
-//            List<InventoryItem> items,
-//            int needQty,
-//            long orderId,
-//            String productColorId,
-//            Map<String, String> warehouseNameCache,
-//            List<InventoryItem> itemsToUpdateOut,
-//            List<Inventory> ticketsOut
-//    ) {
-//        int reservedHere = 0;
-//        Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//        for (InventoryItem item : items) {
-//            if (needQty <= 0) break;
-//
-//            int available = item.getQuantity() - item.getReservedQuantity();
-//            if (available <= 0) continue;
-//
-//            int take = Math.min(available, needQty);
-//            item.setReservedQuantity(item.getReservedQuantity() + take);
-//
-//            itemsToUpdateOut.add(item);
-//            reservedHere += take;
-//            needQty -= take;
-//
-//            takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//        }
-//
-//        if (reservedHere <= 0) return 0;
-//
-//        Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId, warehouse.getId())
-//                .orElseGet(() -> Inventory.builder()
-//                        .employeeId("SYSTEM_AUTO")
-//                        .type(EnumTypes.RESERVE)
-//                        .purpose(EnumPurpose.RESERVE)
-//                        .date(LocalDate.now())
-//                        .orderId(orderId)
-//                        .warehouse(warehouse)
-//                        .transferStatus(TransferStatus.FINISHED)
-//                        .note("Phiếu giữ hàng tự động cho đơn: " + orderId)
-//                        .inventoryItems(new ArrayList<>())
-//                        .reservedWarehouses(new ArrayList<>())
-//                        .build()
-//                );
-//
-//        String wName = warehouse.getWarehouseName();
-//        String noteLine = "- " + wName + ": giữ " + reservedHere + " sản phẩm.";
-//
-//        ticket.setNote(ticket.getNote() + "\n" + noteLine);
-//
-//        // 1. Add reservedWarehouse
-//        ticket.getReservedWarehouses().add(
-//                InventoryReservedWarehouse.builder()
-//                        .warehouseId(warehouse.getId())
-//                        .warehouseName(wName)
-//                        .reservedQuantity(reservedHere)
-//                        .orderId(orderId)
-//                        .inventory(ticket)
-//                        .build()
-//        );
-//
-//        // 2. Add items vào phiếu
-//        for (var entry : takenPerColor.entrySet()) {
-//            ticket.getInventoryItems().add(
-//                    InventoryItem.builder()
-//                            .productColorId(entry.getKey())
-//                            .quantity(entry.getValue())
-//                            .inventory(ticket)
-//                            .build()
-//            );
-//        }
-//
-//        ticketsOut.add(ticket);
-//
-//        return reservedHere;
-//    }
-
 
     @Override
     @Transactional
