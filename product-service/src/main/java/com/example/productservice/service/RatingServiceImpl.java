@@ -34,6 +34,8 @@ public class RatingServiceImpl implements RatingService {
                 .score(request.getScore())
                 .comment(request.getComment())
                 .createdAt(new Date())
+                .isRating(true)
+                .orderId(orderId)
                 .build();
 
         Rating saved = ratingRepository.save(rating);

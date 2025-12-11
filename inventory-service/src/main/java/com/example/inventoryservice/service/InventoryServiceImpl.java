@@ -1555,19 +1555,10 @@ public class InventoryServiceImpl implements InventoryService {
                 .map(this::mapToInventoryResponse)
                 .toList();
 
-        // Phiếu global: những kho CÓ THAM GIA giữ hàng (có reserved quantity > 0)
         List<InventoryResponse> globalResponses = inventoryRepository
                 .findAllByType(EnumTypes.RESERVE)
                 .stream()
                 .map(this::mapToInventoryResponse)
-                .filter(ticket ->
-                        ticket.getReservedWarehouses() != null &&
-                                ticket.getReservedWarehouses().stream()
-                                        .anyMatch(r ->
-                                                r.getReservedQuantity() > 0 &&
-                                                        !warehouseId.equals(r.getWarehouseId())
-                                        )
-                )
                 .toList();
 
         return InventoryWarehouseViewResponse.builder()
