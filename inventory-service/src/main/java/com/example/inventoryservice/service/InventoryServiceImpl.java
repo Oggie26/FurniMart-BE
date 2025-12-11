@@ -1501,31 +1501,23 @@ public class InventoryServiceImpl implements InventoryService {
                 .findFirst()
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        Warehouse warehouse = ticket.getWarehouse();
 
-        for (InventoryItem item : ticket.getInventoryItems()) {
+        String warehouseId = ticket.getWarehouse().getId();
+        List<InventoryItem> itemsToDelete = ticket.getInventoryItems();
 
-            InventoryItem source = inventoryItemRepository
-                    .findFullByProductColorIdAndWarehouseId(
-                            item.getProductColorId(),
-                            warehouse.getId()
-                    )
-                    .stream()
-                    .findFirst()
-                    .orElse(null);
-
-            if (source != null) {
-                source.setReservedQuantity(
-                        source.getReservedQuantity() - item.getQuantity()
-                );
-                inventoryItemRepository.save(source);
-            }
-
-            inventoryItemRepository.delete(item);
+        for (InventoryItem item : itemsToDelete) {
+            inventoryItemRepository.decreaseReservedQuantity(
+                    item.getProductColorId(),
+                    warehouseId,
+                    item.getQuantity()
+            );
         }
 
-        reservedWarehouseRepository.deleteAll(ticket.getReservedWarehouses());
+        if (ticket.getReservedWarehouses() != null && !ticket.getReservedWarehouses().isEmpty()) {
+            reservedWarehouseRepository.deleteAllInBatch(ticket.getReservedWarehouses());
+        }
 
+        inventoryItemRepository.deleteAllInBatch(itemsToDelete);
         inventoryRepository.delete(ticket);
 
         log.info("🗑 Rollback inventory for order {} done", orderId);

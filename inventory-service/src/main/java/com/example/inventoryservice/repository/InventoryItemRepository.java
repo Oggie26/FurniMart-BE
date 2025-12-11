@@ -5,6 +5,7 @@ import com.example.inventoryservice.enums.EnumTypes;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -164,4 +165,12 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             "ORDER BY i.inventory.date ASC")       // Ưu tiên hàng nhập cũ nhất (FIFO)
     List<InventoryItem> findByProductColorIdAndAvailableGreaterThanZero(@Param("productColorId") String productColorId);
 
+
+    // Update trừ số lượng giữ (Atomic Update - Tránh Race Condition)
+    @Modifying
+    @Query("UPDATE InventoryItem i SET i.reservedQuantity = i.reservedQuantity - :quantity " +
+            "WHERE i.productColorId = :productColorId AND i.inventory.warehouse.id = :warehouseId")
+    void decreaseReservedQuantity(@Param("productColorId") String productColorId,
+                                  @Param("warehouseId") String warehouseId,
+                                  @Param("quantity") int quantity);
 }
