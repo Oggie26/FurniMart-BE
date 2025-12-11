@@ -51,77 +51,66 @@ public class OrderController {
 
         @PostMapping("/checkout")
         public ApiResponse<Void> checkout(
-                        @RequestParam Long addressId,
-                        @RequestParam Long cartId,
-                        @RequestParam(required = false) String voucherCode,
-                        @RequestParam PaymentMethod paymentMethod,
-                        HttpServletRequest request) throws Exception {
+                @RequestParam Long addressId,
+                @RequestParam Long cartId,
+                @RequestParam(required = false) String voucherCode,
+                @RequestParam PaymentMethod paymentMethod,
+                HttpServletRequest request) throws Exception {
+
                 String clientIp = getClientIp(request);
 
                 CartResponse cartResponse = cartService.getCartById(cartId);
                 List<CartItemResponse> cartItems = cartResponse.getItems();
 
                 for (CartItemResponse item : cartItems) {
-                        ApiResponse<Boolean> response = inventoryClient
-                                        .hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
+                        ApiResponse<Boolean> response =
+                                inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
 
-                        boolean available = response.getData();
-
-                        if (!available) {
+                        if (!response.getData()) {
                                 throw new AppException(ErrorCode.OUT_OF_STOCK);
                         }
                 }
 
-                Voucher voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode)
-                                .orElse(null);
-
-                Double newVoucherPrice;
-
-                if (voucher == null) {
-                        newVoucherPrice = 0.0;
-                } else {
-                        newVoucherPrice = Double.valueOf(voucher.getAmount());
+                Voucher voucher = null;
+                if (voucherCode != null && !voucherCode.isBlank()) {
+                        voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode).orElse(null);
                 }
+
+                Double voucherValue = (voucher != null) ? voucher.getAmount().doubleValue() : 0.0;
+
+                OrderResponse orderResponse =
+                        orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+
+                cartService.clearCart();
+
+                Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+                double newTotal = order.getTotal() - voucherValue;
+                order.setTotal(newTotal);
+
+                double depositAmount = 0;
 
                 if (paymentMethod == PaymentMethod.VNPAY) {
-                        OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod,
-                                        voucherCode);
-                        cartService.clearCart();
-                        Double money = orderResponse.getTotal() - newVoucherPrice;
-                        Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
-                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-                        order.setTotal(money);
                         orderRepository.save(order);
                         return ApiResponse.<Void>builder()
-                                        .status(HttpStatus.OK.value())
-                                        .message("Chuyển hướng sang VNPay")
-                                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(), money,
-                                                        clientIp))
-                                        .build();
+                                .status(HttpStatus.OK.value())
+                                .message("Chuyển hướng sang VNPay")
+                                .redirectUrl(vnPayService.createPaymentUrl(order.getId(), newTotal, clientIp))
+                                .build();
                 } else {
-                        OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod,
-                                        voucherCode);
-                        log.info("Order ID: {}, Total: {}, Deposit: {}", orderResponse.getId(),
-                                        orderResponse.getTotal(), orderResponse.getDepositPrice());
-
-                        Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
-                                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-                        double money = order.getTotal() - newVoucherPrice;
-                        double depositPrice = money * 0.1;
-                        order.setDepositPrice(depositPrice);
-                        // orderService.handlePaymentCOD(orderResponse.getId());
-                        cartService.clearCart();
-                        order.setTotal(money);
+                        depositAmount = newTotal * 0.1;
+                        order.setDepositPrice(depositAmount);
                         orderRepository.save(order);
-                        return ApiResponse.<Void>builder()
-                                        .status(HttpStatus.OK.value())
-                                        .message("Đặt hàng thành công")
-                                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(),
-                                                        order.getDepositPrice(), clientIp))
-                                        .build();
-                }
 
+                        return ApiResponse.<Void>builder()
+                                .status(HttpStatus.OK.value())
+                                .message("Đặt hàng thành công")
+                                .redirectUrl(vnPayService.createPaymentUrl(order.getId(), depositAmount, clientIp))
+                                .build();
+                }
         }
+
 
         @PostMapping("/mobile/checkout")
         public ApiResponse<Void> checkoutMobile(
