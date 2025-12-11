@@ -322,8 +322,15 @@ public class OrderServiceImpl implements OrderService {
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.CANCELLED);
         process.setCreatedAt(new Date());
-        order.setProcessOrders(new ArrayList<>(List.of(process)));
 
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
+        } else {
+            order.getProcessOrders().clear();
+        }
+        order.getProcessOrders().add(process);
+
+        // Build Kafka event
         List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                 .map(detail -> OrderCreatedEvent.OrderItem.builder()
                         .productColorId(detail.getProductColorId())
@@ -359,11 +366,12 @@ public class OrderServiceImpl implements OrderService {
             log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
         }
 
-       inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);
     }
+
 
     @Override
     @Transactional
@@ -975,12 +983,6 @@ public class OrderServiceImpl implements OrderService {
                 && !EnumProcessOrder.FINISHED.equals(order.getStatus())) {
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
         }
-
-        // Validation: Return window (e.g. 7 days from last status update/created date
-        // of status)
-        // Assuming implementation simply checks status for now or simple date check if
-        // strictly required.
-        // For MVP/Demo: Allow request if status is correct.
 
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
