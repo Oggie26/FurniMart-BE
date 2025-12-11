@@ -73,7 +73,7 @@ public class OrderEventListener {
             log.warn("Order with ID {} not found. Skipping notification.", event.getOrderId());
             return;
         }
-        orderService.sendMailToCancelOrder(event);
+        orderService.sendMailToStoreAssigned(event);
         for (OrderCreatedEvent.OrderItem item : event.getItems()) {
             String key = "reserved_stock:" + item.getProductColorId();
             log.info("Reserved stock key: {}", key);
