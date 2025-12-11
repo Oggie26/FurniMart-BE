@@ -31,6 +31,12 @@ public class Rating extends AbstractEntity {
     private int score;
 
     @Column
+    private Long orderId;
+
+    @Column
+    private Boolean isRating;
+
+    @Column
     private String comment;
 
     @Column

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
@@ -35,4 +36,11 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, String> {
             nativeQuery = true)
     Page<Warehouse> searchByKeywordNative(@Param("keyword") String keyword, Pageable pageable);
 
+    @Query("""
+    SELECT w FROM Warehouse w
+    ORDER BY 
+        CASE WHEN w.id = :assignedWarehouseId THEN 0 ELSE 1 END,
+        w.warehouseName ASC
+""")
+    List<Warehouse> findAllOrderByPriority(@Param("assignedWarehouseId") String assignedWarehouseId);
 }

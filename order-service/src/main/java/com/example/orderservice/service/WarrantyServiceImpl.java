@@ -294,69 +294,69 @@ public class WarrantyServiceImpl implements WarrantyService {
         return toWarrantyClaimResponse(savedClaim);
     }
 
-    @Override
-    @Transactional
-    public OrderResponse createWarrantyOrder(Long claimId) {
-        log.info("Creating order from warranty claim: {}", claimId);
-
-        WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(claimId)
-                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
-
-        if (claim.getStatus() != WarrantyClaimStatus.RESOLVED) {
-            throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
-        }
-
-        if (claim.getActionType() != WarrantyActionType.RETURN) {
-            throw new AppException(ErrorCode.CANNOT_CREATE_WARRANTY_ORDER);
-        }
-
-        Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(claim.getWarrantyId())
-                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
-
-        Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(warranty.getOrderId())
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-        OrderDetail originalDetail = orderDetailRepository.findById(warranty.getOrderDetailId())
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-        OrderType newOrderType = OrderType.WARRANTY_RETURN;
-
-        // Create new Order
-        // Use addressId from claim (customer's current address) instead of original order address
-        // Store remains the same as original order (store that handled the original order)
-        Order newOrder = Order.builder()
-                .userId(originalOrder.getUserId())
-                .storeId(originalOrder.getStoreId()) // Store that handled original order will handle warranty
-                .addressId(claim.getAddressId()) // Use address from claim (customer's current address)
-                .total(0.0) // Warranty orders usually 0 cost unless paid upgrade
-                .status(EnumProcessOrder.CONFIRMED)
-                .orderDate(new Date())
-                .orderType(newOrderType)
-                .warrantyClaimId(claimId)
-                .note("Created from warranty claim #" + claimId)
-                .build();
-
-        Order savedOrder = orderRepository.save(newOrder);
-
-        // Create OrderDetail
-        OrderDetail newDetail = OrderDetail.builder()
-                .order(savedOrder)
-                .productColorId(originalDetail.getProductColorId())
-                .quantity(1)
-                .price(0.0)
-                .build();
-
-        orderDetailRepository.save(newDetail);
-
-        // Payment will be created at confirmReturn to avoid pending records
-        if (claim.getRefundAmount() == null || claim.getRefundAmount() <= 0) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-
-        // Use ApplicationContext to get OrderService lazily to avoid circular dependency
-        OrderService orderService = applicationContext.getBean(OrderService.class);
-        return orderService.getOrderById(savedOrder.getId());
-    }
+//    @Override
+//    @Transactional
+//    public OrderResponse createWarrantyOrder(Long claimId) {
+//        log.info("Creating order from warranty claim: {}", claimId);
+//
+//        WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(claimId)
+//                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
+//
+//        if (claim.getStatus() != WarrantyClaimStatus.RESOLVED) {
+//            throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
+//        }
+//
+//        if (claim.getActionType() != WarrantyActionType.RETURN) {
+//            throw new AppException(ErrorCode.CANNOT_CREATE_WARRANTY_ORDER);
+//        }
+//
+//        Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(claim.getWarrantyId())
+//                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
+//
+//        Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(warranty.getOrderId())
+//                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+//
+//        OrderDetail originalDetail = orderDetailRepository.findById(warranty.getOrderDetailId())
+//                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+//
+//        OrderType newOrderType = OrderType.WARRANTY_RETURN;
+//
+//        // Create new Order
+//        // Use addressId from claim (customer's current address) instead of original order address
+//        // Store remains the same as original order (store that handled the original order)
+//        Order newOrder = Order.builder()
+//                .userId(originalOrder.getUserId())
+//                .storeId(originalOrder.getStoreId()) // Store that handled original order will handle warranty
+//                .addressId(claim.getAddressId()) // Use address from claim (customer's current address)
+//                .total(0.0) // Warranty orders usually 0 cost unless paid upgrade
+//                .status(EnumProcessOrder.CONFIRMED)
+//                .orderDate(new Date())
+//                .orderType(newOrderType)
+//                .warrantyClaimId(claimId)
+//                .note("Created from warranty claim #" + claimId)
+//                .build();
+//
+//        Order savedOrder = orderRepository.save(newOrder);
+//
+//        // Create OrderDetail
+//        OrderDetail newDetail = OrderDetail.builder()
+//                .order(savedOrder)
+//                .productColorId(originalDetail.getProductColorId())
+//                .quantity(1)
+//                .price(0.0)
+//                .build();
+//
+//        orderDetailRepository.save(newDetail);
+//
+//        // Payment will be created at confirmReturn to avoid pending records
+//        if (claim.getRefundAmount() == null || claim.getRefundAmount() <= 0) {
+//            throw new AppException(ErrorCode.INVALID_REQUEST);
+//        }
+//
+//        // Use ApplicationContext to get OrderService lazily to avoid circular dependency
+//        OrderService orderService = applicationContext.getBean(OrderService.class);
+//        return orderService.getOrderById(savedOrder.getId());
+//    }
 
     @Override
     @Transactional(readOnly = true)

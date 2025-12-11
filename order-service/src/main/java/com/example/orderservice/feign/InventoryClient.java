@@ -3,14 +3,12 @@ package com.example.orderservice.feign;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.InventoryResponse;
 import com.example.orderservice.response.LowStockProductResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -39,6 +37,9 @@ public interface InventoryClient {
         ApiResponse<Void> restoreStock(
                         @RequestParam("productColorId") @NotBlank String productColorId,
                         @RequestParam("quantity") @Min(1) int quantity);
+
+        @DeleteMapping("/api/inventories/rollback/{orderId}")
+        ApiResponse<Void> rollbackInventory(@PathVariable Long orderId);
         //
         // @PostMapping("/api/inventories/reserve/{orderId}")
         // ApiResponse<ReserveStockResponse> reserveStock(

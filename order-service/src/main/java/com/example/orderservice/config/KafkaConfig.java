@@ -52,6 +52,7 @@ public class KafkaConfig {
         return new KafkaTemplate<>(accountCreatedEventProducerFactory());
     }
 
+
     // ----------------- PRODUCER cho String (nếu cần) --------------------
     @Bean
     public ProducerFactory<String, String> stringProducerFactory() {

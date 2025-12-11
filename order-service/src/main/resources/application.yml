@@ -10,12 +10,19 @@ spring:
       ddl-auto: update
     show-sql: true
     generate-ddl: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
 
   datasource:
     url: jdbc:postgresql://order-db:5432/order_db
-#    url: jdbc:postgresql://localhost:5432/order_db
+#    url: jdbc:postgresql://localhost:5437/order_db
     username: postgres
     password: 123456
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 50      # Tăng từ 10 lên 50 kết nối (tùy RAM server)
       minimum-idle: 10           # Luôn giữ ít nhất 10 kết nối rảnh

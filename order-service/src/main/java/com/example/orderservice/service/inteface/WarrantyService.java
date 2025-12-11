@@ -58,7 +58,7 @@ public interface WarrantyService {
     WarrantyClaimResponse resolveWarrantyClaim(WarrantyClaimResolutionRequest request);
 
     // Create order from resolved warranty claim
-    OrderResponse createWarrantyOrder(Long claimId);
+//    OrderResponse createWarrantyOrder(Long claimId);
 
     // Get warranty statistics report
     WarrantyReportResponse getWarrantyReport(LocalDateTime startDate, LocalDateTime endDate);

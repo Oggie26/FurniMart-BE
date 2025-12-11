@@ -83,22 +83,19 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
       AND w.id = :warehouseId
 """)
     List<InventoryItem> findFullByProductColorIdAndWarehouseId(String productColorId, String warehouseId);
-    // Tổng số lượng đang được giữ (reserve)
     @Query("SELECT COALESCE(SUM(i.reservedQuantity), 0) FROM InventoryItem i WHERE i.productColorId = :productColorId")
     int getTotalReservedQuantityByProductColorId(@Param("productColorId") String productColorId);
 
-    // Tổng tồn trong 1 kho
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM InventoryItem i WHERE i.inventory.warehouse.id = :warehouseId")
     int sumQuantityByWarehouseId(@Param("warehouseId") String warehouseId);
 
-    // Tổng tồn trong 1 zone
     @Query("SELECT COALESCE(SUM(i.quantity), 0) FROM InventoryItem i WHERE i.locationItem.zone.id = :zoneId")
     int sumQuantityByZoneId(@Param("zoneId") String zoneId);
 
     @Query("SELECT i FROM InventoryItem i " +
             "WHERE i.productColorId = :pci " +
             "AND i.inventory.warehouse.id = :wid " +
-            "AND i.locationItem IS NOT NULL " + // <--- QUAN TRỌNG: Chỉ lấy hàng có vị trí
+            "AND i.locationItem IS NOT NULL " +
             "ORDER BY i.reservedQuantity DESC, i.quantity DESC")
     List<InventoryItem> findItemsForExport(@Param("pci") String pci, @Param("wid") String wid);
 
@@ -109,7 +106,6 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
     Integer getRealAvailableStock(@Param("productColorId") String productColorId);
 
-    // Nếu bạn vẫn muốn lấy List Item để làm gì đó thì dùng cái này:
     @Query("SELECT i FROM InventoryItem i " +
             "WHERE i.productColorId = :productColorId " +
             "AND i.inventory.type NOT IN ('RESERVE', 'EXPORT', 'TRANSFER')")
@@ -119,16 +115,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     @Query("SELECT COALESCE(SUM(i.quantity), 0) " +
             "FROM InventoryItem i " +
             "WHERE i.productColorId = :pci " +
-            "AND i.inventory.type NOT IN :excludedTypes") // <--- Dùng tham số
+            "AND i.inventory.type NOT IN :excludedTypes")
     Integer calculateTotalPhysicalStock(@Param("pci") String pci,
                                         @Param("excludedTypes") List<EnumTypes> excludedTypes);
 
     // 2. Tính TỒN KHẢ DỤNG (Available)
-    @Query("SELECT SUM(i.quantity - i.reservedQuantity) " + // Phải trừ Reserved
+    @Query("SELECT SUM(i.quantity - i.reservedQuantity) " +
             "FROM InventoryItem i " +
             "WHERE i.productColorId = :pId " +
-            "AND i.inventory.type NOT IN :virtualTypes " + // Loại bỏ hàng ảo/hàng lỗi
-            "AND (i.quantity - i.reservedQuantity) > 0")   // Chỉ cộng các dòng dương
+            "AND i.inventory.type NOT IN :virtualTypes " +
+            "AND (i.quantity - i.reservedQuantity) > 0")
     Integer calculateRealAvailableStock(@Param("pId") String pId,
                                         @Param("virtualTypes") List<EnumTypes> virtualTypes);
 

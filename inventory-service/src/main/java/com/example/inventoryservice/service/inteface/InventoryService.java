@@ -4,11 +4,7 @@ import com.example.inventoryservice.enums.TransferStatus;
 import com.example.inventoryservice.request.InventoryItemRequest;
 import com.example.inventoryservice.request.InventoryRequest;
 import com.example.inventoryservice.request.TransferStockRequest;
-import com.example.inventoryservice.response.InventoryItemResponse;
-import com.example.inventoryservice.response.InventoryResponse;
-import com.example.inventoryservice.response.LowStockAlertResponse;
-import com.example.inventoryservice.response.ProductLocationResponse;
-import com.example.inventoryservice.response.ReserveStockResponse;
+import com.example.inventoryservice.response.*;
 
 import java.util.List;
 
@@ -66,4 +62,8 @@ public interface InventoryService {
     boolean checkZoneCapacity(String zoneId, int additionalQty);
 
     List<LowStockAlertResponse> getLowStockProducts(Integer threshold);
+
+    InventoryWarehouseViewResponse getWarehouseInventoryView(String warehouseId);
+
+    void rollbackInventoryTicket(Long orderId);
 }

@@ -28,6 +28,4 @@ public class RatingRequest {
     private Integer score;
 
     private String comment;
-
-    private Long orderId;
 }
