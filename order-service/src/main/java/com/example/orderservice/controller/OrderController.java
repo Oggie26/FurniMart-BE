@@ -208,7 +208,7 @@ public class OrderController {
         public ApiResponse<PageResponse<OrderResponse>> searchOrderByCustomer(
                         @RequestParam(defaultValue = "") String keyword,
                         @RequestParam(defaultValue = "0") int page,
-                        @RequestParam(defaultValue = "100") int size) {
+                        @RequestParam(defaultValue = "150") int size) {
                 return ApiResponse.<PageResponse<OrderResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Tìm kiếm đơn hàng của khách hàng thành công")
