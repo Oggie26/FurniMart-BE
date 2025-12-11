@@ -365,13 +365,11 @@ public class OrderServiceImpl implements OrderService {
         } catch (Exception e) {
             log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
         }
-
         inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);
     }
-
 
     @Override
     @Transactional
@@ -1075,27 +1073,27 @@ public class OrderServiceImpl implements OrderService {
         Double refundAmount = null;
         Payment payment = order.getPayment();
         String referenceId = "ORDER-" + orderId;
-        
+
         // Check if this is a WARRANTY_RETURN order
         if (order.getOrderType() == OrderType.WARRANTY_RETURN && order.getWarrantyClaimId() != null) {
             referenceId = referenceId + "-CLAIM-" + order.getWarrantyClaimId();
             // For WARRANTY_RETURN, get refundAmount from WarrantyClaim
             WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(order.getWarrantyClaimId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
-            
+
             refundAmount = claim.getRefundAmount();
-            
+
             if (refundAmount == null || refundAmount <= 0) {
                 log.warn("Warranty claim {} has invalid refundAmount: {}", order.getWarrantyClaimId(), refundAmount);
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
-            
+
             // Prevent double refund
             if (payment != null && PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
                 log.warn("Order {} already refunded", orderId);
                 return mapToResponse(order);
             }
-            
+
             // Create Payment record if not exists (for warranty return orders)
             if (payment == null) {
                 payment = Payment.builder()
@@ -1145,7 +1143,8 @@ public class OrderServiceImpl implements OrderService {
                 // mark payment as refunded
                 payment.setPaymentStatus(PaymentStatus.REFUNDED);
                 paymentRepository.save(payment);
-                log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(), orderId, referenceId);
+                log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(),
+                        orderId, referenceId);
             } catch (Exception e) {
                 log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
                 // keep REFUNDING to indicate pending manual intervention

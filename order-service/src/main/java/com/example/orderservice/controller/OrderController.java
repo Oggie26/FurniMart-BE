@@ -88,6 +88,10 @@ public class OrderController {
                                         voucherCode);
                         cartService.clearCart();
                         Double money = orderResponse.getTotal() - newVoucherPrice;
+                        Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+                        order.setTotal(money);
+                        orderRepository.save(order);
                         return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Chuyển hướng sang VNPay")
@@ -102,10 +106,12 @@ public class OrderController {
 
                         Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                                         .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-                        double depositPrice = order.getTotal() * 0.1;
+                        double money = order.getTotal() - newVoucherPrice;
+                        double depositPrice = money * 0.1;
                         order.setDepositPrice(depositPrice);
                         // orderService.handlePaymentCOD(orderResponse.getId());
                         cartService.clearCart();
+                        order.setTotal(money);
                         orderRepository.save(order);
                         return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())

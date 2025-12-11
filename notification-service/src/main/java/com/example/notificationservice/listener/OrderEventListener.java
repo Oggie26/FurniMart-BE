@@ -41,6 +41,12 @@ public class OrderEventListener {
         }
     }
 
+    @KafkaListener(
+            topics = "order-cancel-topic",
+            groupId = "notification-group",
+            containerFactory = "orderCreatedKafkaListenerContainerFactory"
+    )
+
     private OrderResponse getOrderResponse(long orderId) {
         try {
             ApiResponse<OrderResponse> response = orderClient.getOrderById(orderId);
