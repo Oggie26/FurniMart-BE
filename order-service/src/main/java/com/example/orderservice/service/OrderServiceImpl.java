@@ -52,6 +52,7 @@ public class OrderServiceImpl implements OrderService {
     private final AuthClient authClient;
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private final KafkaTemplate<String , OrderCancelRollbackStockEvent>  kafkaTemplate2;
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
     private final QRCodeService qrCodeService;
@@ -371,7 +372,7 @@ public class OrderServiceImpl implements OrderService {
                         )
                         .build();
 
-        kafkaTemplate.send("order-cancel-rollback-topic", rollbackEvent);
+        kafkaTemplate2.send("order-cancel-rollback-topic", rollbackEvent);
 
         processOrderRepository.save(process);
         orderRepository.save(order);
@@ -572,7 +573,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrder(String request, int page, int size) {
-        // Sanitize search keyword to prevent injection
         if (request != null && !request.trim().isEmpty()) {
             String trimmed = request.trim();
             trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");

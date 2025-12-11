@@ -52,6 +52,21 @@ public class KafkaConfig {
         return new KafkaTemplate<>(accountCreatedEventProducerFactory());
     }
 
+    @Bean
+    public ProducerFactory<String, OrderCreatedEvent> reserveRollBackCreatedEventProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, OrderCreatedEvent> reserveRollBackCreatedEventKafkaTemplate() {
+        return new KafkaTemplate<>(reserveRollBackCreatedEventProducerFactory());
+    }
+
+
     // ----------------- PRODUCER cho String (nếu cần) --------------------
     @Bean
     public ProducerFactory<String, String> stringProducerFactory() {
