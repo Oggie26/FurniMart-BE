@@ -9,6 +9,7 @@ import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
@@ -38,6 +39,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final QRCodeService qrCodeService;
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private final ProductClient productClient;
 //    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
 
     @Override
@@ -62,6 +64,41 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .createdAt(new Date())
                 .build();
 
+
+        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
+                .map(detail -> OrderCreatedEvent.OrderItem.builder()
+                        .productColorId(detail.getProductColorId())
+                        .quantity(detail.getQuantity())
+                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
+                        .price(detail.getPrice())
+                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
+                        .build())
+                .toList();
+
+        OrderCreatedEvent event = OrderCreatedEvent.builder()
+                .email(safeGetUser(order.getUserId()).getEmail())
+                .fullName(safeGetUser(order.getUserId()).getFullName())
+                .orderDate(order.getOrderDate())
+                .totalPrice(order.getTotal())
+                .orderId(order.getId())
+                .storeId(order.getStoreId())
+                .addressLine(getAddress(order.getAddressId()))
+                .paymentMethod(order.getPayment().getPaymentMethod())
+                .items(orderItems)
+                .build();
+
+        try {
+            kafkaTemplate.send("store-assigned-topic", event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) {
+                            log.error("Kafka send failed: {}", ex.getMessage());
+                        } else {
+                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+        }
         processOrderRepository.save(process);
         orderRepository.save(order);
 
@@ -78,8 +115,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         }
         return null;
     }
-
-
 
     @Override
     @Transactional
@@ -223,6 +258,23 @@ public class AssignOrderServiceImpl implements AssignOrderService {
             log.warn("Error getting user {}: {}", userId, e.getMessage());
         }
         return null;
+    }
+
+    private String getAddress(Long addressId) {
+        if (addressId == null)
+            return null;
+        ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
+        if (resp == null || resp.getData() == null)
+            return null;
+        return resp.getData().getAddressLine();
+    }
+
+    private ProductColorResponse getProductColorResponse(String id) {
+        ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
+        if (response == null || response.getData() == null) {
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        }
+        return response.getData();
     }
 
 }

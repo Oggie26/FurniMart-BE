@@ -1113,7 +1113,6 @@ public class OrderServiceImpl implements OrderService {
                 paymentRepository.save(payment);
             }
         } else {
-            // For normal return orders, use order.getTotal()
             refundAmount = order.getTotal();
             if (payment == null) {
                 payment = Payment.builder()
@@ -1136,7 +1135,6 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 3. Refund to Wallet (if refundAmount > 0)
         if (refundAmount != null && refundAmount > 0) {
             try {
                 userClient.refundToWallet(order.getUserId(), refundAmount, referenceId);
@@ -1156,7 +1154,6 @@ public class OrderServiceImpl implements OrderService {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        // 4. Restore Stock (must succeed to keep consistency)
         for (OrderDetail detail : order.getOrderDetails()) {
             try {
                 inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
