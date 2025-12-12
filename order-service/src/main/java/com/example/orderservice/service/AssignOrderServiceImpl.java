@@ -8,6 +8,7 @@ import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
+import com.example.orderservice.feign.AIClient;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
@@ -22,8 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,6 +40,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final ProductClient productClient;
+    private final AIClient aiClient;
     // private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
 
     @Override
@@ -195,7 +196,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     }
 
     private void handleManagerReject(Order order, String rejectedStoreId, String reason) {
-        // 1. Lưu rejection process
         ProcessOrder rejectProcess = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.MANAGER_REJECT)
@@ -203,7 +203,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .build();
         processOrderRepository.save(rejectProcess);
 
-        // 2. Tăng rejection count
         int currentRejectionCount = (order.getRejectionCount() != null ? order.getRejectionCount() : 0);
         order.setRejectionCount(currentRejectionCount + 1);
         order.setLastRejectedStoreId(rejectedStoreId);
@@ -212,7 +211,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         log.info("📊 Order {} bị reject lần thứ {} bởi store {}",
                 order.getId(), order.getRejectionCount(), rejectedStoreId);
 
-        // 3. Kiểm tra: Nếu >= 3 lần reject → AUTO CANCEL
         if (order.getRejectionCount() >= 3) {
             log.warn("❌ Order {} đã bị reject {} lần → TỰ ĐỘNG HỦY",
                     order.getId(), order.getRejectionCount());
@@ -235,7 +233,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
             return;
         }
 
-        // 4. Gọi AI tìm store mới (có đủ hàng + gần)
         try {
             String newStoreId = findBestStoreWithAI(order, rejectedStoreId);
 
@@ -273,62 +270,95 @@ public class AssignOrderServiceImpl implements AssignOrderService {
             }
         } catch (Exception e) {
             log.error("❌ AI service error: {}", e.getMessage());
-            // Fallback: Cancel order nếu AI fail
             order.setStatus(EnumProcessOrder.CANCELLED);
             order.setReason("Lỗi hệ thống khi tìm cửa hàng mới: " + e.getMessage());
             orderRepository.save(order);
         }
     }
 
-    /**
-     * Gọi AI Service để tìm store tốt nhất
-     * Tiêu chí: CÓ ĐỦ HÀNG + GẦN NHẤT
-     */
     private String findBestStoreWithAI(Order order, String rejectedStoreId) {
         try {
-            // Chuẩn bị data cho AI Service
             AddressResponse customerAddress = safeGetAddress(order.getAddressId());
+            if (customerAddress == null) {
+                log.warn("⚠️ Không lấy được địa chỉ khách hàng");
+                return null;
+            }
 
-            // TODO: Implement AI Client call
-            // Tạm thời fallback về logic cũ
-            log.warn("⚠️ AI Service chưa sẵn sàng, dùng fallback logic");
-            return findBestStoreFallback(order, rejectedStoreId, customerAddress);
+            log.info("🤖 Calling AI Service for order {}", order.getId());
+
+            List<String> rejectedStores = new ArrayList<>();
+            rejectedStores.add(rejectedStoreId);
+            if (order.getLastRejectedStoreId() != null) {
+                rejectedStores.add(order.getLastRejectedStoreId());
+            }
+
+            // Prepare order items
+            List<Map<String, Object>> orderItems = order.getOrderDetails().stream()
+                    .map(detail -> Map.<String, Object>of(
+                            "productColorId", detail.getProductColorId(),
+                            "quantity", detail.getQuantity()))
+                    .toList();
+
+            Map<String, Object> addressMap = Map.of(
+                    "addressId", customerAddress.getId(),
+                    "latitude", customerAddress.getLatitude(),
+                    "longitude", customerAddress.getLongitude(),
+                    "addressLine", customerAddress.getAddressLine());
+
+            Map<String, Object> aiRequest = Map.of(
+                    "orderId", order.getId(),
+                    "rejectedStoreIds", rejectedStores,
+                    "orderItems", orderItems,
+                    "customerAddress", addressMap);
+
+            // Call AI Service
+            ApiResponse<AIStoreRecommendationResponse> aiResponse = aiClient.recommendStore(aiRequest);
+
+            if (aiResponse != null && aiResponse.getData() != null) {
+                AIStoreRecommendationResponse recommendation = aiResponse.getData();
+
+                log.info("✅ AI recommend: {} (confidence: {}%, score: {}/100)",
+                        recommendation.getRecommendedStoreId(),
+                        recommendation.getConfidence() * 100,
+                        recommendation.getScore());
+
+                return recommendation.getRecommendedStoreId();
+            } else {
+                log.warn("⚠️ AI không tìm được store phù hợp");
+                return null;
+            }
 
         } catch (Exception e) {
-            log.error("AI findBestStore failed: {}", e.getMessage());
-            return null;
+            log.error("❌ AI Service error: {}", e.getMessage());
+            log.info("🔄 Fallback to traditional algorithm");
+            AddressResponse address = safeGetAddress(order.getAddressId());
+            return findBestStoreFallback(order, rejectedStoreId, address);
         }
     }
 
-    /**
-     * Fallback logic: Tìm store gần nhất có đủ hàng (không dùng AI)
-     */
+
     private String findBestStoreFallback(Order order, String rejectedStoreId, AddressResponse address) {
         if (address == null)
             return null;
 
-        // 1. Lấy danh sách stores gần
         ApiResponse<List<StoreDistance>> response = storeClient.getNearestStores(
                 address.getLatitude(),
                 address.getLongitude(),
-                10 // Top 10 stores gần nhất
+                5
         );
 
         if (response == null || response.getData() == null || response.getData().isEmpty()) {
             return null;
         }
 
-        // 2. Lọc bỏ stores đã reject
         List<StoreDistance> candidates = response.getData().stream()
                 .filter(sd -> !sd.getStore().getId().equals(rejectedStoreId))
                 .filter(sd -> !sd.getStore().getId().equals(order.getLastRejectedStoreId()))
                 .toList();
 
-        // 3. Tìm store đầu tiên có đủ hàng
         for (StoreDistance candidate : candidates) {
             String storeId = candidate.getStore().getId();
 
-            // Check inventory cho từng sản phẩm
             boolean hasAllProducts = order.getOrderDetails().stream().allMatch(detail -> {
                 try {
                     ApiResponse<Boolean> stockCheck = inventoryClient.checkStockAtStore(

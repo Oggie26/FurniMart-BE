@@ -11,11 +11,6 @@ import java.util.Map;
 @FeignClient(name = "ai-service", url = "${ai.service.url}")
 public interface AIClient {
 
-    /**
-     * Gọi AI Service để tìm store tốt nhất
-     * Input: orderId, rejectedStoreId, orderDetails, customerAddress
-     * Output: Recommended store (có đủ hàng + gần nhất)
-     */
     @PostMapping("/api/ai/recommend-store")
     ApiResponse<AIStoreRecommendationResponse> recommendStore(@RequestBody Map<String, Object> request);
 }

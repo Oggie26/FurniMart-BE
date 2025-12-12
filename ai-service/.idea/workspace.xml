@@ -5,15 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/example/aiservice/service/AnalyzeService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/service/AnalyzeService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/controller/DeliveryConfirmationController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/controller/OrderController.java" beforeDir="false" afterPath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/controller/OrderController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/entity/DeliveryConfirmation.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/feign/InventoryClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/feign/InventoryClient.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/service/WarrantyServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/service/WarrantyServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/service/inteface/DeliveryConfirmationService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/util/VNPayUtils.java" beforeDir="false" afterPath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/util/VNPayUtils.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -163,6 +155,7 @@
       <workItem from="1765268463583" duration="1438000" />
       <workItem from="1765379084844" duration="15000" />
       <workItem from="1765507134114" duration="1686000" />
+      <workItem from="1765556127660" duration="40000" />
     </task>
     <task id="LOCAL-00001" summary="fix ai service">
       <option name="closed" value="true" />

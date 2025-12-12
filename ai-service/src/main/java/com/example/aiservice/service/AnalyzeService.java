@@ -17,9 +17,8 @@ import java.util.stream.Collectors;
 public class AnalyzeService {
 
     private final ChatClient chatClient;
-    private final ProductClient productClient; // Đã thêm Feign Client
+    private final ProductClient productClient;
 
-    // 1. System Prompt: Định hình chuyên gia FurniMart
     private static final String SYSTEM_PROMPT = """
             Bạn là kiến trúc sư nội thất cao cấp của hệ thống FurniMart.
             Nhiệm vụ: Phân tích không gian và BÁN HÀNG.
@@ -28,7 +27,6 @@ public class AnalyzeService {
             Trả lời bằng Tiếng Việt chuyên nghiệp.
             """;
 
-    // Constructor Injection: Phải đưa cả ProductClient vào đây
     public AnalyzeService(ChatClient.Builder chatClientBuilder, ProductClient productClient) {
         this.chatClient = chatClientBuilder
                 .defaultSystem(SYSTEM_PROMPT)
@@ -37,7 +35,6 @@ public class AnalyzeService {
     }
 
     public InteriorDesignResponse analyzeRoom(MultipartFile file, String userNote) {
-        // 1. Validate File
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File ảnh không được để trống");
         }
@@ -48,8 +45,6 @@ public class AnalyzeService {
         Resource resource = file.getResource();
         var mimeType = MimeTypeUtils.parseMimeType(contentType);
 
-        // 2. Lấy danh sách sản phẩm từ Product Service (Microservice khác)
-        // Lưu ý: Trong thực tế nên dùng RAG hoặc filter bớt nếu danh sách quá dài (>100 món)
         ApiResponse<List<ProductResponse>> response = productClient.getProducts();
         List<ProductResponse> products = response.getData(); // Giả sử ApiResponse có field 'result' hoặc 'data'
 
@@ -57,11 +52,8 @@ public class AnalyzeService {
             throw new RuntimeException("Kho hàng đang trống, không thể tư vấn sản phẩm!");
         }
 
-        // 3. Biến đổi danh sách Product thành String gọn nhẹ để AI đọc
-        // Chỉ lấy các trường cần thiết để tiết kiệm Token
         String productContext = formatProductsForAI(products);
 
-        // 4. User Prompt: Yêu cầu chọn hàng từ danh sách trên
         String userPromptText = """
                 Hãy phân tích hình ảnh căn phòng này và thực hiện các bước:
                 
@@ -91,17 +83,13 @@ public class AnalyzeService {
                 .entity(InteriorDesignResponse.class);
     }
 
-    // Hàm phụ trợ: Biến List Object thành String
     private String formatProductsForAI(List<ProductResponse> products) {
-        // Giới hạn 50 sản phẩm đầu tiên để tránh lỗi quá tải Token (Context Window Limit)
-        // Nếu muốn xịn hơn thì phải dùng Vector Database để tìm kiếm trước.
         return products.stream()
                 .limit(50)
                 .map(p -> {
-                    // Lấy thông tin màu sắc nếu có
                     String colors = (p.getProductColors() != null) ?
                             p.getProductColors().stream()
-                                    .map(c -> c.getColor().getColorName()) // Giả sử ColorResponse có getName()
+                                    .map(c -> c.getColor().getColorName())
                                     .collect(Collectors.joining(", ")) : "N/A";
 
                     return String.format("- ID: %s | Tên: %s | Giá: %.0f | Màu: %s | Loại: %s",
