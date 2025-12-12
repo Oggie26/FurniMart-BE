@@ -21,15 +21,15 @@ public class AIStoreRecommendationService {
 
     private final StoreClient storeClient;
     private final InventoryClient inventoryClient;
+    private final GeminiAIService geminiAIService; // ← Inject Gemini
 
     /**
-     * AI Algorithm: Tìm store tốt nhất dựa trên:
-     * 1. Khoảng cách (gần nhất)
-     * 2. Inventory availability (có đủ hàng)
-     * 3. Loại bỏ stores đã reject
+     * HYBRID AI Algorithm:
+     * 1. Rule-based scoring → Filter top candidates
+     * 2. Gemini AI → Chọn final winner với reasoning
      */
     public StoreRecommendationResponse recommendStore(StoreRecommendationRequest request) {
-        log.info("🤖 AI analyzing order {} to find best store", request.getOrderId());
+        log.info("🤖 HYBRID AI analyzing order {} to find best store", request.getOrderId());
 
         // 1. Lấy danh sách stores gần
         List<StoreClient.StoreDistance> nearbyStores = getNearbyStores(
@@ -51,7 +51,7 @@ public class AIStoreRecommendationService {
         log.info("📊 Found {} candidate stores (after filtering {} rejected)",
                 candidates.size(), request.getRejectedStoreIds().size());
 
-        // 3. Score từng store
+        // 3. Score từng store (Rule-based)
         List<ScoredStore> scoredStores = new ArrayList<>();
 
         for (StoreClient.StoreDistance candidate : candidates) {
@@ -69,23 +69,72 @@ public class AIStoreRecommendationService {
         // 4. Sắp xếp theo score (cao nhất trước)
         scoredStores.sort(Comparator.comparingInt(ScoredStore::getScore).reversed());
 
-        // 5. Chọn store tốt nhất
-        ScoredStore best = scoredStores.get(0);
+        // ✨ 5. GEMINI AI: Lấy top 3 candidates, cho Gemini chọn final winner
+        List<ScoredStore> topCandidates = scoredStores.subList(0, Math.min(3, scoredStores.size()));
 
-        log.info("✅ AI recommend: {} (score: {}, distance: {}km, stock: {}%)",
-                best.getStoreId(), best.getScore(), best.getDistance(),
-                best.getStockAvailability() * 100);
+        ScoredStore finalWinner;
+        String aiReasoning = "";
+
+        try {
+            // Prepare data cho Gemini
+            List<GeminiAIService.StoreCandidate> geminiCandidates = topCandidates.stream()
+                    .map(s -> GeminiAIService.StoreCandidate.builder()
+                            .storeId(s.getStoreId())
+                            .storeName(s.getStoreName())
+                            .distance(s.getDistance())
+                            .stockAvailability(s.getStockAvailability())
+                            .score(s.getScore())
+                            .availableProductCount((int) (s.getStockAvailability() * request.getOrderItems().size()))
+                            .build())
+                    .toList();
+
+            GeminiAIService.OrderContext context = GeminiAIService.OrderContext.builder()
+                    .productNames(request.getOrderItems().stream()
+                            .map(StoreRecommendationRequest.OrderItemDTO::getProductColorId)
+                            .collect(Collectors.joining(", ")))
+                    .customerAddress(request.getCustomerAddress().getAddressLine())
+                    .totalItems(request.getOrderItems().size())
+                    .build();
+
+            // ✨ Call Gemini AI
+            GeminiAIService.GeminiDecision geminiDecision = geminiAIService.askGemini(geminiCandidates, context);
+
+            if (geminiDecision != null) {
+                // Gemini đã chọn
+                String geminiStoreId = geminiDecision.getRecommendedStoreId();
+                finalWinner = scoredStores.stream()
+                        .filter(s -> s.getStoreId().equals(geminiStoreId))
+                        .findFirst()
+                        .orElse(topCandidates.get(0));
+
+                aiReasoning = "🤖 Gemini AI: " + geminiDecision.getAiReasoning();
+                log.info("✨ Gemini chose: {} - {}", geminiStoreId, aiReasoning);
+            } else {
+                // Gemini fail → fallback top candidate
+                finalWinner = topCandidates.get(0);
+                aiReasoning = "⚙️ Rule-based (Gemini unavailable): " + generateReason(finalWinner);
+            }
+
+        } catch (Exception e) {
+            log.error("❌ Gemini AI error: {}, fallback to rule-based", e.getMessage());
+            finalWinner = topCandidates.get(0);
+            aiReasoning = "⚙️ Rule-based fallback: " + generateReason(finalWinner);
+        }
+
+        log.info("✅ Final recommendation: {} (score: {}, distance: {}km, stock: {}%)",
+                finalWinner.getStoreId(), finalWinner.getScore(), finalWinner.getDistance(),
+                finalWinner.getStockAvailability() * 100);
 
         // 6. Build response
         return StoreRecommendationResponse.builder()
-                .recommendedStoreId(best.getStoreId())
-                .storeName(best.getStoreName())
-                .distance(best.getDistance())
-                .stockAvailability(best.getStockAvailability())
-                .confidence(calculateConfidence(best.getScore()))
-                .score(best.getScore())
-                .reason(generateReason(best))
-                .productDetails(best.getProductDetails())
+                .recommendedStoreId(finalWinner.getStoreId())
+                .storeName(finalWinner.getStoreName())
+                .distance(finalWinner.getDistance())
+                .stockAvailability(finalWinner.getStockAvailability())
+                .confidence(calculateConfidence(finalWinner.getScore()))
+                .score(finalWinner.getScore())
+                .reason(aiReasoning)
+                .productDetails(finalWinner.getProductDetails())
                 .alternatives(buildAlternatives(scoredStores.subList(1, Math.min(4, scoredStores.size()))))
                 .build();
     }
