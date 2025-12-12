@@ -6,10 +6,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/**
- * Utility class for hashing VNPay fields with HMAC SHA512.
- * Must match exactly the format used when creating VNPay payment URL.
- */
 public class VNPayUtils {
 
     public static String hashAllFields(Map<String, String> fields, String secretKey) {

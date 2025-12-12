@@ -113,4 +113,53 @@ public class AnalyzeService {
                 })
                 .collect(Collectors.joining("\n"));
     }
+
+
+    private static final String SYSTEM_PROMPT_OPTIMIZATION = """
+            Bạn là chuyên gia điều phối và tối ưu hóa chuỗi cung ứng FurniMart. 
+            Nhiệm vụ của bạn là phân tích dữ liệu nhu cầu (Demand) và tồn kho (Supply) và 
+            đề xuất hành động chuyển kho tối ưu nhất để cân bằng stock, giảm thiểu hết hàng.
+            LUÔN LUÔN trả về kết quả dưới dạng JSON hợp lệ theo schema yêu cầu.
+            """;
+
+
+
+//    public String generateTransferSuggestion(String targetProductColorId) {
+//        String salesHistory = dataClient.getSalesHistoryForForecasting(targetProductColorId);
+//        String currentInventory = dataClient.getCurrentStockOverview(targetProductColorId);
+//
+//        // 2. Gom dữ liệu vào 1 prompt duy nhất
+//        String optimizationPromptText = String.format("""
+//            Phân tích và đưa ra đề xuất chuyển kho cho sản phẩm ID: %s
+//
+//            --- DỮ LIỆU CẦN PHÂN TÍCH ---
+//            Lịch sử bán hàng gần đây (7 ngày): %s
+//            Tồn kho hiện tại: %s
+//            ---
+//
+//            QUY TẮC:
+//            1. Ưu tiên cân bằng tồn kho. Kho nào có "Forecasted Demand" cao hơn "Current Stock" (dựa trên lịch sử) cần được bổ sung.
+//            2. Kho nguồn nên là kho có "Current Stock" cao nhất và "Sales History" thấp nhất.
+//
+//            ĐẦU RA BẮT BUỘC phải là JSON theo schema sau (không markdown, không giải thích):
+//            {
+//              "transferRecommended": boolean,
+//              "transferDetails": {
+//                "fromWarehouseId": "string",
+//                "toWarehouseId": "string",
+//                "quantityToTransfer": number,
+//                "reason": "string"
+//              }
+//            }
+//            """, targetProductColorId, salesHistory, currentInventory);
+//
+//        try {
+//            return chatClient.prompt()
+//                    .user(optimizationPromptText)
+//                    .call()
+//                    .content();
+//        } catch (Exception e) {
+//            return "{\"transferRecommended\": false, \"reason\": \"Lỗi kết nối AI Service\"}";
+//        }
+//    }
 }

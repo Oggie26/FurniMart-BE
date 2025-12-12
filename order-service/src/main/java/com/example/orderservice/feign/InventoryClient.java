@@ -40,11 +40,5 @@ public interface InventoryClient {
 
         @DeleteMapping("/api/inventories/rollback/{orderId}")
         ApiResponse<Void> rollbackInventory(@PathVariable Long orderId);
-        //
-        // @PostMapping("/api/inventories/reserve/{orderId}")
-        // ApiResponse<ReserveStockResponse> reserveStock(
-        // @PathVariable Long orderId,
-        // @RequestParam("productColorId") @NotBlank String productColorId,
-        // @RequestParam("quantity") @Min(1) int quantity)
 
 }

@@ -51,11 +51,11 @@ public class OrderController {
 
         @PostMapping("/checkout")
         public ApiResponse<Void> checkout(
-                @RequestParam Long addressId,
-                @RequestParam Long cartId,
-                @RequestParam(required = false) String voucherCode,
-                @RequestParam PaymentMethod paymentMethod,
-                HttpServletRequest request) throws Exception {
+                        @RequestParam Long addressId,
+                        @RequestParam Long cartId,
+                        @RequestParam(required = false) String voucherCode,
+                        @RequestParam PaymentMethod paymentMethod,
+                        HttpServletRequest request) throws Exception {
 
                 String clientIp = getClientIp(request);
 
@@ -63,8 +63,8 @@ public class OrderController {
                 List<CartItemResponse> cartItems = cartResponse.getItems();
 
                 for (CartItemResponse item : cartItems) {
-                        ApiResponse<Boolean> response =
-                                inventoryClient.hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
+                        ApiResponse<Boolean> response = inventoryClient
+                                        .hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
 
                         if (!response.getData()) {
                                 throw new AppException(ErrorCode.OUT_OF_STOCK);
@@ -78,39 +78,57 @@ public class OrderController {
 
                 Double voucherValue = (voucher != null) ? voucher.getAmount().doubleValue() : 0.0;
 
-                OrderResponse orderResponse =
-                        orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+                OrderResponse orderResponse = null;
+                Order order = null;
 
-                cartService.clearCart();
+                try {
+                        orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
 
-                Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
-                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+                        cartService.clearCart();
 
-                double newTotal = order.getTotal() - voucherValue;
-                order.setTotal(newTotal);
+                        order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-                double depositAmount = 0;
+                        double newTotal = order.getTotal() - voucherValue;
+                        order.setTotal(newTotal);
 
-                if (paymentMethod == PaymentMethod.VNPAY) {
-                        orderRepository.save(order);
-                        return ApiResponse.<Void>builder()
-                                .status(HttpStatus.OK.value())
-                                .message("Chuyển hướng sang VNPay")
-                                .redirectUrl(vnPayService.createPaymentUrl(order.getId(), newTotal, clientIp))
-                                .build();
-                } else {
-                        depositAmount = newTotal * 0.1;
-                        order.setDepositPrice(depositAmount);
-                        orderRepository.save(order);
+                        double depositAmount = 0;
 
-                        return ApiResponse.<Void>builder()
-                                .status(HttpStatus.OK.value())
-                                .message("Đặt hàng thành công")
-                                .redirectUrl(vnPayService.createPaymentUrl(order.getId(), depositAmount, clientIp))
-                                .build();
+                        if (paymentMethod == PaymentMethod.VNPAY) {
+                                orderRepository.save(order);
+                                return ApiResponse.<Void>builder()
+                                                .status(HttpStatus.OK.value())
+                                                .message("Chuyển hướng sang VNPay")
+                                                .redirectUrl(vnPayService.createPaymentUrl(order.getId(), newTotal,
+                                                                clientIp))
+                                                .build();
+                        } else {
+                                depositAmount = newTotal * 0.1;
+                                order.setDepositPrice(depositAmount);
+                                orderRepository.save(order);
+
+                                return ApiResponse.<Void>builder()
+                                                .status(HttpStatus.OK.value())
+                                                .message("Đặt hàng thành công")
+                                                .redirectUrl(vnPayService.createPaymentUrl(order.getId(), depositAmount,
+                                                                clientIp))
+                                                .build();
+                        }
+                } catch (Exception e) {
+                        if (orderResponse != null) {
+                                log.error("❌ Checkout failed for order {}: {}", orderResponse.getId(), e.getMessage());
+                                try {
+                                        orderService.updateOrderStatus(orderResponse.getId(),
+                                                        EnumProcessOrder.CANCELLED);
+                                        log.info("✅ Order {} đã được cancel do checkout fail", orderResponse.getId());
+                                } catch (Exception cancelEx) {
+                                        log.error("Failed to cancel order {}: {}", orderResponse.getId(),
+                                                        cancelEx.getMessage());
+                                }
+                        }
+                        throw e;
                 }
         }
-
 
         @PostMapping("/mobile/checkout")
         public ApiResponse<Void> checkoutMobile(
@@ -135,30 +153,62 @@ public class OrderController {
                         }
                 }
 
-                if (paymentMethod == PaymentMethod.VNPAY) {
-                        OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod,
-                                        voucherCode);
+                Voucher voucher = null;
+                if (voucherCode != null && !voucherCode.isBlank()) {
+                        voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode).orElse(null);
+                }
+
+                Double voucherValue = (voucher != null) ? voucher.getAmount().doubleValue() : 0.0;
+
+                OrderResponse orderResponse = null;
+                Order order = null;
+
+                try {
+                        orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
+
                         cartService.clearCart();
-                        return ApiResponse.<Void>builder()
+
+                        order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
+                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+                        double newTotal = order.getTotal() - voucherValue;
+                        order.setTotal(newTotal);
+
+                        double depositAmount = 0;
+
+                        if (paymentMethod == PaymentMethod.VNPAY) {
+                                orderRepository.save(order);
+                                return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Chuyển hướng sang VNPay")
-                                        .redirectUrl(vnPayService.createPaymentUrl(orderResponse.getId(),
-                                                        orderResponse.getTotal(), clientIp))
+                                        .redirectUrl(vnPayService.createPaymentUrl(order.getId(), newTotal,
+                                                clientIp))
                                         .build();
-                } else {
-                        OrderResponse orderResponse = orderService.createOrder(cartId, addressId, paymentMethod,
-                                        voucherCode);
+                        } else {
+                                depositAmount = newTotal * 0.1;
+                                order.setDepositPrice(depositAmount);
+                                orderRepository.save(order);
 
-                        Order order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
-                                        .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-                        orderRepository.save(order);
-                        orderService.handlePaymentCOD(orderResponse.getId());
-                        cartService.clearCart();
-                        return ApiResponse.<Void>builder()
+                                return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Đặt hàng thành công")
+                                        .redirectUrl(vnPayService.createPaymentUrl(order.getId(), depositAmount,
+                                                clientIp))
                                         .build();
+                        }
+                } catch (Exception e) {
+                        if (orderResponse != null) {
+                                log.error("❌ Checkout failed for order {}: {}", orderResponse.getId(), e.getMessage());
+                                try {
+                                        orderService.updateOrderStatus(orderResponse.getId(),
+                                                EnumProcessOrder.CANCELLED);
+                                        log.info("✅ Order {} đã được cancel do checkout fail", orderResponse.getId());
+                                } catch (Exception cancelEx) {
+                                        log.error("Failed to cancel order {}: {}", orderResponse.getId(),
+                                                cancelEx.getMessage());
+                                }
+                        }
+                        throw e;
                 }
         }
 
@@ -483,10 +533,10 @@ public class OrderController {
                 orderService.cancelOrder(cancelOrderRequest);
 
                 return ApiResponse.<Void>builder()
-                        .status(200)
-                        .message("Hủy đơn hàng thành công cho orderId: " + cancelOrderRequest.getOrderId())
-                        .data(null)
-                        .build();
+                                .status(200)
+                                .message("Hủy đơn hàng thành công cho orderId: " + cancelOrderRequest.getOrderId())
+                                .data(null)
+                                .build();
         }
 
         private String getClientIp(HttpServletRequest request) {
