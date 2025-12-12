@@ -1450,15 +1450,17 @@ public class InventoryServiceImpl implements InventoryService {
             String warehouseId = ticket.getWarehouse().getId();
             log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
 
+            // Clone list items để tránh lỗi persistence context
             List<InventoryItem> ticketItems = new ArrayList<>(ticket.getInventoryItems());
 
+            // ==== 1) Hoàn trả reservedQuantity về stock thật ====
             for (InventoryItem ticketItem : ticketItems) {
 
                 String productColorId = ticketItem.getProductColorId();
                 int qtyToRelease = ticketItem.getQuantity();
 
-                List<InventoryItem> stockItems = inventoryItemRepository
-                        .findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
+                List<InventoryItem> stockItems =
+                        inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
 
                 int remaining = qtyToRelease;
 
@@ -1467,7 +1469,6 @@ public class InventoryServiceImpl implements InventoryService {
                     if (stockItem.getReservedQuantity() <= 0) continue;
 
                     int release = Math.min(stockItem.getReservedQuantity(), remaining);
-
                     stockItem.setReservedQuantity(stockItem.getReservedQuantity() - release);
                     remaining -= release;
 
@@ -1484,23 +1485,35 @@ public class InventoryServiceImpl implements InventoryService {
                 }
             }
 
-            if (!ticketItems.isEmpty()) {
-                inventoryItemRepository.deleteAllInBatch(ticketItems);
-                log.info("🗑 Xóa {} ticketItems của ticket {}", ticketItems.size(), ticket.getId());
+            // ==== 2) Xóa reservedWarehouses SAFE ====
+            if (ticket.getReservedWarehouses() != null) {
+                for (InventoryReservedWarehouse rw : new ArrayList<>(ticket.getReservedWarehouses())) {
+                    if (reservedWarehouseRepository.existsById(rw.getId())) {
+                        reservedWarehouseRepository.delete(rw);
+                    }
+                }
+                log.info("🧹 Đã xoá reservedWarehouses của ticket {}", ticket.getId());
             }
 
-            if (ticket.getReservedWarehouses() != null && !ticket.getReservedWarehouses().isEmpty()) {
-                reservedWarehouseRepository.deleteAllInBatch(ticket.getReservedWarehouses());
-                log.info("🧹 Xoá reservedWarehouses của ticket {}", ticket.getId());
+            // ==== 3) Xóa ticketItems SAFE ====
+            for (InventoryItem ti : ticketItems) {
+                if (inventoryItemRepository.existsById(ti.getId())) {
+                    inventoryItemRepository.delete(ti);
+                }
             }
+            log.info("🗑 Đã xóa {} ticketItems của ticket {}", ticketItems.size(), ticket.getId());
 
-            inventoryRepository.delete(ticket);
-            log.info("🗑 Đã xóa ticket {}", ticket.getId());
+            // ==== 4) Xóa ticket SAFE ====
+            if (inventoryRepository.existsById(ticket.getId())) {
+                inventoryRepository.delete(ticket);
+                log.info("🗑 Đã xóa ticket {}", ticket.getId());
+            }
         }
 
         log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho",
                 orderId, tickets.size());
     }
+
 
 
     // ----------------- CHECK STOCK -----------------
