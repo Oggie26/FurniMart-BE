@@ -1447,71 +1447,73 @@ public class InventoryServiceImpl implements InventoryService {
 
         for (Inventory ticket : tickets) {
 
-            String warehouseId = ticket.getWarehouse().getId();
+            String warehouseId = ticket.getWarehouse() != null ? ticket.getWarehouse().getId() : null;
             log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
 
-            // Clone list items để tránh lỗi persistence context
             List<InventoryItem> ticketItems = new ArrayList<>(ticket.getInventoryItems());
 
-            // ==== 1) Hoàn trả reservedQuantity về stock thật ====
             for (InventoryItem ticketItem : ticketItems) {
 
                 String productColorId = ticketItem.getProductColorId();
                 int qtyToRelease = ticketItem.getQuantity();
 
-                List<InventoryItem> stockItems =
-                        inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
+                List<InventoryItem> stockItems = inventoryItemRepository
+                        .findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
 
                 int remaining = qtyToRelease;
 
                 for (InventoryItem stockItem : stockItems) {
                     if (remaining <= 0) break;
-                    if (stockItem.getReservedQuantity() <= 0) continue;
 
-                    int release = Math.min(stockItem.getReservedQuantity(), remaining);
+                    int reserved = stockItem.getReservedQuantity();
+                    if (reserved <= 0) continue;
+
+                    int release = Math.min(reserved, remaining);
+
+                    stockItem.setQuantity(stockItem.getQuantity() + release);
                     stockItem.setReservedQuantity(stockItem.getReservedQuantity() - release);
+
                     remaining -= release;
 
-                    log.info("♻ Trả lại {} reserved cho stockItem {} (còn {})",
+                    log.info("♻ Trả lại {} cho stockItem {} (reserved còn {})",
                             release, stockItem.getId(), stockItem.getReservedQuantity());
                 }
 
-                inventoryItemRepository.saveAll(stockItems);
+                if (!stockItems.isEmpty()) {
+                    inventoryItemRepository.saveAll(stockItems);
+                }
 
                 if (remaining > 0) {
-                    log.warn("⚠ Không rollback đủ số lượng (thiếu {} cái)", remaining);
+                    log.warn("⚠ Không rollback đủ {} (thiếu {}) cho productColor {}", qtyToRelease, remaining, productColorId);
                 } else {
-                    log.info("✅ Hoàn trả thành công {} cái cho {}", qtyToRelease, productColorId);
+                    log.info("✅ Hoàn trả {} cho productColor {} thành công", qtyToRelease, productColorId);
                 }
             }
 
-            // ==== 2) Xóa reservedWarehouses SAFE ====
-            if (ticket.getReservedWarehouses() != null) {
-                for (InventoryReservedWarehouse rw : new ArrayList<>(ticket.getReservedWarehouses())) {
-                    if (reservedWarehouseRepository.existsById(rw.getId())) {
-                        reservedWarehouseRepository.delete(rw);
-                    }
-                }
-                log.info("🧹 Đã xoá reservedWarehouses của ticket {}", ticket.getId());
-            }
-
-            // ==== 3) Xóa ticketItems SAFE ====
             for (InventoryItem ti : ticketItems) {
-                if (inventoryItemRepository.existsById(ti.getId())) {
-                    inventoryItemRepository.delete(ti);
+                if (ti.getId() != null && inventoryItemRepository.existsById(ti.getId())) {
+                    inventoryItemRepository.deleteById(ti.getId());
                 }
             }
             log.info("🗑 Đã xóa {} ticketItems của ticket {}", ticketItems.size(), ticket.getId());
 
-            // ==== 4) Xóa ticket SAFE ====
-            if (inventoryRepository.existsById(ticket.getId())) {
-                inventoryRepository.delete(ticket);
+            if (ticket.getReservedWarehouses() != null) {
+                List<InventoryReservedWarehouse> reservedList = new ArrayList<>(ticket.getReservedWarehouses());
+                for (InventoryReservedWarehouse rw : reservedList) {
+                    if (rw.getId() != null && reservedWarehouseRepository.existsById(rw.getId())) {
+                        reservedWarehouseRepository.deleteById(rw.getId());
+                    }
+                }
+                log.info("🧹 Đã xóa reservedWarehouses của ticket {}", ticket.getId());
+            }
+
+            if (ticket.getId() != null && inventoryRepository.existsById(ticket.getId())) {
+                inventoryRepository.deleteById(ticket.getId());
                 log.info("🗑 Đã xóa ticket {}", ticket.getId());
             }
         }
 
-        log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho",
-                orderId, tickets.size());
+        log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho", orderId, tickets.size());
     }
 
 
