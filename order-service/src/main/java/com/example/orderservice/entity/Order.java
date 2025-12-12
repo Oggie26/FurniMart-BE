@@ -46,9 +46,15 @@ public class Order extends AbstractEntity {
     @Column(name = "deposit_price")
     private Double depositPrice;
 
+    @Builder.Default
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
-    private Date orderDate;
+    private Date orderDate = new Date();
+
+    @Builder.Default
+    @Column(nullable = false)
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date deadline = new Date(System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000);
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProcessOrder> processOrders;
@@ -75,36 +81,18 @@ public class Order extends AbstractEntity {
     @Column(name = "pdf_file_path")
     private String pdfFilePath;
 
-    @Column
-    private Date deadline;
-
-    @PrePersist
-    protected void onCreate() {
-        if (orderDate == null) {
-            orderDate = new Date();
-        }
-
-        if (deadline == null) {
-            long sevenDays = 7L * 24 * 60 * 60 * 1000;
-            deadline = new Date(orderDate.getTime() + sevenDays);
-        }
-    }
-
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type")
     @Builder.Default
     private OrderType orderType = OrderType.NORMAL;
 
     @Column(name = "warranty_claim_id")
-    private Long warrantyClaimId; // Reference to original warranty claim
+    private Long warrantyClaimId;
 
     @Column(name = "rejection_count")
     @Builder.Default
-    private Integer rejectionCount = 0; // Track số lần bị reject
+    private Integer rejectionCount = 0;
 
     @Column(name = "last_rejected_store_id")
-    private String lastRejectedStoreId; // Store cuối cùng reject
-
-    // @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
-    // private DeliveryConfirmation deliveryConfirmation;
+    private String lastRejectedStoreId;
 }
