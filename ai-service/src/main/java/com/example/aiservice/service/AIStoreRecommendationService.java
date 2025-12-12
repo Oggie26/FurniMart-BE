@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -146,71 +145,6 @@ public class AIStoreRecommendationService {
                 .build();
     }
 
-    private ScoredStore scoreStore(StoreClient.StoreDistance candidate,
-            List<StoreRecommendationRequest.OrderItemDTO> orderItems) {
-        String storeId = candidate.getStore().getId();
-        double distance = candidate.getDistance();
-
-        int score = 0;
-        List<StoreRecommendationResponse.ProductAvailability> productDetails = new ArrayList<>();
-        int availableCount = 0;
-
-        for (StoreRecommendationRequest.OrderItemDTO item : orderItems) {
-            try {
-                ApiResponse<Boolean> stockCheck = inventoryClient.checkStockAtStore(
-                        item.getProductColorId(),
-                        storeId,
-                        item.getQuantity());
-
-                boolean available = stockCheck != null &&
-                        stockCheck.getData() != null &&
-                        stockCheck.getData();
-
-                productDetails.add(StoreRecommendationResponse.ProductAvailability.builder()
-                        .productColorId(item.getProductColorId())
-                        .available(available)
-                        .build());
-
-                if (available) {
-                    availableCount++;
-                }
-            } catch (Exception e) {
-                log.warn("Error checking stock for {} at {}: {}",
-                        item.getProductColorId(), storeId, e.getMessage());
-                return null; // Skip store nếu không check được inventory
-            }
-        }
-
-        double stockAvailability = (double) availableCount / orderItems.size();
-
-        if (stockAvailability < 0.8) {
-            return null;
-        }
-
-        score += (int) (stockAvailability * 50);
-
-        if (distance < 5) {
-            score += 30;
-        } else if (distance < 10) {
-            score += 20;
-        } else if (distance < 20) {
-            score += 10;
-        }
-
-        if (stockAvailability == 1.0) {
-            score += 20;
-        }
-
-        return ScoredStore.builder()
-                .storeId(storeId)
-                .storeName(candidate.getStore().getStoreName())
-                .distance(distance)
-                .stockAvailability(stockAvailability)
-                .score(score)
-                .productDetails(productDetails)
-                .build();
-    }
-
     private List<StoreClient.StoreDistance> getNearbyStores(Double lat, Double lon, int limit) {
         try {
             ApiResponse<List<StoreClient.StoreDistance>> response = storeClient.getNearestStores(lat, lon, limit);
@@ -221,51 +155,4 @@ public class AIStoreRecommendationService {
         }
     }
 
-    private double calculateConfidence(int score) {
-        return Math.min(1.0, score / 100.0);
-    }
-
-    private String generateReason(ScoredStore store) {
-        StringBuilder reason = new StringBuilder();
-
-        if (store.getStockAvailability() == 1.0) {
-            reason.append("✅ Có đủ 100% hàng. ");
-        } else {
-            reason.append(String.format("✅ Có %.0f%% hàng. ", store.getStockAvailability() * 100));
-        }
-
-        if (store.getDistance() < 5) {
-            reason.append("📍 Rất gần khách hàng (< 5km). ");
-        } else if (store.getDistance() < 10) {
-            reason.append("📍 Gần khách hàng (< 10km). ");
-        }
-
-        reason.append(String.format("🎯 Điểm tổng hợp: %d/100", store.getScore()));
-
-        return reason.toString();
-    }
-
-    private List<StoreRecommendationResponse.AlternativeStore> buildAlternatives(List<ScoredStore> alternatives) {
-        return alternatives.stream()
-                .map(alt -> StoreRecommendationResponse.AlternativeStore.builder()
-                        .storeId(alt.getStoreId())
-                        .storeName(alt.getStoreName())
-                        .distance(alt.getDistance())
-                        .stockAvailability(alt.getStockAvailability())
-                        .score(alt.getScore())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    // Helper class
-    @lombok.Data
-    @lombok.Builder
-    private static class ScoredStore {
-        private String storeId;
-        private String storeName;
-        private Double distance;
-        private Double stockAvailability;
-        private Integer score;
-        private List<StoreRecommendationResponse.ProductAvailability> productDetails;
-    }
 }

@@ -3,8 +3,6 @@ package com.example.aiservice.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,9 +25,7 @@ public class GeminiAIService {
         log.debug("Prompt: {}", prompt);
 
         try {
-            // Call Gemini AI
-            ChatResponse response = chatModel.call(new Prompt(prompt));
-            String geminiResponse = response.getResult().getOutput().getText();
+            String geminiResponse = chatModel.call(prompt);
 
             log.info("✨ Gemini response: {}", geminiResponse);
 
@@ -82,7 +78,6 @@ public class GeminiAIService {
 
         return prompt.toString();
     }
-
 
     private GeminiDecision parseGeminiResponse(String response, List<StoreCandidate> candidates) {
         try {
