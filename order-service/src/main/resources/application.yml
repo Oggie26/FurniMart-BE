@@ -98,3 +98,8 @@ cloudinary:
 app:
   pdf:
     directory: ./pdfs
+
+# AI Service Configuration
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://ai-service:8086}

@@ -89,6 +89,7 @@ public class Order extends AbstractEntity {
             deadline = new Date(orderDate.getTime() + sevenDays);
         }
     }
+
     @Enumerated(EnumType.STRING)
     @Column(name = "order_type")
     @Builder.Default
@@ -96,6 +97,13 @@ public class Order extends AbstractEntity {
 
     @Column(name = "warranty_claim_id")
     private Long warrantyClaimId; // Reference to original warranty claim
+
+    @Column(name = "rejection_count")
+    @Builder.Default
+    private Integer rejectionCount = 0; // Track số lần bị reject
+
+    @Column(name = "last_rejected_store_id")
+    private String lastRejectedStoreId; // Store cuối cùng reject
 
     // @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     // private DeliveryConfirmation deliveryConfirmation;

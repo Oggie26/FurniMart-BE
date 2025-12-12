@@ -40,7 +40,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final PaymentRepository paymentRepository;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final ProductClient productClient;
-//    private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
+    // private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
 
     @Override
     @Transactional
@@ -58,12 +58,11 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         order.setStoreId(getStoreNear(address.getLatitude(), address.getLongitude(), 1));
         order.setStatus(EnumProcessOrder.ASSIGN_ORDER_STORE);
 
-        ProcessOrder process =  ProcessOrder.builder()
+        ProcessOrder process = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.ASSIGN_ORDER_STORE)
                 .createdAt(new Date())
                 .build();
-
 
         List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                 .map(detail -> OrderCreatedEvent.OrderItem.builder()
@@ -102,7 +101,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         processOrderRepository.save(process);
         orderRepository.save(order);
 
-}
+    }
+
     @SuppressWarnings("unused")
     private StoreResponse getStoreResponse(String storeId) {
         try {
@@ -125,7 +125,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         if (status == EnumProcessOrder.MANAGER_ACCEPT) {
             handleManagerAccept(order, storeId);
         } else if (status == EnumProcessOrder.MANAGER_REJECT) {
-            handleManagerReject(order,storeId, reason);
+            handleManagerReject(order, storeId, reason);
         } else {
             throw new AppException(ErrorCode.INVALID_STATUS);
         }
@@ -133,14 +133,14 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
     private void handleManagerAccept(Order order, String storeId) {
         QRCodeService.QRCodeResult qrCodeResult = qrCodeService.generateQRCode(order.getId());
-        
+
         ProcessOrder acceptProcess = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.MANAGER_ACCEPT)
                 .createdAt(new Date())
                 .build();
         processOrderRepository.save(acceptProcess);
-        
+
         order.setStatus(EnumProcessOrder.MANAGER_ACCEPT);
         order.setQrCode(qrCodeResult.getQrCodeString());
         order.setQrCodeGeneratedAt(new Date());
@@ -158,7 +158,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                             .colorName("")
                             .build())
                     .collect(Collectors.toList());
-
 
             ApiResponse<UserResponse> userResponse = userClient.getUserById(order.getUserId());
             if (userResponse == null || userResponse.getData() == null) {
@@ -195,29 +194,168 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         }
     }
 
-    private void handleManagerReject(Order order, String storeId, String reason) {
+    private void handleManagerReject(Order order, String rejectedStoreId, String reason) {
+        // 1. Lưu rejection process
         ProcessOrder rejectProcess = ProcessOrder.builder()
                 .order(order)
                 .status(EnumProcessOrder.MANAGER_REJECT)
                 .createdAt(new Date())
                 .build();
         processOrderRepository.save(rejectProcess);
-        order.setReason(reason);
-        order.setStoreId(storeId);
-        order.setStatus(EnumProcessOrder.ASSIGN_ORDER_STORE);
-        orderRepository.save(order);
 
-        ProcessOrder assignProcess = ProcessOrder.builder()
-                .order(order)
-                .status(EnumProcessOrder.ASSIGN_ORDER_STORE)
-                .createdAt(new Date())
-                .build();
-        processOrderRepository.save(assignProcess);
+        // 2. Tăng rejection count
+        int currentRejectionCount = (order.getRejectionCount() != null ? order.getRejectionCount() : 0);
+        order.setRejectionCount(currentRejectionCount + 1);
+        order.setLastRejectedStoreId(rejectedStoreId);
+        order.setReason(reason);
+
+        log.info("📊 Order {} bị reject lần thứ {} bởi store {}",
+                order.getId(), order.getRejectionCount(), rejectedStoreId);
+
+        // 3. Kiểm tra: Nếu >= 3 lần reject → AUTO CANCEL
+        if (order.getRejectionCount() >= 3) {
+            log.warn("❌ Order {} đã bị reject {} lần → TỰ ĐỘNG HỦY",
+                    order.getId(), order.getRejectionCount());
+
+            order.setStatus(EnumProcessOrder.CANCELLED);
+            order.setReason("Đơn hàng bị hủy tự động: Đã bị từ chối bởi " +
+                    order.getRejectionCount() + " cửa hàng");
+
+            ProcessOrder cancelProcess = ProcessOrder.builder()
+                    .order(order)
+                    .status(EnumProcessOrder.CANCELLED)
+                    .createdAt(new Date())
+                    .build();
+            processOrderRepository.save(cancelProcess);
+
+            orderRepository.save(order);
+
+            // TODO: Notify customer qua email/SMS về việc hủy đơn
+            log.info("✉️ Thông báo khách hàng về việc hủy order {}", order.getId());
+            return;
+        }
+
+        // 4. Gọi AI tìm store mới (có đủ hàng + gần)
+        try {
+            String newStoreId = findBestStoreWithAI(order, rejectedStoreId);
+
+            if (newStoreId != null) {
+                log.info("🤖 AI recommend store mới: {} cho order {}", newStoreId, order.getId());
+
+                order.setStoreId(newStoreId);
+                order.setStatus(EnumProcessOrder.ASSIGN_ORDER_STORE);
+
+                ProcessOrder assignProcess = ProcessOrder.builder()
+                        .order(order)
+                        .status(EnumProcessOrder.ASSIGN_ORDER_STORE)
+                        .createdAt(new Date())
+                        .build();
+                processOrderRepository.save(assignProcess);
+
+                orderRepository.save(order);
+
+                log.info("✅ Đã assign order {} sang store {} (AI-powered)",
+                        order.getId(), newStoreId);
+            } else {
+                log.warn("⚠️ AI không tìm được store phù hợp → Cancel order {}", order.getId());
+
+                order.setStatus(EnumProcessOrder.CANCELLED);
+                order.setReason("Không tìm được cửa hàng phù hợp có đủ hàng");
+
+                ProcessOrder cancelProcess = ProcessOrder.builder()
+                        .order(order)
+                        .status(EnumProcessOrder.CANCELLED)
+                        .createdAt(new Date())
+                        .build();
+                processOrderRepository.save(cancelProcess);
+
+                orderRepository.save(order);
+            }
+        } catch (Exception e) {
+            log.error("❌ AI service error: {}", e.getMessage());
+            // Fallback: Cancel order nếu AI fail
+            order.setStatus(EnumProcessOrder.CANCELLED);
+            order.setReason("Lỗi hệ thống khi tìm cửa hàng mới: " + e.getMessage());
+            orderRepository.save(order);
+        }
+    }
+
+    /**
+     * Gọi AI Service để tìm store tốt nhất
+     * Tiêu chí: CÓ ĐỦ HÀNG + GẦN NHẤT
+     */
+    private String findBestStoreWithAI(Order order, String rejectedStoreId) {
+        try {
+            // Chuẩn bị data cho AI Service
+            AddressResponse customerAddress = safeGetAddress(order.getAddressId());
+
+            // TODO: Implement AI Client call
+            // Tạm thời fallback về logic cũ
+            log.warn("⚠️ AI Service chưa sẵn sàng, dùng fallback logic");
+            return findBestStoreFallback(order, rejectedStoreId, customerAddress);
+
+        } catch (Exception e) {
+            log.error("AI findBestStore failed: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Fallback logic: Tìm store gần nhất có đủ hàng (không dùng AI)
+     */
+    private String findBestStoreFallback(Order order, String rejectedStoreId, AddressResponse address) {
+        if (address == null)
+            return null;
+
+        // 1. Lấy danh sách stores gần
+        ApiResponse<List<StoreDistance>> response = storeClient.getNearestStores(
+                address.getLatitude(),
+                address.getLongitude(),
+                10 // Top 10 stores gần nhất
+        );
+
+        if (response == null || response.getData() == null || response.getData().isEmpty()) {
+            return null;
+        }
+
+        // 2. Lọc bỏ stores đã reject
+        List<StoreDistance> candidates = response.getData().stream()
+                .filter(sd -> !sd.getStore().getId().equals(rejectedStoreId))
+                .filter(sd -> !sd.getStore().getId().equals(order.getLastRejectedStoreId()))
+                .toList();
+
+        // 3. Tìm store đầu tiên có đủ hàng
+        for (StoreDistance candidate : candidates) {
+            String storeId = candidate.getStore().getId();
+
+            // Check inventory cho từng sản phẩm
+            boolean hasAllProducts = order.getOrderDetails().stream().allMatch(detail -> {
+                try {
+                    ApiResponse<Boolean> stockCheck = inventoryClient.checkStockAtStore(
+                            detail.getProductColorId(),
+                            storeId,
+                            detail.getQuantity());
+                    return stockCheck != null && stockCheck.getData() != null && stockCheck.getData();
+                } catch (Exception e) {
+                    log.warn("Error checking stock: {}", e.getMessage());
+                    return false;
+                }
+            });
+
+            if (hasAllProducts) {
+                log.info("✅ Tìm thấy store {} có đủ hàng (distance: {}km)",
+                        storeId, candidate.getDistance());
+                return storeId;
+            }
+        }
+
+        log.warn("⚠️ Không có store nào trong top 10 có đủ hàng");
+        return null;
     }
 
     @SuppressWarnings("unused")
     private List<InventoryResponse> getInventoryResponse(String productId) {
-        ApiResponse<List<InventoryResponse>>response =  inventoryClient.getInventoryByProduct(productId);
+        ApiResponse<List<InventoryResponse>> response = inventoryClient.getInventoryByProduct(productId);
         return response.getData();
     }
 
@@ -240,15 +378,18 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     }
 
     private AddressResponse safeGetAddress(Long addressId) {
-        if (addressId == null) return null;
+        if (addressId == null)
+            return null;
         ApiResponse<AddressResponse> resp = userClient.getAddressById(addressId);
-        if (resp == null || resp.getData() == null) return null;
+        if (resp == null || resp.getData() == null)
+            return null;
         return resp.getData();
     }
 
     @SuppressWarnings("unused")
     private UserResponse safeGetUser(String userId) {
-        if (userId == null) return null;
+        if (userId == null)
+            return null;
         try {
             ApiResponse<UserResponse> response = userClient.getUserById(userId);
             if (response != null && response.getData() != null) {

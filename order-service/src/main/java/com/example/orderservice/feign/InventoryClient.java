@@ -41,4 +41,13 @@ public interface InventoryClient {
         @DeleteMapping("/api/inventories/rollback/{orderId}")
         ApiResponse<Void> rollbackInventory(@PathVariable Long orderId);
 
+        /**
+         * Kiểm tra stock tại 1 store cụ thể
+         */
+        @GetMapping("/api/inventories/stock/check-at-store")
+        ApiResponse<Boolean> checkStockAtStore(
+                        @RequestParam("productColorId") String productColorId,
+                        @RequestParam("storeId") String storeId,
+                        @RequestParam("quantity") Integer quantity);
+
 }
