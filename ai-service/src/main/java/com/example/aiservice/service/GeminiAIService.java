@@ -16,15 +16,11 @@ public class GeminiAIService {
 
     private final ChatModel chatModel;
 
-    /**
-     * Gọi Gemini AI để chọn store tốt nhất từ danh sách candidates
-     */
     public GeminiDecision askGemini(List<StoreCandidate> candidates, OrderContext context) {
         if (candidates.isEmpty()) {
             return null;
         }
 
-        // Build prompt cho Gemini
         String prompt = buildPrompt(candidates, context);
 
         log.info("🤖 Calling Gemini AI with {} candidates", candidates.size());
@@ -33,11 +29,10 @@ public class GeminiAIService {
         try {
             // Call Gemini AI
             ChatResponse response = chatModel.call(new Prompt(prompt));
-            String geminiResponse = response.getResult().getOutput().getContent();
+            String geminiResponse = response.getResult().getOutput().getText();
 
             log.info("✨ Gemini response: {}", geminiResponse);
 
-            // Parse response
             return parseGeminiResponse(geminiResponse, candidates);
 
         } catch (Exception e) {
@@ -88,15 +83,12 @@ public class GeminiAIService {
         return prompt.toString();
     }
 
-    /**
-     * Parse Gemini response
-     */
+
     private GeminiDecision parseGeminiResponse(String response, List<StoreCandidate> candidates) {
         try {
             String storeId = null;
             String reason = "";
 
-            // Parse format: STORE_ID: xxx \n REASON: yyy
             String[] lines = response.split("\n");
             for (String line : lines) {
                 if (line.startsWith("STORE_ID:")) {
@@ -106,7 +98,6 @@ public class GeminiAIService {
                 }
             }
 
-            // Validate store ID
             if (storeId != null) {
                 String finalStoreId = storeId;
                 boolean validStore = candidates.stream()
@@ -128,7 +119,6 @@ public class GeminiAIService {
         }
     }
 
-    // Helper classes
     @lombok.Data
     @lombok.Builder
     @lombok.AllArgsConstructor

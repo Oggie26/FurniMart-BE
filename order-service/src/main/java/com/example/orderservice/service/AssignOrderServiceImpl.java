@@ -126,7 +126,12 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         if (status == EnumProcessOrder.MANAGER_ACCEPT) {
             handleManagerAccept(order, storeId);
         } else if (status == EnumProcessOrder.MANAGER_REJECT) {
-            handleManagerReject(order, storeId, reason);
+            // Nếu không truyền storeId → lấy storeId hiện tại của order
+            String rejectedStoreId = (storeId != null && !storeId.isBlank())
+                    ? storeId
+                    : order.getStoreId();
+
+            handleManagerReject(order, rejectedStoreId, reason);
         } else {
             throw new AppException(ErrorCode.INVALID_STATUS);
         }
@@ -336,7 +341,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         }
     }
 
-
     private String findBestStoreFallback(Order order, String rejectedStoreId, AddressResponse address) {
         if (address == null)
             return null;
@@ -344,8 +348,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         ApiResponse<List<StoreDistance>> response = storeClient.getNearestStores(
                 address.getLatitude(),
                 address.getLongitude(),
-                5
-        );
+                5);
 
         if (response == null || response.getData() == null || response.getData().isEmpty()) {
             return null;
