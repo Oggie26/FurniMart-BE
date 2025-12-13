@@ -33,7 +33,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final AuthClient authClient;
     private final UserClient userClient;
     private final OrderClient orderClient;
-    private final ProductClient productClient;
+    private final ProductServiceClient productServiceClient;
     private final DeliveryClient deliveryClient;
     private final StoreClient storeClient;
     private final InventoryReservedWarehouseRepository reservedWarehouseRepository;
@@ -1463,10 +1463,12 @@ public class InventoryServiceImpl implements InventoryService {
                 int remaining = qtyToRelease;
 
                 for (InventoryItem stockItem : stockItems) {
-                    if (remaining <= 0) break;
+                    if (remaining <= 0)
+                        break;
 
                     int reserved = stockItem.getReservedQuantity();
-                    if (reserved <= 0) continue;
+                    if (reserved <= 0)
+                        continue;
 
                     int release = Math.min(reserved, remaining);
 
@@ -1484,7 +1486,8 @@ public class InventoryServiceImpl implements InventoryService {
                 }
 
                 if (remaining > 0) {
-                    log.warn("⚠ Không rollback đủ {} (thiếu {}) cho productColor {}", qtyToRelease, remaining, productColorId);
+                    log.warn("⚠ Không rollback đủ {} (thiếu {}) cho productColor {}", qtyToRelease, remaining,
+                            productColorId);
                 } else {
                     log.info("✅ Hoàn trả {} cho productColor {} thành công", qtyToRelease, productColorId);
                 }
@@ -1515,8 +1518,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho", orderId, tickets.size());
     }
-
-
 
     // ----------------- CHECK STOCK -----------------
 
@@ -1960,11 +1961,11 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private ProductColorResponse getProductName(String productColorId) {
-        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
-        if (response.getData() == null) {
+        ProductColorResponse response = productServiceClient.getProductColor(productColorId);
+        if (response == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
-        return response.getData();
+        return response;
     }
 
     private String getUserId() {

@@ -45,7 +45,7 @@ public class OrderServiceImpl implements OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
-    private final ProductClient productClient;
+    private final ProductServiceClient productServiceClient;
     private final CartRepository cartRepository;
     private final PaymentRepository paymentRepository;
     private final UserClient userClient;
@@ -913,11 +913,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private ProductColorResponse getProductColorResponse(String id) {
-        ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
-        if (response == null || response.getData() == null) {
+        ProductColorResponse response = productServiceClient.getProductColor(id);
+        if (response == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
-        return response.getData();
+        return response;
     }
 
     private DeliveryConfirmationResponse getDeliveryConfirmationResponse(Long orderId) {
