@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-@FeignClient(name = "store-service")
+@FeignClient(name = "user-service")
 public interface StoreClient {
 
     @GetMapping("/api/stores/nearest")
