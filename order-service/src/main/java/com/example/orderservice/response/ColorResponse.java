@@ -11,7 +11,8 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ColorResponse {
+public class ColorResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private String id;
     private String colorName;
     private String hexCode;

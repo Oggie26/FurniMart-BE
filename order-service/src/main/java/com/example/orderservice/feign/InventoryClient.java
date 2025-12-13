@@ -40,11 +40,14 @@ public interface InventoryClient {
 
         @DeleteMapping("/api/inventories/rollback/{orderId}")
         ApiResponse<Void> rollbackInventory(@PathVariable Long orderId);
-        //
-        // @PostMapping("/api/inventories/reserve/{orderId}")
-        // ApiResponse<ReserveStockResponse> reserveStock(
-        // @PathVariable Long orderId,
-        // @RequestParam("productColorId") @NotBlank String productColorId,
-        // @RequestParam("quantity") @Min(1) int quantity)
+
+        /**
+         * Kiểm tra stock tại 1 store cụ thể
+         */
+        @GetMapping("/api/inventories/stock/check-at-store")
+        ApiResponse<Boolean> checkStockAtStore(
+                        @RequestParam("productColorId") String productColorId,
+                        @RequestParam("storeId") String storeId,
+                        @RequestParam("quantity") Integer quantity);
 
 }

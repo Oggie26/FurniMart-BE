@@ -11,6 +11,5 @@ public class WarehouseReserveInfo {
     private String warehouseName;
     private int reservedQuantity;
     private boolean isAssignedWarehouse;
-
 }
 

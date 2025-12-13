@@ -61,8 +61,8 @@ services:
     networks:
       - backend
     restart: unless-stopped
-#    ports:
-#      - "8080:8080"
+    #    ports:
+    #      - "8080:8080"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
@@ -80,19 +80,14 @@ services:
       # 1. Cho phép tất cả Method
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
 
-      # 2. THAY VÌ LIỆT KÊ, DÙNG REGEX ĐỂ CHẤP NHẬN TẤT CẢ
-      # Regex ".*" nghĩa là tên miền nào cũng khớp
       - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlistregex=.*"
 
-      # 3. Vẫn cho phép gửi Token (Quan trọng)
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowcredentials=true"
 
-      # 4. Cho phép tất cả Header
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
       - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
 
-      # Rate Limit
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"
 
@@ -233,7 +228,6 @@ services:
       SPRING_KAFKA_CONSUMER_GROUP_ID: inventory-group
       SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
 
-
   inventory-db:
     image: postgres:16
     container_name: inventory-db
@@ -264,7 +258,6 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_KAFKA_CONSUMER_GROUP_ID: notification-group
       SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
-
 
   delivery-service:
     build: ./delivery-service
@@ -352,7 +345,6 @@ services:
         limits:
           cpus: "1.0"
           memory: 1g
-
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest

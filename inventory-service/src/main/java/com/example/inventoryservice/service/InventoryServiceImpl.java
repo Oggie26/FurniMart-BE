@@ -33,7 +33,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final AuthClient authClient;
     private final UserClient userClient;
     private final OrderClient orderClient;
-    private final ProductClient productClient;
+    private final ProductServiceClient productServiceClient;
     private final DeliveryClient deliveryClient;
     private final StoreClient storeClient;
     private final InventoryReservedWarehouseRepository reservedWarehouseRepository;
@@ -74,14 +74,14 @@ public class InventoryServiceImpl implements InventoryService {
             Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                     .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
-
             transferInventory = Inventory.builder()
                     .employeeId(getProfile())
                     .type(EnumTypes.TRANSFER)
                     .purpose(EnumPurpose.REQUEST)
                     .warehouse(toWarehouse)
                     .transferStatus(TransferStatus.PENDING)
-                    .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName() + " - Mã phiếu xuất: " + inventory.getCode())
+                    .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName() + " - Mã phiếu xuất: "
+                            + inventory.getCode())
                     .date(LocalDate.now())
                     .build();
 
@@ -94,7 +94,8 @@ public class InventoryServiceImpl implements InventoryService {
             switch (request.getType()) {
 
                 case IMPORT -> {
-                    LocationItem location = locationItemRepository.findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
+                    LocationItem location = locationItemRepository
+                            .findByIdAndIsDeletedFalse(itemReq.getLocationItemId())
                             .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
 
                     int actualStock = inventoryItemRepository.getActualStock(location.getId());
@@ -107,8 +108,7 @@ public class InventoryServiceImpl implements InventoryService {
                             inventory,
                             itemReq.getLocationItemId(),
                             itemReq.getProductColorId(),
-                            itemReq.getQuantity()
-                    );
+                            itemReq.getQuantity());
                 }
 
                 case EXPORT -> {
@@ -116,15 +116,18 @@ public class InventoryServiceImpl implements InventoryService {
                     List<InventoryItem> itemsInStock = inventoryItemRepository
                             .findItemsForExport(itemReq.getProductColorId(), warehouse.getId());
 
-                    if (itemsInStock.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+                    if (itemsInStock.isEmpty())
+                        throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
                     int remainingQty = itemReq.getQuantity();
 
                     for (InventoryItem it : itemsInStock) {
-                        if (remainingQty <= 0) break;
+                        if (remainingQty <= 0)
+                            break;
 
                         int available = it.getQuantity();
-                        if (available <= 0) continue;
+                        if (available <= 0)
+                            continue;
 
                         int toExport = Math.min(available, remainingQty);
 
@@ -140,20 +143,21 @@ public class InventoryServiceImpl implements InventoryService {
                                 inventory,
                                 it.getLocationItem().getId(),
                                 itemReq.getProductColorId(),
-                                -toExport
-                        );
+                                -toExport);
 
                         remainingQty -= toExport;
                     }
 
-                    if (remainingQty > 0) throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+                    if (remainingQty > 0)
+                        throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
                     // -----------------------------
                     // CHUYỂN KHO → TẠO PHIẾU YÊU CẦU
                     // -----------------------------
                     if (isTransferOut && request.getToWarehouseId() != null) {
 
-                        Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
+                        Warehouse toWarehouse = warehouseRepository
+                                .findByIdAndIsDeletedFalse(request.getToWarehouseId())
                                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
 
                         Inventory transferReq = Inventory.builder()
@@ -173,12 +177,12 @@ public class InventoryServiceImpl implements InventoryService {
                                 transferReq,
                                 null,
                                 itemReq.getProductColorId(),
-                                itemReq.getQuantity()
-                        );
+                                itemReq.getQuantity());
                     }
                 }
                 case TRANSFER -> {
-                    if (request.getToWarehouseId() == null) throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
+                    if (request.getToWarehouseId() == null)
+                        throw new AppException(ErrorCode.WAREHOUSE_NOT_FOUND);
 
                     Warehouse toWarehouse = warehouseRepository.findByIdAndIsDeletedFalse(request.getToWarehouseId())
                             .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
@@ -194,8 +198,7 @@ public class InventoryServiceImpl implements InventoryService {
                             inventory,
                             itemReq.getLocationItemId(),
                             itemReq.getProductColorId(),
-                            itemReq.getQuantity()
-                    );
+                            itemReq.getQuantity());
                 }
 
                 default -> throw new AppException(ErrorCode.INVALID_TYPE);
@@ -215,23 +218,24 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
 
-//        if (request.getType() == EnumTypes.EXPORT || request.getType() == EnumTypes.TRANSFER) {
-//            try {
-//                Inventory finalInventory = inventoryRepository.findByIdWithItems(inventory.getId())
-//                        .orElse(inventory);
-//
-//                String pdfUrl = pdfService.generateExportPDF(finalInventory);
-//                inventory.setPdfUrl(pdfUrl);
-//                inventoryRepository.save(inventory);
-//
-//            } catch (Exception e) {
-//                log.error("Error generating PDF: {}", e.getMessage());
-//            }
-//        }
+        // if (request.getType() == EnumTypes.EXPORT || request.getType() ==
+        // EnumTypes.TRANSFER) {
+        // try {
+        // Inventory finalInventory =
+        // inventoryRepository.findByIdWithItems(inventory.getId())
+        // .orElse(inventory);
+        //
+        // String pdfUrl = pdfService.generateExportPDF(finalInventory);
+        // inventory.setPdfUrl(pdfUrl);
+        // inventoryRepository.save(inventory);
+        //
+        // } catch (Exception e) {
+        // log.error("Error generating PDF: {}", e.getMessage());
+        // }
+        // }
 
         return mapToInventoryResponse(inventory);
     }
-
 
     @Override
     @Transactional
@@ -248,12 +252,12 @@ public class InventoryServiceImpl implements InventoryService {
             inventoryRepository.save(transfer);
             return mapToInventoryResponse(transfer);
         }
-        if(transferStatus.equals(TransferStatus.ACCEPTED)){
+        if (transferStatus.equals(TransferStatus.ACCEPTED)) {
             transfer.setTransferStatus(TransferStatus.ACCEPTED);
             inventoryRepository.save(transfer);
             return mapToInventoryResponse(transfer);
         }
-        if(transferStatus.equals(TransferStatus.FINISHED)){
+        if (transferStatus.equals(TransferStatus.FINISHED)) {
             transfer.setTransferStatus(TransferStatus.FINISHED);
             inventoryRepository.save(transfer);
             return mapToInventoryResponse(transfer);
@@ -304,13 +308,11 @@ public class InventoryServiceImpl implements InventoryService {
                 warehouseId,
                 EnumTypes.IMPORT,
                 EnumPurpose.STOCK_IN,
-                "Import stock"
-        );
+                "Import stock");
 
         createInventoryItem(inventory, request.getLocationItemId(), request.getProductColorId(), request.getQuantity());
         return mapToInventoryResponse(inventory);
     }
-
 
     @Override
     @Transactional
@@ -319,20 +321,23 @@ public class InventoryServiceImpl implements InventoryService {
         List<InventoryItem> items = inventoryItemRepository
                 .findAllByProductColorIdAndInventory_Warehouse_Id(request.getProductColorId(), warehouseId);
 
-        if (items.isEmpty()) throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+        if (items.isEmpty())
+            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
 
         int remaining = request.getQuantity();
 
         for (InventoryItem item : items) {
             int available = item.getQuantity() - item.getReservedQuantity();
-            if (available <= 0) continue;
+            if (available <= 0)
+                continue;
 
             int toExport = Math.min(available, remaining);
             item.setQuantity(item.getQuantity() - toExport);
             inventoryItemRepository.save(item);
 
             remaining -= toExport;
-            if (remaining <= 0) break;
+            if (remaining <= 0)
+                break;
         }
 
         if (remaining > 0)
@@ -342,8 +347,7 @@ public class InventoryServiceImpl implements InventoryService {
                 warehouseId,
                 EnumTypes.EXPORT,
                 EnumPurpose.STOCK_OUT,
-                "Export stock"
-        );
+                "Export stock");
 
         return mapToInventoryResponse(inventory);
     }
@@ -380,30 +384,31 @@ public class InventoryServiceImpl implements InventoryService {
                 fromWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
-                "Transfer OUT to " + toWarehouse.getWarehouseName() + " / Zone: " + toZone.getZoneName()
-        );
+                "Transfer OUT to " + toWarehouse.getWarehouseName() + " / Zone: " + toZone.getZoneName());
 
         Inventory importInventory = createInventory(
                 toWarehouse.getId(),
                 EnumTypes.TRANSFER,
                 EnumPurpose.MOVE,
-                "Transfer IN from " + fromWarehouse.getWarehouseName() + " / Zone: " + fromZone.getZoneName()
-        );
+                "Transfer IN from " + fromWarehouse.getWarehouseName() + " / Zone: " + fromZone.getZoneName());
 
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             for (InventoryItemRequest item : request.getItems()) {
                 if (!hasSufficientStock(item.getProductColorId(), fromWarehouse.getId(), item.getQuantity()))
                     throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-                createInventoryItem(exportInventory, fromLocation.getId(), item.getProductColorId(), -item.getQuantity());
+                createInventoryItem(exportInventory, fromLocation.getId(), item.getProductColorId(),
+                        -item.getQuantity());
                 createInventoryItem(importInventory, toLocation.getId(), item.getProductColorId(), item.getQuantity());
             }
         } else {
             if (!hasSufficientStock(request.getProductColorId(), fromWarehouse.getId(), request.getQuantity()))
                 throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
-            createInventoryItem(exportInventory, fromLocation.getId(), request.getProductColorId(), -request.getQuantity());
-            createInventoryItem(importInventory, toLocation.getId(), request.getProductColorId(), request.getQuantity());
+            createInventoryItem(exportInventory, fromLocation.getId(), request.getProductColorId(),
+                    -request.getQuantity());
+            createInventoryItem(importInventory, toLocation.getId(), request.getProductColorId(),
+                    request.getQuantity());
         }
     }
 
@@ -460,8 +465,7 @@ public class InventoryServiceImpl implements InventoryService {
     @SuppressWarnings("unused")
     private void preloadWarehouseNames(
             Map<Warehouse, List<InventoryItem>> warehouseMap,
-            Map<String, String> warehouseNameCache
-    ) {
+            Map<String, String> warehouseNameCache) {
         for (Warehouse w : warehouseMap.keySet()) {
             String id = w.getId();
             if (!warehouseNameCache.containsKey(id)) {
@@ -478,712 +482,737 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
     }
-//                assignedWarehouse,
-//                itemsToUpdate,
-//                ticketsToCreate,
-//                warehouseReservedMap,
-//                warehouseNameCache
-//        );
-//
-//        remainingToReserve -= reservedAtHome;
-//        totalReserved += reservedAtHome;
-//
-//        warehouseMap.remove(assignedWarehouse);
-//    }
-//
-//    // ============================================================
-//    // CASE 2 — Dùng các kho khác
-//    // ============================================================
-//    if (remainingToReserve > 0 && !warehouseMap.isEmpty()) {
-//
-//        List<Warehouse> neighborWarehouses = warehouseMap.entrySet().stream()
-//                .sorted((e1, e2) -> {
-//                    int qty1 = e1.getValue().stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
-//                    int qty2 = e2.getValue().stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
-//                    return Integer.compare(qty2, qty1);
-//                })
-//                .map(Map.Entry::getKey)
-//                .toList();
-//
-//        for (Warehouse neighbor : neighborWarehouses) {
-//            if (remainingToReserve <= 0) break;
-//
-//            int reservedAtNeighbor = reserveAtSpecificWarehouse(
-//                    neighbor,
-//                    warehouseMap.get(neighbor),
-//                    remainingToReserve,
-//                    orderId,
-//                    productColorId,
-//                    TransferStatus.PENDING,
-//                    assignedWarehouse,
-//                    itemsToUpdate,
-//                    ticketsToCreate,
-//                    warehouseReservedMap,
-//                    warehouseNameCache
-//            );
-//
-//            if (reservedAtNeighbor > 0) {
-//                warehouseReservedMap.put(
-//                        neighbor.getId(),
-//                        warehouseReservedMap.getOrDefault(neighbor.getId(), 0) + reservedAtNeighbor
-//                );
-//                log.info(warehouseNameCache.get(neighbor.getId()));
-//            }
-//
-//            remainingToReserve -= reservedAtNeighbor;
-//            totalReserved += reservedAtNeighbor;
-//        }
-//    }
-//
-//    if (!itemsToUpdate.isEmpty()) {
-//        inventoryItemRepository.saveAll(itemsToUpdate);
-//    }
-//
-//    if (!ticketsToCreate.isEmpty()) {
-//        inventoryRepository.saveAll(ticketsToCreate);
-//    }
-//
-//    ReserveStatus finalStatus;
-//
-//    if (totalReserved == 0) finalStatus = ReserveStatus.OUT_OF_STOCK;
-//    else if (totalReserved < quantity) finalStatus = ReserveStatus.PARTIAL_FULFILLMENT;
-//    else finalStatus = ReserveStatus.FULL_FULFILLMENT;
-//
-//    return ReserveStockResponse.builder()
-//            .reservations(ticketsToCreate.stream().map(this::mapToInventoryResponse).toList())
-//            .quantityReserved(totalReserved)
-//            .quantityMissing(quantity - totalReserved)
-//            .reserveStatus(finalStatus)
-//            .build();
-//}
-//private int reserveAtSpecificWarehouse(
-//        Warehouse warehouse,
-//        List<InventoryItem> items,
-//        int needQty,
-//        long orderId,
-//        String productColorId,
-//        TransferStatus transferStatus,
-//        Warehouse mainAssignedWarehouse,
-//        List<InventoryItem> itemsToUpdateOut,
-//        List<Inventory> ticketsToCreateOut,
-//        Map<String, Integer> warehouseReservedMap,
-//        Map<String, String> warehouseNameCache
-//) {
-//
-//    int reservedHere = 0;
-//
-//    // CHỈ dùng để tính số lượng lấy (log)
-//    Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//    // =========================
-//    // 1) TRỪ VÀO reservedQuantity
-//    // =========================
-//    for (InventoryItem item : items) {
-//        if (needQty <= 0) break;
-//
-//        int available = item.getQuantity() - item.getReservedQuantity();
-//        if (available <= 0) continue;
-//
-//        int toTake = Math.min(available, needQty);
-//
-//        // Update reserve
-//        item.setReservedQuantity(item.getReservedQuantity() + toTake);
-//        itemsToUpdateOut.add(item);
-//
-//        reservedHere += toTake;
-//        needQty -= toTake;
-//
-//        takenPerColor.merge(item.getProductColorId(), toTake, Integer::sum);
-//    }
-//
-//    if (reservedHere <= 0) return 0;
-//
-//    // =========================
-//    // 2) LẤY TÊN STORE
-//    // =========================
-//    String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
-////    String storeName = warehouseNameCache.getOrDefault(warehouse.getId(), "Unknown Store");
-////    try {
-////        var storeResp = storeClient.getStoreById(warehouse.getStoreId());
-////        if (storeResp != null && storeResp.getData() != null) {
-////            storeName = storeResp.getData().getName();
-////            warehouseNameCache.put(warehouse.getId(), storeName);
-////        }
-////    } catch (Exception ignored) {}
-//
-//    // =========================
-//    // 3) LẤY TÊN SP + MÀU
-//    // =========================
-//    var pc = getProductName(productColorId);
-//    String productName = pc.getProduct().getName();
-//    String colorName = pc.getColor().getColorName();
-//
-//
-//    StringBuilder note = new StringBuilder();
-//
-//// Dòng đầu tiên luôn có: giữ ở đâu, bao nhiêu cái
-//    note.append("Giữ hàng tại: ").append(warehouseName)
-//            .append(" → ").append(reservedHere).append(" cái")
-//            .append("\nSản phẩm: ").append(productName).append(" (").append(colorName).append(")");
-//
-//// ==================================================================
-//// CASE 1: Kho chính (FINISHED) → liệt kê các kho hỗ trợ khác
-//// ==================================================================
-//    if (transferStatus == TransferStatus.FINISHED) {
-//        var supports = warehouseReservedMap.entrySet().stream()
-//                .filter(e -> !e.getKey().equals(warehouse.getId()))
-//                .toList();
-//
-//        if (!supports.isEmpty()) {
-//            note.append("\n\nĐủ hàng nhờ các kho hỗ trợ:");
-//            for (var e : supports) {
-//                String supName = warehouseNameCache.getOrDefault(e.getKey(), "Kho " + e.getKey());
-//            }
-//        }
-//    Map<String, String> warehouseNameCache = new HashMap<>();
-//    preloadWarehouseNames(warehouseMap, warehouseNameCache);
-//
-//    int remaining = quantity;
-//    int totalReserved = 0;
-//
-//    List<InventoryItem> itemsToUpdate = new ArrayList<>();
-//    List<Inventory> ticketsToCreate = new ArrayList<>();
-//
-//    // ============================================================
-//    // CASE 1: Ưu tiên kho assigned
-//    // ============================================================
-//    if (warehouseMap.containsKey(assignedWarehouse)) {
-//
-//        int reserved = reserveAtWarehouse_OptionA(
-//                assignedWarehouse,
-//                warehouseMap.get(assignedWarehouse),
-//                remaining,
-//                orderId,
-//                productColorId,
-//                warehouseNameCache,
-//                itemsToUpdate,
-//                ticketsToCreate
-//        );
-//
-//        totalReserved += reserved;
-//        remaining -= reserved;
-//
-//        warehouseMap.remove(assignedWarehouse);
-//    }
-//
-//    // ============================================================
-//    // CASE 2: Các kho còn lại
-//    // ============================================================
-//    if (remaining > 0) {
-//        List<Warehouse> sorted = warehouseMap.entrySet().stream()
-//                .sorted((a, b) -> {
-//
-//                    int qa = a.getValue().stream()
-//                            .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
-//                            .sum();
-//
-//                    int qb = b.getValue().stream()
-//                            .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
-//                            .sum();
-//
-//                    return Integer.compare(qb, qa);
-//                })
-//                .map(Map.Entry::getKey)
-//                .toList();
-//
-//
-//        for (Warehouse wh : sorted) {
-//            if (remaining <= 0) break;
-//
-//            int reserved = reserveAtWarehouse_OptionA(
-//                    wh,
-//                    warehouseMap.get(wh),
-//                    remaining,
-//                    orderId,
-//                    productColorId,
-//                    warehouseNameCache,
-//                    itemsToUpdate,
-//                    ticketsToCreate
-//            );
-//
-//            totalReserved += reserved;
-//            remaining -= reserved;
-//        }
-//    }
-//
-//    // Save updates
-//    if (!itemsToUpdate.isEmpty()) {
-//        inventoryItemRepository.saveAll(itemsToUpdate);
-//    }
-//    if (!ticketsToCreate.isEmpty()) {
-//        inventoryRepository.saveAll(ticketsToCreate);
-//    }
-//
-//    ReserveStatus status;
-//    if (totalReserved == 0) status = ReserveStatus.OUT_OF_STOCK;
-//    else if (totalReserved < quantity) status = ReserveStatus.PARTIAL_FULFILLMENT;
-//    else status = ReserveStatus.FULL_FULFILLMENT;
-//
-//    return ReserveStockResponse.builder()
-//            .reservations(ticketsToCreate.stream().map(this::mapToInventoryResponse).toList())
-//            .quantityReserved(totalReserved)
-//            .quantityMissing(quantity - totalReserved)
-//            .reserveStatus(status)
-//            .build();
-//}
-//    private int reserveAtWarehouse_OptionA(
-//            Warehouse warehouse,
-//            List<InventoryItem> items,
-//            int needQty,
-//            long orderId,
-//            String productColorId,
-//            Map<String, String> warehouseNameCache,
-//            List<InventoryItem> itemsToUpdateOut,
-//            List<Inventory> ticketsToCreateOut
-//    ) {
-//
-//        int reservedHere = 0;
-//        Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//        for (InventoryItem item : items) {
-//            if (needQty <= 0) break;
-//
-//            int available = item.getQuantity() - item.getReservedQuantity();
-//            if (available <= 0) continue;
-//
-//            int take = Math.min(available, needQty);
-//            item.setReservedQuantity(item.getReservedQuantity() + take);
-//            itemsToUpdateOut.add(item);
-//
-//            reservedHere += take;
-//            needQty -= take;
-//
-//            takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//        }
-//
-//        if (reservedHere <= 0) return 0;
-//
-//
-//        var pc = getProductName(productColorId);
-//        String productName = pc.getProduct().getName();
-//        String colorName = pc.getColor().getColorName();
-//        String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
-//
-//
-//        String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + " cái" +
-//                "\nSản phẩm: " + productName + " (" + colorName + ")" +
-//                "\nTrạng thái: Giữ hàng thành công";
-//
-//        Inventory ticket = Inventory.builder()
-//                .employeeId("SYSTEM_AUTO")
-//                .type(EnumTypes.RESERVE)
-//                .purpose(EnumPurpose.RESERVE)
-//                .date(LocalDate.now())
-//                .warehouse(warehouse)
-//                .orderId(orderId)
-//                .note(note)
-//                .transferStatus(TransferStatus.FINISHED)
-//                .build();
-//
-//        ticket = inventoryRepository.save(ticket);
-//
-//        List<InventoryReservedWarehouse> allReservedForOrder =
-//                inventoryReservedWarehouseRepository.findByOrderId(orderId);
-//
-//        InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
-//                .warehouseId(warehouse.getId())
-//                .warehouseName(warehouse.getWarehouseName())
-//                .reservedQuantity(reservedHere)
-//                .orderId(orderId)
-//                .inventory(ticket)
-//                .build();
-//
-//        allReservedForOrder.add(reserved);
-//
-//
-//        ticket.setReservedWarehouses(allReservedForOrder);
-//
-//        List<InventoryItem> ticketItems = new ArrayList<>();
-//        for (var entry : takenPerColor.entrySet()) {
-//            ticketItems.add(
-//                    InventoryItem.builder()
-//                            .productColorId(entry.getKey())
-//                            .quantity(entry.getValue())
-//                            .inventory(ticket)
-//                            .build()
-//            );
-//        }
-//        ticket.setInventoryItems(ticketItems);
-//        inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
-//        ticketsToCreateOut.add(ticket);
-//
-//        return reservedHere;
-//    }
-//private int reserveAtWarehouse_OptionA(
-//        Warehouse warehouse,
-//        List<InventoryItem> items,
-//        int needQty,
-//        long orderId,
-//        String productColorId,
-//        Map<String, String> warehouseNameCache,
-//        List<InventoryItem> itemsToUpdateOut,
-//        List<Inventory> ticketsToCreateOut
-//) {
-//    int reservedHere = 0;
-//    Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//    // 1. Duyệt qua các InventoryItem để reserve
-//    for (InventoryItem item : items) {
-//        if (needQty <= 0) break;
-//
-//        int available = item.getQuantity() - item.getReservedQuantity();
-//        if (available <= 0) continue;
-//
-//        int take = Math.min(available, needQty);
-//        item.setReservedQuantity(item.getReservedQuantity() + take);
-//        itemsToUpdateOut.add(item);
-//
-//        reservedHere += take;
-//        needQty -= take;
-//
-//        takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//    }
-//
-//    if (reservedHere <= 0) return 0;
-//
-//    // 2. Lấy thông tin sản phẩm
-//    var pc = getProductName(productColorId);
-//    String productName = pc.getProduct().getName();
-//    String colorName = pc.getColor().getColorName();
-//    String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
-//
-//    String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + " cái" +
-//            "\nSản phẩm: " + productName + " (" + colorName + ")" +
-//            "\nTrạng thái: Giữ hàng thành công";
-//
-//    // 3. Tạo ticket Inventory và persist trước
-//    Inventory ticket = Inventory.builder()
-//            .employeeId("SYSTEM_AUTO")
-//            .type(EnumTypes.RESERVE)
-//            .purpose(EnumPurpose.RESERVE)
-//            .date(LocalDate.now())
-//            .warehouse(warehouse)
-//            .orderId(orderId)
-//            .note(note)
-//            .transferStatus(TransferStatus.FINISHED)
-//            .build();
-//
-//    ticket = inventoryRepository.save(ticket);
-//
-//    // 4. Lấy danh sách warehouse đã reserve trước đó
-//    List<InventoryReservedWarehouse> allReservedForOrder =
-//            inventoryReservedWarehouseRepository.findByOrderId(orderId);
-//    if (allReservedForOrder == null) {
-//        allReservedForOrder = new ArrayList<>();
-//    }
-//
-//    // 5. Tạo InventoryReservedWarehouse mới
-//    InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
-//            .warehouseId(warehouse.getId())
-//            .warehouseName(warehouse.getWarehouseName())
-//            .reservedQuantity(reservedHere)
-//            .orderId(orderId)
-//            .inventory(ticket)
-//            .build();
-//
-//    allReservedForOrder.add(reserved);
-//
-//    // 6. Gán reserved warehouses vào ticket
-//    ticket.setReservedWarehouses(allReservedForOrder);
-//
-//    // 7. Tạo các InventoryItem riêng cho ticket
-//    List<InventoryItem> ticketItems = new ArrayList<>();
-//    for (var entry : takenPerColor.entrySet()) {
-//        InventoryItem ticketItem = InventoryItem.builder()
-//                .productColorId(entry.getKey())
-//                .quantity(entry.getValue())
-//                .inventory(ticket)
-//                .build();
-//        ticketItems.add(ticketItem);
-//    }
-//    ticket.setInventoryItems(ticketItems);
-//
-//    // 8. Persist các reserved warehouse và ticket items
-//    inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
-//    inventoryItemRepository.saveAll(ticketItems);
-//
-//    // 9. Thêm ticket vào danh sách output
-//    ticketsToCreateOut.add(ticket);
-//
-//    return reservedHere;
-//}
-//private int reserveAtWarehouse_OptionA(
-//        Warehouse warehouse,
-//        List<InventoryItem> items,
-//        int needQty,
-//        long orderId,
-//        String productColorId,
-//        Map<String, String> warehouseNameCache,
-//        List<InventoryItem> itemsToUpdateOut,
-//        List<Inventory> ticketsToCreateOut
-//) {
-//    int reservedHere = 0;
-//    Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//    // 1. Reserve từng item trong kho
-//    for (InventoryItem item : items) {
-//        if (needQty <= 0) break;
-//
-//        int available = item.getQuantity() - item.getReservedQuantity();
-//        if (available <= 0) continue;
-//
-//        int take = Math.min(available, needQty);
-//        item.setReservedQuantity(item.getReservedQuantity() + take);
-//        itemsToUpdateOut.add(item);
-//
-//        reservedHere += take;
-//        needQty -= take;
-//
-//        takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//    }
-//
-//    if (reservedHere <= 0) return 0;
-//
-//    // 2. Thông tin sản phẩm & warehouse
-//    var pc = getProductName(productColorId);
-//    String productName = pc.getProduct().getName();
-//    String colorName = pc.getColor().getColorName();
-//    String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
-//
-//    String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + " cái" +
-//            "\nSản phẩm: " + productName + " (" + colorName + ")" +
-//            "\nTrạng thái: Giữ hàng thành công";
-//
-//    // 3. Tạo ticket riêng cho kho này
-//    Inventory ticket = Inventory.builder()
-//            .employeeId("SYSTEM_AUTO")
-//            .type(EnumTypes.RESERVE)
-//            .purpose(EnumPurpose.RESERVE)
-//            .date(LocalDate.now())
-//            .orderId(orderId)
-//            .transferStatus(TransferStatus.FINISHED)
-//            .note(note)
-//            .warehouse(warehouse)
-//            .build();
-//
-//    // 4. Tạo reservedWarehouse
-//    InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
-//            .warehouseId(warehouse.getId())
-//            .warehouseName(warehouse.getWarehouseName())
-//            .reservedQuantity(reservedHere)
-//            .orderId(orderId)
-//            .inventory(ticket)
-//            .build();
-//
-//    ticket.setReservedWarehouses(new ArrayList<>(List.of(reserved)));
-//
-//    // 5. Tạo InventoryItem cho ticket
-//    List<InventoryItem> ticketItems = new ArrayList<>();
-//    for (var entry : takenPerColor.entrySet()) {
-//        ticketItems.add(
-//                InventoryItem.builder()
-//                        .productColorId(entry.getKey())
-//                        .quantity(entry.getValue())
-//                        .inventory(ticket)
-//                        .build()
-//        );
-//    }
-//    ticket.setInventoryItems(ticketItems);
-//
-//    ticket = inventoryRepository.save(ticket);
-//    inventoryReservedWarehouseRepository.saveAll(ticket.getReservedWarehouses());
-//    ticketsToCreateOut.add(ticket);
-//
-//    return reservedHere;
-//}
+    // assignedWarehouse,
+    // itemsToUpdate,
+    // ticketsToCreate,
+    // warehouseReservedMap,
+    // warehouseNameCache
+    // );
+    //
+    // remainingToReserve -= reservedAtHome;
+    // totalReserved += reservedAtHome;
+    //
+    // warehouseMap.remove(assignedWarehouse);
+    // }
+    //
+    // // ============================================================
+    // // CASE 2 — Dùng các kho khác
+    // // ============================================================
+    // if (remainingToReserve > 0 && !warehouseMap.isEmpty()) {
+    //
+    // List<Warehouse> neighborWarehouses = warehouseMap.entrySet().stream()
+    // .sorted((e1, e2) -> {
+    // int qty1 = e1.getValue().stream().mapToInt(i -> i.getQuantity() -
+    // i.getReservedQuantity()).sum();
+    // int qty2 = e2.getValue().stream().mapToInt(i -> i.getQuantity() -
+    // i.getReservedQuantity()).sum();
+    // return Integer.compare(qty2, qty1);
+    // })
+    // .map(Map.Entry::getKey)
+    // .toList();
+    //
+    // for (Warehouse neighbor : neighborWarehouses) {
+    // if (remainingToReserve <= 0) break;
+    //
+    // int reservedAtNeighbor = reserveAtSpecificWarehouse(
+    // neighbor,
+    // warehouseMap.get(neighbor),
+    // remainingToReserve,
+    // orderId,
+    // productColorId,
+    // TransferStatus.PENDING,
+    // assignedWarehouse,
+    // itemsToUpdate,
+    // ticketsToCreate,
+    // warehouseReservedMap,
+    // warehouseNameCache
+    // );
+    //
+    // if (reservedAtNeighbor > 0) {
+    // warehouseReservedMap.put(
+    // neighbor.getId(),
+    // warehouseReservedMap.getOrDefault(neighbor.getId(), 0) + reservedAtNeighbor
+    // );
+    // log.info(warehouseNameCache.get(neighbor.getId()));
+    // }
+    //
+    // remainingToReserve -= reservedAtNeighbor;
+    // totalReserved += reservedAtNeighbor;
+    // }
+    // }
+    //
+    // if (!itemsToUpdate.isEmpty()) {
+    // inventoryItemRepository.saveAll(itemsToUpdate);
+    // }
+    //
+    // if (!ticketsToCreate.isEmpty()) {
+    // inventoryRepository.saveAll(ticketsToCreate);
+    // }
+    //
+    // ReserveStatus finalStatus;
+    //
+    // if (totalReserved == 0) finalStatus = ReserveStatus.OUT_OF_STOCK;
+    // else if (totalReserved < quantity) finalStatus =
+    // ReserveStatus.PARTIAL_FULFILLMENT;
+    // else finalStatus = ReserveStatus.FULL_FULFILLMENT;
+    //
+    // return ReserveStockResponse.builder()
+    // .reservations(ticketsToCreate.stream().map(this::mapToInventoryResponse).toList())
+    // .quantityReserved(totalReserved)
+    // .quantityMissing(quantity - totalReserved)
+    // .reserveStatus(finalStatus)
+    // .build();
+    // }
+    // private int reserveAtSpecificWarehouse(
+    // Warehouse warehouse,
+    // List<InventoryItem> items,
+    // int needQty,
+    // long orderId,
+    // String productColorId,
+    // TransferStatus transferStatus,
+    // Warehouse mainAssignedWarehouse,
+    // List<InventoryItem> itemsToUpdateOut,
+    // List<Inventory> ticketsToCreateOut,
+    // Map<String, Integer> warehouseReservedMap,
+    // Map<String, String> warehouseNameCache
+    // ) {
+    //
+    // int reservedHere = 0;
+    //
+    // // CHỈ dùng để tính số lượng lấy (log)
+    // Map<String, Integer> takenPerColor = new HashMap<>();
+    //
+    // // =========================
+    // // 1) TRỪ VÀO reservedQuantity
+    // // =========================
+    // for (InventoryItem item : items) {
+    // if (needQty <= 0) break;
+    //
+    // int available = item.getQuantity() - item.getReservedQuantity();
+    // if (available <= 0) continue;
+    //
+    // int toTake = Math.min(available, needQty);
+    //
+    // // Update reserve
+    // item.setReservedQuantity(item.getReservedQuantity() + toTake);
+    // itemsToUpdateOut.add(item);
+    //
+    // reservedHere += toTake;
+    // needQty -= toTake;
+    //
+    // takenPerColor.merge(item.getProductColorId(), toTake, Integer::sum);
+    // }
+    //
+    // if (reservedHere <= 0) return 0;
+    //
+    // // =========================
+    // // 2) LẤY TÊN STORE
+    // // =========================
+    // String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Kho " + warehouse.getId());
+    //// String storeName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Unknown Store");
+    //// try {
+    //// var storeResp = storeClient.getStoreById(warehouse.getStoreId());
+    //// if (storeResp != null && storeResp.getData() != null) {
+    //// storeName = storeResp.getData().getName();
+    //// warehouseNameCache.put(warehouse.getId(), storeName);
+    //// }
+    //// } catch (Exception ignored) {}
+    //
+    // // =========================
+    // // 3) LẤY TÊN SP + MÀU
+    // // =========================
+    // var pc = getProductName(productColorId);
+    // String productName = pc.getProduct().getName();
+    // String colorName = pc.getColor().getColorName();
+    //
+    //
+    // StringBuilder note = new StringBuilder();
+    //
+    //// Dòng đầu tiên luôn có: giữ ở đâu, bao nhiêu cái
+    // note.append("Giữ hàng tại: ").append(warehouseName)
+    // .append(" → ").append(reservedHere).append(" cái")
+    // .append("\nSản phẩm: ").append(productName).append("
+    // (").append(colorName).append(")");
+    //
+    //// ==================================================================
+    //// CASE 1: Kho chính (FINISHED) → liệt kê các kho hỗ trợ khác
+    //// ==================================================================
+    // if (transferStatus == TransferStatus.FINISHED) {
+    // var supports = warehouseReservedMap.entrySet().stream()
+    // .filter(e -> !e.getKey().equals(warehouse.getId()))
+    // .toList();
+    //
+    // if (!supports.isEmpty()) {
+    // note.append("\n\nĐủ hàng nhờ các kho hỗ trợ:");
+    // for (var e : supports) {
+    // String supName = warehouseNameCache.getOrDefault(e.getKey(), "Kho " +
+    // e.getKey());
+    // }
+    // }
+    // Map<String, String> warehouseNameCache = new HashMap<>();
+    // preloadWarehouseNames(warehouseMap, warehouseNameCache);
+    //
+    // int remaining = quantity;
+    // int totalReserved = 0;
+    //
+    // List<InventoryItem> itemsToUpdate = new ArrayList<>();
+    // List<Inventory> ticketsToCreate = new ArrayList<>();
+    //
+    // // ============================================================
+    // // CASE 1: Ưu tiên kho assigned
+    // // ============================================================
+    // if (warehouseMap.containsKey(assignedWarehouse)) {
+    //
+    // int reserved = reserveAtWarehouse_OptionA(
+    // assignedWarehouse,
+    // warehouseMap.get(assignedWarehouse),
+    // remaining,
+    // orderId,
+    // productColorId,
+    // warehouseNameCache,
+    // itemsToUpdate,
+    // ticketsToCreate
+    // );
+    //
+    // totalReserved += reserved;
+    // remaining -= reserved;
+    //
+    // warehouseMap.remove(assignedWarehouse);
+    // }
+    //
+    // // ============================================================
+    // // CASE 2: Các kho còn lại
+    // // ============================================================
+    // if (remaining > 0) {
+    // List<Warehouse> sorted = warehouseMap.entrySet().stream()
+    // .sorted((a, b) -> {
+    //
+    // int qa = a.getValue().stream()
+    // .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
+    // .sum();
+    //
+    // int qb = b.getValue().stream()
+    // .mapToInt(i -> i.getQuantity() - i.getReservedQuantity())
+    // .sum();
+    //
+    // return Integer.compare(qb, qa);
+    // })
+    // .map(Map.Entry::getKey)
+    // .toList();
+    //
+    //
+    // for (Warehouse wh : sorted) {
+    // if (remaining <= 0) break;
+    //
+    // int reserved = reserveAtWarehouse_OptionA(
+    // wh,
+    // warehouseMap.get(wh),
+    // remaining,
+    // orderId,
+    // productColorId,
+    // warehouseNameCache,
+    // itemsToUpdate,
+    // ticketsToCreate
+    // );
+    //
+    // totalReserved += reserved;
+    // remaining -= reserved;
+    // }
+    // }
+    //
+    // // Save updates
+    // if (!itemsToUpdate.isEmpty()) {
+    // inventoryItemRepository.saveAll(itemsToUpdate);
+    // }
+    // if (!ticketsToCreate.isEmpty()) {
+    // inventoryRepository.saveAll(ticketsToCreate);
+    // }
+    //
+    // ReserveStatus status;
+    // if (totalReserved == 0) status = ReserveStatus.OUT_OF_STOCK;
+    // else if (totalReserved < quantity) status =
+    // ReserveStatus.PARTIAL_FULFILLMENT;
+    // else status = ReserveStatus.FULL_FULFILLMENT;
+    //
+    // return ReserveStockResponse.builder()
+    // .reservations(ticketsToCreate.stream().map(this::mapToInventoryResponse).toList())
+    // .quantityReserved(totalReserved)
+    // .quantityMissing(quantity - totalReserved)
+    // .reserveStatus(status)
+    // .build();
+    // }
+    // private int reserveAtWarehouse_OptionA(
+    // Warehouse warehouse,
+    // List<InventoryItem> items,
+    // int needQty,
+    // long orderId,
+    // String productColorId,
+    // Map<String, String> warehouseNameCache,
+    // List<InventoryItem> itemsToUpdateOut,
+    // List<Inventory> ticketsToCreateOut
+    // ) {
+    //
+    // int reservedHere = 0;
+    // Map<String, Integer> takenPerColor = new HashMap<>();
+    //
+    // for (InventoryItem item : items) {
+    // if (needQty <= 0) break;
+    //
+    // int available = item.getQuantity() - item.getReservedQuantity();
+    // if (available <= 0) continue;
+    //
+    // int take = Math.min(available, needQty);
+    // item.setReservedQuantity(item.getReservedQuantity() + take);
+    // itemsToUpdateOut.add(item);
+    //
+    // reservedHere += take;
+    // needQty -= take;
+    //
+    // takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
+    // }
+    //
+    // if (reservedHere <= 0) return 0;
+    //
+    //
+    // var pc = getProductName(productColorId);
+    // String productName = pc.getProduct().getName();
+    // String colorName = pc.getColor().getColorName();
+    // String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Kho " + warehouse.getId());
+    //
+    //
+    // String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + "
+    // cái" +
+    // "\nSản phẩm: " + productName + " (" + colorName + ")" +
+    // "\nTrạng thái: Giữ hàng thành công";
+    //
+    // Inventory ticket = Inventory.builder()
+    // .employeeId("SYSTEM_AUTO")
+    // .type(EnumTypes.RESERVE)
+    // .purpose(EnumPurpose.RESERVE)
+    // .date(LocalDate.now())
+    // .warehouse(warehouse)
+    // .orderId(orderId)
+    // .note(note)
+    // .transferStatus(TransferStatus.FINISHED)
+    // .build();
+    //
+    // ticket = inventoryRepository.save(ticket);
+    //
+    // List<InventoryReservedWarehouse> allReservedForOrder =
+    // inventoryReservedWarehouseRepository.findByOrderId(orderId);
+    //
+    // InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+    // .warehouseId(warehouse.getId())
+    // .warehouseName(warehouse.getWarehouseName())
+    // .reservedQuantity(reservedHere)
+    // .orderId(orderId)
+    // .inventory(ticket)
+    // .build();
+    //
+    // allReservedForOrder.add(reserved);
+    //
+    //
+    // ticket.setReservedWarehouses(allReservedForOrder);
+    //
+    // List<InventoryItem> ticketItems = new ArrayList<>();
+    // for (var entry : takenPerColor.entrySet()) {
+    // ticketItems.add(
+    // InventoryItem.builder()
+    // .productColorId(entry.getKey())
+    // .quantity(entry.getValue())
+    // .inventory(ticket)
+    // .build()
+    // );
+    // }
+    // ticket.setInventoryItems(ticketItems);
+    // inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
+    // ticketsToCreateOut.add(ticket);
+    //
+    // return reservedHere;
+    // }
+    // private int reserveAtWarehouse_OptionA(
+    // Warehouse warehouse,
+    // List<InventoryItem> items,
+    // int needQty,
+    // long orderId,
+    // String productColorId,
+    // Map<String, String> warehouseNameCache,
+    // List<InventoryItem> itemsToUpdateOut,
+    // List<Inventory> ticketsToCreateOut
+    // ) {
+    // int reservedHere = 0;
+    // Map<String, Integer> takenPerColor = new HashMap<>();
+    //
+    // // 1. Duyệt qua các InventoryItem để reserve
+    // for (InventoryItem item : items) {
+    // if (needQty <= 0) break;
+    //
+    // int available = item.getQuantity() - item.getReservedQuantity();
+    // if (available <= 0) continue;
+    //
+    // int take = Math.min(available, needQty);
+    // item.setReservedQuantity(item.getReservedQuantity() + take);
+    // itemsToUpdateOut.add(item);
+    //
+    // reservedHere += take;
+    // needQty -= take;
+    //
+    // takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
+    // }
+    //
+    // if (reservedHere <= 0) return 0;
+    //
+    // // 2. Lấy thông tin sản phẩm
+    // var pc = getProductName(productColorId);
+    // String productName = pc.getProduct().getName();
+    // String colorName = pc.getColor().getColorName();
+    // String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Kho " + warehouse.getId());
+    //
+    // String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + "
+    // cái" +
+    // "\nSản phẩm: " + productName + " (" + colorName + ")" +
+    // "\nTrạng thái: Giữ hàng thành công";
+    //
+    // // 3. Tạo ticket Inventory và persist trước
+    // Inventory ticket = Inventory.builder()
+    // .employeeId("SYSTEM_AUTO")
+    // .type(EnumTypes.RESERVE)
+    // .purpose(EnumPurpose.RESERVE)
+    // .date(LocalDate.now())
+    // .warehouse(warehouse)
+    // .orderId(orderId)
+    // .note(note)
+    // .transferStatus(TransferStatus.FINISHED)
+    // .build();
+    //
+    // ticket = inventoryRepository.save(ticket);
+    //
+    // // 4. Lấy danh sách warehouse đã reserve trước đó
+    // List<InventoryReservedWarehouse> allReservedForOrder =
+    // inventoryReservedWarehouseRepository.findByOrderId(orderId);
+    // if (allReservedForOrder == null) {
+    // allReservedForOrder = new ArrayList<>();
+    // }
+    //
+    // // 5. Tạo InventoryReservedWarehouse mới
+    // InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+    // .warehouseId(warehouse.getId())
+    // .warehouseName(warehouse.getWarehouseName())
+    // .reservedQuantity(reservedHere)
+    // .orderId(orderId)
+    // .inventory(ticket)
+    // .build();
+    //
+    // allReservedForOrder.add(reserved);
+    //
+    // // 6. Gán reserved warehouses vào ticket
+    // ticket.setReservedWarehouses(allReservedForOrder);
+    //
+    // // 7. Tạo các InventoryItem riêng cho ticket
+    // List<InventoryItem> ticketItems = new ArrayList<>();
+    // for (var entry : takenPerColor.entrySet()) {
+    // InventoryItem ticketItem = InventoryItem.builder()
+    // .productColorId(entry.getKey())
+    // .quantity(entry.getValue())
+    // .inventory(ticket)
+    // .build();
+    // ticketItems.add(ticketItem);
+    // }
+    // ticket.setInventoryItems(ticketItems);
+    //
+    // // 8. Persist các reserved warehouse và ticket items
+    // inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
+    // inventoryItemRepository.saveAll(ticketItems);
+    //
+    // // 9. Thêm ticket vào danh sách output
+    // ticketsToCreateOut.add(ticket);
+    //
+    // return reservedHere;
+    // }
+    // private int reserveAtWarehouse_OptionA(
+    // Warehouse warehouse,
+    // List<InventoryItem> items,
+    // int needQty,
+    // long orderId,
+    // String productColorId,
+    // Map<String, String> warehouseNameCache,
+    // List<InventoryItem> itemsToUpdateOut,
+    // List<Inventory> ticketsToCreateOut
+    // ) {
+    // int reservedHere = 0;
+    // Map<String, Integer> takenPerColor = new HashMap<>();
+    //
+    // // 1. Reserve từng item trong kho
+    // for (InventoryItem item : items) {
+    // if (needQty <= 0) break;
+    //
+    // int available = item.getQuantity() - item.getReservedQuantity();
+    // if (available <= 0) continue;
+    //
+    // int take = Math.min(available, needQty);
+    // item.setReservedQuantity(item.getReservedQuantity() + take);
+    // itemsToUpdateOut.add(item);
+    //
+    // reservedHere += take;
+    // needQty -= take;
+    //
+    // takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
+    // }
+    //
+    // if (reservedHere <= 0) return 0;
+    //
+    // // 2. Thông tin sản phẩm & warehouse
+    // var pc = getProductName(productColorId);
+    // String productName = pc.getProduct().getName();
+    // String colorName = pc.getColor().getColorName();
+    // String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Kho " + warehouse.getId());
+    //
+    // String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + "
+    // cái" +
+    // "\nSản phẩm: " + productName + " (" + colorName + ")" +
+    // "\nTrạng thái: Giữ hàng thành công";
+    //
+    // // 3. Tạo ticket riêng cho kho này
+    // Inventory ticket = Inventory.builder()
+    // .employeeId("SYSTEM_AUTO")
+    // .type(EnumTypes.RESERVE)
+    // .purpose(EnumPurpose.RESERVE)
+    // .date(LocalDate.now())
+    // .orderId(orderId)
+    // .transferStatus(TransferStatus.FINISHED)
+    // .note(note)
+    // .warehouse(warehouse)
+    // .build();
+    //
+    // // 4. Tạo reservedWarehouse
+    // InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+    // .warehouseId(warehouse.getId())
+    // .warehouseName(warehouse.getWarehouseName())
+    // .reservedQuantity(reservedHere)
+    // .orderId(orderId)
+    // .inventory(ticket)
+    // .build();
+    //
+    // ticket.setReservedWarehouses(new ArrayList<>(List.of(reserved)));
+    //
+    // // 5. Tạo InventoryItem cho ticket
+    // List<InventoryItem> ticketItems = new ArrayList<>();
+    // for (var entry : takenPerColor.entrySet()) {
+    // ticketItems.add(
+    // InventoryItem.builder()
+    // .productColorId(entry.getKey())
+    // .quantity(entry.getValue())
+    // .inventory(ticket)
+    // .build()
+    // );
+    // }
+    // ticket.setInventoryItems(ticketItems);
+    //
+    // ticket = inventoryRepository.save(ticket);
+    // inventoryReservedWarehouseRepository.saveAll(ticket.getReservedWarehouses());
+    // ticketsToCreateOut.add(ticket);
+    //
+    // return reservedHere;
+    // }
 
-    //    private int reserveAtWarehouse_OptionA(
-//            Warehouse warehouse,
-//            List<InventoryItem> items,
-//            int needQty,
-//            long orderId,
-//            String productColorId,
-//            Map<String, String> warehouseNameCache,
-//            List<InventoryItem> itemsToUpdateOut,
-//            List<Inventory> ticketsToCreateOut
-//    ) {
-//        int reservedHere = 0;
-//        Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//        // 1. Reserve từng item trong kho
-//        for (InventoryItem item : items) {
-//            if (needQty <= 0) break;
-//
-//            int available = item.getQuantity() - item.getReservedQuantity();
-//            if (available <= 0) continue;
-//
-//            int take = Math.min(available, needQty);
-//            item.setReservedQuantity(item.getReservedQuantity() + take);
-//            itemsToUpdateOut.add(item);
-//
-//            reservedHere += take;
-//            needQty -= take;
-//
-//            takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//        }
-//
-//        if (reservedHere <= 0) return 0;
-//
-//        // 2. Lấy thông tin sản phẩm
-//        var pc = getProductName(productColorId);
-//        String productName = pc.getProduct().getName();
-//        String colorName = pc.getColor().getColorName();
-//        String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
-//
-//        String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + " cái" +
-//                "\nSản phẩm: " + productName + " (" + colorName + ")" +
-//                "\nTrạng thái: Giữ hàng thành công";
-//
-//        // 3. Lấy ticket Inventory hiện có cho order (nếu chưa có thì tạo mới)
-//        Inventory ticket = inventoryRepository.findByOrderIdA(orderId)
-//                .orElseGet(() -> Inventory.builder()
-//                        .employeeId("SYSTEM_AUTO")
-//                        .type(EnumTypes.RESERVE)
-//                        .purpose(EnumPurpose.RESERVE)
-//                        .date(LocalDate.now())
-//                        .orderId(orderId)
-//                        .transferStatus(TransferStatus.FINISHED)
-//                        .build());
-//
-//        ticket.setNote(ticket.getNote() == null ? note : ticket.getNote() + "\n" + note);
-//        ticket.setWarehouse(warehouse); // optional: lưu kho chính nếu cần
-//        ticket = inventoryRepository.save(ticket);
-//
-//        // 4. Tạo reservedWarehouse cho kho này
-//        InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
-//                .warehouseId(warehouse.getId())
-//                .warehouseName(warehouse.getWarehouseName())
-//                .reservedQuantity(reservedHere)
-//                .orderId(orderId)
-//                .inventory(ticket)
-//                .build();
-//
-//        List<InventoryReservedWarehouse> allReservedForOrder = ticket.getReservedWarehouses();
-//        if (allReservedForOrder == null) allReservedForOrder = new ArrayList<>();
-//        allReservedForOrder.add(reserved);
-//        ticket.setReservedWarehouses(allReservedForOrder);
-//
-//        // 5. Tạo InventoryItem cho ticket
-//        List<InventoryItem> ticketItems = ticket.getInventoryItems();
-//        if (ticketItems == null) ticketItems = new ArrayList<>();
-//        for (var entry : takenPerColor.entrySet()) {
-//            ticketItems.add(
-//                    InventoryItem.builder()
-//                            .productColorId(entry.getKey())
-//                            .quantity(entry.getValue())
-//                            .inventory(ticket)
-//                            .build()
-//            );
-//        }
-//        ticket.setInventoryItems(ticketItems);
-//
-//        // 6. Lưu tất cả reservedWarehouse
-//        inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
-//        ticketsToCreateOut.add(ticket);
-//
-//        return reservedHere;
-//    }
-//private int reserveAtWarehouse_OptionA(
-//        Warehouse warehouse,
-//        List<InventoryItem> items,
-//        int needQty,
-//        long orderId,
-//        String productColorId,
-//        Map<String, String> warehouseNameCache,
-//        List<InventoryItem> itemsToUpdateOut, // List gom item update số lượng
-//        List<Inventory> ticketsToCreateOut    // List gom phiếu mới tạo
-//) {
-//    int reservedHere = 0;
-//    Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//    // 1. Duyệt item trong kho để tính toán số lượng giữ (Logic cũ của bạn - Giữ nguyên)
-//    for (InventoryItem item : items) {
-//        if (needQty <= 0) break;
-//
-//        int available = item.getQuantity() - item.getReservedQuantity();
-//        if (available <= 0) continue;
-//
-//        int take = Math.min(available, needQty);
-//        item.setReservedQuantity(item.getReservedQuantity() + take);
-//        itemsToUpdateOut.add(item); // Add vào list để save sau (Batch update)
-//
-//        reservedHere += take;
-//        needQty -= take;
-//
-//        takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//    }
-//
-//    // Nếu kho này không có hàng nào để giữ thì return luôn
-//    if (reservedHere <= 0) return 0;
-//
-//    // 2. Chuẩn bị Note
-//    var pc = getProductName(productColorId); // Hàm này bạn tự viết hoặc gọi service
-//    String productName = pc.getProduct().getName();
-//    String colorName = pc.getColor().getColorName();
-//    String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(), "Kho " + warehouse.getId());
-//
-//    String noteDetail = String.format("- Tại %s: %s (%s) - SL: %d",
-//            warehouseName, productName, colorName, reservedHere);
-//
-//    // 3. TÌM HOẶC TẠO PHIẾU RIÊNG CHO KHO NÀY (Key Change Here)
-//    // Thay vì tìm mỗi OrderId, ta tìm cặp (OrderId + WarehouseId)
-//    Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId, warehouse.getId())
-//            .orElseGet(() -> Inventory.builder()
-//                    .employeeId("SYSTEM_AUTO")
-//                    .type(EnumTypes.RESERVE)
-//                    .purpose(EnumPurpose.RESERVE)
-//                    .date(LocalDate.now())
-//                    .orderId(orderId)
-//                    .warehouse(warehouse) // <--- QUAN TRỌNG: Gán kho ngay lúc tạo
-//                    .transferStatus(TransferStatus.FINISHED)
-//                    .note("Phiếu giữ hàng tự động cho đơn: " + orderId)
-//                    .build());
-//
-//    // Update Note (nếu cần append thêm thông tin sản phẩm khác vào cùng phiếu này)
-//    String currentNote = ticket.getNote() == null ? "" : ticket.getNote();
-//    if (!currentNote.contains(noteDetail)) {
-//        ticket.setNote(currentNote + "\n" + noteDetail);
-//    }
-//
-//    // Lưu phiếu để có ID (bắt buộc trước khi tạo items con)
-//    ticket = inventoryRepository.save(ticket);
-//
-//    // 4. Tạo InventoryReservedWarehouse (Lưu vết lịch sử giữ hàng)
-//    InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
-//            .warehouseId(warehouse.getId())
-//            .warehouseName(warehouse.getWarehouseName())
-//            .reservedQuantity(reservedHere)
-//            .orderId(orderId)
-//            .inventory(ticket) // Link vào phiếu của kho này
-//            .build();
-//
-//    // Add vào list con của ticket (để hiển thị response nếu cần)
-//    if (ticket.getReservedWarehouses() == null) ticket.setReservedWarehouses(new ArrayList<>());
-//    ticket.getReservedWarehouses().add(reserved);
-//
-//    // 5. Tạo InventoryItem (Chi tiết hàng trong phiếu)
-//    if (ticket.getInventoryItems() == null) ticket.setInventoryItems(new ArrayList<>());
-//
-//    for (var entry : takenPerColor.entrySet()) {
-//        InventoryItem ticketItem = InventoryItem.builder()
-//                .productColorId(entry.getKey())
-//                .quantity(entry.getValue()) // Số lượng giữ
-//                .inventory(ticket)
-//                .locationItem(null) // Giữ hàng ảo, chưa cần location cụ thể
-//                .build();
-//        ticket.getInventoryItems().add(ticketItem);
-//    }
-//
+    // private int reserveAtWarehouse_OptionA(
+    // Warehouse warehouse,
+    // List<InventoryItem> items,
+    // int needQty,
+    // long orderId,
+    // String productColorId,
+    // Map<String, String> warehouseNameCache,
+    // List<InventoryItem> itemsToUpdateOut,
+    // List<Inventory> ticketsToCreateOut
+    // ) {
+    // int reservedHere = 0;
+    // Map<String, Integer> takenPerColor = new HashMap<>();
+    //
+    // // 1. Reserve từng item trong kho
+    // for (InventoryItem item : items) {
+    // if (needQty <= 0) break;
+    //
+    // int available = item.getQuantity() - item.getReservedQuantity();
+    // if (available <= 0) continue;
+    //
+    // int take = Math.min(available, needQty);
+    // item.setReservedQuantity(item.getReservedQuantity() + take);
+    // itemsToUpdateOut.add(item);
+    //
+    // reservedHere += take;
+    // needQty -= take;
+    //
+    // takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
+    // }
+    //
+    // if (reservedHere <= 0) return 0;
+    //
+    // // 2. Lấy thông tin sản phẩm
+    // var pc = getProductName(productColorId);
+    // String productName = pc.getProduct().getName();
+    // String colorName = pc.getColor().getColorName();
+    // String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Kho " + warehouse.getId());
+    //
+    // String note = "Giữ hàng tại: " + warehouseName + " → " + reservedHere + "
+    // cái" +
+    // "\nSản phẩm: " + productName + " (" + colorName + ")" +
+    // "\nTrạng thái: Giữ hàng thành công";
+    //
+    // // 3. Lấy ticket Inventory hiện có cho order (nếu chưa có thì tạo mới)
+    // Inventory ticket = inventoryRepository.findByOrderIdA(orderId)
+    // .orElseGet(() -> Inventory.builder()
+    // .employeeId("SYSTEM_AUTO")
+    // .type(EnumTypes.RESERVE)
+    // .purpose(EnumPurpose.RESERVE)
+    // .date(LocalDate.now())
+    // .orderId(orderId)
+    // .transferStatus(TransferStatus.FINISHED)
+    // .build());
+    //
+    // ticket.setNote(ticket.getNote() == null ? note : ticket.getNote() + "\n" +
+    // note);
+    // ticket.setWarehouse(warehouse); // optional: lưu kho chính nếu cần
+    // ticket = inventoryRepository.save(ticket);
+    //
+    // // 4. Tạo reservedWarehouse cho kho này
+    // InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+    // .warehouseId(warehouse.getId())
+    // .warehouseName(warehouse.getWarehouseName())
+    // .reservedQuantity(reservedHere)
+    // .orderId(orderId)
+    // .inventory(ticket)
+    // .build();
+    //
+    // List<InventoryReservedWarehouse> allReservedForOrder =
+    // ticket.getReservedWarehouses();
+    // if (allReservedForOrder == null) allReservedForOrder = new ArrayList<>();
+    // allReservedForOrder.add(reserved);
+    // ticket.setReservedWarehouses(allReservedForOrder);
+    //
+    // // 5. Tạo InventoryItem cho ticket
+    // List<InventoryItem> ticketItems = ticket.getInventoryItems();
+    // if (ticketItems == null) ticketItems = new ArrayList<>();
+    // for (var entry : takenPerColor.entrySet()) {
+    // ticketItems.add(
+    // InventoryItem.builder()
+    // .productColorId(entry.getKey())
+    // .quantity(entry.getValue())
+    // .inventory(ticket)
+    // .build()
+    // );
+    // }
+    // ticket.setInventoryItems(ticketItems);
+    //
+    // // 6. Lưu tất cả reservedWarehouse
+    // inventoryReservedWarehouseRepository.saveAll(allReservedForOrder);
+    // ticketsToCreateOut.add(ticket);
+    //
+    // return reservedHere;
+    // }
+    // private int reserveAtWarehouse_OptionA(
+    // Warehouse warehouse,
+    // List<InventoryItem> items,
+    // int needQty,
+    // long orderId,
+    // String productColorId,
+    // Map<String, String> warehouseNameCache,
+    // List<InventoryItem> itemsToUpdateOut, // List gom item update số lượng
+    // List<Inventory> ticketsToCreateOut // List gom phiếu mới tạo
+    // ) {
+    // int reservedHere = 0;
+    // Map<String, Integer> takenPerColor = new HashMap<>();
+    //
+    // // 1. Duyệt item trong kho để tính toán số lượng giữ (Logic cũ của bạn - Giữ
+    // nguyên)
+    // for (InventoryItem item : items) {
+    // if (needQty <= 0) break;
+    //
+    // int available = item.getQuantity() - item.getReservedQuantity();
+    // if (available <= 0) continue;
+    //
+    // int take = Math.min(available, needQty);
+    // item.setReservedQuantity(item.getReservedQuantity() + take);
+    // itemsToUpdateOut.add(item); // Add vào list để save sau (Batch update)
+    //
+    // reservedHere += take;
+    // needQty -= take;
+    //
+    // takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
+    // }
+    //
+    // // Nếu kho này không có hàng nào để giữ thì return luôn
+    // if (reservedHere <= 0) return 0;
+    //
+    // // 2. Chuẩn bị Note
+    // var pc = getProductName(productColorId); // Hàm này bạn tự viết hoặc gọi
+    // service
+    // String productName = pc.getProduct().getName();
+    // String colorName = pc.getColor().getColorName();
+    // String warehouseName = warehouseNameCache.getOrDefault(warehouse.getId(),
+    // "Kho " + warehouse.getId());
+    //
+    // String noteDetail = String.format("- Tại %s: %s (%s) - SL: %d",
+    // warehouseName, productName, colorName, reservedHere);
+    //
+    // // 3. TÌM HOẶC TẠO PHIẾU RIÊNG CHO KHO NÀY (Key Change Here)
+    // // Thay vì tìm mỗi OrderId, ta tìm cặp (OrderId + WarehouseId)
+    // Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId,
+    // warehouse.getId())
+    // .orElseGet(() -> Inventory.builder()
+    // .employeeId("SYSTEM_AUTO")
+    // .type(EnumTypes.RESERVE)
+    // .purpose(EnumPurpose.RESERVE)
+    // .date(LocalDate.now())
+    // .orderId(orderId)
+    // .warehouse(warehouse) // <--- QUAN TRỌNG: Gán kho ngay lúc tạo
+    // .transferStatus(TransferStatus.FINISHED)
+    // .note("Phiếu giữ hàng tự động cho đơn: " + orderId)
+    // .build());
+    //
+    // // Update Note (nếu cần append thêm thông tin sản phẩm khác vào cùng phiếu
+    // này)
+    // String currentNote = ticket.getNote() == null ? "" : ticket.getNote();
+    // if (!currentNote.contains(noteDetail)) {
+    // ticket.setNote(currentNote + "\n" + noteDetail);
+    // }
+    //
+    // // Lưu phiếu để có ID (bắt buộc trước khi tạo items con)
+    // ticket = inventoryRepository.save(ticket);
+    //
+    // // 4. Tạo InventoryReservedWarehouse (Lưu vết lịch sử giữ hàng)
+    // InventoryReservedWarehouse reserved = InventoryReservedWarehouse.builder()
+    // .warehouseId(warehouse.getId())
+    // .warehouseName(warehouse.getWarehouseName())
+    // .reservedQuantity(reservedHere)
+    // .orderId(orderId)
+    // .inventory(ticket) // Link vào phiếu của kho này
+    // .build();
+    //
+    // // Add vào list con của ticket (để hiển thị response nếu cần)
+    // if (ticket.getReservedWarehouses() == null) ticket.setReservedWarehouses(new
+    // ArrayList<>());
+    // ticket.getReservedWarehouses().add(reserved);
+    //
+    // // 5. Tạo InventoryItem (Chi tiết hàng trong phiếu)
+    // if (ticket.getInventoryItems() == null) ticket.setInventoryItems(new
+    // ArrayList<>());
+    //
+    // for (var entry : takenPerColor.entrySet()) {
+    // InventoryItem ticketItem = InventoryItem.builder()
+    // .productColorId(entry.getKey())
+    // .quantity(entry.getValue()) // Số lượng giữ
+    // .inventory(ticket)
+    // .locationItem(null) // Giữ hàng ảo, chưa cần location cụ thể
+    // .build();
+    // ticket.getInventoryItems().add(ticketItem);
+    // }
+    //
     @Override
     @Transactional
     public ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId) {
@@ -1201,13 +1230,13 @@ public class InventoryServiceImpl implements InventoryService {
         int totalReserved = 0;
 
         for (Warehouse wh : warehouses) {
-
+            boolean isAssigned = wh.getId().equals(assignedWarehouseId);
             int reservedHere = reserveAtWarehouse(
                     wh,
                     productColorId,
                     quantity - totalReserved,
-                    orderId
-            );
+                    orderId,
+                    isAssigned);
 
             if (reservedHere > 0) {
                 totalReserved += reservedHere;
@@ -1219,34 +1248,30 @@ public class InventoryServiceImpl implements InventoryService {
                             .warehouseName(wh.getWarehouseName())
                             .reservedQuantity(reservedHere)
                             .isAssignedWarehouse(wh.getId().equals(assignedWarehouseId))
-                            .build()
-            );
+                            .build());
 
-            if (totalReserved >= quantity) break;
+            if (totalReserved >= quantity)
+                break;
         }
 
-        // --- (1) Build global overview ---
         StringBuilder globalOverview = new StringBuilder("\n--- TỔNG THỂ GIỮ HÀNG ---\n");
         for (WarehouseReserveInfo info : globalList) {
             globalOverview.append(String.format(
                     "%s: %d cái%s\n",
                     info.getWarehouseName(),
                     info.getReservedQuantity(),
-                    info.isAssignedWarehouse() ? " (Kho được assign - ưu tiên)" : ""
-            ));
+                    info.isAssignedWarehouse() ? " (Kho được assign - ưu tiên)" : ""));
         }
 
-        // --- (2) Build per-warehouse print content ---
         Map<String, String> printContentByWarehouse = new HashMap<>();
         for (WarehouseReserveInfo info : globalList) {
 
-            String perWh =
-                    "PHIẾU GIỮ HÀNG CHO KHO: " + info.getWarehouseName() + "\n"
-                            + "Đơn hàng: " + orderId + "\n"
-                            + "Sản phẩm: " + productColorId + "\n"
-                            + "Số lượng kho này giữ: " + info.getReservedQuantity() + "\n"
-                            + (info.isAssignedWarehouse() ? "→ Đây là kho được assign, ưu tiên.\n" : "")
-                            + globalOverview;
+            String perWh = "PHIẾU GIỮ HÀNG CHO KHO: " + info.getWarehouseName() + "\n"
+                    + "Đơn hàng: " + orderId + "\n"
+                    + "Sản phẩm: " + productColorId + "\n"
+                    + "Số lượng kho này giữ: " + info.getReservedQuantity() + "\n"
+                    + (info.isAssignedWarehouse() ? "→ Đây là kho được assign, ưu tiên.\n" : "")
+                    + globalOverview;
 
             printContentByWarehouse.put(info.getWarehouseId(), perWh);
         }
@@ -1257,7 +1282,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .totalNeeded(quantity)
                 .totalReserved(totalReserved)
                 .globalReservations(globalList)
-                .warehousePrintContentMap(printContentByWarehouse) // <--- sửa
+                .warehousePrintContentMap(printContentByWarehouse)
                 .build();
     }
 
@@ -1265,40 +1290,39 @@ public class InventoryServiceImpl implements InventoryService {
             Warehouse warehouse,
             String productColorId,
             int needQty,
-            long orderId
-    ) {
-        if (needQty <= 0) return 0;
+            long orderId,
+            boolean isAssigned) {
+        if (needQty <= 0)
+            return 0;
 
-        // Lấy tất cả item của kho này có productColorId
         List<InventoryItem> items = inventoryItemRepository
-                .findFullByProductColorIdAndWarehouseId(productColorId,warehouse.getId());
+                .findFullByProductColorIdAndWarehouseId(productColorId, warehouse.getId());
 
         int reservedHere = 0;
-
-        // Dùng để tạo inventory ticket
         Map<String, Integer> takenPerColor = new HashMap<>();
 
         for (InventoryItem item : items) {
-            if (needQty <= 0) break;
+            if (needQty <= 0)
+                break;
 
             int available = item.getQuantity() - item.getReservedQuantity();
-            if (available <= 0) continue;
+            if (available <= 0)
+                continue;
 
             int take = Math.min(available, needQty);
 
             item.setReservedQuantity(item.getReservedQuantity() + take);
-            inventoryItemRepository.save(item);
 
             needQty -= take;
             reservedHere += take;
-
             takenPerColor.merge(productColorId, take, Integer::sum);
         }
 
-        // Nếu kho này không giữ gì thì không tạo phiếu
-        if (reservedHere <= 0) return 0;
+        if (reservedHere <= 0)
+            return 0;
 
-        // Tìm phiếu theo order + warehouse
+        inventoryItemRepository.saveAll(items);
+
         Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId, warehouse.getId())
                 .orElseGet(() -> Inventory.builder()
                         .employeeId("SYSTEM_AUTO")
@@ -1311,10 +1335,8 @@ public class InventoryServiceImpl implements InventoryService {
                         .note("Phiếu giữ hàng tự động cho đơn: " + orderId)
                         .inventoryItems(new ArrayList<>())
                         .reservedWarehouses(new ArrayList<>())
-                        .build()
-                );
+                        .build());
 
-        // Ghi chi tiết kho giữ bao nhiêu
         ticket.getReservedWarehouses().add(
                 InventoryReservedWarehouse.builder()
                         .warehouseId(warehouse.getId())
@@ -1322,104 +1344,22 @@ public class InventoryServiceImpl implements InventoryService {
                         .reservedQuantity(reservedHere)
                         .orderId(orderId)
                         .inventory(ticket)
-                        .build()
-        );
+                        .isAssignedWarehouse(isAssigned)
+                        .build());
 
-        // Add từng màu vào phiếu
         for (var entry : takenPerColor.entrySet()) {
             ticket.getInventoryItems().add(
                     InventoryItem.builder()
                             .productColorId(entry.getKey())
                             .quantity(entry.getValue())
                             .inventory(ticket)
-                            .build()
-            );
+                            .build());
         }
 
         inventoryRepository.save(ticket);
 
         return reservedHere;
     }
-
-
-//    private int reserveAtWarehouse_OptionA(
-//            Warehouse warehouse,
-//            List<InventoryItem> items,
-//            int needQty,
-//            long orderId,
-//            String productColorId,
-//            Map<String, String> warehouseNameCache,
-//            List<InventoryItem> itemsToUpdateOut,
-//            List<Inventory> ticketsOut
-//    ) {
-//        int reservedHere = 0;
-//        Map<String, Integer> takenPerColor = new HashMap<>();
-//
-//        for (InventoryItem item : items) {
-//            if (needQty <= 0) break;
-//
-//            int available = item.getQuantity() - item.getReservedQuantity();
-//            if (available <= 0) continue;
-//
-//            int take = Math.min(available, needQty);
-//            item.setReservedQuantity(item.getReservedQuantity() + take);
-//
-//            itemsToUpdateOut.add(item);
-//            reservedHere += take;
-//            needQty -= take;
-//
-//            takenPerColor.merge(item.getProductColorId(), take, Integer::sum);
-//        }
-//
-//        if (reservedHere <= 0) return 0;
-//
-//        Inventory ticket = inventoryRepository.findByOrderIdAndWarehouseId(orderId, warehouse.getId())
-//                .orElseGet(() -> Inventory.builder()
-//                        .employeeId("SYSTEM_AUTO")
-//                        .type(EnumTypes.RESERVE)
-//                        .purpose(EnumPurpose.RESERVE)
-//                        .date(LocalDate.now())
-//                        .orderId(orderId)
-//                        .warehouse(warehouse)
-//                        .transferStatus(TransferStatus.FINISHED)
-//                        .note("Phiếu giữ hàng tự động cho đơn: " + orderId)
-//                        .inventoryItems(new ArrayList<>())
-//                        .reservedWarehouses(new ArrayList<>())
-//                        .build()
-//                );
-//
-//        String wName = warehouse.getWarehouseName();
-//        String noteLine = "- " + wName + ": giữ " + reservedHere + " sản phẩm.";
-//
-//        ticket.setNote(ticket.getNote() + "\n" + noteLine);
-//
-//        // 1. Add reservedWarehouse
-//        ticket.getReservedWarehouses().add(
-//                InventoryReservedWarehouse.builder()
-//                        .warehouseId(warehouse.getId())
-//                        .warehouseName(wName)
-//                        .reservedQuantity(reservedHere)
-//                        .orderId(orderId)
-//                        .inventory(ticket)
-//                        .build()
-//        );
-//
-//        // 2. Add items vào phiếu
-//        for (var entry : takenPerColor.entrySet()) {
-//            ticket.getInventoryItems().add(
-//                    InventoryItem.builder()
-//                            .productColorId(entry.getKey())
-//                            .quantity(entry.getValue())
-//                            .inventory(ticket)
-//                            .build()
-//            );
-//        }
-//
-//        ticketsOut.add(ticket);
-//
-//        return reservedHere;
-//    }
-
 
     @Override
     @Transactional
@@ -1496,48 +1436,95 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public void rollbackInventoryTicket(Long orderId) {
 
-        Inventory ticket = inventoryRepository.findAllByOrderId(orderId)
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
 
-        Warehouse warehouse = ticket.getWarehouse();
-
-        for (InventoryItem item : ticket.getInventoryItems()) {
-
-            InventoryItem source = inventoryItemRepository
-                    .findFullByProductColorIdAndWarehouseId(
-                            item.getProductColorId(),
-                            warehouse.getId()
-                    )
-                    .stream()
-                    .findFirst()
-                    .orElse(null);
-
-            if (source != null) {
-                source.setReservedQuantity(
-                        source.getReservedQuantity() - item.getQuantity()
-                );
-                inventoryItemRepository.save(source);
-            }
-
-            inventoryItemRepository.delete(item);
+        if (tickets == null || tickets.isEmpty()) {
+            log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
+            return;
         }
 
-        reservedWarehouseRepository.deleteAll(ticket.getReservedWarehouses());
+        log.info("🔍 Bắt đầu rollback {} ticket(s) cho order {}", tickets.size(), orderId);
 
-        inventoryRepository.delete(ticket);
+        for (Inventory ticket : tickets) {
 
-        log.info("🗑 Rollback inventory for order {} done", orderId);
+            String warehouseId = ticket.getWarehouse() != null ? ticket.getWarehouse().getId() : null;
+            log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
+
+            List<InventoryItem> ticketItems = new ArrayList<>(ticket.getInventoryItems());
+
+            for (InventoryItem ticketItem : ticketItems) {
+
+                String productColorId = ticketItem.getProductColorId();
+                int qtyToRelease = ticketItem.getQuantity();
+
+                List<InventoryItem> stockItems = inventoryItemRepository
+                        .findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
+
+                int remaining = qtyToRelease;
+
+                for (InventoryItem stockItem : stockItems) {
+                    if (remaining <= 0)
+                        break;
+
+                    int reserved = stockItem.getReservedQuantity();
+                    if (reserved <= 0)
+                        continue;
+
+                    int release = Math.min(reserved, remaining);
+
+                    stockItem.setQuantity(stockItem.getQuantity() + release);
+                    stockItem.setReservedQuantity(stockItem.getReservedQuantity() - release);
+
+                    remaining -= release;
+
+                    log.info("♻ Trả lại {} cho stockItem {} (reserved còn {})",
+                            release, stockItem.getId(), stockItem.getReservedQuantity());
+                }
+
+                if (!stockItems.isEmpty()) {
+                    inventoryItemRepository.saveAll(stockItems);
+                }
+
+                if (remaining > 0) {
+                    log.warn("⚠ Không rollback đủ {} (thiếu {}) cho productColor {}", qtyToRelease, remaining,
+                            productColorId);
+                } else {
+                    log.info("✅ Hoàn trả {} cho productColor {} thành công", qtyToRelease, productColorId);
+                }
+            }
+
+            for (InventoryItem ti : ticketItems) {
+                if (ti.getId() != null && inventoryItemRepository.existsById(ti.getId())) {
+                    inventoryItemRepository.deleteById(ti.getId());
+                }
+            }
+            log.info("🗑 Đã xóa {} ticketItems của ticket {}", ticketItems.size(), ticket.getId());
+
+            if (ticket.getReservedWarehouses() != null) {
+                List<InventoryReservedWarehouse> reservedList = new ArrayList<>(ticket.getReservedWarehouses());
+                for (InventoryReservedWarehouse rw : reservedList) {
+                    if (rw.getId() != null && reservedWarehouseRepository.existsById(rw.getId())) {
+                        reservedWarehouseRepository.deleteById(rw.getId());
+                    }
+                }
+                log.info("🧹 Đã xóa reservedWarehouses của ticket {}", ticket.getId());
+            }
+
+            if (ticket.getId() != null && inventoryRepository.existsById(ticket.getId())) {
+                inventoryRepository.deleteById(ticket.getId());
+                log.info("🗑 Đã xóa ticket {}", ticket.getId());
+            }
+        }
+
+        log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho", orderId, tickets.size());
     }
-
 
     // ----------------- CHECK STOCK -----------------
 
     @Override
     public boolean hasSufficientStock(String productColorId, String warehouseId, int requiredQty) {
-        List<InventoryItem> items =
-                inventoryItemRepository.findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouseId);
+        List<InventoryItem> items = inventoryItemRepository
+                .findAllByProductColorIdAndInventory_Warehouse_Id(productColorId, warehouseId);
         int available = items.stream().mapToInt(i -> i.getQuantity() - i.getReservedQuantity()).sum();
         return available >= requiredQty;
     }
@@ -1551,21 +1538,18 @@ public class InventoryServiceImpl implements InventoryService {
     private static final List<EnumTypes> EXCLUDED_TYPES = List.of(
             EnumTypes.RESERVE,
             EnumTypes.EXPORT,
-            EnumTypes.TRANSFER
-    );
+            EnumTypes.TRANSFER);
 
     private static final List<EnumTypes> VIRTUAL_STOCK_TYPES = List.of(
             EnumTypes.RESERVE,
             EnumTypes.EXPORT,
-            EnumTypes.TRANSFER
-    );
+            EnumTypes.TRANSFER);
 
     @Override
     public int getTotalStockByProductColorId(String productColorId) {
         return Objects.requireNonNullElse(
                 inventoryItemRepository.calculateTotalPhysicalStock(productColorId, VIRTUAL_STOCK_TYPES),
-                0
-        );
+                0);
     }
 
     @Override
@@ -1573,7 +1557,6 @@ public class InventoryServiceImpl implements InventoryService {
         Integer rawStock = inventoryItemRepository.calculateRealAvailableStock(productColorId, VIRTUAL_STOCK_TYPES);
         return (rawStock == null) ? 0 : Math.max(0, rawStock);
     }
-
 
     @Override
     public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
@@ -1603,33 +1586,31 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-//    @Override
-//    public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
-//        List<InventoryReservedWarehouse> reservedList =
-//                inventoryReservedWarehouseRepository.findByWarehouseIdWithInventory(warehouseId);
-//
-//        return reservedList.stream()
-//                .map(rw -> {
-//                    InventoryResponse resp = mapToInventoryResponse(rw.getInventory());
-//
-//                    if (resp.getReservedWarehouses() == null) {
-//                        resp.setReservedWarehouses(new ArrayList<>());
-//                    }
-//
-//                    resp.getReservedWarehouses().add(
-//                            WarehouseReserveInfo.builder()
-//                                    .warehouseId(rw.getWarehouseId())
-//                                    .warehouseName(rw.getWarehouseName())
-//                                    .reservedQuantity(rw.getReservedQuantity())
-//                                    .build()
-//                    );
-//
-//                    return resp;
-//                })
-//                .collect(Collectors.toList());
-//    }
-
-
+    // @Override
+    // public List<InventoryResponse> getInventoryByWarehouse(String warehouseId) {
+    // List<InventoryReservedWarehouse> reservedList =
+    // inventoryReservedWarehouseRepository.findByWarehouseIdWithInventory(warehouseId);
+    //
+    // return reservedList.stream()
+    // .map(rw -> {
+    // InventoryResponse resp = mapToInventoryResponse(rw.getInventory());
+    //
+    // if (resp.getReservedWarehouses() == null) {
+    // resp.setReservedWarehouses(new ArrayList<>());
+    // }
+    //
+    // resp.getReservedWarehouses().add(
+    // WarehouseReserveInfo.builder()
+    // .warehouseId(rw.getWarehouseId())
+    // .warehouseName(rw.getWarehouseName())
+    // .reservedQuantity(rw.getReservedQuantity())
+    // .build()
+    // );
+    //
+    // return resp;
+    // })
+    // .collect(Collectors.toList());
+    // }
 
     @Override
     public List<InventoryResponse> getInventoryByZone(String zoneId) {
@@ -1675,8 +1656,7 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository
                 .findAllByWarehouse_IdAndPurpose(
                         warehouseId,
-                        EnumPurpose.REQUEST
-                )
+                        EnumPurpose.REQUEST)
                 .stream()
                 .map(this::mapToInventoryResponse)
                 .collect(Collectors.toList());
@@ -1692,23 +1672,23 @@ public class InventoryServiceImpl implements InventoryService {
         for (InventoryItem it : items) {
 
             int available = it.getQuantity() - it.getReservedQuantity();
-            if (available <= 0) continue;
+            if (available <= 0)
+                continue;
 
             LocationItem li = it.getLocationItem();
             Zone zone = li.getZone();
             Warehouse w = zone.getWarehouse();
 
-            grouped.computeIfAbsent(li.getId(), k ->
-                    ProductLocationResponse.LocationInfo.builder()
-                            .warehouseId(w.getId())
-                            .warehouseName(w.getWarehouseName())
-                            .zoneId(zone.getId())
-                            .zoneName(zone.getZoneName())
-                            .locationItemId(li.getId())
-                            .locationCode(li.getCode())
-                            .totalQuantity(0)
-                            .reserved(0)
-                            .build());
+            grouped.computeIfAbsent(li.getId(), k -> ProductLocationResponse.LocationInfo.builder()
+                    .warehouseId(w.getId())
+                    .warehouseName(w.getWarehouseName())
+                    .zoneId(zone.getId())
+                    .zoneName(zone.getZoneName())
+                    .locationItemId(li.getId())
+                    .locationCode(li.getCode())
+                    .totalQuantity(0)
+                    .reserved(0)
+                    .build());
 
             var info = grouped.get(li.getId());
             info.setTotalQuantity(info.getTotalQuantity() + it.getQuantity());
@@ -1739,8 +1719,8 @@ public class InventoryServiceImpl implements InventoryService {
         Warehouse storeWarehouse = warehouseRepository.findByStoreId(storeId)
                 .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
 
-        List<InventoryItem> items =
-                inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId, storeWarehouse.getId());
+        List<InventoryItem> items = inventoryItemRepository.findFullByProductColorIdAndWarehouseId(productColorId,
+                storeWarehouse.getId());
 
         Map<String, ProductLocationResponse.LocationInfo> grouped = new LinkedHashMap<>();
 
@@ -1799,7 +1779,8 @@ public class InventoryServiceImpl implements InventoryService {
 
         for (String pid : allProductColorIds) {
             try {
-                // Các hàm tính toán này (getTotal/getAvailable) nên dùng query SUM thuần túy (native query hoặc JPQL select sum)
+                // Các hàm tính toán này (getTotal/getAvailable) nên dùng query SUM thuần túy
+                // (native query hoặc JPQL select sum)
                 // để tránh load entity.
                 int available = getAvailableStockByProductColorId(pid);
 
@@ -1841,7 +1822,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .warehouse(warehouse)
                 .build();
 
-
         return inventoryRepository.save(inventory);
     }
 
@@ -1880,31 +1860,22 @@ public class InventoryServiceImpl implements InventoryService {
 
     private InventoryResponse mapToInventoryResponse(Inventory inventory) {
 
+        // Map Items
         List<InventoryItemResponse> itemResponseList = Optional.ofNullable(inventory.getInventoryItems())
                 .orElse(Collections.emptyList())
                 .stream()
-                .map(this::mapToInventoryItemResponse)
+                .map(item -> InventoryItemResponse.builder()
+                        .id(item.getId())
+                        .quantity(item.getQuantity())
+                        .reservedQuantity(item.getReservedQuantity())
+                        .productColorId(item.getProductColorId())
+                        .productName(item.getProductColorId())
+                        .locationId(item.getLocationItem() != null ? item.getLocationItem().getId() : null)
+                        .inventoryId(item.getInventory().getId())
+                        .build())
                 .collect(Collectors.toList());
 
-        if (itemResponseList.isEmpty()) {
-            int quantity = parseQuantityFromNote(inventory.getNote());
-            String extractedProductId = extractProductIdFromCode(inventory.getCode());
-
-            if (quantity > 0 && extractedProductId != null) {
-                itemResponseList = List.of(
-                        InventoryItemResponse.builder()
-                                .id(null)
-                                .quantity(quantity)
-                                .reservedQuantity(0)
-                                .productColorId(extractedProductId)
-                                .productName(extractedProductId)
-                                .locationId(inventory.getWarehouse() != null ? inventory.getWarehouse().getId() : null)
-                                .inventoryId(inventory.getId())
-                                .build()
-                );
-            }
-        }
-
+        // Map Reserved Warehouses
         Map<String, WarehouseReserveInfo> warehouseMap = new HashMap<>();
 
         Optional.ofNullable(inventory.getReservedWarehouses())
@@ -1914,14 +1885,18 @@ public class InventoryServiceImpl implements InventoryService {
                                 .warehouseId(rw.getWarehouseId())
                                 .warehouseName(rw.getWarehouseName())
                                 .reservedQuantity(rw.getReservedQuantity())
+                                // --- FIX: Đọc từ DB lên Response ---
+                                .isAssignedWarehouse(rw.getIsAssignedWarehouse())
                                 .build()));
 
+        // Đảm bảo kho gốc luôn hiển thị (dù sl=0)
         if (inventory.getWarehouse() != null) {
             warehouseMap.computeIfAbsent(inventory.getWarehouse().getId(),
                     id -> WarehouseReserveInfo.builder()
                             .warehouseId(id)
                             .warehouseName(inventory.getWarehouse().getWarehouseName())
                             .reservedQuantity(0)
+                            .isAssignedWarehouse(false)
                             .build());
         }
 
@@ -1946,7 +1921,6 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-    // Hàm tách ProductID từ mã phiếu
     private String extractProductIdFromCode(String code) {
         try {
             if (code != null && code.startsWith("RES-")) {
@@ -1955,7 +1929,8 @@ public class InventoryServiceImpl implements InventoryService {
                     return parts[2];
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
         return null;
     }
 
@@ -1964,10 +1939,12 @@ public class InventoryServiceImpl implements InventoryService {
             if (note != null && note.contains("Reserved:")) {
                 String[] parts = note.split(" ");
                 for (String part : parts) {
-                    if (part.matches("\\d+")) return Integer.parseInt(part);
+                    if (part.matches("\\d+"))
+                        return Integer.parseInt(part);
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return 0;
     }
 
@@ -1983,13 +1960,12 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-
-    private ProductColorResponse getProductName(String productColorId){
-        ApiResponse<ProductColorResponse> response = productClient.getProductColor(productColorId);
-        if(response.getData() == null){
+    private ProductColorResponse getProductName(String productColorId) {
+        ProductColorResponse response = productServiceClient.getProductColor(productColorId);
+        if (response == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
-        return response.getData();
+        return response;
     }
 
     private String getUserId() {
@@ -2026,36 +2002,36 @@ public class InventoryServiceImpl implements InventoryService {
         return response.getData();
     }
 
-    private String getProfile(){
+    private String getProfile() {
         ApiResponse<UserResponse> response = userClient.getEmployeeProfile();
-        if(response == null || response.getData() == null){
+        if (response == null || response.getData() == null) {
             throw new AppException(ErrorCode.NOT_FOUND_USER);
         }
         return response.getData().getId();
     }
 
-//    private ReserveStockResponse buildResponse(
-//            List<Inventory> inventories,
-//            int totalReserved,
-//            int requestQuantity
-//    ) {
-//        ReserveStatus status;
-//
-//        if (totalReserved == 0) status = ReserveStatus.OUT_OF_STOCK;
-//        else if (totalReserved < requestQuantity) status = ReserveStatus.PARTIAL_FULFILLMENT;
-//        else status = ReserveStatus.FULL_FULFILLMENT;
-//
-//        return ReserveStockResponse.builder()
-//                .reserveStatus(status)
-//                .quantityReserved(totalReserved)
-//                .quantityMissing(requestQuantity - totalReserved)
-//                .reservations(
-//                        inventories.stream()
-//                                .map(this::mapToInventoryResponse)
-//                                .toList()
-//                )
-//                .build();
-//    }
-
+    // private ReserveStockResponse buildResponse(
+    // List<Inventory> inventories,
+    // int totalReserved,
+    // int requestQuantity
+    // ) {
+    // ReserveStatus status;
+    //
+    // if (totalReserved == 0) status = ReserveStatus.OUT_OF_STOCK;
+    // else if (totalReserved < requestQuantity) status =
+    // ReserveStatus.PARTIAL_FULFILLMENT;
+    // else status = ReserveStatus.FULL_FULFILLMENT;
+    //
+    // return ReserveStockResponse.builder()
+    // .reserveStatus(status)
+    // .quantityReserved(totalReserved)
+    // .quantityMissing(requestQuantity - totalReserved)
+    // .reservations(
+    // inventories.stream()
+    // .map(this::mapToInventoryResponse)
+    // .toList()
+    // )
+    // .build();
+    // }
 
 }

@@ -45,7 +45,7 @@ public class OrderServiceImpl implements OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
     private final OrderRepository orderRepository;
     private final ProcessOrderRepository processOrderRepository;
-    private final ProductClient productClient;
+    private final ProductServiceClient productServiceClient;
     private final CartRepository cartRepository;
     private final PaymentRepository paymentRepository;
     private final UserClient userClient;
@@ -316,53 +316,26 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdAndIsDeletedFalse(cancelOrderRequest.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (order.getStatus() == EnumProcessOrder.CANCELLED) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
         order.setStatus(EnumProcessOrder.CANCELLED);
 
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.CANCELLED);
         process.setCreatedAt(new Date());
-        order.setProcessOrders(new ArrayList<>(List.of(process)));
 
-        List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                        .productColorId(detail.getProductColorId())
-                        .quantity(detail.getQuantity())
-                        .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                        .price(detail.getPrice())
-                        .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                        .build())
-                .toList();
-
-        OrderCreatedEvent event = OrderCreatedEvent.builder()
-                .email(safeGetUser(order.getUserId()).getEmail())
-                .fullName(safeGetUser(order.getUserId()).getFullName())
-                .orderDate(order.getOrderDate())
-                .totalPrice(order.getTotal())
-                .orderId(order.getId())
-                .storeId(order.getStoreId())
-                .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(order.getPayment().getPaymentMethod())
-                .items(orderItems)
-                .build();
-
-        try {
-            kafkaTemplate.send("order-cancel-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.info("");
-                        } else {
-                            log.info("Successfully sent order cancel event for: {}", event.getOrderId());
-                        }
-                    });
-        } catch (Exception e) {
-            log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
+        if (order.getProcessOrders() == null) {
+            order.setProcessOrders(new ArrayList<>());
         }
-
-       inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+        order.getProcessOrders().add(process);
 
         processOrderRepository.save(process);
         orderRepository.save(order);
+        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
     }
 
     @Override
@@ -940,11 +913,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private ProductColorResponse getProductColorResponse(String id) {
-        ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
-        if (response == null || response.getData() == null) {
+        ProductColorResponse response = productServiceClient.getProductColor(id);
+        if (response == null) {
             throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
         }
-        return response.getData();
+        return response;
     }
 
     private DeliveryConfirmationResponse getDeliveryConfirmationResponse(Long orderId) {
@@ -975,12 +948,6 @@ public class OrderServiceImpl implements OrderService {
                 && !EnumProcessOrder.FINISHED.equals(order.getStatus())) {
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
         }
-
-        // Validation: Return window (e.g. 7 days from last status update/created date
-        // of status)
-        // Assuming implementation simply checks status for now or simple date check if
-        // strictly required.
-        // For MVP/Demo: Allow request if status is correct.
 
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
@@ -1039,7 +1006,6 @@ public class OrderServiceImpl implements OrderService {
 
         order.getProcessOrders().add(process);
         order.setStatus(EnumProcessOrder.RETURN_REJECTED);
-        // Maybe append reason to order note or somewhere specific?
         // Current requirement doesn't specify where to store rejection reason aside
         // from log or overwriting reason/note.
         // I will append it to note for visibility.
@@ -1073,27 +1039,27 @@ public class OrderServiceImpl implements OrderService {
         Double refundAmount = null;
         Payment payment = order.getPayment();
         String referenceId = "ORDER-" + orderId;
-        
+
         // Check if this is a WARRANTY_RETURN order
         if (order.getOrderType() == OrderType.WARRANTY_RETURN && order.getWarrantyClaimId() != null) {
             referenceId = referenceId + "-CLAIM-" + order.getWarrantyClaimId();
             // For WARRANTY_RETURN, get refundAmount from WarrantyClaim
             WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(order.getWarrantyClaimId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
-            
+
             refundAmount = claim.getRefundAmount();
-            
+
             if (refundAmount == null || refundAmount <= 0) {
                 log.warn("Warranty claim {} has invalid refundAmount: {}", order.getWarrantyClaimId(), refundAmount);
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
-            
+
             // Prevent double refund
             if (payment != null && PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
                 log.warn("Order {} already refunded", orderId);
                 return mapToResponse(order);
             }
-            
+
             // Create Payment record if not exists (for warranty return orders)
             if (payment == null) {
                 payment = Payment.builder()
@@ -1113,7 +1079,6 @@ public class OrderServiceImpl implements OrderService {
                 paymentRepository.save(payment);
             }
         } else {
-            // For normal return orders, use order.getTotal()
             refundAmount = order.getTotal();
             if (payment == null) {
                 payment = Payment.builder()
@@ -1136,14 +1101,14 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 3. Refund to Wallet (if refundAmount > 0)
         if (refundAmount != null && refundAmount > 0) {
             try {
                 userClient.refundToWallet(order.getUserId(), refundAmount, referenceId);
                 // mark payment as refunded
                 payment.setPaymentStatus(PaymentStatus.REFUNDED);
                 paymentRepository.save(payment);
-                log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(), orderId, referenceId);
+                log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(),
+                        orderId, referenceId);
             } catch (Exception e) {
                 log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
                 // keep REFUNDING to indicate pending manual intervention
@@ -1155,7 +1120,6 @@ public class OrderServiceImpl implements OrderService {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        // 4. Restore Stock (must succeed to keep consistency)
         for (OrderDetail detail : order.getOrderDetails()) {
             try {
                 inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());

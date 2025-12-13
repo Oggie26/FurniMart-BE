@@ -41,6 +41,46 @@ public class OrderEventListener {
         }
     }
 
+    @KafkaListener(
+            topics = "order-cancel-topic",
+            groupId = "notification-group",
+            containerFactory = "orderCreatedKafkaListenerContainerFactory"
+    )
+    public void handleCancelOrderCreated(OrderCreatedEvent event) {
+        log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
+        OrderResponse order = getOrderResponse(event.getOrderId());
+
+        if (order == null) {
+            log.warn("Order with ID {} not found. Skipping notification.", event.getOrderId());
+            return;
+        }
+        orderService.sendMailToCancelOrder(event);
+        for (OrderCreatedEvent.OrderItem item : event.getItems()) {
+            String key = "reserved_stock:" + item.getProductColorId();
+            log.info("Reserved stock key: {}", key);
+        }
+    }
+
+    @KafkaListener(
+            topics = "store-assigned-topic",
+            groupId = "notification-group",
+            containerFactory = "orderCreatedKafkaListenerContainerFactory"
+    )
+    public void handleAssignedOrderCreated(OrderCreatedEvent event) {
+        OrderResponse order = getOrderResponse(event.getOrderId());
+
+        if (order == null) {
+            log.warn("Order with ID {} not found. Skipping notification.", event.getOrderId());
+            return;
+        }
+        orderService.sendMailToStoreAssigned(event);
+        for (OrderCreatedEvent.OrderItem item : event.getItems()) {
+            String key = "reserved_stock:" + item.getProductColorId();
+            log.info("Reserved stock key: {}", key);
+        }
+    }
+
+
     private OrderResponse getOrderResponse(long orderId) {
         try {
             ApiResponse<OrderResponse> response = orderClient.getOrderById(orderId);

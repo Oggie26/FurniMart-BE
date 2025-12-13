@@ -154,17 +154,14 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
         }
 
-        // Determine addressId: use provided addressId or fallback to original order's address
         Long addressId = request.getAddressId();
         if (addressId == null) {
-            // Auto-get address from original order if addressId not provided
             Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(warranty.getOrderId())
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
             addressId = originalOrder.getAddressId();
             log.info("AddressId not provided, using address from original order: {}", addressId);
         }
 
-        // Validate address exists
         ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(addressId);
         if (addressResponse == null || addressResponse.getData() == null) {
             throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
@@ -190,7 +187,6 @@ public class WarrantyServiceImpl implements WarrantyService {
 
         WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
 
-        // Increment claim count on warranty
         warranty.incrementClaimCount();
         warrantyRepository.save(warranty);
 
