@@ -28,7 +28,7 @@ public class AIStoreRecommendationService {
         List<StoreClient.StoreDistance> nearbyStores = getNearbyStores(
                 request.getCustomerAddress().getLatitude(),
                 request.getCustomerAddress().getLongitude(),
-                10 // Top 10 stores - let AI decide
+                10
         );
 
         if (nearbyStores == null || nearbyStores.isEmpty()) {
@@ -48,11 +48,9 @@ public class AIStoreRecommendationService {
             return null;
         }
 
-        // ✨ GEMINI AI: Analyze ALL candidates & decide
         List<GeminiAIService.StoreCandidate> aiCandidates = new ArrayList<>();
 
         for (StoreClient.StoreDistance candidate : candidates) {
-            // Check inventory for this store
             int availableCount = 0;
             for (StoreRecommendationRequest.OrderItemDTO item : request.getOrderItems()) {
                 try {
@@ -71,13 +69,12 @@ public class AIStoreRecommendationService {
 
             double stockAvailability = (double) availableCount / request.getOrderItems().size();
 
-            // Add to AI candidates (AI sẽ tự quyết định threshold)
             aiCandidates.add(GeminiAIService.StoreCandidate.builder()
                     .storeId(candidate.getStore().getId())
                     .storeName(candidate.getStore().getStoreName())
                     .distance(candidate.getDistance())
                     .stockAvailability(stockAvailability)
-                    .score(0) // AI không cần score từ rule-based
+                    .score(0)
                     .availableProductCount(availableCount)
                     .build());
         }
@@ -96,7 +93,6 @@ public class AIStoreRecommendationService {
                 .totalItems(request.getOrderItems().size())
                 .build();
 
-        // ✨ GEMINI AI - Make the decision
         log.info("🤖 Asking Gemini AI to analyze {} stores...", aiCandidates.size());
         GeminiAIService.GeminiDecision geminiDecision = geminiAIService.askGemini(aiCandidates, context);
 
@@ -105,7 +101,6 @@ public class AIStoreRecommendationService {
             return null;
         }
 
-        // Find the chosen store
         GeminiAIService.StoreCandidate chosenStore = aiCandidates.stream()
                 .filter(s -> s.getStoreId().equals(geminiDecision.getRecommendedStoreId()))
                 .findFirst()
@@ -119,7 +114,6 @@ public class AIStoreRecommendationService {
         log.info("✅ Gemini AI chose: {} - {}",
                 chosenStore.getStoreId(), geminiDecision.getAiReasoning());
 
-        // Build alternatives (những store AI không chọn)
         List<StoreRecommendationResponse.AlternativeStore> alternatives = aiCandidates.stream()
                 .filter(s -> !s.getStoreId().equals(chosenStore.getStoreId()))
                 .limit(3)
@@ -137,10 +131,10 @@ public class AIStoreRecommendationService {
                 .storeName(chosenStore.getStoreName())
                 .distance(chosenStore.getDistance())
                 .stockAvailability(chosenStore.getStockAvailability())
-                .confidence(0.95) // Gemini AI high confidence
-                .score(100) // Symbolic - AI made the decision
+                .confidence(0.95)
+                .score(100)
                 .reason("🤖 Gemini AI Decision: " + geminiDecision.getAiReasoning())
-                .productDetails(null) // Not needed with AI
+                .productDetails(null)
                 .alternatives(alternatives)
                 .build();
     }
