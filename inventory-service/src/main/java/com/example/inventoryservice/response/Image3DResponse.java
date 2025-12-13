@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Image3DResponse {
+public class Image3DResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private String image3d;
     private EnumStatus status;
     private String modelUrl;

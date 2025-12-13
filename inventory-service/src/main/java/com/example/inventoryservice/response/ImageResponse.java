@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ImageResponse {
+public class ImageResponse implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private String image;
 }
