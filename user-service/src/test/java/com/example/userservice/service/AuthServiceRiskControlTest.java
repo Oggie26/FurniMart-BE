@@ -8,7 +8,6 @@ import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.UserRepository;
-import com.example.userservice.repository.WalletRepository;
 import com.example.userservice.request.AuthRequest;
 import com.example.userservice.request.RegisterRequest;
 import com.example.userservice.response.LoginResponse;
@@ -54,9 +53,6 @@ class AuthServiceRiskControlTest {
 
     @Mock
     private WalletService walletService;
-
-    @Mock
-    private WalletRepository walletRepository;
 
     @InjectMocks
     private AuthServiceImpl authService;

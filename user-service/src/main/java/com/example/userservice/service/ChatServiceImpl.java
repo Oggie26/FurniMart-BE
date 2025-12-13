@@ -6,6 +6,7 @@ import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.AccountRepository;
+import com.example.userservice.repository.ChatMessageRepository;
 import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.EmployeeRepository;
@@ -42,6 +43,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatRepository chatRepository;
     private final ChatParticipantRepository chatParticipantRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
     private final EmployeeRepository employeeRepository;
     private final AccountRepository accountRepository;
@@ -379,6 +381,45 @@ public class ChatServiceImpl implements ChatService {
             }
         }
 
+        // Get current user participant for unread count, isMuted, and isPinned
+        Long unreadCount = 0L;
+        Boolean isMuted = false;
+        Boolean isPinned = false;
+        
+        try {
+            String currentUserId = getCurrentUserId();
+            Optional<ChatParticipant> currentParticipant = chatParticipantRepository
+                    .findActiveParticipantByChatIdAndUserId(chat.getId(), currentUserId);
+            
+            if (currentParticipant.isPresent()) {
+                ChatParticipant participant = currentParticipant.get();
+                isMuted = participant.getIsMuted() != null ? participant.getIsMuted() : false;
+                isPinned = participant.getIsPinned() != null ? participant.getIsPinned() : false;
+                
+                // Calculate unread count: messages created after lastReadAt
+                if (participant.getLastReadAt() != null) {
+                    List<ChatMessage> unreadMessages = chatMessageRepository
+                            .findNewMessagesSince(chat.getId(), participant.getLastReadAt());
+                    // Filter out messages sent by current user
+                    unreadCount = (long) unreadMessages.stream()
+                            .filter(m -> !m.getSender().getId().equals(currentUserId))
+                            .count();
+                } else {
+                    // If lastReadAt is null, count all messages except those sent by current user
+                    if (chat.getMessages() != null) {
+                        unreadCount = (long) chat.getMessages().stream()
+                                .filter(m -> m.getStatus() == EnumStatus.ACTIVE 
+                                        && !m.getIsDeleted() 
+                                        && !m.getSender().getId().equals(currentUserId))
+                                .count();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // If unable to get current user (e.g., not authenticated), use default values
+            log.debug("Unable to get current user participant for chat {}: {}", chat.getId(), e.getMessage());
+        }
+
         ChatResponse.ChatResponseBuilder builder = ChatResponse.builder()
                 .id(chat.getId())
                 .name(chat.getName())
@@ -391,9 +432,9 @@ public class ChatServiceImpl implements ChatService {
                 .updatedAt(chat.getUpdatedAt())
                 .participants(participants)
                 .lastMessage(lastMessage)
-                .unreadCount(0L) // TODO: Calculate unread count
-                .isMuted(false) // TODO: Get from participant
-                .isPinned(false) // TODO: Get from participant
+                .unreadCount(unreadCount)
+                .isMuted(isMuted)
+                .isPinned(isPinned)
                 // New fields for AI chat to staff flow
                 .chatMode(chat.getChatMode() != null ? chat.getChatMode() : Chat.ChatMode.AI)
                 .assignedStaffId(chat.getAssignedStaffId());

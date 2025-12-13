@@ -47,8 +47,11 @@ public interface WalletService {
     
     boolean hasBalance(String walletId, Double amount);
     
-    // Auto-create wallet for new customer
+    // Auto-create wallet for new customer (uses REQUIRES_NEW transaction)
     WalletResponse createWalletForUser(String userId);
+    
+    // Create wallet directly in the same transaction (for register endpoint)
+    WalletResponse createWalletDirectlyInTransaction(String userId, com.example.userservice.entity.User user);
     
     // Withdraw to VNPay bank account
     WalletTransactionResponse withdrawToVNPay(String walletId, Double amount, String bankAccountNumber, 
