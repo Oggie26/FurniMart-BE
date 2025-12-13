@@ -1,14 +1,6 @@
-# Stage 1: Build jar
-FROM maven:3.9.6-eclipse-temurin-17 AS build
-WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-COPY src ./src
-ENV MAVEN_OPTS="-Xmx2048m"
-RUN mvn clean package -DskipTests
-
-# Stage 2: Run jar
+# Use pre-built JAR from host (faster deployment)
 FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+# Copy JAR from host (build locally and copy to server before docker build)
+COPY target/user-service-0.0.1-SNAPSHOT.jar app.jar
 ENTRYPOINT ["java","-jar","/app/app.jar"]

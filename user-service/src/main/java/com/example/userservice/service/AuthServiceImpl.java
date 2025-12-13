@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        log.info("=== REGISTER METHOD CALLED ===");
+        log.info("Register request - Email: {}, FullName: {}, Phone: {}", 
+            request.getEmail(), request.getFullName(), request.getPhone());
+        
         if (request.getEmail() == null || request.getPassword() == null) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
@@ -83,18 +88,48 @@ public class AuthServiceImpl implements AuthService {
         Account savedAccount = accountRepository.findById(account.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
-        try {
-            userRepository.flush();
-            accountRepository.flush();
-            log.debug("User and account flushed to database: {}", savedUser.getId());
-            
-            walletService.createWalletForUser(savedUser.getId());
-            log.info("Wallet auto-created for new customer: {}", savedUser.getId());
-        } catch (AppException e) {
-            log.error("Failed to auto-create wallet for user {}: ErrorCode={}, Message={}", 
-                    savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage(), e);
+        // Check transaction status
+        boolean isActiveTransaction = TransactionSynchronizationManager.isActualTransactionActive();
+        boolean isNewTransaction = TransactionSynchronizationManager.isCurrentTransactionReadOnly() == false;
+        String transactionName = TransactionSynchronizationManager.getCurrentTransactionName();
+        log.info("=== TRANSACTION STATUS ===");
+        log.info("Is Active: {}, Is New: {}, Transaction Name: {}", 
+            isActiveTransaction, isNewTransaction, transactionName);
+        
+        log.info("=== WALLET CREATION CHECK START ===");
+        log.info("User ID: {}, Account ID: {}, Account Role: {}", 
+            savedUser.getId(), savedAccount.getId(), savedAccount.getRole());
+        log.info("Account Role Enum: {}, CUSTOMER Enum: {}, Match: {}", 
+            savedAccount.getRole(), EnumRole.CUSTOMER, savedAccount.getRole() == EnumRole.CUSTOMER);
+
+        // Create wallet directly in the same transaction for CUSTOMER
+        // API register only creates CUSTOMER role, so wallet must be created here
+        log.info("Checking role for wallet creation. User ID: {}, Account Role: {}", savedUser.getId(), savedAccount.getRole());
+        if (savedAccount.getRole() == EnumRole.CUSTOMER) {
+            log.info("User {} has CUSTOMER role. Proceeding with wallet creation.", savedUser.getId());
+            try {
+                // Ensure account is loaded in savedUser for wallet creation
+                // savedUser.getAccount() might be null due to lazy loading, so we set it explicitly
+                savedUser.setAccount(savedAccount);
+                log.info("Account set in savedUser. Calling createWalletDirectlyInTransaction for user: {}", savedUser.getId());
+                
+                // Create wallet directly in the same transaction (no lazy, no retry needed)
+                walletService.createWalletDirectlyInTransaction(savedUser.getId(), savedUser);
+                log.info("Wallet created directly in transaction for new CUSTOMER: {}", savedUser.getId());
+            } catch (AppException e) {
+                log.error("Failed to create wallet for CUSTOMER {} during registration: ErrorCode={}, Message={}. " +
+                        "Registration will fail to ensure data consistency.", 
+                        savedUser.getId(), e.getErrorCode(), e.getMessage());
+                throw e; // Fail registration if wallet creation fails
+            } catch (Exception e) {
+                log.error("Failed to create wallet for CUSTOMER {} during registration: {}. " +
+                        "Registration will fail to ensure data consistency.", 
+                        savedUser.getId(), e.getMessage(), e);
+                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+        } else {
+            log.warn("User {} registered with role {}. Wallet not created (only CUSTOMER gets wallet).", 
+                    savedUser.getId(), savedAccount.getRole());
         }
 
         final String accountEmail = savedAccount.getEmail();
