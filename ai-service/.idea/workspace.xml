@@ -5,12 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service">
-      <change beforePath="$PROJECT_DIR$/../inventory-service/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../inventory-service/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/InventoryServiceApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/InventoryServiceApplication.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/service/InventoryServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../inventory-service/src/main/java/com/example/inventoryservice/service/InventoryServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../inventory-service/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../inventory-service/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/aiservice/service/AIStoreRecommendationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/service/AIStoreRecommendationService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/response/OrderResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/response/OrderResponse.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/service/OrderServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../order-service/src/main/java/com/example/orderservice/service/OrderServiceImpl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../product-service/src/main/java/com/example/productservice/service/ProductServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../product-service/src/main/java/com/example/productservice/service/ProductServiceImpl.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -163,6 +160,7 @@
       <workItem from="1765556127660" duration="40000" />
       <workItem from="1765558318420" duration="3052000" />
       <workItem from="1765590886933" duration="369000" />
+      <workItem from="1765598461267" duration="119000" />
     </task>
     <task id="LOCAL-00001" summary="fix ai service">
       <option name="closed" value="true" />

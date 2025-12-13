@@ -1006,7 +1006,6 @@ public class OrderServiceImpl implements OrderService {
 
         order.getProcessOrders().add(process);
         order.setStatus(EnumProcessOrder.RETURN_REJECTED);
-        // Maybe append reason to order note or somewhere specific?
         // Current requirement doesn't specify where to store rejection reason aside
         // from log or overwriting reason/note.
         // I will append it to note for visibility.

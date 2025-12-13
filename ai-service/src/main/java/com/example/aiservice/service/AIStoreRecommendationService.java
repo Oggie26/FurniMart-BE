@@ -38,7 +38,7 @@ public class AIStoreRecommendationService {
 
         List<StoreClient.StoreDistance> candidates = nearbyStores.stream()
                 .filter(sd -> !request.getRejectedStoreIds().contains(sd.getStore().getId()))
-                .collect(Collectors.toList());
+                .toList();
 
         log.info("📊 Found {} candidate stores (after filtering {} rejected)",
                 candidates.size(), request.getRejectedStoreIds().size());

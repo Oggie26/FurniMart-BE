@@ -233,8 +233,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
             orderRepository.save(order);
 
-            // TODO: Notify customer qua email/SMS về việc hủy đơn
-            log.info("✉️ Thông báo khách hàng về việc hủy order {}", order.getId());
             return;
         }
 
