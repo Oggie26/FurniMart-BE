@@ -11,6 +11,6 @@ import java.util.Map;
 @FeignClient(name = "ai-service")
 public interface AIClient {
 
-    @PostMapping("/api/ai/recommend-store")
+    @PostMapping("/api/ai/store/recommend-store")
     ApiResponse<AIStoreRecommendationResponse> recommendStore(@RequestBody Map<String, Object> request);
 }
