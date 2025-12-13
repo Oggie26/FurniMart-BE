@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.Map;
 
-@FeignClient(name = "ai-service", url = "${ai.service.url}")
+@FeignClient(name = "ai-service")
 public interface AIClient {
 
     @PostMapping("/api/ai/recommend-store")
