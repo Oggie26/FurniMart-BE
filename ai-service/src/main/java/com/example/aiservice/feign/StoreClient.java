@@ -16,8 +16,8 @@ public interface StoreClient {
 
     @GetMapping("/api/stores/nearest/list")
     ApiResponse<List<StoreDistance>> getNearestStores(
-            @RequestParam("latitude") Double latitude,
-            @RequestParam("longitude") Double longitude,
+            @RequestParam("lat") Double latitude,
+            @RequestParam("lon") Double longitude,
             @RequestParam("limit") Integer limit);
 
     @Data
@@ -35,7 +35,9 @@ public interface StoreClient {
     @AllArgsConstructor
     class StoreInfo {
         private String id;
+        @com.fasterxml.jackson.annotation.JsonProperty("name")
         private String storeName;
+        @com.fasterxml.jackson.annotation.JsonProperty("addressLine")
         private String address;
         private Double latitude;
         private Double longitude;
