@@ -14,7 +14,7 @@ import java.util.List;
 @FeignClient(name = "user-service")
 public interface StoreClient {
 
-    @GetMapping("/api/stores/nearest")
+    @GetMapping("/api/stores/nearest/list")
     ApiResponse<List<StoreDistance>> getNearestStores(
             @RequestParam("latitude") Double latitude,
             @RequestParam("longitude") Double longitude,
