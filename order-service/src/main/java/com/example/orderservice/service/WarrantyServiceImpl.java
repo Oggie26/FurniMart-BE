@@ -42,6 +42,7 @@ public class WarrantyServiceImpl implements WarrantyService {
 
     private final WarrantyRepository warrantyRepository;
     private final WarrantyClaimRepository warrantyClaimRepository;
+    private final WarrantyClaimDetailRepository warrantyClaimDetailRepository;
     private final OrderRepository orderRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final ObjectMapper objectMapper;
@@ -145,19 +146,13 @@ public class WarrantyServiceImpl implements WarrantyService {
     @Override
     @Transactional
     public WarrantyClaimResponse createWarrantyClaim(WarrantyClaimRequest request) {
-        log.info("Creating warranty claim for warranty: {}", request.getWarrantyId());
+        log.info("Creating warranty claim for order: {}", request.getOrderId());
 
-        Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(request.getWarrantyId())
-                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
-
-        if (!warranty.canClaimWarranty()) {
-            throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
-        }
+        Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(request.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         Long addressId = request.getAddressId();
         if (addressId == null) {
-            Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(warranty.getOrderId())
-                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
             addressId = originalOrder.getAddressId();
             log.info("AddressId not provided, using address from original order: {}", addressId);
         }
@@ -167,28 +162,45 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
         }
 
-        String customerPhotosJson = null;
-        if (request.getCustomerPhotos() != null && !request.getCustomerPhotos().isEmpty()) {
-            try {
-                customerPhotosJson = objectMapper.writeValueAsString(request.getCustomerPhotos());
-            } catch (JsonProcessingException e) {
-                log.error("Error serializing customer photos", e);
-            }
-        }
-
         WarrantyClaim claim = WarrantyClaim.builder()
-                .warrantyId(request.getWarrantyId())
-                .customerId(warranty.getCustomerId())
+                .orderId(request.getOrderId())
+                .customerId(originalOrder.getUserId())
                 .addressId(addressId)
-                .issueDescription(request.getIssueDescription())
-                .customerPhotos(customerPhotosJson)
                 .status(WarrantyClaimStatus.PENDING)
                 .build();
 
         WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
 
-        warranty.incrementClaimCount();
-        warrantyRepository.save(warranty);
+        for (com.example.orderservice.request.WarrantyClaimItemRequest item : request.getItems()) {
+            Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(item.getWarrantyId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
+
+            if (!warranty.canClaimWarranty()) {
+                throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
+            }
+
+            String customerPhotosJson = null;
+            if (item.getCustomerPhotos() != null && !item.getCustomerPhotos().isEmpty()) {
+                try {
+                    customerPhotosJson = objectMapper.writeValueAsString(item.getCustomerPhotos());
+                } catch (JsonProcessingException e) {
+                    log.error("Error serializing customer photos", e);
+                }
+            }
+
+            WarrantyClaimDetail detail = WarrantyClaimDetail.builder()
+                    .warrantyClaim(savedClaim)
+                    .warranty(warranty)
+                    .quantity(item.getQuantity())
+                    .issueDescription(item.getIssueDescription())
+                    .customerPhotos(customerPhotosJson)
+                    .build();
+
+            warrantyClaimDetailRepository.save(detail);
+
+            warranty.incrementClaimCount();
+            warrantyRepository.save(warranty);
+        }
 
         log.info("Created warranty claim: {}", savedClaim.getId());
         return toWarrantyClaimResponse(savedClaim);
@@ -468,17 +480,6 @@ public class WarrantyServiceImpl implements WarrantyService {
     }
 
     private WarrantyClaimResponse toWarrantyClaimResponse(WarrantyClaim claim) {
-        List<String> customerPhotos = null;
-        if (claim.getCustomerPhotos() != null) {
-            try {
-                @SuppressWarnings("unchecked")
-                List<String> photos = (List<String>) objectMapper.readValue(claim.getCustomerPhotos(), List.class);
-                customerPhotos = photos;
-            } catch (JsonProcessingException e) {
-                log.error("Error deserializing customer photos", e);
-            }
-        }
-
         List<String> resolutionPhotos = null;
         if (claim.getResolutionPhotos() != null) {
             try {
@@ -490,14 +491,37 @@ public class WarrantyServiceImpl implements WarrantyService {
             }
         }
 
+        List<com.example.orderservice.response.WarrantyClaimDetailResponse> itemResponses = null;
+        if (claim.getClaimDetails() != null) {
+            itemResponses = claim.getClaimDetails().stream().map(detail -> {
+                List<String> customerPhotos = null;
+                if (detail.getCustomerPhotos() != null) {
+                    try {
+                        @SuppressWarnings("unchecked")
+                        List<String> photos = (List<String>) objectMapper.readValue(detail.getCustomerPhotos(), List.class);
+                        customerPhotos = photos;
+                    } catch (JsonProcessingException e) {
+                        log.error("Error deserializing customer photos", e);
+                    }
+                }
+                return com.example.orderservice.response.WarrantyClaimDetailResponse.builder()
+                        .id(detail.getId())
+                        .warrantyId(detail.getWarranty().getId())
+                        .quantity(detail.getQuantity())
+                        .issueDescription(detail.getIssueDescription())
+                        .customerPhotos(customerPhotos)
+                        .productColorId(detail.getWarranty().getProductColorId())
+                        .build();
+            }).collect(Collectors.toList());
+        }
+
         return WarrantyClaimResponse.builder()
                 .id(claim.getId())
-                .warrantyId(claim.getWarrantyId())
+                .orderId(claim.getOrderId())
                 .customerId(claim.getCustomerId())
                 .addressId(claim.getAddressId())
                 .claimDate(claim.getClaimDate())
-                .issueDescription(claim.getIssueDescription())
-                .customerPhotos(customerPhotos)
+                .items(itemResponses)
                 .status(claim.getStatus())
                 .adminResponse(claim.getAdminResponse())
                 .resolutionNotes(claim.getResolutionNotes())

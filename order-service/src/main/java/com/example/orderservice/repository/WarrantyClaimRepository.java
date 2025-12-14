@@ -14,19 +14,19 @@ import java.util.Optional;
 @Repository
 public interface WarrantyClaimRepository extends JpaRepository<WarrantyClaim, Long> {
 
-    List<WarrantyClaim> findByWarrantyIdAndIsDeletedFalse(Long warrantyId);
+    // List<WarrantyClaim> findByWarrantyIdAndIsDeletedFalse(Long warrantyId); // Removed/Updated
 
     List<WarrantyClaim> findByCustomerIdAndIsDeletedFalse(String customerId);
 
     List<WarrantyClaim> findByStatusAndIsDeletedFalse(WarrantyClaimStatus status);
 
-    @Query("SELECT wc FROM WarrantyClaim wc WHERE wc.warrantyId = :warrantyId AND wc.isDeleted = false ORDER BY wc.claimDate DESC")
+    @Query("SELECT DISTINCT wc FROM WarrantyClaim wc JOIN wc.claimDetails d WHERE d.warranty.id = :warrantyId AND wc.isDeleted = false ORDER BY wc.claimDate DESC")
     List<WarrantyClaim> findByWarrantyIdOrderByClaimDateDesc(@Param("warrantyId") Long warrantyId);
 
     @Query("SELECT wc FROM WarrantyClaim wc WHERE wc.customerId = :customerId AND wc.isDeleted = false ORDER BY wc.claimDate DESC")
     List<WarrantyClaim> findByCustomerIdOrderByClaimDateDesc(@Param("customerId") String customerId);
 
-    @Query("SELECT COUNT(wc) FROM WarrantyClaim wc WHERE wc.warrantyId = :warrantyId AND wc.isDeleted = false")
+    @Query("SELECT COUNT(d) FROM WarrantyClaimDetail d WHERE d.warranty.id = :warrantyId")
     Long countClaimsByWarrantyId(@Param("warrantyId") Long warrantyId);
 
     Optional<WarrantyClaim> findByIdAndIsDeletedFalse(Long id);

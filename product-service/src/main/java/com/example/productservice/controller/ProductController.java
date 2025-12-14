@@ -9,7 +9,9 @@ import com.example.productservice.response.ApiResponse;
 import com.example.productservice.response.ColorResponse;
 import com.example.productservice.response.PageResponse;
 import com.example.productservice.response.ProductResponse;
+import com.example.productservice.response.ProductQuickLookupResponse;
 import com.example.productservice.service.inteface.ProductService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -134,6 +136,17 @@ public class ProductController {
                 .status(HttpStatus.OK.value())
                 .message("Tìm kiếm sản phẩm thành công")
                 .data(products)
+                .build();
+    }
+
+    @GetMapping("/staff/quick-lookup")
+    @Operation(summary = "Tìm kiếm nhanh sản phẩm cho POS (kèm tồn kho)")
+    @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER') or hasRole('ADMIN')")
+    public ApiResponse<List<ProductQuickLookupResponse>> quickLookup(@RequestParam String keyword) {
+        return ApiResponse.<List<ProductQuickLookupResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Tìm kiếm sản phẩm thành công")
+                .data(productService.quickLookup(keyword))
                 .build();
     }
 

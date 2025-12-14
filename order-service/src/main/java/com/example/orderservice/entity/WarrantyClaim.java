@@ -20,8 +20,11 @@ public class WarrantyClaim extends AbstractEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "warranty_id", nullable = false)
-    private Long warrantyId;
+    @Column(name = "order_id", nullable = false)
+    private Long orderId;
+
+    @OneToMany(mappedBy = "warrantyClaim", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<WarrantyClaimDetail> claimDetails;
 
     @Column(name = "customer_id", nullable = false)
     private String customerId;
@@ -32,11 +35,11 @@ public class WarrantyClaim extends AbstractEntity {
     @Column(name = "claim_date", nullable = false)
     private LocalDateTime claimDate;
 
-    @Column(name = "issue_description", columnDefinition = "TEXT", nullable = false)
-    private String issueDescription;
-
-    @Column(name = "customer_photos", columnDefinition = "TEXT")
-    private String customerPhotos; // JSON array of photo URLs
+    // issueDescription and customerPhotos moved to WarrantyClaimDetail
+    // keeping general note if needed, or remove.
+    // For backward compatibility or general note:
+    @Column(name = "general_note", columnDefinition = "TEXT")
+    private String generalNote;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -70,9 +73,8 @@ public class WarrantyClaim extends AbstractEntity {
     @Column(name = "admin_id")
     private String adminId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "warranty_id", insertable = false, updatable = false)
-    private Warranty warranty;
+    // Removed single warranty link
+
 
     @PrePersist
     public void prePersist() {
