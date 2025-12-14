@@ -11,6 +11,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.example.orderservice.request.InventoryReservationRequest;
 
 @FeignClient(name = "inventory-service")
 public interface InventoryClient {
@@ -40,6 +41,15 @@ public interface InventoryClient {
 
         @DeleteMapping("/api/inventories/rollback/{orderId}")
         ApiResponse<Void> rollbackInventory(@PathVariable Long orderId);
+
+        @PostMapping("/api/inventories/reserve")
+        ApiResponse<Void> reserveInventory(@RequestBody List<InventoryReservationRequest> requests);
+
+        @PostMapping("/api/inventories/commit")
+        ApiResponse<Void> commitInventory(@RequestParam Long orderId);
+
+        @PostMapping("/api/inventories/release")
+        ApiResponse<Void> releaseInventory(@RequestParam Long orderId);
 
         /**
          * Kiểm tra stock tại 1 store cụ thể

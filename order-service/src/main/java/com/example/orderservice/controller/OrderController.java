@@ -10,6 +10,7 @@ import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.repository.VoucherRepository;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.StaffCreateOrderRequest;
+import com.example.orderservice.request.InventoryReservationRequest;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
@@ -71,12 +72,8 @@ public class OrderController {
                         }
                 }
 
-                Voucher voucher = null;
-                if (voucherCode != null && !voucherCode.isBlank()) {
-                        voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode).orElse(null);
-                }
+                // Voucher logic moved to OrderService
 
-                Double voucherValue = (voucher != null) ? voucher.getAmount().doubleValue() : 0.0;
 
                 OrderResponse orderResponse = null;
                 Order order = null;
@@ -89,8 +86,17 @@ public class OrderController {
                         order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                                         .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-                        double newTotal = order.getTotal() - voucherValue;
-                        order.setTotal(newTotal);
+                        // Inventory Reservation
+                        List<InventoryReservationRequest> reservationRequests = order.getOrderDetails().stream()
+                                .map(detail -> InventoryReservationRequest.builder()
+                                        .orderId(order.getId())
+                                        .productColorId(detail.getProductColorId())
+                                        .quantity(detail.getQuantity())
+                                        .build())
+                                .toList();
+                        inventoryClient.reserveInventory(reservationRequests);
+
+                        double newTotal = order.getTotal(); // Total is already calculated in OrderService
 
                         double depositAmount = 0;
 
@@ -153,12 +159,8 @@ public class OrderController {
                         }
                 }
 
-                Voucher voucher = null;
-                if (voucherCode != null && !voucherCode.isBlank()) {
-                        voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode).orElse(null);
-                }
+                // Voucher logic moved to OrderService
 
-                Double voucherValue = (voucher != null) ? voucher.getAmount().doubleValue() : 0.0;
 
                 OrderResponse orderResponse = null;
                 Order order = null;
@@ -171,8 +173,17 @@ public class OrderController {
                         order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-                        double newTotal = order.getTotal() - voucherValue;
-                        order.setTotal(newTotal);
+                        // Inventory Reservation
+                        List<InventoryReservationRequest> reservationRequests = order.getOrderDetails().stream()
+                                .map(detail -> InventoryReservationRequest.builder()
+                                        .orderId(order.getId())
+                                        .productColorId(detail.getProductColorId())
+                                        .quantity(detail.getQuantity())
+                                        .build())
+                                .toList();
+                        inventoryClient.reserveInventory(reservationRequests);
+
+                        double newTotal = order.getTotal();
 
                         double depositAmount = 0;
 
@@ -306,6 +317,7 @@ public class OrderController {
 
         @GetMapping("/store/{storeId}")
         @io.swagger.v3.oas.annotations.Operation(summary = "Lấy danh sách đơn hàng của cửa hàng", description = "Lấy danh sách các đơn hàng đã được ASSIGN_ORDER_STORE cho cửa hàng. Có thể lọc theo status (optional).")
+        @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER') or hasRole('ADMIN')")
         public ApiResponse<PageResponse<OrderResponse>> getOrdersByStore(
                         @PathVariable String storeId,
                         @RequestParam(required = false) EnumProcessOrder status,
@@ -322,6 +334,7 @@ public class OrderController {
         @io.swagger.v3.oas.annotations.Operation(summary = "Lấy danh sách đơn hàng đã tạo hóa đơn của cửa hàng", description = "Lấy danh sách các đơn hàng của cửa hàng đã được tạo hóa đơn (có pdfFilePath). "
                         +
                         "Response bao gồm thông tin về file PDF: pdfFilePath (đường dẫn file) và hasPdfFile (true/false - file có tồn tại hay không).")
+        @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER') or hasRole('ADMIN')")
         public ApiResponse<PageResponse<OrderResponse>> getStoreOrdersWithInvoice(
                         @PathVariable String storeId,
                         @RequestParam(defaultValue = "0") int page,
@@ -334,6 +347,7 @@ public class OrderController {
         }
 
         @PutMapping("/status/{id}")
+        @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER') or hasRole('ADMIN')")
         public ApiResponse<OrderResponse> updateOrderStatus(
                         @PathVariable Long id,
                         @RequestParam EnumProcessOrder status) {
@@ -352,11 +366,13 @@ public class OrderController {
 
                 if (isPaid) {
                         orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+                        inventoryClient.commitInventory(Long.parseLong(orderId));
                         return ApiResponse.<String>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Thanh toán thành công")
                                         .build();
                 } else {
+                        inventoryClient.releaseInventory(Long.parseLong(orderId));
                         return ApiResponse.<String>builder()
                                         .status(HttpStatus.BAD_REQUEST.value())
                                         .message("Thanh toán thất bại")
@@ -467,7 +483,20 @@ public class OrderController {
                                 .build();
         }
 
+        @GetMapping("/staff/my-sales")
+        @PreAuthorize("hasRole('STAFF')")
+        public ApiResponse<PageResponse<OrderResponse>> getMySales(
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "100") int size) {
+                return ApiResponse.<PageResponse<OrderResponse>>builder()
+                                .status(HttpStatus.OK.value())
+                                .message("Lấy danh sách đơn hàng của tôi thành công")
+                                .data(orderService.getMySales(page, size))
+                                .build();
+        }
+
         @PostMapping("/{orderId}/confirm-cod")
+        @PreAuthorize("hasRole('STAFF') or hasRole('BRANCH_MANAGER') or hasRole('ADMIN')")
         public ApiResponse<Void> confirmCodPayment(@PathVariable Long orderId) {
 
                 boolean success = orderService.handleConfirmPayment(orderId);

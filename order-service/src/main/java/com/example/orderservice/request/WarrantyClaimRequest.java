@@ -15,13 +15,12 @@ import java.util.List;
 @AllArgsConstructor
 public class WarrantyClaimRequest {
     
-    @NotNull(message = "Warranty ID cannot be null")
-    private Long warrantyId;
-    
-    @NotBlank(message = "Issue description cannot be blank")
-    private String issueDescription;
-    
+    @NotNull(message = "Order ID cannot be null")
+    private Long orderId;
+
     private Long addressId; // Optional: if null, will use address from original order
-    
-    private List<String> customerPhotos; // List of photo URLs
+
+    @NotNull(message = "Items cannot be null")
+    private List<WarrantyClaimItemRequest> items;
 }
+

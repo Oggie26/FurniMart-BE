@@ -95,4 +95,7 @@ public class Order extends AbstractEntity {
 
     @Column(name = "last_rejected_store_id")
     private String lastRejectedStoreId;
+
+    @Column(name = "created_by")
+    private String createdBy;
 }

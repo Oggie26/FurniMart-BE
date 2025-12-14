@@ -60,7 +60,10 @@ public class OrderServiceImpl implements OrderService {
     private final InventoryClient inventoryClient;
     private final WarrantyClaimRepository warrantyClaimRepository;
     @Lazy
+    private final WarrantyClaimRepository warrantyClaimRepository;
+    @Lazy
     private final WarrantyService warrantyService;
+    private final VoucherRepository voucherRepository;
 
     @Override
     @Transactional
@@ -88,28 +91,6 @@ public class OrderServiceImpl implements OrderService {
         List<OrderDetail> details = createOrderItemsFromCart(cart, order);
         order.setOrderDetails(details);
         order.setStatus(EnumProcessOrder.PENDING);
-        ProcessOrder process = new ProcessOrder();
-        process.setOrder(order);
-        process.setStatus(EnumProcessOrder.PENDING);
-        process.setCreatedAt(new Date());
-        order.setProcessOrders(new ArrayList<>(List.of(process)));
-
-        orderRepository.save(order);
-
-        Payment payment = Payment.builder()
-                .order(order)
-                .paymentMethod(paymentMethod)
-                .paymentStatus(PaymentStatus.PENDING)
-                .date(new Date())
-                .total(order.getTotal())
-                .userId(order.getUserId())
-                .transactionCode(generateTransactionCode())
-                .build();
-        paymentRepository.save(payment);
-
-        cart.getItems().clear();
-        cart.setTotalPrice(0.0);
-        cartRepository.save(cart);
 
         try {
             UserResponse user = safeGetUser(order.getUserId());
@@ -140,19 +121,6 @@ public class OrderServiceImpl implements OrderService {
         if (cart.getItems().isEmpty()) {
             throw new AppException(ErrorCode.CART_EMPTY);
         }
-
-        log.info("Creating pre-order for cart: {}", cartId);
-
-        Order order = buildOrder(cart, addressId);
-        List<OrderDetail> details = createOrderItemsFromCart(cart, order);
-        order.setOrderDetails(details);
-        order.setStatus(EnumProcessOrder.PRE_ORDER);
-
-        ProcessOrder process = new ProcessOrder();
-        process.setOrder(order);
-        process.setStatus(EnumProcessOrder.PRE_ORDER);
-        process.setCreatedAt(new Date());
-        order.setProcessOrders(new ArrayList<>(List.of(process)));
 
         orderRepository.save(order);
 
