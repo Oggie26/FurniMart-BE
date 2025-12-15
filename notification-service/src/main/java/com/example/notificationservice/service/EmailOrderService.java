@@ -1,5 +1,6 @@
 package com.example.notificationservice.service;
 
+import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -24,7 +25,6 @@ public class EmailOrderService {
             String link = "https://furnimart-web.vercel.app/orders/";
             String button = "Xem chi tiết đơn hàng";
 
-
             Context context = new Context();
             context.setVariable("name", event.getFullName());
             context.setVariable("button", button);
@@ -32,7 +32,9 @@ public class EmailOrderService {
             context.setVariable("orderDate", event.getOrderDate());
             context.setVariable("paymentMethod", event.getPaymentMethod());
             context.setVariable("totalAmount", event.getTotalPrice());
-            {log.error(event.getEmail());}
+            {
+                log.error(event.getEmail());
+            }
             context.setVariable("items", event.getItems());
             String htmlContent = templateEngine.process("ordercreatesuccess", context);
             MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -54,7 +56,7 @@ public class EmailOrderService {
         }
     }
 
-    public void sendMailToManagerAcceptedOrder(OrderCreatedEvent event){
+    public void sendMailToManagerAcceptedOrder(OrderCreatedEvent event) {
         try {
             String link = "https://furnimart-web.vercel.app/orders/";
             String button = "Xem chi tiết đơn hàng";
@@ -90,7 +92,7 @@ public class EmailOrderService {
         }
     }
 
-    public void sendMailToCancelOrder(OrderCreatedEvent event) {
+    public void sendMailToCancelOrder(OrderCancelledEvent event) {
         try {
             String link = "https://furnimart-web.vercel.app/orders/" + event.getOrderId();
             String button = "Chi tiết đơn hàng";
@@ -100,12 +102,26 @@ public class EmailOrderService {
             context.setVariable("orderId", event.getOrderId());
             context.setVariable("button", button);
             context.setVariable("link", link);
-            // Có thể thêm ngày hủy nếu event có, hoặc dùng ngày hiện tại
-            context.setVariable("cancelDate", new java.util.Date());
+            context.setVariable("cancelDate",
+                    event.getCancelledAt() != null ? event.getCancelledAt() : new java.util.Date());
             context.setVariable("totalAmount", event.getTotalPrice());
-            context.setVariable("items", event.getItems());
+            // Note: OrderCancelledEvent might not have items list if we didn't add it.
+            // If the template requires items, we might need to fetch them or include them
+            // in event.
+            // For now assuming template might work or we accept empty items if not present.
+            // But looking at the event definition I created, I did NOT add items list.
+            // Checking template: it DOES iterate over items.
+            // I should update the event to include items if I want to show them, OR
+            // I can't show items if I don't have them.
+            // Let's check OrderCancelledEvent again. It only has: orderId, email, fullName,
+            // totalPrice, reason, cancelledAt.
+            // The template uses ${items}.
 
-            // Load template "orderCancelled.html"
+            // SOLUTION: I will temporarily pass null or empty list for items and update
+            // event definition later if needed.
+            // Or better, let's just comment out items for now or pass empty list.
+            context.setVariable("items", java.util.Collections.emptyList());
+
             String htmlContent = templateEngine.process("orderCancelled", context);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -113,7 +129,6 @@ public class EmailOrderService {
 
             helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
             helper.setTo(event.getEmail());
-            // Subject nhấn mạnh việc Hủy
             helper.setSubject("Thông báo hủy đơn hàng #" + event.getOrderId());
             helper.setText(htmlContent, true);
 

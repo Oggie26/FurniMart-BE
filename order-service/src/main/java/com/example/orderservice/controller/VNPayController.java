@@ -81,7 +81,6 @@ public class VNPayController {
 
         response.setContentType("text/html; charset=UTF-8");
 
-        // === KIỂM TRA CHỮ KÝ ===
         String secureHash = vnpParams.remove("vnp_SecureHash");
         vnpParams.remove("vnp_SecureHashType");
         String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
@@ -98,7 +97,6 @@ public class VNPayController {
                 userAgent.toLowerCase().contains("iphone") ||
                 userAgent.toLowerCase().contains("mobile"));
 
-        // === XỬ LÝ KẾT QUẢ ===
         if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
                 if (isMobile) {

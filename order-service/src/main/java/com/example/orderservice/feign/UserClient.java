@@ -4,6 +4,9 @@ import com.example.orderservice.config.FeignClientInterceptor;
 import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.UserResponse;
+
+import io.swagger.v3.oas.annotations.Operation;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,5 +33,8 @@ public interface UserClient {
 
     @PostMapping("/api/users/{userId}/wallet/refund")
     ApiResponse<Void> refundToWallet(@PathVariable String userId, @RequestParam Double amount,
-                                     @RequestParam(required = false) String referenceId);
+            @RequestParam(required = false) String referenceId);
+
+    @GetMapping("/api/wallets/user/{userId}")
+    ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId);
 }

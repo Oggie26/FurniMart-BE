@@ -1,6 +1,7 @@
 package com.example.notificationservice.config;
 
 import com.example.notificationservice.event.AccountPlaceEvent;
+import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -20,7 +21,7 @@ import java.util.Map;
 public class KafkaConsumerConfig {
 
     private String BOOTSTRAP_SERVERS = "kafka:9092";
-//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+    // private final String BOOTSTRAP_SERVERS = "localhost:9092";
 
     private final String GROUP_ID = "notification-group";
 
@@ -47,8 +48,7 @@ public class KafkaConsumerConfig {
         return new DefaultKafkaConsumerFactory<>(
                 baseConfigs(),
                 new StringDeserializer(),
-                new JsonDeserializer<>(OrderCreatedEvent.class, false)
-        );
+                new JsonDeserializer<>(OrderCreatedEvent.class, false));
     }
 
     @Bean
@@ -64,6 +64,21 @@ public class KafkaConsumerConfig {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderCreatedEvent>();
 
         factory.setConsumerFactory(orderCreatedConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, OrderCancelledEvent> orderCancelledConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(OrderCancelledEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderCancelledEvent> orderCancelledKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderCancelledEvent>();
+        factory.setConsumerFactory(orderCancelledConsumerFactory());
         return factory;
     }
 

@@ -631,6 +631,7 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
+
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction transaction, Wallet wallet) {
         return WalletTransactionResponse.builder()
                 .id(transaction.getId())

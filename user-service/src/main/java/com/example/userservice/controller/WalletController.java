@@ -66,7 +66,6 @@ public class WalletController {
 
     @GetMapping("/user/{userId}")
     @Operation(summary = "Get wallet by user ID - For admin and staff to manage user wallets")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId) {
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())

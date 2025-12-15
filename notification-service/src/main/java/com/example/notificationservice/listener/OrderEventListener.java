@@ -1,6 +1,7 @@
 package com.example.notificationservice.listener;
 
 import com.example.notificationservice.enums.ErrorCode;
+import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
 import com.example.notificationservice.exception.AppException;
 import com.example.notificationservice.feign.OrderClient;
@@ -20,11 +21,7 @@ public class OrderEventListener {
     private final EmailOrderService orderService;
     private final OrderClient orderClient;
 
-    @KafkaListener(
-            topics = "order-created-topic",
-            groupId = "notification-group",
-            containerFactory = "orderCreatedKafkaListenerContainerFactory"
-    )
+    @KafkaListener(topics = "order-created-topic", groupId = "notification-group", containerFactory = "orderCreatedKafkaListenerContainerFactory")
     public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
 
@@ -41,31 +38,19 @@ public class OrderEventListener {
         }
     }
 
-    @KafkaListener(
-            topics = "order-cancel-topic",
-            groupId = "notification-group",
-            containerFactory = "orderCreatedKafkaListenerContainerFactory"
-    )
-    public void handleCancelOrderCreated(OrderCreatedEvent event) {
-        log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
-        OrderResponse order = getOrderResponse(event.getOrderId());
+    @KafkaListener(topics = "order-cancelled-topic", groupId = "notification-group", containerFactory = "orderCancelledKafkaListenerContainerFactory")
+    public void handleCancelOrderCreated(OrderCancelledEvent event) {
+        log.info("📦 Received OrderCancelledEvent for order: {}", event.getOrderId());
 
-        if (order == null) {
-            log.warn("Order with ID {} not found. Skipping notification.", event.getOrderId());
-            return;
-        }
+        // We might not need to fetch order details again if event has enough info.
+        // But if we want to be safe or need more info not in event, we can fetch.
+        // However, the event ALREADY has email, name, etc. sent from producer.
+        // So we can directly use it.
+
         orderService.sendMailToCancelOrder(event);
-        for (OrderCreatedEvent.OrderItem item : event.getItems()) {
-            String key = "reserved_stock:" + item.getProductColorId();
-            log.info("Reserved stock key: {}", key);
-        }
     }
 
-    @KafkaListener(
-            topics = "store-assigned-topic",
-            groupId = "notification-group",
-            containerFactory = "orderCreatedKafkaListenerContainerFactory"
-    )
+    @KafkaListener(topics = "store-assigned-topic", groupId = "notification-group", containerFactory = "orderCreatedKafkaListenerContainerFactory")
     public void handleAssignedOrderCreated(OrderCreatedEvent event) {
         OrderResponse order = getOrderResponse(event.getOrderId());
 
@@ -79,7 +64,6 @@ public class OrderEventListener {
             log.info("Reserved stock key: {}", key);
         }
     }
-
 
     private OrderResponse getOrderResponse(long orderId) {
         try {
