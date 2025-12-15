@@ -3,6 +3,8 @@ package com.example.notificationservice.listener;
 import com.example.notificationservice.enums.ErrorCode;
 import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
+import com.example.notificationservice.event.OrderDeliveredEvent;
+import com.example.notificationservice.event.DeliveryAssignedEvent;
 import com.example.notificationservice.exception.AppException;
 import com.example.notificationservice.feign.OrderClient;
 import com.example.notificationservice.response.ApiResponse;
@@ -41,12 +43,6 @@ public class OrderEventListener {
     @KafkaListener(topics = "order-cancelled-topic", groupId = "notification-group", containerFactory = "orderCancelledKafkaListenerContainerFactory")
     public void handleCancelOrderCreated(OrderCancelledEvent event) {
         log.info("📦 Received OrderCancelledEvent for order: {}", event.getOrderId());
-
-        // We might not need to fetch order details again if event has enough info.
-        // But if we want to be safe or need more info not in event, we can fetch.
-        // However, the event ALREADY has email, name, etc. sent from producer.
-        // So we can directly use it.
-
         orderService.sendMailToCancelOrder(event);
     }
 
@@ -63,6 +59,18 @@ public class OrderEventListener {
             String key = "reserved_stock:" + item.getProductColorId();
             log.info("Reserved stock key: {}", key);
         }
+    }
+
+    @KafkaListener(topics = "order-delivered-topic", groupId = "notification-group", containerFactory = "orderDeliveredKafkaListenerContainerFactory")
+    public void handleOrderDelivered(OrderDeliveredEvent event) {
+        log.info("📦 Received OrderDeliveredEvent for order: {}", event.getOrderId());
+        orderService.sendMailToOrderDelivered(event);
+    }
+
+    @KafkaListener(topics = "delivery-assigned-topic", groupId = "notification-group", containerFactory = "deliveryAssignedKafkaListenerContainerFactory")
+    public void handleDeliveryAssigned(DeliveryAssignedEvent event) {
+        log.info("🚚 Received DeliveryAssignedEvent for order: {}", event.getOrderId());
+        orderService.sendMailToDeliveryAssigned(event);
     }
 
     private OrderResponse getOrderResponse(long orderId) {
