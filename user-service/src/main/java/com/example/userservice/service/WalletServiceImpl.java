@@ -3,6 +3,7 @@ package com.example.userservice.service;
 import com.example.userservice.entity.User;
 import com.example.userservice.entity.Wallet;
 import com.example.userservice.entity.WalletTransaction;
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.WalletStatus;
 import com.example.userservice.enums.WalletTransactionStatus;
 import com.example.userservice.enums.WalletTransactionType;
@@ -122,11 +123,24 @@ public class WalletServiceImpl implements WalletService {
     @Transactional(readOnly = true)
     public WalletResponse getMyWallet() {
         String currentUserId = getCurrentUserId();
-        Wallet wallet = walletRepository.findByUserIdAndIsDeletedFalse(currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
-
+        
+        // Get current user to check role
         User user = userRepository.findByIdAndIsDeletedFalse(currentUserId)
-                .orElse(null);
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Only CUSTOMER role can have wallet
+        if (user.getAccount() == null || user.getAccount().getRole() != EnumRole.CUSTOMER) {
+            log.warn("User {} with role {} attempted to access wallet. Only CUSTOMER can have wallet.", 
+                    currentUserId, user.getAccount() != null ? user.getAccount().getRole() : "NULL");
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        
+        // Wallet must exist - no lazy creation
+        Wallet wallet = walletRepository.findByUserIdAndIsDeletedFalse(currentUserId)
+                .orElseThrow(() -> {
+                    log.error("Wallet not found for CUSTOMER user {}. Wallet should have been created during registration.", currentUserId);
+                    return new AppException(ErrorCode.WALLET_NOT_FOUND);
+                });
 
         return mapToWalletResponse(wallet, user);
     }
@@ -385,6 +399,20 @@ public class WalletServiceImpl implements WalletService {
     public WalletResponse createWalletForUser(String userId) {
         log.info("Auto-creating wallet for user: {}", userId);
 
+        // First verify user exists
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
+                .orElseThrow(() -> {
+                    log.error("User {} not found when creating wallet. This may be a transaction visibility issue.", userId);
+                    return new AppException(ErrorCode.USER_NOT_FOUND);
+                });
+
+        // Only CUSTOMER role can have wallet
+        if (user.getAccount() == null || user.getAccount().getRole() != EnumRole.CUSTOMER) {
+            log.warn("Attempted to create wallet for user {} with role {}. Only CUSTOMER can have wallet.", 
+                    userId, user.getAccount() != null ? user.getAccount().getRole() : "NULL");
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
         // Check if user already has an active wallet
         if (walletRepository.existsByUserIdAndIsDeletedFalse(userId)) {
             log.warn("User {} already has a wallet, returning existing wallet", userId);
@@ -392,9 +420,41 @@ public class WalletServiceImpl implements WalletService {
         }
 
         Wallet wallet = initializeWalletForUser(userId);
-        User user = userRepository.findByIdAndIsDeletedFalse(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        log.info("Wallet successfully created for CUSTOMER user: {}", userId);
+        return mapToWalletResponse(wallet, user);
+    }
+    
+    /**
+     * Create wallet directly in the same transaction (for register endpoint).
+     * This method runs in the same transaction as the caller, no REQUIRES_NEW.
+     * Used when creating wallet during user registration to ensure atomicity.
+     */
+    @Transactional(propagation = Propagation.REQUIRED)
+    public WalletResponse createWalletDirectlyInTransaction(String userId, User user) {
+        log.info("Creating wallet directly in transaction for user: {}", userId);
 
+        // Verify user is CUSTOMER
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+        
+        if (user.getAccount() == null || user.getAccount().getRole() != EnumRole.CUSTOMER) {
+            log.warn("Attempted to create wallet for user {} with role {}. Only CUSTOMER can have wallet.", 
+                    userId, user.getAccount() != null ? user.getAccount().getRole() : "NULL");
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // Check if user already has an active wallet
+        if (walletRepository.existsByUserIdAndIsDeletedFalse(userId)) {
+            log.warn("User {} already has a wallet, returning existing wallet", userId);
+            Wallet existingWallet = walletRepository.findByUserIdAndIsDeletedFalse(userId)
+                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+            return mapToWalletResponse(existingWallet, user);
+        }
+
+        // Create wallet directly in the same transaction
+        Wallet wallet = initializeWalletForUser(userId);
+        log.info("Wallet successfully created directly in transaction for CUSTOMER user: {}", userId);
         return mapToWalletResponse(wallet, user);
     }
 

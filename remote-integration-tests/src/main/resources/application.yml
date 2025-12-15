@@ -1,0 +1,49 @@
+test:
+  base-url: ${TEST_BASE_URL:http://152.53.244.124:8080}
+  user-service-url: ${TEST_USER_SERVICE_URL:http://localhost:8086}
+  product-service-url: ${TEST_PRODUCT_SERVICE_URL:http://localhost:8081}
+  order-service-url: ${TEST_ORDER_SERVICE_URL:http://localhost:8082}
+  delivery-service-url: ${TEST_DELIVERY_SERVICE_URL:http://localhost:8083}
+  inventory-service-url: ${TEST_INVENTORY_SERVICE_URL:http://localhost:8084}
+  ai-service-url: ${TEST_AI_SERVICE_URL:http://localhost:9000}
+  use-gateway: ${TEST_USE_GATEWAY:true}
+  
+  # Test accounts (should be created in database)
+  accounts:
+    admin:
+      email: ${TEST_ADMIN_EMAIL:admin@furnimart.com}
+      password: ${TEST_ADMIN_PASSWORD:Admin@123}
+    customer:
+      email: ${TEST_CUSTOMER_EMAIL:customer@furnimart.com}
+      password: ${TEST_CUSTOMER_PASSWORD:Customer@123}
+    branch-manager:
+      email: ${TEST_MANAGER_EMAIL:manager@furnimart.com}
+      password: ${TEST_MANAGER_PASSWORD:Manager@123}
+    staff:
+      email: ${TEST_STAFF_EMAIL:staff@furnimart.com}
+      password: ${TEST_STAFF_PASSWORD:Staff@123}
+    delivery:
+      email: ${TEST_DELIVERY_EMAIL:delivery@furnimart.com}
+      password: ${TEST_DELIVERY_PASSWORD:Delivery@123}
+
+logging:
+  level:
+    com.example.remotetests: DEBUG
+    org.springframework.web.client: DEBUG
+
+# Database configuration for WalletRepository injection (optional)
+# Uncomment and configure if you want to inject balance directly in tests
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://152.53.244.124:5432/user_db}
+    username: ${TEST_DB_USERNAME:postgres}
+    password: ${TEST_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+

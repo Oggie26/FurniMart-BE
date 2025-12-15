@@ -91,39 +91,27 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
         
-        // Auto-create wallet for the new customer so staff workflow is consistent
-        try {
-            userRepository.flush();
-            accountRepository.flush();
-            walletService.createWalletForUser(savedUser.getId());
-            log.info("Wallet auto-created for staff-created customer: {}", savedUser.getId());
-        } catch (AppException e) {
-            log.error("Failed to auto-create wallet for staff-created customer {}: ErrorCode={}, Message={}",
-                    savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
-        } catch (Exception e) {
-            log.error("Failed to auto-create wallet for staff-created customer {}: {}", savedUser.getId(), e.getMessage(), e);
-        }
-        
-        // Auto-create wallet for new customer
-        // Note: Wallet creation happens in REQUIRES_NEW transaction
-        // which should be able to see the flushed user
-        try {
-            // Flush to ensure user is persisted to database
-            userRepository.flush();
-            accountRepository.flush(); // Also flush account to ensure it's visible
-            log.debug("User and account flushed to database: {}", savedUser.getId());
-            
-            // Use separate transaction (REQUIRES_NEW) to avoid affecting main transaction
-            // The REQUIRES_NEW transaction should see the flushed user
-            walletService.createWalletForUser(savedUser.getId());
-            log.info("Wallet auto-created for new customer: {}", savedUser.getId());
-        } catch (AppException e) {
-            log.error("Failed to auto-create wallet for user {}: ErrorCode={}, Message={}", 
-                    savedUser.getId(), e.getErrorCode(), e.getMessage(), e);
-            // Don't fail user creation if wallet creation fails, but log the error
-        } catch (Exception e) {
-            log.error("Failed to auto-create wallet for user {}: {}", savedUser.getId(), e.getMessage(), e);
-            // Don't fail user creation if wallet creation fails, but log the error
+        // Create wallet directly in the same transaction for CUSTOMER
+        // UserService.createUser only creates CUSTOMER role, so wallet must be created here
+        if (savedAccount.getRole() == EnumRole.CUSTOMER) {
+            try {
+                // Create wallet directly in the same transaction (no lazy, no retry needed)
+                walletService.createWalletDirectlyInTransaction(savedUser.getId(), savedUser);
+                log.info("Wallet created directly in transaction for staff-created CUSTOMER: {}", savedUser.getId());
+            } catch (AppException e) {
+                log.error("Failed to create wallet for CUSTOMER {} during user creation: ErrorCode={}, Message={}. " +
+                        "User creation will fail to ensure data consistency.", 
+                        savedUser.getId(), e.getErrorCode(), e.getMessage());
+                throw e; // Fail user creation if wallet creation fails
+            } catch (Exception e) {
+                log.error("Failed to create wallet for CUSTOMER {} during user creation: {}. " +
+                        "User creation will fail to ensure data consistency.", 
+                        savedUser.getId(), e.getMessage());
+                throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+        } else {
+            log.debug("User {} created with role {}. Wallet not created (only CUSTOMER gets wallet).", 
+                    savedUser.getId(), savedAccount.getRole());
         }
         
         log.info("Created CUSTOMER user: {} with email: {}", savedUser.getId(), savedAccount.getEmail());
@@ -146,9 +134,17 @@ public class UserServiceImpl implements UserService {
         }
 
         if (userRequest.getFullName() != null) {
+            // Reject empty strings - validation should catch this, but add safety check
+            if (userRequest.getFullName().trim().isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
             existingUser.setFullName(userRequest.getFullName());
         }
         if (userRequest.getPhone() != null) {
+            // Reject empty strings - validation should catch this, but add safety check
+            if (userRequest.getPhone().trim().isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
             existingUser.setPhone(userRequest.getPhone());
         }
         if (userRequest.getBirthday() != null) {

@@ -13,6 +13,7 @@ CHANGELOG.md
 
 # Database scripts and migrations
 *.sql
+!**/src/main/resources/data.sql
 *.sqlite
 *.db
 

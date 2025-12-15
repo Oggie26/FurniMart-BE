@@ -27,7 +27,9 @@ public class ProductServiceImpl implements ProductService {
         private final ProductRepository productRepository;
         private final CategoryRepository categoryRepository;
         private final MaterialRepository materialRepository;
+
         private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
+        private final com.example.productservice.feign.InventoryClient inventoryClient;
 
         @Override
         @Transactional
@@ -321,4 +323,54 @@ public class ProductServiceImpl implements ProductService {
         //
         // return userId.getData().getId();
         // }
+        @Override
+        public List<com.example.productservice.response.ProductQuickLookupResponse> quickLookup(String keyword) {
+                // Sanitize keyword
+                if (keyword != null && !keyword.trim().isEmpty()) {
+                        String trimmed = keyword.trim();
+                        trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
+                        keyword = trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+                } else {
+                        keyword = "";
+                }
+
+                PageRequest pageable = PageRequest.of(0, 10);
+                Page<Product> productPage = productRepository.searchByKeywordNative(keyword, pageable);
+
+                return productPage.getContent().stream().map(product -> {
+                        List<com.example.productservice.response.ProductColorQuickResponse> colors = product.getProductColors().stream()
+                                .map(pc -> {
+                                        Integer stock = 0;
+                                        try {
+                                                ApiResponse<Integer> stockResponse = inventoryClient.getAvailableStockByProductColorId(pc.getId());
+                                                if (stockResponse != null && stockResponse.getData() != null) {
+                                                        stock = stockResponse.getData();
+                                                }
+                                        } catch (Exception e) {
+                                                log.warn("Failed to fetch stock for {}: {}", pc.getId(), e.getMessage());
+                                        }
+                                        
+                                        String imageUrl = null;
+                                        if (pc.getImages() != null && !pc.getImages().isEmpty()) {
+                                            imageUrl = pc.getImages().get(0).getImageUrl();
+                                        }
+
+                                        return com.example.productservice.response.ProductColorQuickResponse.builder()
+                                                .id(pc.getId())
+                                                .colorName(pc.getColor().getColorName())
+                                                .imageUrl(imageUrl)
+                                                .currentStock(stock)
+                                                .build();
+                                })
+                                .collect(Collectors.toList());
+
+                        return com.example.productservice.response.ProductQuickLookupResponse.builder()
+                                .id(product.getId())
+                                .name(product.getName())
+                                .price(product.getPrice())
+                                .thumbnailImage(product.getThumbnailImage())
+                                .colors(colors)
+                                .build();
+                }).collect(Collectors.toList());
+        }
 }

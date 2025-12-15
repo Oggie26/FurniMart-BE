@@ -92,6 +92,7 @@ public class UserController {
 
     @GetMapping("/search")
     @Operation(summary = "Search users by multiple criteria")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     public ApiResponse<PageResponse<UserResponse>> searchUsers(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(defaultValue = "0") int page,

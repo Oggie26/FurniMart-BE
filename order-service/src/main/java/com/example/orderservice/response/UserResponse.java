@@ -30,4 +30,5 @@ public class UserResponse {
     private EnumStatus status;
     private Date createdAt;
     private Date updatedAt;
+    private java.util.List<String> storeIds;
 }

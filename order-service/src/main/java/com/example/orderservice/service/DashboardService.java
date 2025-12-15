@@ -9,6 +9,7 @@ import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderDetailRepository;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
+import com.example.orderservice.response.StaffDashboardResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -287,6 +288,61 @@ public class DashboardService {
             log.error("Error getting orders for shipper: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
+    }
+    public StaffDashboardResponse getStaffDashboard(String staffId) {
+        log.info("Getting staff dashboard data for staff: {}", staffId);
+
+        // Get staff info to find storeId
+        String storeId = null;
+        try {
+            // Assuming userClient has a way to get user info by ID or username (staffId is username/id)
+            // If staffId is username, use getUserByUsername, if ID use getUserById
+            // Here assuming staffId is ID as per other methods
+            ApiResponse<UserResponse> userResponse = userClient.getUserById(staffId);
+            if (userResponse != null && userResponse.getData() != null) {
+                UserResponse user = userResponse.getData();
+                if (user.getStoreIds() != null && !user.getStoreIds().isEmpty()) {
+                    storeId = user.getStoreIds().get(0);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error fetching staff info: {}", e.getMessage());
+        }
+
+        // Date range: Today
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        Date startDate = cal.getTime();
+        
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        Date endDate = cal.getTime();
+
+        // 1. Personal Revenue (Today)
+        Double personalRevenue = orderRepository.getTotalRevenueByCreatedByAndDateRange(staffId, COMPLETED_STATUSES, startDate, endDate);
+        if (personalRevenue == null) personalRevenue = 0.0;
+
+        // 2. Created Orders Count (Today)
+        Long createdOrdersCount = orderRepository.countByCreatedByAndDateRange(staffId, startDate, endDate);
+
+        // 3. Pending Orders at Store (Total backlog, not just today)
+        Long pendingStoreOrdersCount = 0L;
+        if (storeId != null) {
+            pendingStoreOrdersCount = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.PENDING); // Or PAYMENT/CONFIRMED depending on workflow
+            // "Chờ xử lý" usually means PENDING or MANAGER_ACCEPT
+            // Let's assume PENDING for now or MANAGER_ACCEPT
+             pendingStoreOrdersCount = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.MANAGER_ACCEPT);
+        }
+
+        return StaffDashboardResponse.builder()
+                .personalRevenue(personalRevenue)
+                .createdOrdersCount(createdOrdersCount)
+                .pendingStoreOrdersCount(pendingStoreOrdersCount)
+                .build();
     }
 }
 

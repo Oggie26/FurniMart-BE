@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.util.Date;
@@ -17,8 +19,11 @@ import java.util.Date;
 @Builder
 public class UserUpdateRequest {
 
+    @Size(min = 1, message = "Full name cannot be empty")
     private String fullName;
     
+    @Size(min = 1, message = "Phone cannot be empty")
+    @Pattern(regexp = "^0[0-9]{9}$", message = "Phone must be 10 digits starting with 0")
     private String phone;
     
     private String avatar;

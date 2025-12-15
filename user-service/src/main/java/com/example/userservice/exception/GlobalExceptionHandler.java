@@ -179,12 +179,39 @@ public class GlobalExceptionHandler {
         log.error("Uncaught exception of type {}: {}", exception.getClass().getSimpleName(), exception.getMessage());
         log.error("Full stack trace: ", exception);
         
-        // Provide more specific error message based on exception type
+        // Get root cause message for detailed error
+        String detailedMessage = exception.getMessage();
+        Throwable rootCause = exception.getCause();
+        
+        // Traverse to find the actual root cause
+        while (rootCause != null && rootCause.getCause() != null) {
+            rootCause = rootCause.getCause();
+        }
+        
+        // Build detailed error message
         String errorMessage = ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage();
+        
+        // Add exception details to help debugging
+        if (detailedMessage != null && !detailedMessage.isEmpty()) {
+            errorMessage = ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage() + " | Error: " + detailedMessage;
+        }
+        
+        // Add root cause if available
+        if (rootCause != null && rootCause.getMessage() != null && !rootCause.getMessage().isEmpty()) {
+            errorMessage += " | Root Cause: " + rootCause.getMessage();
+        }
+        
+        // Provide more specific error message based on exception type
         if (exception instanceof DataIntegrityViolationException) {
-            errorMessage = "Database constraint violation. Please check your data.";
+            errorMessage = "Database constraint violation: " + (detailedMessage != null ? detailedMessage : "Please check your data.");
         } else if (exception instanceof IllegalArgumentException) {
-            errorMessage = "Invalid argument provided: " + exception.getMessage();
+            errorMessage = "Invalid argument: " + (detailedMessage != null ? detailedMessage : "Please check your input.");
+        } else if (exception.getCause() != null) {
+            // Include cause message for better debugging
+            String causeMsg = exception.getCause().getMessage();
+            if (causeMsg != null && !causeMsg.isEmpty()) {
+                errorMessage = ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage() + " | Cause: " + causeMsg;
+            }
         }
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

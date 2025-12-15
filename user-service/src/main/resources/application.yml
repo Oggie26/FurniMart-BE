@@ -1,5 +1,13 @@
 server:
   port: 8086
+  error:
+    include-message: always
+    include-stacktrace: always
+    include-binding-errors: always
+    include-exception: true
+    include-details: always
+    whitelabel:
+      enabled: false
 
 spring:
 #  profiles:
@@ -22,6 +30,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    defer-datasource-initialization: true
     show-sql: true
     generate-ddl: false
     properties:
@@ -98,6 +107,15 @@ logging:
   level:
     org.apache.kafka.clients.NetworkClient: ERROR
     org.apache.kafka.clients.Metadata: ERROR
+    # Enable detailed error logging
+    com.example.userservice: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate: DEBUG
+    org.springframework.jdbc: DEBUG
+    org.springframework.transaction: DEBUG
+    # Show SQL queries and parameters
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 vnpay:
   tmnCode: 3MUC1EW6

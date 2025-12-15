@@ -260,14 +260,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("""
         SELECT DATE(o.orderDate) as date, 
-               COALESCE(SUM(o.total), 0) as revenue, 
-               COUNT(o) as orderCount
+        COALESCE(SUM(o.total), 0) as revenue, 
+        COUNT(o) as orderCount
         FROM Order o 
         WHERE o.isDeleted = false 
-          AND o.storeId = :storeId
-          AND o.status IN :statuses
-          AND o.orderDate >= :startDate 
-          AND o.orderDate <= :endDate
+        AND o.storeId = :storeId
+        AND o.status IN :statuses
+        AND o.orderDate >= :startDate 
+        AND o.orderDate <= :endDate
         GROUP BY DATE(o.orderDate)
         ORDER BY DATE(o.orderDate) ASC
     """)
@@ -277,4 +277,37 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("startDate") java.util.Date startDate,
             @Param("endDate") java.util.Date endDate
     );
+
+    // Staff Dashboard
+    @Query("""
+        SELECT COALESCE(SUM(o.total), 0) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.createdBy = :createdBy 
+          AND o.status IN :statuses
+          AND o.orderDate >= :startDate 
+          AND o.orderDate <= :endDate
+    """)
+    Double getTotalRevenueByCreatedByAndDateRange(
+            @Param("createdBy") String createdBy,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
+
+    @Query("""
+        SELECT COUNT(o) 
+        FROM Order o 
+        WHERE o.isDeleted = false 
+          AND o.createdBy = :createdBy
+          AND o.orderDate >= :startDate 
+          AND o.orderDate <= :endDate
+    """)
+    Long countByCreatedByAndDateRange(
+            @Param("createdBy") String createdBy,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
+
+    Page<Order> findByCreatedByOrderByCreatedAtDesc(String createdBy, Pageable pageable);
 }

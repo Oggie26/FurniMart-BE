@@ -3,6 +3,7 @@ package com.example.orderservice.controller;
 import com.example.orderservice.response.AdminDashboardResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.ManagerDashboardResponse;
+import com.example.orderservice.response.StaffDashboardResponse;
 import com.example.orderservice.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +46,24 @@ public class DashboardController {
         return ApiResponse.<ManagerDashboardResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Manager dashboard data retrieved successfully")
+                .data(data)
+                .build();
+                .data(data)
+                .build();
+    }
+
+    @GetMapping("/staff")
+    @Operation(summary = "Get Staff Dashboard Data", description = "Returns personal revenue, created orders count, and pending store orders count")
+    @PreAuthorize("hasRole('STAFF')")
+    public ApiResponse<StaffDashboardResponse> getStaffDashboard() {
+        // Get current user ID from SecurityContext
+        String staffId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        
+        StaffDashboardResponse data = dashboardService.getStaffDashboard(staffId);
+        
+        return ApiResponse.<StaffDashboardResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff dashboard data retrieved successfully")
                 .data(data)
                 .build();
     }

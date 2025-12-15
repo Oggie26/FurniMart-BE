@@ -184,4 +184,37 @@ public class ChatController {
                 .data(chatService.pinChat(id, pinned))
                 .build();
     }
+
+    @PostMapping("/{id}/request-staff")
+    @Operation(summary = "Request staff connection")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<ChatResponse> requestStaffConnection(@PathVariable String id) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff connection requested")
+                .data(chatService.requestStaffConnection(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/accept-staff")
+    @Operation(summary = "Accept staff connection (Staff only)")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    public ApiResponse<ChatResponse> acceptStaffConnection(@PathVariable String id) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff connection accepted")
+                .data(chatService.acceptStaffConnection(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/end-staff-chat")
+    @Operation(summary = "End staff chat")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('ADMIN')")
+    public ApiResponse<ChatResponse> endStaffChat(@PathVariable String id) {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff chat ended")
+                .data(chatService.endStaffChat(id))
+                .build();
+    }
 }

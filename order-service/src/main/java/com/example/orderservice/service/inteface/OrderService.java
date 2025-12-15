@@ -48,4 +48,6 @@ public interface OrderService {
     OrderResponse rejectReturn(Long orderId, String reason);
 
     OrderResponse confirmReturn(Long orderId);
+
+    PageResponse<OrderResponse> getMySales(int page, int size);
 }

@@ -16,4 +16,5 @@ public interface ProductService {
     List<ProductResponse> getProducts();
     List<ProductResponse> getProductsByCategoryId(Long categoryId);
     PageResponse<ProductResponse> searchProduct(String request, int page, int size);
+    List<com.example.productservice.response.ProductQuickLookupResponse> quickLookup(String keyword);
 }

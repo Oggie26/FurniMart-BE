@@ -18,12 +18,14 @@ import java.util.List;
 public class WarrantyClaimResponse {
 
     private Long id;
-    private Long warrantyId;
+    private Long orderId;
     private String customerId;
     private Long addressId;
     private LocalDateTime claimDate;
-    private String issueDescription;
-    private List<String> customerPhotos;
+    private List<WarrantyClaimDetailResponse> items;
+    // private Long warrantyId; // Removed
+    // private String issueDescription; // Removed
+    // private List<String> customerPhotos; // Removed
     private WarrantyClaimStatus status;
     private String adminResponse;
     private String resolutionNotes;
