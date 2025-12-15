@@ -1,6 +1,11 @@
-# Use pre-built JAR from host (faster deployment)
-FROM eclipse-temurin:17-jdk-alpine
+# Stage 1: Build jar
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
-# Copy JAR from host (build locally and copy to server before docker build)
-COPY target/user-service-0.0.1-SNAPSHOT.jar app.jar
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Stage 2: Run jar
+FROM eclipse-temurin:21-jdk-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 ENTRYPOINT ["java","-jar","/app/app.jar"]
