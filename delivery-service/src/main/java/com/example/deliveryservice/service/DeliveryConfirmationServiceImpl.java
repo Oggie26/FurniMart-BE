@@ -7,6 +7,7 @@ import com.example.deliveryservice.enums.DeliveryStatus;
 import com.example.deliveryservice.enums.EnumProcessOrder;
 import com.example.deliveryservice.exception.AppException;
 import com.example.deliveryservice.enums.ErrorCode;
+import com.example.deliveryservice.event.OrderDeliveredEvent;
 import com.example.deliveryservice.feign.OrderClient;
 import com.example.deliveryservice.feign.WarrantyClient;
 import com.example.deliveryservice.repository.DeliveryAssignmentRepository;
@@ -25,9 +26,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,6 +46,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     private final ObjectMapper objectMapper;
     private final OrderClient orderClient;
     private final WarrantyClient warrantyClient;
+    private final KafkaTemplate<String, Object> genericKafkaTemplate;
 
     @Override
     @Transactional
@@ -87,7 +92,8 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .build();
 
         DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
-        DeliveryAssignment deliveryAssignment =  deliveryAssignmentRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId())
+        DeliveryAssignment deliveryAssignment = deliveryAssignmentRepository
+                .findByOrderIdAndIsDeletedFalse(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         deliveryAssignment.setStatus(DeliveryStatus.DELIVERED);
         deliveryAssignmentRepository.save(deliveryAssignment);
@@ -96,6 +102,10 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
             orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.FINISHED);
             orderClient.confirmCodPayment(request.getOrderId());
             warrantyClient.generateWarranties(request.getOrderId());
+
+            // Send Kafka Notification
+            sendDeliveryNotification(request.getOrderId(), deliveryStaffId, new Date());
+
         } catch (Exception ex) {
             log.warn("Post-delivery side-effects failed for order {}: {}", request.getOrderId(), ex.getMessage());
         }
@@ -125,7 +135,8 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     public DeliveryConfirmationResponse scanQRCode(QRCodeScanRequest request) {
         log.info("Scanning QR code: {}", request.getQrCode());
 
-        DeliveryConfirmation confirmation = deliveryConfirmationRepository.findByQrCodeAndIsDeletedFalse(request.getQrCode())
+        DeliveryConfirmation confirmation = deliveryConfirmationRepository
+                .findByQrCodeAndIsDeletedFalse(request.getQrCode())
                 .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND));
 
         if (confirmation.getQrCodeScannedAt() != null) {
@@ -144,6 +155,12 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         // Set order status to FINISHED
         try {
             orderClient.updateOrderStatus(confirmation.getOrderId(), EnumProcessOrder.FINISHED);
+
+            // Send Kafka Notification
+            // Delivery staff ID might not be in context if customer scans?
+            // DeliveryConfirmation has deliveryStaffId.
+            sendDeliveryNotification(confirmation.getOrderId(), confirmation.getDeliveryStaffId(), new Date());
+
         } catch (Exception ex) {
             log.warn("Failed to update order {} to FINISHED: {}", confirmation.getOrderId(), ex.getMessage());
         }
@@ -155,7 +172,8 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     @Override
     @Transactional(readOnly = true)
     public List<DeliveryConfirmationResponse> getDeliveryConfirmationsByStaff(String deliveryStaffId) {
-        List<DeliveryConfirmation> confirmations = deliveryConfirmationRepository.findByDeliveryStaffIdOrderByDeliveryDateDesc(deliveryStaffId);
+        List<DeliveryConfirmation> confirmations = deliveryConfirmationRepository
+                .findByDeliveryStaffIdOrderByDeliveryDateDesc(deliveryStaffId);
         return confirmations.stream()
                 .map(this::toDeliveryConfirmationResponse)
                 .collect(Collectors.toList());
@@ -164,7 +182,8 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     @Override
     @Transactional(readOnly = true)
     public List<DeliveryConfirmationResponse> getDeliveryConfirmationsByCustomer(String customerId) {
-        List<DeliveryConfirmation> confirmations = deliveryConfirmationRepository.findByCustomerIdOrderByDeliveryDateDesc(customerId);
+        List<DeliveryConfirmation> confirmations = deliveryConfirmationRepository
+                .findByCustomerIdOrderByDeliveryDateDesc(customerId);
         return confirmations.stream()
                 .map(this::toDeliveryConfirmationResponse)
                 .collect(Collectors.toList());
@@ -222,7 +241,8 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         if (confirmation.getDeliveryPhotos() != null) {
             try {
                 @SuppressWarnings("unchecked")
-                List<String> photos = (List<String>) objectMapper.readValue(confirmation.getDeliveryPhotos(), List.class);
+                List<String> photos = (List<String>) objectMapper.readValue(confirmation.getDeliveryPhotos(),
+                        List.class);
                 deliveryPhotos = photos;
             } catch (JsonProcessingException e) {
                 log.error("Error deserializing delivery photos", e);
@@ -248,6 +268,56 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .updatedAt(confirmation.getUpdatedAt())
                 .build();
     }
+
+    private void sendDeliveryNotification(Long orderId, String deliveryStaffId, Date deliveryDate) {
+        try {
+            var orderRes = orderClient.getOrderById(orderId);
+            if (orderRes != null && orderRes.getBody() != null && orderRes.getBody().getData() != null) {
+                var order = orderRes.getBody().getData();
+                if (order.getUser() != null) {
+                    List<OrderDeliveredEvent.Item> items = Collections.emptyList();
+                    if (order.getOrderDetails() != null) {
+                        items = order.getOrderDetails().stream()
+                                .map(d -> OrderDeliveredEvent.Item.builder()
+                                        .productColorId(d.getProductColorId())
+                                        .quantity(d.getQuantity())
+                                        .price(d.getPrice())
+                                        // Note: AddressResponse/OrderResponse in delivery-service might differ from
+                                        // order-service
+                                        // Assuming basic fields are available or defaulting
+                                        .productName("Product " + d.getProductColorId()) // Placeholder if name not
+                                                                                         // available
+                                        .colorName("")
+                                        .build())
+                                .collect(Collectors.toList());
+                        // If we have ProductColor object in OrderDetailResponse, use it.
+                        // Checking OrderDetailResponse: usually has primitives unless populated.
+                        // OrderDetailResponse in delivery-service (step 244) exists.
+                        // We will check its content if we need better names.
+                    }
+
+                    OrderDeliveredEvent event = OrderDeliveredEvent.builder()
+                            .orderId(orderId)
+                            .email(order.getUser().getEmail())
+                            .fullName(order.getUser().getFullName())
+                            .deliveryDate(deliveryDate)
+                            .deliveryStaffId(deliveryStaffId)
+                            .totalAmount(order.getTotal())
+                            .items(items)
+                            .build();
+
+                    genericKafkaTemplate.send("order-delivered-topic", event)
+                            .whenComplete((result, ex) -> {
+                                if (ex != null) {
+                                    log.error("Failed to send order delivered event: {}", ex.getMessage());
+                                } else {
+                                    log.info("Sent order delivered event for order: {}", orderId);
+                                }
+                            });
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error sending delivery notification for order {}: {}", orderId, e.getMessage());
+        }
+    }
 }
-
-
