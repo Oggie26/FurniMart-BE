@@ -105,21 +105,6 @@ public class EmailOrderService {
             context.setVariable("cancelDate",
                     event.getCancelledAt() != null ? event.getCancelledAt() : new java.util.Date());
             context.setVariable("totalAmount", event.getTotalPrice());
-            // Note: OrderCancelledEvent might not have items list if we didn't add it.
-            // If the template requires items, we might need to fetch them or include them
-            // in event.
-            // For now assuming template might work or we accept empty items if not present.
-            // But looking at the event definition I created, I did NOT add items list.
-            // Checking template: it DOES iterate over items.
-            // I should update the event to include items if I want to show them, OR
-            // I can't show items if I don't have them.
-            // Let's check OrderCancelledEvent again. It only has: orderId, email, fullName,
-            // totalPrice, reason, cancelledAt.
-            // The template uses ${items}.
-
-            // SOLUTION: I will temporarily pass null or empty list for items and update
-            // event definition later if needed.
-            // Or better, let's just comment out items for now or pass empty list.
             context.setVariable("items", java.util.Collections.emptyList());
 
             String htmlContent = templateEngine.process("orderCancelled", context);
