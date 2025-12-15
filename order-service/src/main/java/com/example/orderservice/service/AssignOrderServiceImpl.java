@@ -1,5 +1,5 @@
 package com.example.orderservice.service;
-
+import lombok.extern.slf4j.Slf4j;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.Payment;
 import com.example.orderservice.entity.ProcessOrder;
@@ -20,7 +20,6 @@ import com.example.orderservice.response.*;
 import com.example.orderservice.service.inteface.AssignOrderService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import java.util.*;
@@ -295,7 +294,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 rejectedStores.add(order.getLastRejectedStoreId());
             }
 
-            // Prepare order items
             List<Map<String, Object>> orderItems = order.getOrderDetails().stream()
                     .map(detail -> Map.<String, Object>of(
                             "productColorId", detail.getProductColorId(),

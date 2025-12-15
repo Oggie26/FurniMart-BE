@@ -53,15 +53,13 @@ public class OrderServiceImpl implements OrderService {
     private final AuthClient authClient;
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
-                private final KafkaTemplate<String, Object> genericKafkaTemplate;
+    private final KafkaTemplate<String, Object> genericKafkaTemplate;
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
     private final QRCodeService qrCodeService;
     private final CartService cartService;
     private final DeliveryClient deliveryClient;
     private final InventoryClient inventoryClient;
-    private final WarrantyClaimRepository warrantyClaimRepository;
-    @Lazy
     private final WarrantyClaimRepository warrantyClaimRepository;
     @Lazy
     private final WarrantyService warrantyService;
@@ -117,6 +115,7 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_ADDRESS);
         }
 
+
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
 
@@ -124,7 +123,7 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.CART_EMPTY);
         }
 
-        orderRepository.save(order);
+        Order order = buildOrder(cart, addressId);
 
         try {
             UserResponse user = safeGetUser(order.getUserId());
@@ -134,7 +133,6 @@ public class OrderServiceImpl implements OrderService {
             orderRepository.save(order);
             log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
         } catch (Exception e) {
-            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
         }
 
         cart.getItems().clear();
@@ -1129,6 +1127,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    public PageResponse<OrderResponse> getMySales(int page, int size) {
+        return null;
     }
 
 }

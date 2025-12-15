@@ -7,13 +7,11 @@ import com.example.orderservice.repository.*;
 import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.ApiResponse;
-import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
 import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
 import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.PageResponse;
-import com.example.orderservice.service.inteface.OrderService;
 import com.example.orderservice.service.inteface.WarrantyService;
 import com.example.orderservice.feign.UserClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
