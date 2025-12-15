@@ -64,10 +64,6 @@ public class Warranty extends AbstractEntity {
     @Builder.Default
     private Integer maxClaims = 3;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
-    private Order order;
-
     @PrePersist
     public void prePersist() {
         if (warrantyStartDate == null) {
