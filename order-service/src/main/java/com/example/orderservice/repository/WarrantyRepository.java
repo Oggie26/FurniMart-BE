@@ -16,7 +16,8 @@ import java.util.Optional;
 @Repository
 public interface WarrantyRepository extends JpaRepository<Warranty, Long> {
 
-    List<Warranty> findByOrderIdAndIsDeletedFalse(Long orderId);
+    List<Warranty> findByOrderIdAndIsDeletedFalse(Long orderId); // Deprecated: Use findByOrder_IdAndIsDeletedFalse instead
+    List<Warranty> findByOrder_IdAndIsDeletedFalse(Long orderId);
 
     List<Warranty> findByOrderDetailIdAndIsDeletedFalse(Long orderDetailId);
 
@@ -28,7 +29,7 @@ public interface WarrantyRepository extends JpaRepository<Warranty, Long> {
     List<Warranty> findActiveWarrantiesByCustomer(@Param("customerId") String customerId,
             @Param("now") LocalDateTime now);
 
-    @Query("SELECT w FROM Warranty w WHERE w.orderId = :orderId AND w.orderDetailId = :orderDetailId AND w.isDeleted = false")
+    @Query("SELECT w FROM Warranty w WHERE w.order.id = :orderId AND w.orderDetailId = :orderDetailId AND w.isDeleted = false")
     Optional<Warranty> findByOrderIdAndOrderDetailId(@Param("orderId") Long orderId,
             @Param("orderDetailId") Long orderDetailId);
 

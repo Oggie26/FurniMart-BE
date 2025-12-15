@@ -69,7 +69,7 @@ public class WarrantyServiceImpl implements WarrantyService {
                 }
 
                 Warranty warranty = Warranty.builder()
-                        .orderId(orderId)
+                        .order(order)
                         .orderDetailId(orderDetail.getId())
                         .productColorId(orderDetail.getProductColorId())
                         .customerId(order.getUserId())
@@ -116,7 +116,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     @Override
     @Transactional(readOnly = true)
     public List<WarrantyResponse> getWarrantiesByOrder(Long orderId) {
-        List<Warranty> warranties = warrantyRepository.findByOrderIdAndIsDeletedFalse(orderId);
+        List<Warranty> warranties = warrantyRepository.findByOrder_IdAndIsDeletedFalse(orderId);
         return warranties.stream()
                 .map(this::toWarrantyResponse)
                 .collect(Collectors.toList());
@@ -455,7 +455,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     private WarrantyResponse toWarrantyResponse(Warranty warranty) {
         return WarrantyResponse.builder()
                 .id(warranty.getId())
-                .orderId(warranty.getOrderId())
+                .orderId(warranty.getOrder() != null ? warranty.getOrder().getId() : null)
                 .orderDetailId(warranty.getOrderDetailId())
                 .productColorId(warranty.getProductColorId())
                 .customerId(warranty.getCustomerId())
