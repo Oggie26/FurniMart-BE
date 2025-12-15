@@ -4,6 +4,7 @@ import com.example.notificationservice.event.AccountPlaceEvent;
 import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderDeliveredEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
+import com.example.notificationservice.event.DeliveryAssignedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;
@@ -95,6 +96,21 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, OrderDeliveredEvent> orderDeliveredKafkaListenerContainerFactory() {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderDeliveredEvent>();
         factory.setConsumerFactory(orderDeliveredConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, DeliveryAssignedEvent> deliveryAssignedConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(DeliveryAssignedEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, DeliveryAssignedEvent> deliveryAssignedKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, DeliveryAssignedEvent>();
+        factory.setConsumerFactory(deliveryAssignedConsumerFactory());
         return factory;
     }
 }
