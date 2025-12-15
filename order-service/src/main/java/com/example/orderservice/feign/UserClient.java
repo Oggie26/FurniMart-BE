@@ -5,6 +5,7 @@ import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.UserResponse;
 
+import com.example.orderservice.response.WalletResponse;
 import io.swagger.v3.oas.annotations.Operation;
 
 import org.springframework.cloud.openfeign.FeignClient;
