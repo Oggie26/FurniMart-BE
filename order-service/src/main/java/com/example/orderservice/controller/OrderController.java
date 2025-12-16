@@ -1,12 +1,15 @@
 package com.example.orderservice.controller;
 
 import com.example.orderservice.entity.Order;
+import com.example.orderservice.entity.Payment;
 import com.example.orderservice.entity.Voucher;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.PaymentMethod;
+import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.InventoryClient;
+import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.repository.VoucherRepository;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.StaffCreateOrderRequest;
@@ -30,6 +33,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -49,6 +53,7 @@ public class OrderController {
         private final InventoryClient inventoryClient;
         private final ManagerWorkflowService managerWorkflowService;
         private final VoucherRepository voucherRepository;
+        private final PaymentRepository paymentRepository;
 
         @Transactional
         @PostMapping("/checkout")
@@ -94,8 +99,17 @@ public class OrderController {
 
                         double depositAmount = 0;
 
+                        Payment payment = Payment.builder()
+                                .paymentStatus(PaymentStatus.PENDING)
+                                .date(new Date())
+                                .userId(order.getUserId())
+                                .order(order)
+                                .build();
+                        paymentRepository.save(payment);
                         if (paymentMethod == PaymentMethod.VNPAY) {
+                                payment.setPaymentMethod(PaymentMethod.VNPAY);
                                 orderRepository.save(order);
+                                paymentRepository.save(payment);
                                 return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Chuyển hướng sang VNPay")
@@ -105,7 +119,9 @@ public class OrderController {
                         } else {
                                 depositAmount = newTotal * 0.1;
                                 order.setDepositPrice(depositAmount);
+                                payment.setPaymentMethod(PaymentMethod.COD);
                                 orderRepository.save(order);
+                                paymentRepository.save(payment);
                                 return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Đặt hàng thành công")
