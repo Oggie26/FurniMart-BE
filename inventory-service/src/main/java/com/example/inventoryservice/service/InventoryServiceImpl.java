@@ -1432,151 +1432,175 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
-//    @Override
-//    @Transactional
-//    public void rollbackInventoryTicket(Long orderId) {
-//
-//        List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
-//
-//        if (tickets == null || tickets.isEmpty()) {
-//            log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
-//            return;
-//        }
-//
-//        log.info("🔍 Bắt đầu rollback {} ticket(s) cho order {}", tickets.size(), orderId);
-//
-//        for (Inventory ticket : tickets) {
-//
-//            String warehouseId = ticket.getWarehouse() != null ? ticket.getWarehouse().getId() : null;
-//            log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
-//
-//            List<InventoryItem> ticketItems = new ArrayList<>(ticket.getInventoryItems());
-//
-//            for (InventoryItem ticketItem : ticketItems) {
-//
-//                String productColorId = ticketItem.getProductColorId();
-//                int qtyToRelease = ticketItem.getQuantity();
-//
-//                List<InventoryItem> stockItems = inventoryItemRepository
-//                        .findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
-//
-//                int remaining = qtyToRelease;
-//
-//                for (InventoryItem stockItem : stockItems) {
-//                    if (remaining <= 0)
-//                        break;
-//
-//                    int reserved = stockItem.getReservedQuantity();
-//                    if (reserved <= 0)
-//                        continue;
-//
-//                    int release = Math.min(reserved, remaining);
-//
-//                    stockItem.setQuantity(stockItem.getQuantity() + release);
-//                    stockItem.setReservedQuantity(reserved - release);
-//
-//                    remaining -= release;
-//
-//                    log.info("♻ Trả lại {} cho stockItem {} (reserved còn {})",
-//                            release, stockItem.getId(), stockItem.getReservedQuantity());
-//                }
-//
-//                if (!stockItems.isEmpty()) {
-//                    inventoryItemRepository.saveAll(stockItems);
-//                }
-//
-//                if (remaining > 0) {
-//                    log.warn("⚠ Không rollback đủ {} (thiếu {}) cho productColor {}", qtyToRelease, remaining,
-//                            productColorId);
-//                } else {
-//                    log.info("✅ Hoàn trả {} cho productColor {} thành công", qtyToRelease, productColorId);
-//                }
-//            }
-//
-//            for (InventoryItem ti : ticketItems) {
-//                if (ti.getId() != null && inventoryItemRepository.existsById(ti.getId())) {
-//                    inventoryItemRepository.deleteById(ti.getId());
-//                }
-//            }
-//            log.info("🗑 Đã xóa {} ticketItems của ticket {}", ticketItems.size(), ticket.getId());
-//
-//            if (ticket.getReservedWarehouses() != null) {
-//                List<InventoryReservedWarehouse> reservedList = new ArrayList<>(ticket.getReservedWarehouses());
-//                for (InventoryReservedWarehouse rw : reservedList) {
-//                    if (rw.getId() != null && reservedWarehouseRepository.existsById(rw.getId())) {
-//                        reservedWarehouseRepository.deleteById(rw.getId());
-//                    }
-//                }
-//                log.info("🧹 Đã xóa reservedWarehouses của ticket {}", ticket.getId());
-//            }
-//
-//            if (ticket.getId() != null && inventoryRepository.existsById(ticket.getId())) {
-//                inventoryRepository.deleteById(ticket.getId());
-//                log.info("🗑 Đã xóa ticket {}", ticket.getId());
-//            }
-//        }
-//
-//        log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho", orderId, tickets.size());
-//    }
-@Override
-@Transactional
-public void rollbackInventoryTicket(Long orderId) {
+    // @Override
+    // @Transactional
+    // public void rollbackInventoryTicket(Long orderId) {
+    //
+    // List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
+    //
+    // if (tickets == null || tickets.isEmpty()) {
+    // log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
+    // return;
+    // }
+    //
+    // log.info("🔍 Bắt đầu rollback {} ticket(s) cho order {}", tickets.size(),
+    // orderId);
+    //
+    // for (Inventory ticket : tickets) {
+    //
+    // String warehouseId = ticket.getWarehouse() != null ?
+    // ticket.getWarehouse().getId() : null;
+    // log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
+    //
+    // List<InventoryItem> ticketItems = new
+    // ArrayList<>(ticket.getInventoryItems());
+    //
+    // for (InventoryItem ticketItem : ticketItems) {
+    //
+    // String productColorId = ticketItem.getProductColorId();
+    // int qtyToRelease = ticketItem.getQuantity();
+    //
+    // List<InventoryItem> stockItems = inventoryItemRepository
+    // .findFullByProductColorIdAndWarehouseId(productColorId, warehouseId);
+    //
+    // int remaining = qtyToRelease;
+    //
+    // for (InventoryItem stockItem : stockItems) {
+    // if (remaining <= 0)
+    // break;
+    //
+    // int reserved = stockItem.getReservedQuantity();
+    // if (reserved <= 0)
+    // continue;
+    //
+    // int release = Math.min(reserved, remaining);
+    //
+    // stockItem.setQuantity(stockItem.getQuantity() + release);
+    // stockItem.setReservedQuantity(reserved - release);
+    //
+    // remaining -= release;
+    //
+    // log.info("♻ Trả lại {} cho stockItem {} (reserved còn {})",
+    // release, stockItem.getId(), stockItem.getReservedQuantity());
+    // }
+    //
+    // if (!stockItems.isEmpty()) {
+    // inventoryItemRepository.saveAll(stockItems);
+    // }
+    //
+    // if (remaining > 0) {
+    // log.warn("⚠ Không rollback đủ {} (thiếu {}) cho productColor {}",
+    // qtyToRelease, remaining,
+    // productColorId);
+    // } else {
+    // log.info("✅ Hoàn trả {} cho productColor {} thành công", qtyToRelease,
+    // productColorId);
+    // }
+    // }
+    //
+    // for (InventoryItem ti : ticketItems) {
+    // if (ti.getId() != null && inventoryItemRepository.existsById(ti.getId())) {
+    // inventoryItemRepository.deleteById(ti.getId());
+    // }
+    // }
+    // log.info("🗑 Đã xóa {} ticketItems của ticket {}", ticketItems.size(),
+    // ticket.getId());
+    //
+    // if (ticket.getReservedWarehouses() != null) {
+    // List<InventoryReservedWarehouse> reservedList = new
+    // ArrayList<>(ticket.getReservedWarehouses());
+    // for (InventoryReservedWarehouse rw : reservedList) {
+    // if (rw.getId() != null && reservedWarehouseRepository.existsById(rw.getId()))
+    // {
+    // reservedWarehouseRepository.deleteById(rw.getId());
+    // }
+    // }
+    // log.info("🧹 Đã xóa reservedWarehouses của ticket {}", ticket.getId());
+    // }
+    //
+    // if (ticket.getId() != null && inventoryRepository.existsById(ticket.getId()))
+    // {
+    // inventoryRepository.deleteById(ticket.getId());
+    // log.info("🗑 Đã xóa ticket {}", ticket.getId());
+    // }
+    // }
+    //
+    // log.info("🎉 Rollback HOÀN TẤT cho order {} - Đã xử lý {} kho", orderId,
+    // tickets.size());
+    // }
+    @Override
+    @Transactional
+    public void rollbackInventoryTicket(Long orderId) {
 
-    List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
+        List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
 
-    if (tickets == null || tickets.isEmpty()) {
-        log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
-        return;
-    }
-
-    for (Inventory ticket : tickets) {
-
-        if (ticket.getTransferStatus() != TransferStatus.FINISHED) {
-            log.warn("⛔ Skip ticket {} vì status {}",
-                    ticket.getId(), ticket.getTransferStatus());
-            continue;
+        if (tickets == null || tickets.isEmpty()) {
+            log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
+            return;
         }
 
-        String warehouseId = ticket.getWarehouse().getId();
+        log.info("🔍 Bắt đầu rollback {} ticket(s) cho order {}", tickets.size(), orderId);
 
-        for (InventoryItem ticketItem : ticket.getInventoryItems()) {
+        for (Inventory ticket : tickets) {
 
-            String productColorId = ticketItem.getProductColorId();
-            int qtyToRelease = ticketItem.getQuantity();
-
-            List<InventoryItem> stockItems =
-                    inventoryItemRepository.findFullByProductColorIdAndWarehouseId(
-                            productColorId, warehouseId);
-
-            int remaining = qtyToRelease;
-
-            for (InventoryItem stockItem : stockItems) {
-                if (remaining <= 0) break;
-
-                int reserved = stockItem.getReservedQuantity();
-                if (reserved <= 0) continue;
-
-                int release = Math.min(reserved, remaining);
-
-                stockItem.setReservedQuantity(reserved - release);
-
-                remaining -= release;
+            if (ticket.getTransferStatus() != TransferStatus.FINISHED) {
+                log.warn("⛔ Skip ticket {} vì status {}",
+                        ticket.getId(), ticket.getTransferStatus());
+                continue;
             }
 
-            inventoryItemRepository.saveAll(stockItems);
+            String warehouseId = ticket.getWarehouse().getId();
+            log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
 
-            if (remaining > 0) {
-                log.error("❌ Rollback thiếu {} cho productColor {}", remaining, productColorId);
+            for (InventoryItem ticketItem : ticket.getInventoryItems()) {
+
+                String productColorId = ticketItem.getProductColorId();
+                int qtyToRelease = ticketItem.getQuantity();
+
+                List<InventoryItem> stockItems = inventoryItemRepository.findFullByProductColorIdAndWarehouseId(
+                        productColorId, warehouseId);
+
+                int remaining = qtyToRelease;
+
+                for (InventoryItem stockItem : stockItems) {
+                    if (remaining <= 0)
+                        break;
+
+                    int reserved = stockItem.getReservedQuantity();
+                    if (reserved <= 0)
+                        continue;
+
+                    int release = Math.min(reserved, remaining);
+
+                    // ✅ FIX: Tăng lại quantity (trả hàng về available)
+                    stockItem.setQuantity(stockItem.getQuantity() + release);
+                    // ✅ Giảm reservedQuantity
+                    stockItem.setReservedQuantity(reserved - release);
+
+                    remaining -= release;
+
+                    log.info("♻️ Trả lại {} cho stockItem {} (quantity: {} -> {}, reserved: {} -> {})",
+                            release, stockItem.getId(),
+                            stockItem.getQuantity() - release, stockItem.getQuantity(),
+                            reserved, stockItem.getReservedQuantity());
+                }
+
+                inventoryItemRepository.saveAll(stockItems);
+
+                if (remaining > 0) {
+                    log.error("❌ Rollback thiếu {} cho productColor {}", remaining, productColorId);
+                } else {
+                    log.info("✅ Hoàn trả {} cho productColor {} thành công", qtyToRelease, productColorId);
+                }
             }
+
+            // ✅ Xóa ticket – cascade xử lý phần còn lại
+            inventoryRepository.delete(ticket);
+            log.info("🗑 Đã rollback & xóa ticket {}", ticket.getId());
         }
 
-        // ✅ Xóa ticket – cascade xử lý phần còn lại
-        inventoryRepository.delete(ticket);
-        log.info("🗑 Đã rollback & xóa ticket {}", ticket.getId());
+        log.info("🎉 Rollback hoàn tất cho order {} - Đã xử lý {} kho", orderId, tickets.size());
     }
-
-    log.info("🎉 Rollback hoàn tất cho order {}", orderId);
-}
 
     // ----------------- CHECK STOCK -----------------
 
