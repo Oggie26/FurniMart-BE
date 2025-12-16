@@ -47,7 +47,7 @@ public class VNPayService {
     }
 
     // === WEB ===
-    public String createPaymentUrl(Long orderId, Double amount, String ipAddress) throws Exception {
+    public String   createPaymentUrl(Long orderId, Double amount, String ipAddress) throws Exception {
         return buildPaymentUrl(orderId, amount, ipAddress, returnUrl);
     }
 
