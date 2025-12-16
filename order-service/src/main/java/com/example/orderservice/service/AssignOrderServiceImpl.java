@@ -51,6 +51,9 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         AddressResponse address = safeGetAddress(order.getAddressId());
 
+        if (order.getPayment().getPaymentMethod() == null){
+            throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
+        }
         if (address == null) {
             throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
         }
@@ -82,7 +85,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .orderId(order.getId())
                 .storeId(order.getStoreId())
                 .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(order.getPayment().getPaymentMethod())
+                .paymentMethod(order.getPayment().getPaymentMethod() != null ? order.getPayment().getPaymentMethod() : null )
                 .items(orderItems)
                 .build();
 
