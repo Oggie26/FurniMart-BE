@@ -18,6 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -125,18 +126,21 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void clearCart() {
-        String userId = getUserId();
-        Cart cart = cartRepository.findByUserId(userId).orElse(null);
 
-        if (cart == null || cart.getItems() == null || cart.getItems().isEmpty()) {
+        String userId = getUserId();
+
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElse(null);
+
+        if (cart == null) {
             return;
         }
 
         cartItemRepository.deleteAllByCartId(cart.getId());
-        cart.getItems().clear();
+
         cart.setTotalPrice(0.0);
-        cartRepository.save(cart);
     }
+
 
 
     @Override

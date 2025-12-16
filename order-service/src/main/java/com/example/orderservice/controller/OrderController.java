@@ -123,7 +123,6 @@ public class OrderController {
                                 payment.setPaymentMethod(PaymentMethod.COD);
                                 orderRepository.save(order);
                                 paymentRepository.save(payment);
-                                cartService.clearCart();
                                 return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Đặt hàng thành công")
