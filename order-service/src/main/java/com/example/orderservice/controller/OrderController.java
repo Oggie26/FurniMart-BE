@@ -27,6 +27,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -49,6 +50,7 @@ public class OrderController {
         private final ManagerWorkflowService managerWorkflowService;
         private final VoucherRepository voucherRepository;
 
+        @Transactional
         @PostMapping("/checkout")
         public ApiResponse<Void> checkout(
                 @RequestParam Long addressId,
@@ -65,7 +67,6 @@ public class OrderController {
                 for (CartItemResponse item : cartItems) {
                         ApiResponse<Boolean> response = inventoryClient
                                 .hasSufficientGlobalStock(item.getProductColorId(), item.getQuantity());
-
                         if (!response.getData()) {
                                 throw new AppException(ErrorCode.OUT_OF_STOCK);
                         }
@@ -84,7 +85,6 @@ public class OrderController {
                 try {
                         orderResponse = orderService.createOrder(cartId, addressId, paymentMethod, voucherCode);
 
-                        cartService.clearCart();
 
                         order = orderRepository.findByIdAndIsDeletedFalse(orderResponse.getId())
                                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
@@ -106,7 +106,6 @@ public class OrderController {
                                 depositAmount = newTotal * 0.1;
                                 order.setDepositPrice(depositAmount);
                                 orderRepository.save(order);
-
                                 return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Đặt hàng thành công")
