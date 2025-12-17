@@ -119,20 +119,19 @@ public class WarrantyController {
                                 .build();
         }
 
-        @PostMapping("/claims")
-        @Operation(summary = "Create warranty claim")
-        @ResponseStatus(HttpStatus.CREATED)
-        @PreAuthorize("hasRole('CUSTOMER')")
-        public ApiResponse<WarrantyClaimResponse> createWarrantyClaim(
-                        @Valid @RequestBody WarrantyClaimRequest request) {
-                // Verify warranty ownership before creating claim
-                verifyWarrantyOwnership(request.getWarrantyId());
-                return ApiResponse.<WarrantyClaimResponse>builder()
-                                .status(HttpStatus.CREATED.value())
-                                .message("Warranty claim created successfully")
-                                .data(warrantyService.createWarrantyClaim(request))
-                                .build();
-        }
+//        @PostMapping("/claims")
+//        @Operation(summary = "Create warranty claim")
+//        @ResponseStatus(HttpStatus.CREATED)
+//        @PreAuthorize("hasRole('CUSTOMER')")
+//        public ApiResponse<WarrantyClaimResponse> createWarrantyClaim(
+//                        @Valid @RequestBody WarrantyClaimRequest request) {
+//                verifyWarrantyOwnership(request.getWarrantyId());
+//                return ApiResponse.<WarrantyClaimResponse>builder()
+//                                .status(HttpStatus.CREATED.value())
+//                                .message("Warranty claim created successfully")
+//                                .data(warrantyService.createWarrantyClaim(request))
+//                                .build();
+//        }
 
         @GetMapping("/claims/customer/{customerId}")
         @Operation(summary = "Get warranty claims by customer ID")

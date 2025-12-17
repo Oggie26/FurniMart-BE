@@ -1,7 +1,10 @@
 package com.example.notificationservice.listener;
 
 import com.example.notificationservice.enums.ErrorCode;
+import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
+import com.example.notificationservice.event.OrderDeliveredEvent;
+import com.example.notificationservice.event.DeliveryAssignedEvent;
 import com.example.notificationservice.exception.AppException;
 import com.example.notificationservice.feign.OrderClient;
 import com.example.notificationservice.response.ApiResponse;
@@ -20,11 +23,7 @@ public class OrderEventListener {
     private final EmailOrderService orderService;
     private final OrderClient orderClient;
 
-    @KafkaListener(
-            topics = "order-created-topic",
-            groupId = "notification-group",
-            containerFactory = "orderCreatedKafkaListenerContainerFactory"
-    )
+    @KafkaListener(topics = "order-created-topic", groupId = "notification-group", containerFactory = "orderCreatedKafkaListenerContainerFactory")
     public void handleOrderCreated(OrderCreatedEvent event) {
         log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
 
@@ -41,31 +40,13 @@ public class OrderEventListener {
         }
     }
 
-    @KafkaListener(
-            topics = "order-cancel-topic",
-            groupId = "notification-group",
-            containerFactory = "orderCreatedKafkaListenerContainerFactory"
-    )
-    public void handleCancelOrderCreated(OrderCreatedEvent event) {
-        log.info("📦 Received OrderCreatedEvent for order: {}", event.getOrderId());
-        OrderResponse order = getOrderResponse(event.getOrderId());
-
-        if (order == null) {
-            log.warn("Order with ID {} not found. Skipping notification.", event.getOrderId());
-            return;
-        }
+    @KafkaListener(topics = "order-cancelled-topic", groupId = "notification-group", containerFactory = "orderCancelledKafkaListenerContainerFactory")
+    public void handleCancelOrderCreated(OrderCancelledEvent event) {
+        log.info("📦 Received OrderCancelledEvent for order: {}", event.getOrderId());
         orderService.sendMailToCancelOrder(event);
-        for (OrderCreatedEvent.OrderItem item : event.getItems()) {
-            String key = "reserved_stock:" + item.getProductColorId();
-            log.info("Reserved stock key: {}", key);
-        }
     }
 
-    @KafkaListener(
-            topics = "store-assigned-topic",
-            groupId = "notification-group",
-            containerFactory = "orderCreatedKafkaListenerContainerFactory"
-    )
+    @KafkaListener(topics = "store-assigned-topic", groupId = "notification-group", containerFactory = "orderCreatedKafkaListenerContainerFactory")
     public void handleAssignedOrderCreated(OrderCreatedEvent event) {
         OrderResponse order = getOrderResponse(event.getOrderId());
 
@@ -80,6 +61,17 @@ public class OrderEventListener {
         }
     }
 
+    @KafkaListener(topics = "order-delivered-topic", groupId = "notification-group", containerFactory = "orderDeliveredKafkaListenerContainerFactory")
+    public void handleOrderDelivered(OrderDeliveredEvent event) {
+        log.info("📦 Received OrderDeliveredEvent for order: {}", event.getOrderId());
+        orderService.sendMailToOrderDelivered(event);
+    }
+
+    @KafkaListener(topics = "delivery-assigned-topic", groupId = "notification-group", containerFactory = "deliveryAssignedKafkaListenerContainerFactory")
+    public void handleDeliveryAssigned(DeliveryAssignedEvent event) {
+        log.info("🚚 Received DeliveryAssignedEvent for order: {}", event.getOrderId());
+        orderService.sendMailToDeliveryAssigned(event);
+    }
 
     private OrderResponse getOrderResponse(long orderId) {
         try {

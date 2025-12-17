@@ -59,4 +59,5 @@ public interface WalletService {
     
     // Deposit via VNPay payment gateway
     String depositViaVNPay(String walletId, Double amount, String ipAddress);
+
 }

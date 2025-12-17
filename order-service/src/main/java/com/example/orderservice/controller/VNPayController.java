@@ -81,7 +81,6 @@ public class VNPayController {
 
         response.setContentType("text/html; charset=UTF-8");
 
-        // === KIỂM TRA CHỮ KÝ ===
         String secureHash = vnpParams.remove("vnp_SecureHash");
         vnpParams.remove("vnp_SecureHashType");
         String signValue = VNPayUtils.hashAllFields(vnpParams, hashSecret);
@@ -98,7 +97,6 @@ public class VNPayController {
                 userAgent.toLowerCase().contains("iphone") ||
                 userAgent.toLowerCase().contains("mobile"));
 
-        // === XỬ LÝ KẾT QUẢ ===
         if (signValue.equalsIgnoreCase(secureHash)) {
             if ("00".equals(responseCode)) {
                 if (isMobile) {
@@ -151,11 +149,11 @@ public class VNPayController {
 
                     response.getWriter().write(html);
                 } else {
-//                    orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
-//                    Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
-//                            .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
-//                    payment.setPaymentStatus(PaymentStatus.PAID);
-//                    paymentRepository.save(payment);
+                    orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+                    Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
+                            .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+                    payment.setPaymentStatus(PaymentStatus.PAID);
+                    paymentRepository.save(payment);
                     response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
                 }
             } else {

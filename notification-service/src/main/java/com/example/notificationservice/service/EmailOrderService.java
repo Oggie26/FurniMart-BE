@@ -1,6 +1,9 @@
 package com.example.notificationservice.service;
 
+import com.example.notificationservice.event.OrderCancelledEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
+import com.example.notificationservice.event.OrderDeliveredEvent;
+import com.example.notificationservice.event.DeliveryAssignedEvent;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +27,6 @@ public class EmailOrderService {
             String link = "https://furnimart-web.vercel.app/orders/";
             String button = "Xem chi tiết đơn hàng";
 
-
             Context context = new Context();
             context.setVariable("name", event.getFullName());
             context.setVariable("button", button);
@@ -32,7 +34,9 @@ public class EmailOrderService {
             context.setVariable("orderDate", event.getOrderDate());
             context.setVariable("paymentMethod", event.getPaymentMethod());
             context.setVariable("totalAmount", event.getTotalPrice());
-            {log.error(event.getEmail());}
+            {
+                log.error(event.getEmail());
+            }
             context.setVariable("items", event.getItems());
             String htmlContent = templateEngine.process("ordercreatesuccess", context);
             MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -54,7 +58,7 @@ public class EmailOrderService {
         }
     }
 
-    public void sendMailToManagerAcceptedOrder(OrderCreatedEvent event){
+    public void sendMailToManagerAcceptedOrder(OrderCreatedEvent event) {
         try {
             String link = "https://furnimart-web.vercel.app/orders/";
             String button = "Xem chi tiết đơn hàng";
@@ -90,7 +94,7 @@ public class EmailOrderService {
         }
     }
 
-    public void sendMailToCancelOrder(OrderCreatedEvent event) {
+    public void sendMailToCancelOrder(OrderCancelledEvent event) {
         try {
             String link = "https://furnimart-web.vercel.app/orders/" + event.getOrderId();
             String button = "Chi tiết đơn hàng";
@@ -100,12 +104,11 @@ public class EmailOrderService {
             context.setVariable("orderId", event.getOrderId());
             context.setVariable("button", button);
             context.setVariable("link", link);
-            // Có thể thêm ngày hủy nếu event có, hoặc dùng ngày hiện tại
-            context.setVariable("cancelDate", new java.util.Date());
+            context.setVariable("cancelDate",
+                    event.getCancelledAt() != null ? event.getCancelledAt() : new java.util.Date());
             context.setVariable("totalAmount", event.getTotalPrice());
-            context.setVariable("items", event.getItems());
+            context.setVariable("items", java.util.Collections.emptyList());
 
-            // Load template "orderCancelled.html"
             String htmlContent = templateEngine.process("orderCancelled", context);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
@@ -113,7 +116,6 @@ public class EmailOrderService {
 
             helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
             helper.setTo(event.getEmail());
-            // Subject nhấn mạnh việc Hủy
             helper.setSubject("Thông báo hủy đơn hàng #" + event.getOrderId());
             helper.setText(htmlContent, true);
 
@@ -164,6 +166,81 @@ public class EmailOrderService {
             throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
         } catch (Exception ex) {
             log.error("Lỗi xử lý dữ liệu email assigned: {}", ex.getMessage());
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public void sendMailToOrderDelivered(OrderDeliveredEvent event) {
+        try {
+            String link = "https://furnimart-web.vercel.app/orders/" + event.getOrderId();
+            String button = "Xem chi tiết đơn hàng";
+
+            Context context = new Context();
+            context.setVariable("name", event.getFullName());
+            context.setVariable("orderId", event.getOrderId());
+            context.setVariable("button", button);
+            context.setVariable("link", link);
+            context.setVariable("deliveryDate", event.getDeliveryDate());
+            context.setVariable("totalAmount", event.getTotalAmount());
+            context.setVariable("items", event.getItems());
+
+            String htmlContent = templateEngine.process("orderDelivered", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Đơn hàng #" + event.getOrderId() + " đã được giao thành công!");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            log.info("Email thông báo GIAO HÀNG THÀNH CÔNG gửi tới {}", event.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email giao hàng: {}", e.getMessage());
+            throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
+        } catch (Exception ex) {
+            log.error("Lỗi xử lý dữ liệu email giao hàng: {}", ex.getMessage());
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public void sendMailToDeliveryAssigned(DeliveryAssignedEvent event) {
+        try {
+            String link = "https://furnimart-web.vercel.app/orders/" + event.getOrderId();
+            String button = "Theo dõi đơn hàng";
+
+            Context context = new Context();
+            context.setVariable("name", event.getFullName());
+            context.setVariable("orderId", event.getOrderId());
+            context.setVariable("button", button);
+            context.setVariable("link", link);
+            context.setVariable("assignedAt",
+                    event.getAssignedAt() != null ? event.getAssignedAt() : java.time.LocalDateTime.now());
+            context.setVariable("estimatedDeliveryDate", event.getEstimatedDeliveryDate());
+            context.setVariable("totalAmount", event.getTotalAmount());
+            context.setVariable("storeName", event.getStoreName());
+            context.setVariable("items", event.getItems());
+
+            String htmlContent = templateEngine.process("deliveryAssigned", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("namphse173452@fpt.edu.vn", "FurniMart");
+            helper.setTo(event.getEmail());
+            helper.setSubject("Đơn hàng #" + event.getOrderId() + " đã được giao cho nhân viên vận chuyển!");
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            log.info("Email thông báo PHÂN CÔNG GIAO HÀNG gửi tới {}", event.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email phân công giao hàng: {}", e.getMessage());
+            throw new RuntimeException("Lỗi khi gửi email: " + e.getMessage());
+        } catch (Exception ex) {
+            log.error("Lỗi xử lý dữ liệu email phân công giao hàng: {}", ex.getMessage());
             throw new RuntimeException(ex);
         }
     }

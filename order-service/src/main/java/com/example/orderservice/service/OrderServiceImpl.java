@@ -7,6 +7,7 @@ import com.example.orderservice.enums.OrderType;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.enums.PaymentStatus;
 import com.example.orderservice.event.OrderCancelRollbackStockEvent;
+import com.example.orderservice.event.OrderCancelledEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.*;
@@ -52,14 +53,13 @@ public class OrderServiceImpl implements OrderService {
     private final AuthClient authClient;
     private final StoreClient storeClient;
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private final KafkaTemplate<String, Object> genericKafkaTemplate;
     private final AssignOrderServiceImpl assignOrderService;
     private final PDFService pdfService;
     private final QRCodeService qrCodeService;
     private final CartService cartService;
     private final DeliveryClient deliveryClient;
     private final InventoryClient inventoryClient;
-    private final WarrantyClaimRepository warrantyClaimRepository;
-    @Lazy
     private final WarrantyClaimRepository warrantyClaimRepository;
     @Lazy
     private final WarrantyService warrantyService;
@@ -115,6 +115,7 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_ADDRESS);
         }
 
+
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
 
@@ -122,7 +123,7 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.CART_EMPTY);
         }
 
-        orderRepository.save(order);
+        Order order = buildOrder(cart, addressId);
 
         try {
             UserResponse user = safeGetUser(order.getUserId());
@@ -132,7 +133,6 @@ public class OrderServiceImpl implements OrderService {
             orderRepository.save(order);
             log.info("PDF generated for order {}: {}", order.getId(), pdfPath);
         } catch (Exception e) {
-            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
         }
 
         cart.getItems().clear();
@@ -301,10 +301,39 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
+        String referenceId = "ORDER-" + order.getId();
 
         processOrderRepository.save(process);
         orderRepository.save(order);
         inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+        userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
+
+        try {
+            UserResponse user = safeGetUser(order.getUserId());
+            if (user != null) {
+                OrderCancelledEvent event = OrderCancelledEvent.builder()
+                        .orderId(order.getId())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .totalPrice(order.getTotal())
+                        .reason(cancelOrderRequest.getReason())
+                        .cancelledAt(new Date())
+                        .build();
+
+                genericKafkaTemplate.send("order-cancelled-topic", event)
+                        .whenComplete((result, ex) -> {
+                            if (ex != null) {
+                                log.error("Kafka send failed for cancellation: {}", ex.getMessage());
+                            } else {
+                                log.info("Successfully sent order cancelled event for orderId: {}", order.getId());
+                            }
+                        });
+            } else {
+                log.warn("Could not fetch user details for order cancellation email. OrderId: {}", order.getId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to process order cancellation notification: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -1099,6 +1128,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return mapToResponse(orderRepository.save(order));
+    }
+
+    @Override
+    public PageResponse<OrderResponse> getMySales(int page, int size) {
+        return null;
     }
 
 }

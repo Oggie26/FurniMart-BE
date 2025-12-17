@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FurniMart - Đơn hàng đã được giao cho nhân viên vận chuyển</title>
+</head>
+
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f6f8f9;">
+
+    <table role="presentation" style="width: 100%; background-color: #f6f8f9; padding: 30px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation"
+                    style="width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+
+                    <tr>
+                        <td
+                            style="background: linear-gradient(135deg, #235347, #2d6b5d); color: white; padding: 30px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 28px;">FurniMart</h1>
+                            <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">
+                                Nội thất hiện đại cho ngôi nhà của bạn
+                            </p>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding: 40px 35px;">
+                            <h2 style="color: #235347; margin: 0 0 20px 0; text-align: center;">
+                                🚚 Đơn hàng đang trên đường giao đến bạn!
+                            </h2>
+
+                            <p style="color: #4a5568; font-size: 16px; text-align: center; line-height: 1.6;">
+                                Chào <strong th:text="${name}"></strong>,<br>
+                                Đơn hàng <strong>#<span th:text="${orderId}"></span></strong> của bạn đã được giao cho
+                                nhân viên vận chuyển!
+                            </p>
+
+                            <p style="color: #4a5568; font-size: 14px; text-align: center; margin-top: 10px;">
+                                <i>Đơn hàng sẽ sớm được giao đến địa chỉ của bạn.</i>
+                            </p>
+
+                            <div style="background: #f9fafb; border-radius: 10px; padding: 20px; margin: 25px 0;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="color: #718096; padding: 8px 0;">Trạng thái:</td>
+                                        <td
+                                            style="text-align: right; font-weight: bold; color: #235347; padding: 8px 0;">
+                                            Đang vận chuyển
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #718096; padding: 8px 0;">Thời gian phân công:</td>
+                                        <td style="text-align: right; padding: 8px 0;"
+                                            th:text="${#temporals.format(assignedAt, 'dd/MM/yyyy HH:mm')}"></td>
+                                    </tr>
+                                    <tr th:if="${estimatedDeliveryDate != null}">
+                                        <td style="color: #718096; padding: 8px 0;">Dự kiến giao hàng:</td>
+                                        <td style="text-align: right; font-weight: bold; color: #f59e0b; padding: 8px 0;"
+                                            th:text="${#temporals.format(estimatedDeliveryDate, 'dd/MM/yyyy HH:mm')}">
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${storeName != null and storeName != ''}">
+                                        <td style="color: #718096; padding: 8px 0;">Cửa hàng:</td>
+                                        <td style="text-align: right; padding: 8px 0;" th:text="${storeName}"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #718096; padding: 8px 0;">Tổng tiền:</td>
+                                        <td style="text-align: right; font-weight: bold; color: #235347; padding: 8px 0;"
+                                            th:text="${#numbers.formatDecimal(totalAmount, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div style="margin-top: 25px;">
+                                <h3 style="color: #235347; font-size: 18px; margin-bottom: 10px;">Sản phẩm trong đơn
+                                    hàng:</h3>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background-color: #e6fffa;">
+                                            <th style="text-align: left; padding: 10px;">Sản phẩm</th>
+                                            <th style="text-align: right; padding: 10px;">Số lượng</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="item : ${items}" style="border-bottom: 1px solid #edf2f7;">
+                                            <td style="padding: 10px;">
+                                                <span th:text="${item.productName}">Tên sản phẩm</span>
+                                                <br><small th:if="${item.colorName != null and item.colorName != ''}"
+                                                    th:text="${item.colorName}" style="color: #718096;"></small>
+                                            </td>
+                                            <td style="padding: 10px; text-align: right;" th:text="${item.quantity}">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div
+                                style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                                <p style="margin: 0; color: #92400e; font-size: 14px;">
+                                    <strong>💡 Lưu ý:</strong> Vui lòng chuẩn bị sẵn tiền mặt (nếu thanh toán COD) và
+                                    kiểm tra kỹ sản phẩm trước khi nhận hàng.
+                                </p>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 40px;">
+                                <a th:href="${link}" style="display: inline-block; background: linear-gradient(135deg, #235347, #2d6b5d); color: white; text-decoration: none;
+                                      font-weight: 600; font-size: 16px; padding: 14px 35px; border-radius: 50px; box-shadow: 0 6px 20px rgba(35,83,71,0.25);
+                                      transition: all 0.3s ease;">
+                                    [[${button}]]
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="background: #f0fdfa; text-align: center; padding: 25px;">
+                            <p style="margin: 0; font-size: 14px; color: #4a5568;">
+                                Nếu có thắc mắc, vui lòng liên hệ <strong
+                                    style="color: #235347;">FurniMart</strong>.<br>
+                                <span style="font-size: 12px; color: #718096;">Chúng tôi luôn sẵn sàng hỗ trợ
+                                    bạn.</span>
+                            </p>
+                            <p style="margin-top: 10px; font-size: 12px; color: #a0aec0;">
+                                123 Đường Nội Thất, Quận 1, TP.HCM | 1900-FURNI
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

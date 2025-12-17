@@ -52,8 +52,6 @@ services:
     networks:
       - backend
     restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: production
 
   api-gateway:
     build: ./api-gateway
@@ -63,10 +61,8 @@ services:
     networks:
       - backend
     restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: production
-#    ports:
-#      - "8080:8080"
+    #    ports:
+    #      - "8080:8080"
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=furnimart_net"
@@ -107,12 +103,11 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       SPRING_DATASOURCE_URL: jdbc:postgresql://product-db:5432/product_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
 
   product-db:
     image: postgres:16
@@ -141,12 +136,11 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
 
   user-db:
     image: postgres:16
@@ -176,7 +170,6 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY}
       SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING: "true"
 
@@ -193,12 +186,11 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/order_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
 
   order-db:
     image: postgres:16
@@ -227,12 +219,11 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       SPRING_DATASOURCE_URL: jdbc:postgresql://inventory-db:5432/inventory_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_KAFKA_CONSUMER_GROUP_ID: inventory-group
       SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
@@ -264,7 +255,6 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_KAFKA_CONSUMER_GROUP_ID: notification-group
       SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
@@ -281,12 +271,11 @@ services:
       - backend
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: production
       SPRING_DATASOURCE_URL: jdbc:postgresql://delivery-db:5432/delivery_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 123456
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
-      SPRING_JPA_SHOW_SQL: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
 
   delivery-db:
     image: postgres:16

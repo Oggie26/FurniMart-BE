@@ -1,7 +1,10 @@
 package com.example.notificationservice.config;
 
 import com.example.notificationservice.event.AccountPlaceEvent;
+import com.example.notificationservice.event.OrderCancelledEvent;
+import com.example.notificationservice.event.OrderDeliveredEvent;
 import com.example.notificationservice.event.OrderCreatedEvent;
+import com.example.notificationservice.event.DeliveryAssignedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.context.annotation.Bean;
@@ -20,7 +23,7 @@ import java.util.Map;
 public class KafkaConsumerConfig {
 
     private String BOOTSTRAP_SERVERS = "kafka:9092";
-//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+    // private final String BOOTSTRAP_SERVERS = "localhost:9092";
 
     private final String GROUP_ID = "notification-group";
 
@@ -47,8 +50,7 @@ public class KafkaConsumerConfig {
         return new DefaultKafkaConsumerFactory<>(
                 baseConfigs(),
                 new StringDeserializer(),
-                new JsonDeserializer<>(OrderCreatedEvent.class, false)
-        );
+                new JsonDeserializer<>(OrderCreatedEvent.class, false));
     }
 
     @Bean
@@ -67,4 +69,48 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
+    @Bean
+    public ConsumerFactory<String, OrderCancelledEvent> orderCancelledConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(OrderCancelledEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderCancelledEvent> orderCancelledKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderCancelledEvent>();
+        factory.setConsumerFactory(orderCancelledConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, OrderDeliveredEvent> orderDeliveredConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(OrderDeliveredEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, OrderDeliveredEvent> orderDeliveredKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, OrderDeliveredEvent>();
+        factory.setConsumerFactory(orderDeliveredConsumerFactory());
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, DeliveryAssignedEvent> deliveryAssignedConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(
+                baseConfigs(),
+                new StringDeserializer(),
+                new JsonDeserializer<>(DeliveryAssignedEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, DeliveryAssignedEvent> deliveryAssignedKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, DeliveryAssignedEvent>();
+        factory.setConsumerFactory(deliveryAssignedConsumerFactory());
+        return factory;
+    }
 }

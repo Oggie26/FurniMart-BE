@@ -86,6 +86,13 @@ public enum ErrorCode {
     OTP_REQUIRED(1260, "OTP verification required", HttpStatus.BAD_REQUEST),
     OTP_LOCKED(1261, "OTP verification locked due to too many failed attempts. Please try again later", HttpStatus.BAD_REQUEST),
     RATE_LIMIT_EXCEEDED(1262, "Too many requests. Please try again later", HttpStatus.TOO_MANY_REQUESTS),
+    
+    // Withdrawal request related errors
+    WITHDRAWAL_REQUEST_NOT_FOUND(1263, "Withdrawal request not found", HttpStatus.NOT_FOUND),
+    WITHDRAWAL_REQUEST_CODE_EXISTS(1264, "Withdrawal request code already exists", HttpStatus.BAD_REQUEST),
+    WITHDRAWAL_REQUEST_INVALID_STATUS(1265, "Invalid status for this operation", HttpStatus.BAD_REQUEST),
+    WITHDRAWAL_REQUEST_ALREADY_PROCESSED(1266, "Withdrawal request has already been processed", HttpStatus.BAD_REQUEST),
+    WITHDRAWAL_REQUEST_CANNOT_CANCEL(1267, "Cannot cancel withdrawal request in current status", HttpStatus.BAD_REQUEST),
 
     ;
 

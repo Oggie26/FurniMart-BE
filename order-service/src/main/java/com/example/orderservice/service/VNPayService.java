@@ -47,7 +47,7 @@ public class VNPayService {
     }
 
     // === WEB ===
-    public String createPaymentUrl(Long orderId, Double amount, String ipAddress) throws Exception {
+    public String   createPaymentUrl(Long orderId, Double amount, String ipAddress) throws Exception {
         return buildPaymentUrl(orderId, amount, ipAddress, returnUrl);
     }
 
@@ -109,10 +109,8 @@ public class VNPayService {
             hashData.deleteCharAt(hashData.length() - 1);
         }
 
-        // === BƯỚC 2: TẠO vnp_SecureHash ===
         String vnp_SecureHash = hmacSHA512(hashSecret, hashData.toString());
 
-        // === BƯỚC 3: TẠO URL ĐÃ ENCODE ĐÚNG (vnp_SecureHash giữ nguyên) ===
         String paymentUrl = buildSafeQueryUrl(vnpUrl, params, vnp_SecureHash);
 
         // === LOG ===

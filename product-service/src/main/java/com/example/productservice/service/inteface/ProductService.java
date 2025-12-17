@@ -2,6 +2,7 @@ package com.example.productservice.service.inteface;
 
 import com.example.productservice.request.ProductRequest;
 import com.example.productservice.response.PageResponse;
+import com.example.productservice.response.ProductQuickLookupResponse;
 import com.example.productservice.response.ProductResponse;
 
 import java.util.List;
@@ -16,5 +17,5 @@ public interface ProductService {
     List<ProductResponse> getProducts();
     List<ProductResponse> getProductsByCategoryId(Long categoryId);
     PageResponse<ProductResponse> searchProduct(String request, int page, int size);
-    List<com.example.productservice.response.ProductQuickLookupResponse> quickLookup(String keyword);
+    List<ProductQuickLookupResponse> quickLookup(String keyword);
 }

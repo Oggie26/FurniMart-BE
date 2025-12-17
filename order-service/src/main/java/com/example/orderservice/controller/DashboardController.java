@@ -48,8 +48,6 @@ public class DashboardController {
                 .message("Manager dashboard data retrieved successfully")
                 .data(data)
                 .build();
-                .data(data)
-                .build();
     }
 
     @GetMapping("/staff")
