@@ -6,12 +6,14 @@ import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.WalletResponse;
 import com.example.userservice.response.WalletTransactionResponse;
+import com.example.userservice.service.VNPayWithdrawalService;
 import com.example.userservice.service.inteface.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @RestController
@@ -26,9 +29,15 @@ import java.util.List;
 @Tag(name = "Wallet Controller")
 @SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
+@Slf4j
 public class WalletController {
 
+<<<<<<< HEAD
         private final WalletService walletService;
+=======
+    private final WalletService walletService;
+    private final VNPayWithdrawalService vnPayWithdrawalService;
+>>>>>>> 0a1127e4341fd44b46c5b75c42fb9491cfc29f67
 
         @PostMapping
         @Operation(summary = "Create new wallet")
@@ -202,6 +211,7 @@ public class WalletController {
                                 .build();
         }
 
+<<<<<<< HEAD
         @PostMapping("/{walletId}/withdraw")
         @Operation(summary = "Withdraw from wallet")
         @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
@@ -287,4 +297,85 @@ public class WalletController {
                                 .data(walletResponse)
                                 .build();
         }
+=======
+    @PostMapping("/{walletId}/refund-to-vnpay")
+    @Operation(summary = "Refund from wallet to VNPay (integrated with VNPay sandbox refund API)")
+    public ApiResponse<WalletResponse> refundToVNPay(
+            @PathVariable String walletId,
+            @RequestParam Double amount,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Long orderId,
+            @RequestParam(required = false) String vnpTransactionNo,
+            @RequestParam(required = false) String originalTransactionDate,
+            @RequestParam(required = false, defaultValue = "true") Boolean isFullRefund,
+            HttpServletRequest request) {
+        
+        String refundDescription = description != null ? description : 
+            "Refund to VNPay" + (orderId != null ? " for order #" + orderId : "");
+        
+        // Withdraw from wallet (this creates the transaction)
+        WalletResponse walletResponse = walletService.withdraw(
+            walletId, 
+            amount, 
+            refundDescription, 
+            orderId != null ? "ORDER_" + orderId : null
+        );
+        
+        // If VNPay transaction info is provided, call VNPay refund API
+        boolean vnpayRefundSuccess = false;
+        String originalTxnRef = orderId != null ? orderId.toString() : walletId;
+        
+        if (vnpTransactionNo != null && !vnpTransactionNo.isEmpty() 
+            && originalTransactionDate != null && !originalTransactionDate.isEmpty()) {
+            try {
+                // Get client IP address
+                String ipAddress = getClientIpAddress(request);
+                
+                // Call VNPay refund API via VNPayWithdrawalService
+                vnpayRefundSuccess = vnPayWithdrawalService.processRefund(
+                    originalTxnRef,
+                    vnpTransactionNo,
+                    originalTransactionDate,
+                    amount,
+                    isFullRefund != null && isFullRefund,
+                    refundDescription,
+                    ipAddress
+                );
+            } catch (Exception e) {
+                // Log error but don't fail the request (wallet withdrawal already succeeded)
+                log.error("Error calling VNPay refund API: {}", e.getMessage());
+            }
+        }
+        
+        String message = vnpayRefundSuccess 
+            ? "Refund to VNPay processed successfully via VNPay API. Amount: " + amount + " VNĐ"
+            : (vnpTransactionNo != null 
+                ? "Wallet withdrawal completed. VNPay refund API call failed or pending."
+                : "Refund to VNPay processed successfully (wallet withdrawal only). Amount: " + amount + " VNĐ");
+        
+        return ApiResponse.<WalletResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message(message)
+                .data(walletResponse)
+                .build();
+    }
+    
+    /**
+     * Get client IP address from request
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("X-Real-IP");
+        }
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getRemoteAddr();
+        }
+        // Handle multiple IPs in X-Forwarded-For header
+        if (ipAddress != null && ipAddress.contains(",")) {
+            ipAddress = ipAddress.split(",")[0].trim();
+        }
+        return ipAddress != null ? ipAddress : "127.0.0.1";
+    }
+>>>>>>> 0a1127e4341fd44b46c5b75c42fb9491cfc29f67
 }

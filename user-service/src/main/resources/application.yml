@@ -127,4 +127,6 @@ vnpay:
   withdrawalCallbackUrl: http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback
   # VNPay deposit callback URL
   depositCallbackUrl: http://152.53.244.124:8086/api/wallets/deposit-via-vnpay/callback
+  # VNPay refund API URL (sandbox)
+  refundUrl: https://sandbox.vnpayment.vn/merchant_webapi/api/transaction
 
