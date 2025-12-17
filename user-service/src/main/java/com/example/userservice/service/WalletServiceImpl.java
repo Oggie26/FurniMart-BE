@@ -63,7 +63,8 @@ public class WalletServiceImpl implements WalletService {
         User user = userRepository.findByIdAndIsDeletedFalse(request.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if user has a deleted wallet (soft delete) - restore it instead of creating new
+        // Check if user has a deleted wallet (soft delete) - restore it instead of
+        // creating new
         Optional<Wallet> deletedWallet = walletRepository.findByUserId(request.getUserId());
         if (deletedWallet.isPresent() && deletedWallet.get().getIsDeleted()) {
             Wallet wallet = deletedWallet.get();
@@ -123,22 +124,24 @@ public class WalletServiceImpl implements WalletService {
     @Transactional(readOnly = true)
     public WalletResponse getMyWallet() {
         String currentUserId = getCurrentUserId();
-        
+
         // Get current user to check role
         User user = userRepository.findByIdAndIsDeletedFalse(currentUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        
+
         // Only CUSTOMER role can have wallet
         if (user.getAccount() == null || user.getAccount().getRole() != EnumRole.CUSTOMER) {
-            log.warn("User {} with role {} attempted to access wallet. Only CUSTOMER can have wallet.", 
+            log.warn("User {} with role {} attempted to access wallet. Only CUSTOMER can have wallet.",
                     currentUserId, user.getAccount() != null ? user.getAccount().getRole() : "NULL");
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
-        
+
         // Wallet must exist - no lazy creation
         Wallet wallet = walletRepository.findByUserIdAndIsDeletedFalse(currentUserId)
                 .orElseThrow(() -> {
-                    log.error("Wallet not found for CUSTOMER user {}. Wallet should have been created during registration.", currentUserId);
+                    log.error(
+                            "Wallet not found for CUSTOMER user {}. Wallet should have been created during registration.",
+                            currentUserId);
                     return new AppException(ErrorCode.WALLET_NOT_FOUND);
                 });
 
@@ -150,7 +153,7 @@ public class WalletServiceImpl implements WalletService {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-        
+
         String email = authentication.getName(); // This returns the email
         // Find the user by email to get the actual user ID
         User user = userRepository.findByEmailAndIsDeletedFalse(email)
@@ -195,7 +198,7 @@ public class WalletServiceImpl implements WalletService {
 
         // Check if new code already exists (if different from current)
         if (!wallet.getCode().equals(request.getCode()) &&
-            walletRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
+                walletRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
             throw new AppException(ErrorCode.WALLET_CODE_EXISTS);
         }
 
@@ -349,7 +352,8 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    public WalletResponse transfer(String fromWalletId, String toWalletId, Double amount, String description, String referenceId) {
+    public WalletResponse transfer(String fromWalletId, String toWalletId, Double amount, String description,
+            String referenceId) {
         log.info("Transferring {} from wallet {} to wallet {}", amount, fromWalletId, toWalletId);
 
         // Withdraw from source wallet
@@ -380,6 +384,24 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
+    public WalletResponse refund(String walletId, Double amount, String description, String referenceId) {
+        log.info("Refunding {} to wallet ID: {}", amount, walletId);
+
+        WalletTransactionRequest request = WalletTransactionRequest.builder()
+                .code(generateTransactionCode())
+                .amount(BigDecimal.valueOf(amount))
+                .type(WalletTransactionType.REFUND)
+                .description(description)
+                .referenceId(referenceId)
+                .walletId(walletId)
+                .build();
+
+        createTransaction(request);
+
+        return getWalletById(walletId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Double getWalletBalance(String walletId) {
         Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(walletId)
@@ -402,13 +424,14 @@ public class WalletServiceImpl implements WalletService {
         // First verify user exists
         User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(() -> {
-                    log.error("User {} not found when creating wallet. This may be a transaction visibility issue.", userId);
+                    log.error("User {} not found when creating wallet. This may be a transaction visibility issue.",
+                            userId);
                     return new AppException(ErrorCode.USER_NOT_FOUND);
                 });
 
         // Only CUSTOMER role can have wallet
         if (user.getAccount() == null || user.getAccount().getRole() != EnumRole.CUSTOMER) {
-            log.warn("Attempted to create wallet for user {} with role {}. Only CUSTOMER can have wallet.", 
+            log.warn("Attempted to create wallet for user {} with role {}. Only CUSTOMER can have wallet.",
                     userId, user.getAccount() != null ? user.getAccount().getRole() : "NULL");
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
@@ -423,7 +446,7 @@ public class WalletServiceImpl implements WalletService {
         log.info("Wallet successfully created for CUSTOMER user: {}", userId);
         return mapToWalletResponse(wallet, user);
     }
-    
+
     /**
      * Create wallet directly in the same transaction (for register endpoint).
      * This method runs in the same transaction as the caller, no REQUIRES_NEW.
@@ -437,9 +460,9 @@ public class WalletServiceImpl implements WalletService {
         if (user == null) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
-        
+
         if (user.getAccount() == null || user.getAccount().getRole() != EnumRole.CUSTOMER) {
-            log.warn("Attempted to create wallet for user {} with role {}. Only CUSTOMER can have wallet.", 
+            log.warn("Attempted to create wallet for user {} with role {}. Only CUSTOMER can have wallet.",
                     userId, user.getAccount() != null ? user.getAccount().getRole() : "NULL");
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
@@ -470,7 +493,8 @@ public class WalletServiceImpl implements WalletService {
             if (Boolean.TRUE.equals(wallet.getIsDeleted())) {
                 wallet.setIsDeleted(false);
             }
-            // Only generate code if it's truly missing (shouldn't happen for existing wallets)
+            // Only generate code if it's truly missing (shouldn't happen for existing
+            // wallets)
             // Don't regenerate code for existing wallets to maintain consistency
             if (wallet.getCode() == null || wallet.getCode().isBlank()) {
                 log.warn("Wallet {} for user {} has blank code, generating new one", wallet.getId(), userId);
@@ -519,9 +543,9 @@ public class WalletServiceImpl implements WalletService {
 
     private boolean isDebitTransaction(WalletTransactionType type) {
         return type == WalletTransactionType.WITHDRAWAL ||
-               type == WalletTransactionType.TRANSFER_OUT ||
-               type == WalletTransactionType.PAYMENT ||
-               type == WalletTransactionType.PENALTY;
+                type == WalletTransactionType.TRANSFER_OUT ||
+                type == WalletTransactionType.PAYMENT ||
+                type == WalletTransactionType.PENALTY;
     }
 
     private String generateTransactionCode() {
@@ -544,7 +568,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public WalletTransactionResponse withdrawToVNPay(String walletId, Double amount, String bankAccountNumber,
-                                                      String bankName, String accountHolderName, String description) {
+            String bankName, String accountHolderName, String description) {
         log.info("Withdrawing {} VND from wallet {} to VNPay bank account: {}", amount, walletId, bankAccountNumber);
 
         // Get wallet
@@ -577,9 +601,9 @@ public class WalletServiceImpl implements WalletService {
                 .amount(amountDecimal)
                 .status(WalletTransactionStatus.PENDING)
                 .type(WalletTransactionType.WITHDRAWAL)
-                .description(description != null ? description : 
-                    String.format("Rút tiền về VNPay - TK: %s - %s - Chủ TK: %s", 
-                        bankAccountNumber, bankName, accountHolderName))
+                .description(description != null ? description
+                        : String.format("Rút tiền về VNPay - TK: %s - %s - Chủ TK: %s",
+                                bankAccountNumber, bankName, accountHolderName))
                 .referenceId(referenceId)
                 .walletId(walletId)
                 .build();
@@ -600,11 +624,11 @@ public class WalletServiceImpl implements WalletService {
             // Otherwise, it will be queued for processing
             boolean requestAccepted = vnPayWithdrawalService.processWithdrawal(
                     amount, bankAccountNumber, bankName, accountHolderName, referenceId);
-            
+
             if (requestAccepted) {
                 // Request accepted by VNPay (may still be processing)
                 // Status will be updated via webhook callback
-                log.info("VNPay withdrawal request accepted. Transaction {} is processing. Reference: {}", 
+                log.info("VNPay withdrawal request accepted. Transaction {} is processing. Reference: {}",
                         transactionCode, referenceId);
                 // Keep status as PENDING, will be updated by webhook
             } else {
@@ -613,7 +637,7 @@ public class WalletServiceImpl implements WalletService {
                 walletRepository.save(wallet);
                 transaction.setStatus(WalletTransactionStatus.FAILED);
                 transactionRepository.save(transaction);
-                log.error("VNPay withdrawal request rejected. Transaction {} failed, amount refunded to wallet.", 
+                log.error("VNPay withdrawal request rejected. Transaction {} failed, amount refunded to wallet.",
                         transactionCode);
                 throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
             }
@@ -678,8 +702,7 @@ public class WalletServiceImpl implements WalletService {
             String paymentUrl = vnPayDepositService.createDepositPaymentUrl(
                     transaction.getId(), // Dùng transaction ID làm vnp_TxnRef
                     amount,
-                    ipAddress
-            );
+                    ipAddress);
             log.info("VNPay payment URL created for transaction: {}", transactionCode);
             return paymentUrl;
         } catch (Exception e) {
@@ -690,7 +713,6 @@ public class WalletServiceImpl implements WalletService {
             throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
-
 
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction transaction, Wallet wallet) {
         return WalletTransactionResponse.builder()

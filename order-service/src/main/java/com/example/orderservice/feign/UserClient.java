@@ -17,32 +17,35 @@ import org.springframework.web.bind.annotation.RequestParam;
 @FeignClient(name = "user-service", configuration = FeignClientInterceptor.class)
 public interface UserClient {
 
-    @GetMapping("/api/addresses/{id}")
-    ApiResponse<AddressResponse> getAddressById(@PathVariable Long id);
+        @GetMapping("/api/addresses/{id}")
+        ApiResponse<AddressResponse> getAddressById(@PathVariable Long id);
 
-    @GetMapping("/api/users/{id}")
-    ApiResponse<UserResponse> getUserById(@PathVariable String id);
+        @GetMapping("/api/users/{id}")
+        ApiResponse<UserResponse> getUserById(@PathVariable String id);
 
-    @GetMapping("/api/users/account/{accountId}")
-    ApiResponse<UserResponse> getUserByAccountId(@PathVariable String accountId);
+        @GetMapping("/api/users/account/{accountId}")
+        ApiResponse<UserResponse> getUserByAccountId(@PathVariable String accountId);
 
-    @GetMapping("/api/employees/account/{accountId}")
-    ApiResponse<UserResponse> getEmployeeByAccountId(@PathVariable String accountId);
+        @GetMapping("/api/employees/account/{accountId}")
+        ApiResponse<UserResponse> getEmployeeByAccountId(@PathVariable String accountId);
 
-    @GetMapping("/api/users/count")
-    ApiResponse<Long> getTotalUsersCount();
+        @GetMapping("/api/users/count")
+        ApiResponse<Long> getTotalUsersCount();
 
-    @PostMapping("/api/users/{userId}/wallet/refund")
-    ApiResponse<Void> refundToWallet(@PathVariable String userId, @RequestParam Double amount,
-            @RequestParam(required = false) String referenceId);
+        @PostMapping("/api/wallets/{walletId}/refund")
+        ApiResponse<WalletResponse> refundToWallet(
+                        @PathVariable("walletId") String walletId,
+                        @RequestParam("amount") Double amount,
+                        @RequestParam(value = "description", required = false) String description,
+                        @RequestParam(value = "referenceId", required = false) String referenceId);
 
-    @GetMapping("/api/wallets/user/{userId}")
-    ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId);
+        @GetMapping("/api/wallets/user/{userId}")
+        ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId);
 
-    @PostMapping("/api/wallets/{walletId}/refund-to-vnpay")
-    ApiResponse<WalletResponse> refundToVNPay(
-            @PathVariable String walletId,
-            @RequestParam Double amount,
-            @RequestParam(required = false) String description,
-            @RequestParam(required = false) Long orderId);
+        @PostMapping("/api/wallets/{walletId}/refund-to-vnpay")
+        ApiResponse<WalletResponse> refundToVNPay(
+                        @PathVariable String walletId,
+                        @RequestParam Double amount,
+                        @RequestParam(required = false) String description,
+                        @RequestParam(required = false) Long orderId);
 }
