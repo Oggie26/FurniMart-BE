@@ -40,6 +40,9 @@ public class VNPayWithdrawalService {
     @Value("${vnpay.withdrawalCallbackUrl:http://152.53.244.124:8080/api/wallets/withdraw-to-vnpay/callback}")
     private String withdrawalCallbackUrl;
 
+    @Value("${vnpay.refundUrl:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}")
+    private String refundUrl;
+
     private final RestTemplate restTemplate;
 
     /**
@@ -302,6 +305,135 @@ public class VNPayWithdrawalService {
         String calculatedHash = hmacSHA512(hashSecret, hashData);
 
         return calculatedHash.equalsIgnoreCase(receivedHash);
+    }
+
+    /**
+     * Xử lý hoàn tiền (refund) qua VNPay API
+     * 
+     * VNPay Refund API:
+     * - URL: https://sandbox.vnpayment.vn/merchant_webapi/api/transaction
+     * - Command: vnp_Command = "refund"
+     * 
+     * @param originalTxnRef Mã giao dịch thanh toán ban đầu (orderId hoặc vnp_TxnRef)
+     * @param vnpTransactionNo Mã giao dịch VNPay từ thanh toán ban đầu (từ callback)
+     * @param originalTransactionDate Thời gian giao dịch ban đầu (format: yyyyMMddHHmmss)
+     * @param amount Số tiền hoàn (VND)
+     * @param isFullRefund true nếu hoàn toàn phần, false nếu hoàn một phần
+     * @param orderInfo Nội dung hoàn tiền
+     * @param ipAddress IP của server
+     * @return true nếu thành công, false nếu thất bại
+     */
+    @Async
+    public boolean processRefund(String originalTxnRef, String vnpTransactionNo, 
+                                String originalTransactionDate, Double amount,
+                                boolean isFullRefund, String orderInfo, String ipAddress) {
+        log.info("Processing VNPay refund: TxnRef={}, TransactionNo={}, Amount={}, FullRefund={}", 
+                originalTxnRef, vnpTransactionNo, amount, isFullRefund);
+
+        try {
+            return callVNPayRefundAPI(originalTxnRef, vnpTransactionNo, originalTransactionDate,
+                    amount, isFullRefund, orderInfo, ipAddress);
+        } catch (Exception e) {
+            log.error("Error processing VNPay refund for TxnRef {}: {}", originalTxnRef, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Gọi VNPay Refund API
+     */
+    private boolean callVNPayRefundAPI(String originalTxnRef, String vnpTransactionNo,
+                                      String originalTransactionDate, Double amount,
+                                      boolean isFullRefund, String orderInfo, String ipAddress) {
+        try {
+            // Tạo request parameters theo format VNPay
+            Map<String, String> params = new LinkedHashMap<>();
+            long vnpAmount = Math.round(amount * 100); // Convert to cents
+
+            // Generate unique request ID (format: timestamp + random)
+            String vnpRequestId = String.format("%d%04d", 
+                    System.currentTimeMillis() % 1000000000L,
+                    new Random().nextInt(10000));
+
+            params.put("vnp_RequestId", vnpRequestId);
+            params.put("vnp_Version", "2.1.0");
+            params.put("vnp_Command", "refund");
+            params.put("vnp_TmnCode", tmnCode);
+            params.put("vnp_TransactionType", isFullRefund ? "02" : "03"); // 02: toàn phần, 03: một phần
+            params.put("vnp_TxnRef", originalTxnRef);
+            params.put("vnp_Amount", String.valueOf(vnpAmount));
+            params.put("vnp_OrderInfo", orderInfo != null ? orderInfo : "Hoan tien don hang");
+            params.put("vnp_TransactionNo", vnpTransactionNo);
+            params.put("vnp_TransactionDate", originalTransactionDate);
+            params.put("vnp_CreateBy", "SYSTEM");
+            
+            // Thời gian tạo yêu cầu hoàn tiền
+            TimeZone tz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+            sdf.setTimeZone(tz);
+            String vnpCreateDate = sdf.format(new Date());
+            params.put("vnp_CreateDate", vnpCreateDate);
+            params.put("vnp_IpAddr", ipAddress != null ? ipAddress : "127.0.0.1");
+
+            // Tạo hash
+            String hashData = buildHashData(params);
+            String vnp_SecureHash = hmacSHA512(hashSecret, hashData);
+            params.put("vnp_SecureHash", vnp_SecureHash);
+
+            // Gọi VNPay API
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            
+            String requestBody = buildQueryString(params);
+            HttpEntity<String> entity = new HttpEntity<>(requestBody, headers);
+
+            log.info("Calling VNPay refund API: {}", refundUrl);
+            log.info("Request params: {}", params);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    refundUrl,
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+
+            log.info("VNPay refund API response: Status={}, Body={}", 
+                    response.getStatusCode(), response.getBody());
+
+            // Parse response
+            return parseVNPayRefundResponse(response.getBody());
+
+        } catch (Exception e) {
+            log.error("Error calling VNPay refund API: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Parse VNPay refund API response
+     */
+    private boolean parseVNPayRefundResponse(String responseBody) {
+        if (responseBody == null || responseBody.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // VNPay thường trả về JSON hoặc query string
+            // ResponseCode = "00" nghĩa là thành công
+            if (responseBody.contains("vnp_ResponseCode=00") || 
+                responseBody.contains("\"ResponseCode\":\"00\"") ||
+                responseBody.contains("\"vnp_ResponseCode\":\"00\"") ||
+                responseBody.contains("success")) {
+                log.info("VNPay refund successful");
+                return true;
+            }
+            
+            log.warn("VNPay refund response indicates failure: {}", responseBody);
+            return false;
+        } catch (Exception e) {
+            log.error("Error parsing VNPay refund response: {}", e.getMessage());
+            return false;
+        }
     }
 }
 
