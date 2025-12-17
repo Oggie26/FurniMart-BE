@@ -301,9 +301,7 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
         orderRepository.save(order);
-        if (!user.getRole().equals(EnumRole.CUSTOMER)){
-            inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-        }
+        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
         userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
 
         try {

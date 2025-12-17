@@ -20,7 +20,6 @@ public class ProductEventListener {
     public void handleProductUpdate(ProductUpdatedEvent event) {
         log.info("Received product update event for id: {}", event.getProductId());
 
-        // 1. Evict "products" cache by key
         if (event.getProductId() != null) {
             try {
                 Objects.requireNonNull(cacheManager.getCache("products")).evict(event.getProductId());
@@ -30,11 +29,6 @@ public class ProductEventListener {
             }
         }
 
-        // 2. Clear "product-colors" cache
-        // Since we don't map Product -> list of ProductColor IDs here easily,
-        // we clear all to ensure consistency.
-        // (Improving this would require Product Service to send list of affected Color
-        // IDs in the event)
         try {
             Objects.requireNonNull(cacheManager.getCache("product-colors")).clear();
             log.info("Cleared all product-colors cache");
