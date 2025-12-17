@@ -128,11 +128,9 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         if (status == EnumProcessOrder.MANAGER_ACCEPT) {
             handleManagerAccept(order, storeId);
         } else if (status == EnumProcessOrder.MANAGER_REJECT) {
-            // Nếu không truyền storeId → lấy storeId hiện tại của order
             String rejectedStoreId = (storeId != null && !storeId.isBlank())
                     ? storeId
                     : order.getStoreId();
-
             handleManagerReject(order, rejectedStoreId, reason);
         } else {
             throw new AppException(ErrorCode.INVALID_STATUS);

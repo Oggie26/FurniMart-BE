@@ -302,7 +302,7 @@ public class OrderServiceImpl implements OrderService {
         processOrderRepository.save(process);
         orderRepository.save(order);
         inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-        userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
+//        userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
 
         try {
             if (user != null) {
