@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(locations = "classpath:application.yml")
 @DisplayName("Staff Module Integration Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@SuppressWarnings({"rawtypes", "null"})
 public class StaffModuleIntegrationTest {
 
     @Autowired
@@ -65,6 +66,7 @@ public class StaffModuleIntegrationTest {
         // Assert
         if (response.getStatusCode() == HttpStatus.CREATED) {
             assertThat(response.getBody()).isNotNull();
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
             assertThat(data.get("role")).isEqualTo("BRANCH_MANAGER");
         }
@@ -91,6 +93,7 @@ public class StaffModuleIntegrationTest {
         // Assert
         if (response.getStatusCode() == HttpStatus.CREATED) {
             assertThat(response.getBody()).isNotNull();
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
             assertThat(data.get("role")).isEqualTo("DELIVERY");
         }
@@ -117,6 +120,7 @@ public class StaffModuleIntegrationTest {
         // Assert
         if (response.getStatusCode() == HttpStatus.CREATED) {
             assertThat(response.getBody()).isNotNull();
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
             assertThat(data.get("role")).isEqualTo("STAFF");
             

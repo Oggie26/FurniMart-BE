@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("unused")
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryRepository inventoryRepository;
@@ -1531,11 +1532,14 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public void rollbackInventoryTicket(Long orderId) {
+        log.info("🔍 Bắt đầu rollback inventory cho order: {}", orderId);
 
         List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
 
         if (tickets == null || tickets.isEmpty()) {
-            log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
+            log.warn("🛑 Không tìm thấy ticket nào cho order {}. Có thể order chưa được tạo ticket hoặc đã được rollback trước đó. Tiếp tục cancellation.", orderId);
+            // ✅ KHÔNG throw exception - Cho phép order cancellation tiếp tục
+            // Vì có thể order chưa được assign/store accept nên chưa có ticket
             return;
         }
 
@@ -2004,6 +2008,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .build();
     }
 
+    @SuppressWarnings("unused")
     private String extractProductIdFromCode(String code) {
         try {
             if (code != null && code.startsWith("RES-")) {
@@ -2017,6 +2022,7 @@ public class InventoryServiceImpl implements InventoryService {
         return null;
     }
 
+    @SuppressWarnings("unused")
     private int parseQuantityFromNote(String note) {
         try {
             if (note != null && note.contains("Reserved:")) {
@@ -2071,8 +2077,8 @@ public class InventoryServiceImpl implements InventoryService {
         return userId.getData().getId();
     }
 
-    private OrderResponse getOrder(Long orderId) {
-        if (orderId == null || orderId <= 0) {
+    private OrderResponse getOrder(long orderId) {
+        if (orderId <= 0) {
             throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
 

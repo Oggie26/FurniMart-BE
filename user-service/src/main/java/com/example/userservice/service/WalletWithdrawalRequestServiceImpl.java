@@ -2,16 +2,13 @@ package com.example.userservice.service;
 
 import com.example.userservice.entity.User;
 import com.example.userservice.entity.Wallet;
-import com.example.userservice.entity.WalletTransaction;
 import com.example.userservice.entity.WalletWithdrawalRequest;
 import com.example.userservice.enums.ErrorCode;
-import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.WalletStatus;
 import com.example.userservice.enums.WithdrawalRequestStatus;
 import com.example.userservice.exception.AppException;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.WalletRepository;
-import com.example.userservice.repository.WalletTransactionRepository;
 import com.example.userservice.repository.WalletWithdrawalRequestRepository;
 import com.example.userservice.request.WalletWithdrawToVNPayRequest;
 import com.example.userservice.response.WalletTransactionResponse;
@@ -41,7 +38,6 @@ public class WalletWithdrawalRequestServiceImpl implements WalletWithdrawalReque
     private final WalletWithdrawalRequestRepository withdrawalRequestRepository;
     private final WalletRepository walletRepository;
     private final UserRepository userRepository;
-    private final WalletTransactionRepository transactionRepository;
     private final WalletService walletService;
 
     @Override

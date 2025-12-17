@@ -3,7 +3,6 @@ package com.example.remotetests.delivery;
 import com.example.remotetests.config.TestConfig;
 import com.example.remotetests.dto.ApiResponse;
 import com.example.remotetests.util.TestUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(locations = "classpath:application.yml")
 @DisplayName("Delivery Module Integration Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@SuppressWarnings({"rawtypes", "null"})
 public class DeliveryModuleIntegrationTest {
 
     @Autowired
@@ -33,12 +33,10 @@ public class DeliveryModuleIntegrationTest {
     @Autowired
     private TestConfig testConfig;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private String baseUrl;
     private String managerToken;
     private String shipperToken;
     private Long orderId;
-    private Long assignmentId;
 
     @BeforeEach
     void setUp() {
@@ -58,13 +56,15 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.postRequest(
-            restTemplate, url, assignRequest, ApiResponse.class, managerToken
+                restTemplate, url, assignRequest, ApiResponse.class, managerToken
         );
 
         // Assert
         if (response.getStatusCode() == HttpStatus.OK) {
             assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().getMessage()).contains("Phân công giao hàng thành công");
+            if (response.getBody() != null) {
+                assertThat(response.getBody().getMessage()).contains("Phân công giao hàng thành công");
+            }
         }
     }
 
@@ -80,12 +80,15 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.postRequest(
-            restTemplate, url, assignRequest, ApiResponse.class, managerToken
+                restTemplate, url, assignRequest, ApiResponse.class, managerToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody().getMessage()).contains("Shipper not found");
+        assertThat(response.getBody()).isNotNull();
+        if (response.getBody() != null) {
+            assertThat(response.getBody().getMessage()).contains("Shipper not found");
+        }
     }
 
     @Test
@@ -97,13 +100,15 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.putRequest(
-            restTemplate, url, new HashMap<>(), ApiResponse.class, shipperToken
+                restTemplate, url, new HashMap<>(), ApiResponse.class, shipperToken
         );
 
         // Assert
         if (response.getStatusCode() == HttpStatus.OK) {
             assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().getMessage()).contains("Cập nhật trạng thái thành công");
+            if (response.getBody() != null) {
+                assertThat(response.getBody().getMessage()).contains("Cập nhật trạng thái thành công");
+            }
         }
     }
 
@@ -116,7 +121,7 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.putRequest(
-            restTemplate, url, new HashMap<>(), ApiResponse.class, shipperToken
+                restTemplate, url, new HashMap<>(), ApiResponse.class, shipperToken
         );
 
         // Assert
@@ -134,12 +139,15 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.putRequest(
-            restTemplate, url, new HashMap<>(), ApiResponse.class, shipperToken
+                restTemplate, url, new HashMap<>(), ApiResponse.class, shipperToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getMessage()).contains("Chuyển đổi trạng thái không hợp lệ");
+        assertThat(response.getBody()).isNotNull();
+        if (response.getBody() != null) {
+            assertThat(response.getBody().getMessage()).contains("Chuyển đổi trạng thái không hợp lệ");
+        }
     }
 
     @Test
@@ -154,7 +162,7 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.postRequest(
-            restTemplate, url, confirmRequest, ApiResponse.class, shipperToken
+                restTemplate, url, confirmRequest, ApiResponse.class, shipperToken
         );
 
         // Assert
@@ -174,12 +182,14 @@ public class DeliveryModuleIntegrationTest {
 
         // Act
         ResponseEntity<ApiResponse> response = TestUtils.postRequest(
-            restTemplate, url, confirmRequest, ApiResponse.class, shipperToken
+                restTemplate, url, confirmRequest, ApiResponse.class, shipperToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getMessage()).contains("Đơn hàng chưa được giao đến nơi");
+        assertThat(response.getBody()).isNotNull();
+        if (response.getBody() != null) {
+            assertThat(response.getBody().getMessage()).contains("Đơn hàng chưa được giao đến nơi");
+        }
     }
 }
-

@@ -102,16 +102,6 @@ public class AnalyzeService {
                 .collect(Collectors.joining("\n"));
     }
 
-
-    private static final String SYSTEM_PROMPT_OPTIMIZATION = """
-            Bạn là chuyên gia điều phối và tối ưu hóa chuỗi cung ứng FurniMart. 
-            Nhiệm vụ của bạn là phân tích dữ liệu nhu cầu (Demand) và tồn kho (Supply) và 
-            đề xuất hành động chuyển kho tối ưu nhất để cân bằng stock, giảm thiểu hết hàng.
-            LUÔN LUÔN trả về kết quả dưới dạng JSON hợp lệ theo schema yêu cầu.
-            """;
-
-
-
 //    public String generateTransferSuggestion(String targetProductColorId) {
 //        String salesHistory = dataClient.getSalesHistoryForForecasting(targetProductColorId);
 //        String currentInventory = dataClient.getCurrentStockOverview(targetProductColorId);

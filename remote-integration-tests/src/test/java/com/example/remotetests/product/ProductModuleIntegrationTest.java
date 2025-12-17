@@ -3,7 +3,6 @@ package com.example.remotetests.product;
 import com.example.remotetests.config.TestConfig;
 import com.example.remotetests.dto.ApiResponse;
 import com.example.remotetests.util.TestUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,11 +34,8 @@ public class ProductModuleIntegrationTest {
     @Autowired
     private TestConfig testConfig;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private String baseUrl;
     private String adminToken;
-    private Long categoryId;
-    private Long productId;
 
     @BeforeEach
     void setUp() {
@@ -56,14 +52,18 @@ public class ProductModuleIntegrationTest {
         String url = baseUrl + "/api/products";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.getRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.getRequest(
             restTemplate, url, ApiResponse.class, null
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getMessage()).contains("Lấy danh sách sản phẩm thành công");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Lấy danh sách sản phẩm thành công");
+        }
     }
 
     @Test
@@ -74,13 +74,15 @@ public class ProductModuleIntegrationTest {
         String url = baseUrl + "/api/products/search?request=Sofa";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.getRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.getRequest(
             restTemplate, url, ApiResponse.class, null
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
     }
 
     @Test
@@ -91,13 +93,15 @@ public class ProductModuleIntegrationTest {
         String url = baseUrl + "/api/materials";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.getRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.getRequest(
             restTemplate, url, ApiResponse.class, null
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
     }
 
     @Test
@@ -111,7 +115,8 @@ public class ProductModuleIntegrationTest {
         String url = baseUrl + "/api/products";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, productRequest, ApiResponse.class, adminToken
         );
 

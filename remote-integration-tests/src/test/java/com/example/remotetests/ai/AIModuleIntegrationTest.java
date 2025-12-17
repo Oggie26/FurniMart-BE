@@ -55,12 +55,17 @@ public class AIModuleIntegrationTest {
             registerRequest, ApiResponse.class, null);
 
         Map<String, Object> loginRequest = TestUtils.createLoginRequest(testEmail, testPassword);
-        ResponseEntity<ApiResponse> loginResponse = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> loginResponse = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, userServiceUrl + "/api/auth/login", loginRequest, ApiResponse.class, null
         );
         
-        Map<String, Object> loginData = objectMapper.convertValue(loginResponse.getBody().getData(), Map.class);
-        accessToken = (String) loginData.get("accessToken");
+        ApiResponse<?> loginBody = loginResponse.getBody();
+        if (loginBody != null && loginBody.getData() != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> loginData = objectMapper.convertValue(loginBody.getData(), Map.class);
+            accessToken = (String) loginData.get("accessToken");
+        }
     }
 
     @Test
@@ -73,13 +78,15 @@ public class AIModuleIntegrationTest {
         String url = aiServiceUrl + "/api/ai/chatbox/chat";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, chatRequest, ApiResponse.class, null
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
     }
 
     @Test
@@ -92,13 +99,18 @@ public class AIModuleIntegrationTest {
         String url = aiServiceUrl + "/api/ai/chatbox/chat";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, chatRequest, ApiResponse.class, null
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getMessage()).contains("Message cannot be empty");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Message cannot be empty");
+        }
     }
 
     @Test
@@ -112,13 +124,15 @@ public class AIModuleIntegrationTest {
         String url = userServiceUrl + "/api/chat/send";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, messageRequest, ApiResponse.class, accessToken
         );
 
         // Assert
         if (response.getStatusCode() == HttpStatus.OK) {
-            assertThat(response.getBody()).isNotNull();
+            ApiResponse<?> responseBody = response.getBody();
+            assertThat(responseBody).isNotNull();
         }
     }
 
@@ -131,13 +145,15 @@ public class AIModuleIntegrationTest {
         String url = userServiceUrl + "/api/chat/history/" + receiverId;
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.getRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.getRequest(
             restTemplate, url, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
     }
 
     @Test
@@ -148,13 +164,15 @@ public class AIModuleIntegrationTest {
         String url = userServiceUrl + "/api/blogs";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.getRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.getRequest(
             restTemplate, url, ApiResponse.class, null
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
     }
 
     @Test
@@ -167,7 +185,8 @@ public class AIModuleIntegrationTest {
         String url = userServiceUrl + "/api/blogs";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, blogRequest, ApiResponse.class, accessToken
         );
 

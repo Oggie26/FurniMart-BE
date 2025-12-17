@@ -1,0 +1,52 @@
+--- a/delivery-service/src/main/java/com/example/deliveryservice/service/DeliveryConfirmationServiceImpl.java
++++ b/delivery-service/src/main/java/com/example/deliveryservice/service/DeliveryConfirmationServiceImpl.java
+@@ -1,6 +1,7 @@
+ package com.example.deliveryservice.service;
+ 
+ import com.example.deliveryservice.entity.DeliveryConfirmation;
++import org.springframework.dao.DataIntegrityViolationException;
+ 
+ // ... existing imports ...
+ 
+@@ -52,6 +53,14 @@
+     @Transactional
+     public DeliveryConfirmationResponse createDeliveryConfirmation(DeliveryConfirmationRequest request) {
+         log.info("Creating delivery confirmation for order: {}", request.getOrderId());
++
++        // ✅ KIỂM TRA: Đã có delivery confirmation chưa? (Idempotency)
++        Optional<DeliveryConfirmation> existingConfirmation = 
++            deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId());
++        
++        if (existingConfirmation.isPresent()) {
++            log.warn("Delivery confirmation already exists for order: {}. Returning existing confirmation.", 
++                     request.getOrderId());
++            return toDeliveryConfirmationResponse(existingConfirmation.get());
++        }
+ 
+         var orderResponse = orderClient.getOrderById(request.getOrderId());
+ 
+@@ -84,7 +93,20 @@
+                 .status(DeliveryConfirmationStatus.DELIVERED)
+                 .build();
+ 
+-        DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
++        DeliveryConfirmation savedConfirmation;
++        try {
++            savedConfirmation = deliveryConfirmationRepository.save(confirmation);
++        } catch (DataIntegrityViolationException e) {
++            // ✅ Xử lý duplicate QR code
++            if (e.getMessage() != null && e.getMessage().contains("qr_code")) {
++                log.warn("Duplicate QR code detected for order: {}. Fetching existing confirmation.", 
++                         request.getOrderId());
++                existingConfirmation = 
++                    deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId());
++                if (existingConfirmation.isPresent()) {
++                    return toDeliveryConfirmationResponse(existingConfirmation.get());
++                }
++            }
++            throw e;
++        }
++
+         DeliveryAssignment deliveryAssignment = deliveryAssignmentRepository
+                 .findByOrderIdAndIsDeletedFalse(request.getOrderId())
+                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));

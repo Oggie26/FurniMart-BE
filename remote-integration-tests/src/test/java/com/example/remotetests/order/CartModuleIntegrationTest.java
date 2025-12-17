@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,12 +54,17 @@ public class CartModuleIntegrationTest {
             registerRequest, ApiResponse.class, null);
 
         Map<String, Object> loginRequest = TestUtils.createLoginRequest(testEmail, testPassword);
-        ResponseEntity<ApiResponse> loginResponse = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> loginResponse = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, userServiceUrl + "/api/auth/login", loginRequest, ApiResponse.class, null
         );
         
-        Map<String, Object> loginData = objectMapper.convertValue(loginResponse.getBody().getData(), Map.class);
-        accessToken = (String) loginData.get("accessToken");
+        ApiResponse<?> loginBody = loginResponse.getBody();
+        if (loginBody != null && loginBody.getData() != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> loginData = objectMapper.convertValue(loginBody.getData(), Map.class);
+            accessToken = (String) loginData.get("accessToken");
+        }
         
         // Note: productColorId should be obtained from product service
         productColorId = "PC001"; // Mock ID
@@ -74,14 +78,18 @@ public class CartModuleIntegrationTest {
         String url = baseUrl + "/api/carts/add?productColorId=" + productColorId + "&quantity=2";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, null, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getMessage()).contains("Thêm sản phẩm vào giỏ hàng thành công");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Thêm sản phẩm vào giỏ hàng thành công");
+        }
     }
 
     @Test
@@ -92,7 +100,8 @@ public class CartModuleIntegrationTest {
         String url = baseUrl + "/api/carts/add?productColorId=" + productColorId + "&quantity=0";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, url, null, ApiResponse.class, accessToken
         );
 
@@ -111,14 +120,18 @@ public class CartModuleIntegrationTest {
         String getUrl = baseUrl + "/api/carts";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.getRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.getRequest(
             restTemplate, getUrl, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getMessage()).contains("Lấy giỏ hàng thành công");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Lấy giỏ hàng thành công");
+        }
     }
 
     @Test
@@ -132,13 +145,18 @@ public class CartModuleIntegrationTest {
         String updateUrl = baseUrl + "/api/carts/update?productColorId=" + productColorId + "&quantity=5";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.patchRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.patchRequest(
             restTemplate, updateUrl, null, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getMessage()).contains("Cập nhật số lượng sản phẩm thành công");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Cập nhật số lượng sản phẩm thành công");
+        }
     }
 
     @Test
@@ -152,13 +170,18 @@ public class CartModuleIntegrationTest {
         String removeUrl = baseUrl + "/api/carts/remove/" + productColorId;
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.deleteRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.deleteRequest(
             restTemplate, removeUrl, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getMessage()).contains("Xoá sản phẩm khỏi giỏ hàng thành công");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Xoá sản phẩm khỏi giỏ hàng thành công");
+        }
     }
 
     @Test
@@ -172,13 +195,18 @@ public class CartModuleIntegrationTest {
         String clearUrl = baseUrl + "/api/carts";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.deleteRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.deleteRequest(
             restTemplate, clearUrl, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getMessage()).contains("Dọn giỏ hàng thành công");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Dọn giỏ hàng thành công");
+        }
     }
 }
 

@@ -1,9 +1,5 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.entity.User;
-import com.example.userservice.enums.ErrorCode;
-import com.example.userservice.exception.AppException;
-import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.WalletWithdrawToVNPayRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.PageResponse;
@@ -19,8 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +27,6 @@ import java.util.List;
 public class WalletWithdrawalRequestController {
 
     private final WalletWithdrawalRequestService withdrawalRequestService;
-    private final UserRepository userRepository;
 
     /**
      * User: Tạo yêu cầu rút tiền về VNPay (tự động xử lý, không cần admin duyệt)
@@ -157,16 +150,4 @@ public class WalletWithdrawalRequestController {
 
     // Note: Approve/Reject endpoints removed - withdrawals are now automatically processed
     // Admin can still view all withdrawal requests for monitoring purposes
-
-    private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-        
-        String email = authentication.getName();
-        User user = userRepository.findByEmailAndIsDeletedFalse(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return user.getId();
-    }
 }

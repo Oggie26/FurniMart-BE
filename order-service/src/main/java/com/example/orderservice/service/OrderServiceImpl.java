@@ -2,7 +2,6 @@ package com.example.orderservice.service;
 
 import com.example.orderservice.entity.*;
 import com.example.orderservice.enums.*;
-import com.example.orderservice.event.OrderCancelRollbackStockEvent;
 import com.example.orderservice.event.OrderCancelledEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
@@ -11,6 +10,7 @@ import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.response.*;
+import com.example.orderservice.response.WalletResponse;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
 import com.example.orderservice.service.inteface.WarrantyService;
@@ -59,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
     private final WarrantyClaimRepository warrantyClaimRepository;
     @Lazy
     private final WarrantyService warrantyService;
+    @SuppressWarnings("unused")
     private final VoucherRepository voucherRepository;
 
     @Override
@@ -300,23 +301,35 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
         orderRepository.save(order);
-        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-        ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
-        if (wallet != null && wallet.getData() != null) {
-            Double amountToRefund = 0.0;
-            if (PaymentMethod.VNPAY.equals(order.getPayment().getPaymentMethod())) {
-                amountToRefund = order.getTotal();
-            } else {
-                amountToRefund = order.getDepositPrice();
-            }
+        
+        // ✅ Xử lý rollback inventory với try-catch (graceful handling)
+        try {
+            inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+            log.info("✅ Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
+        } catch (Exception e) {
+            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.", 
+                     cancelOrderRequest.getOrderId(), e.getMessage());
+            // Không throw - Cho phép cancellation tiếp tục
+        }
+        
+        if (user != null) {
+            ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
+            if (wallet != null && wallet.getData() != null) {
+                Double amountToRefund = 0.0;
+                if (PaymentMethod.VNPAY.equals(order.getPayment().getPaymentMethod())) {
+                    amountToRefund = order.getTotal();
+                } else {
+                    amountToRefund = order.getDepositPrice();
+                }
 
-            if (amountToRefund != null && amountToRefund > 0) {
-                userClient.refundToWallet(
-                        wallet.getData().getId(),
-                        amountToRefund,
-                        cancelOrderRequest.getReason(),
-                        String.valueOf(cancelOrderRequest.getOrderId()),
-                        "FURNIMART_INTERNAL_KEY");
+                if (amountToRefund != null && amountToRefund > 0) {
+                    userClient.refundToWallet(
+                            wallet.getData().getId(),
+                            amountToRefund,
+                            cancelOrderRequest.getReason(),
+                            String.valueOf(cancelOrderRequest.getOrderId()),
+                            "FURNIMART_INTERNAL_KEY");
+                }
             }
         }
 

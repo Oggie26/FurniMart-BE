@@ -4,10 +4,7 @@ import com.example.orderservice.config.FeignClientInterceptor;
 import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.UserResponse;
-
 import com.example.orderservice.response.WalletResponse;
-import io.swagger.v3.oas.annotations.Operation;
-
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

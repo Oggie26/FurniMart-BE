@@ -1,6 +1,5 @@
 package com.example.aiservice.service;
 
-import jakarta.inject.Qualifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;

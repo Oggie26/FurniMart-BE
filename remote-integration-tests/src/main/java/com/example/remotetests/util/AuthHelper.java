@@ -33,14 +33,19 @@ public class AuthHelper {
         String loginUrl = baseUrl + "/api/auth/login";
         
         try {
-            ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+            @SuppressWarnings("unchecked")
+            ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
                 restTemplate, loginUrl, loginRequest, ApiResponse.class, null
             );
             
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
-                if (data != null && data.containsKey("accessToken")) {
-                    return (String) data.get("accessToken");
+            if (response.getStatusCode().is2xxSuccessful()) {
+                ApiResponse<?> responseBody = response.getBody();
+                if (responseBody != null && responseBody.getData() != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> data = objectMapper.convertValue(responseBody.getData(), Map.class);
+                    if (data != null && data.containsKey("accessToken")) {
+                        return (String) data.get("accessToken");
+                    }
                 }
             }
         } catch (Exception e) {
@@ -59,14 +64,19 @@ public class AuthHelper {
         String loginUrl = baseUrl + "/api/auth/login";
         
         try {
-            ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+            @SuppressWarnings("unchecked")
+            ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
                 restTemplate, loginUrl, loginRequest, ApiResponse.class, null
             );
             
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
-                if (data != null && data.containsKey("accessToken")) {
-                    return (String) data.get("accessToken");
+            if (response.getStatusCode().is2xxSuccessful()) {
+                ApiResponse<?> responseBody = response.getBody();
+                if (responseBody != null && responseBody.getData() != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> data = objectMapper.convertValue(responseBody.getData(), Map.class);
+                    if (data != null && data.containsKey("accessToken")) {
+                        return (String) data.get("accessToken");
+                    }
                 }
             }
         } catch (Exception e) {
