@@ -1,9 +1,12 @@
 package com.example.userservice.controller;
 
 import com.example.userservice.entity.WalletTransaction;
+import com.example.userservice.entity.WalletWithdrawalRequest;
 import com.example.userservice.enums.WalletTransactionStatus;
+import com.example.userservice.enums.WithdrawalRequestStatus;
 import com.example.userservice.repository.WalletRepository;
 import com.example.userservice.repository.WalletTransactionRepository;
+import com.example.userservice.repository.WalletWithdrawalRequestRepository;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.service.VNPayWithdrawalService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ public class WalletWithdrawalController {
     private final VNPayWithdrawalService vnPayWithdrawalService;
     private final WalletTransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
+    private final WalletWithdrawalRequestRepository withdrawalRequestRepository;
 
     /**
      * Webhook callback từ VNPay để cập nhật trạng thái withdrawal
@@ -72,6 +76,9 @@ public class WalletWithdrawalController {
                 log.info("Withdrawal completed successfully. Transaction: {}, Reference: {}", 
                         transaction.getCode(), referenceId);
                 
+                // Update withdrawal request status if exists
+                updateWithdrawalRequestStatus(referenceId, WithdrawalRequestStatus.COMPLETED);
+                
                 return ApiResponse.<String>builder()
                         .status(HttpStatus.OK.value())
                         .message("Withdrawal processed successfully")
@@ -95,6 +102,9 @@ public class WalletWithdrawalController {
                 log.error("Withdrawal failed. Transaction: {}, Reference: {}, ResponseCode: {}", 
                         transaction.getCode(), referenceId, responseCode);
 
+                // Update withdrawal request status if exists
+                updateWithdrawalRequestStatus(referenceId, WithdrawalRequestStatus.FAILED);
+
                 return ApiResponse.<String>builder()
                         .status(HttpStatus.OK.value())
                         .message("Withdrawal failed")
@@ -117,6 +127,29 @@ public class WalletWithdrawalController {
     @GetMapping("/callback")
     public ApiResponse<String> handleWithdrawalCallbackGet(@RequestParam Map<String, String> params) {
         return handleWithdrawalCallback(params);
+    }
+
+    /**
+     * Update withdrawal request status based on transaction reference
+     */
+    private void updateWithdrawalRequestStatus(String referenceId, WithdrawalRequestStatus status) {
+        try {
+            WalletWithdrawalRequest withdrawalRequest = withdrawalRequestRepository
+                    .findAll()
+                    .stream()
+                    .filter(wr -> !wr.getIsDeleted() && referenceId.equals(wr.getReferenceId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (withdrawalRequest != null) {
+                withdrawalRequest.setStatus(status);
+                withdrawalRequestRepository.save(withdrawalRequest);
+                log.info("Updated withdrawal request {} status to {}", withdrawalRequest.getCode(), status);
+            }
+        } catch (Exception e) {
+            log.error("Error updating withdrawal request status: {}", e.getMessage(), e);
+            // Don't throw exception - callback should still succeed
+        }
     }
 }
 

@@ -168,6 +168,10 @@ public class WarrantyServiceImpl implements WarrantyService {
 
         WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
 
+        // Gán claimId vào đơn hàng để OrderResponse.warrantyClaimId không còn null
+        originalOrder.setWarrantyClaimId(savedClaim.getId());
+        orderRepository.save(originalOrder);
+
         for (com.example.orderservice.request.WarrantyClaimItemRequest item : request.getItems()) {
             Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(item.getWarrantyId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
