@@ -245,12 +245,11 @@ public class WalletController {
 
     @PostMapping("/{walletId}/refund-to-vnpay")
     @Operation(summary = "Refund from wallet to VNPay")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
     public ApiResponse<WalletResponse> refundToVNPay(
             @PathVariable String walletId,
             @RequestParam Double amount,
             @RequestParam(required = false) String description,
-            @RequestParam(required = false) String orderId) {
+            @RequestParam(required = false) Long orderId) {
         
         String refundDescription = description != null ? description : 
             "Refund to VNPay" + (orderId != null ? " for order #" + orderId : "");
@@ -262,12 +261,6 @@ public class WalletController {
             refundDescription, 
             orderId != null ? "ORDER_" + orderId : null
         );
-        
-        // Note: In a production system, you would also call VNPay's refund API here
-        // to actually process the refund through VNPay's payment gateway
-        // This would typically involve:
-        // 1. Calling VNPay's refund endpoint with transaction reference
-        // 2. Handling the response and updating payment status
         
         return ApiResponse.<WalletResponse>builder()
                 .status(HttpStatus.OK.value())

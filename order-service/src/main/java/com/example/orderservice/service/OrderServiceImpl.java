@@ -296,13 +296,17 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
-        String referenceId = "ORDER-" + order.getId();
         UserResponse user = safeGetUser(order.getUserId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);
         inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-//        userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
+        ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
+        if (order.getPayment().getPaymentMethod().equals(PaymentMethod.VNPAY)){
+            userClient.refundToVNPay(wallet.getData().getId(),order.getTotal(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+        }else{
+            userClient.refundToVNPay(wallet.getData().getId(),order.getDepositPrice(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+        }
 
         try {
             if (user != null) {
