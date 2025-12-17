@@ -112,7 +112,6 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_ADDRESS);
         }
 
-
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
 
@@ -315,10 +314,22 @@ public class OrderServiceImpl implements OrderService {
         
         if (user != null) {
             ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
-            if (order.getPayment().getPaymentMethod().equals(PaymentMethod.VNPAY)){
-                userClient.refundToVNPay(wallet.getData().getId(),order.getTotal(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
-            }else{
-                userClient.refundToVNPay(wallet.getData().getId(),order.getDepositPrice(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+            if (wallet != null && wallet.getData() != null) {
+                Double amountToRefund = 0.0;
+                if (PaymentMethod.VNPAY.equals(order.getPayment().getPaymentMethod())) {
+                    amountToRefund = order.getTotal();
+                } else {
+                    amountToRefund = order.getDepositPrice();
+                }
+
+                if (amountToRefund != null && amountToRefund > 0) {
+                    userClient.refundToWallet(
+                            wallet.getData().getId(),
+                            amountToRefund,
+                            cancelOrderRequest.getReason(),
+                            String.valueOf(cancelOrderRequest.getOrderId()),
+                            "FURNIMART_INTERNAL_KEY");
+                }
             }
         }
 
@@ -1114,7 +1125,17 @@ public class OrderServiceImpl implements OrderService {
 
         if (refundAmount != null && refundAmount > 0) {
             try {
-                userClient.refundToWallet(order.getUserId(), refundAmount, referenceId);
+                ApiResponse<WalletResponse> walletResponse = userClient.getWalletByUserId(order.getUserId());
+                if (walletResponse == null || walletResponse.getData() == null) {
+                    throw new RuntimeException("Wallet not found for user " + order.getUserId());
+                }
+
+                userClient.refundToWallet(
+                        walletResponse.getData().getId(),
+                        refundAmount,
+                        "Refund for order return " + orderId,
+                        referenceId,
+                        "FURNIMART_INTERNAL_KEY");
                 // mark payment as refunded
                 payment.setPaymentStatus(PaymentStatus.REFUNDED);
                 paymentRepository.save(payment);
@@ -1125,7 +1146,9 @@ public class OrderServiceImpl implements OrderService {
                 // keep REFUNDING to indicate pending manual intervention
                 payment.setPaymentStatus(PaymentStatus.REFUNDING);
                 paymentRepository.save(payment);
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                // Use generic exception or specific one if available, avoiding strict
+                // dependency on ErrorCode if unsure
+                throw new RuntimeException("Refund failed: " + e.getMessage());
             }
         } else {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);

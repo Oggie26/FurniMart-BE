@@ -5,6 +5,11 @@ spring:
   application:
     name: ai-service
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   ai:
     openai:
       base-url: https://generativelanguage.googleapis.com/v1beta/openai/
