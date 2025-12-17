@@ -40,7 +40,6 @@ public interface UserClient {
     ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId);
 
     @PostMapping("/api/wallets/{walletId}/refund-to-vnpay")
-    @Operation(summary = "Refund from wallet to VNPay")
     ApiResponse<WalletResponse> refundToVNPay(
             @PathVariable String walletId,
             @RequestParam Double amount,
