@@ -18,7 +18,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +43,6 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final OrderDetailRepository orderDetailRepository;
     private final ObjectMapper objectMapper;
     private final UserClient userClient;
-    private final ApplicationContext applicationContext;
 
     @Override
     @Transactional

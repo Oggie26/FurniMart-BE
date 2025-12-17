@@ -2,7 +2,6 @@ package com.example.remotetests.base;
 
 import com.example.remotetests.config.TestConfig;
 import com.example.remotetests.util.AuthHelper;
-import com.example.remotetests.util.TestUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(locations = "classpath:application.yml")
 @DisplayName("Employee Module Integration Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@SuppressWarnings({"rawtypes", "null"})
 public class EmployeeModuleIntegrationTest {
 
     @Autowired
@@ -66,6 +67,7 @@ public class EmployeeModuleIntegrationTest {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getMessage()).contains("Employee created successfully");
             
+            @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
             if (data != null && data.containsKey("id")) {
                 employeeId = Long.valueOf(data.get("id").toString());
@@ -90,6 +92,7 @@ public class EmployeeModuleIntegrationTest {
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getMessage()).contains("Staff not found");
     }
 
@@ -115,6 +118,7 @@ public class EmployeeModuleIntegrationTest {
 
             // Assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getMessage()).contains("Employee profile already exists");
         }
     }

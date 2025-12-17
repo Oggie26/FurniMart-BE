@@ -28,8 +28,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -52,6 +54,16 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     @Transactional
     public DeliveryConfirmationResponse createDeliveryConfirmation(DeliveryConfirmationRequest request) {
         log.info("Creating delivery confirmation for order: {}", request.getOrderId());
+
+        // ✅ KIỂM TRA: Đã có delivery confirmation chưa? (Idempotency)
+        Optional<DeliveryConfirmation> existingConfirmation = 
+            deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId());
+        
+        if (existingConfirmation.isPresent()) {
+            log.warn("Delivery confirmation already exists for order: {}. Returning existing confirmation.", 
+                     request.getOrderId());
+            return toDeliveryConfirmationResponse(existingConfirmation.get());
+        }
 
         var orderResponse = orderClient.getOrderById(request.getOrderId());
 
@@ -91,7 +103,23 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 .status(DeliveryConfirmationStatus.DELIVERED)
                 .build();
 
-        DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
+        DeliveryConfirmation savedConfirmation;
+        try {
+            savedConfirmation = deliveryConfirmationRepository.save(confirmation);
+        } catch (DataIntegrityViolationException e) {
+            // ✅ Xử lý duplicate QR code
+            if (e.getMessage() != null && e.getMessage().contains("qr_code")) {
+                log.warn("Duplicate QR code detected for order: {}. Fetching existing confirmation.", 
+                         request.getOrderId());
+                existingConfirmation = 
+                    deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId());
+                if (existingConfirmation.isPresent()) {
+                    return toDeliveryConfirmationResponse(existingConfirmation.get());
+                }
+            }
+            throw e;
+        }
+        
         DeliveryAssignment deliveryAssignment = deliveryAssignmentRepository
                 .findByOrderIdAndIsDeletedFalse(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
@@ -272,9 +300,11 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     private void sendDeliveryNotification(Long orderId, String deliveryStaffId, Date deliveryDate) {
         try {
             var orderRes = orderClient.getOrderById(orderId);
-            if (orderRes != null && orderRes.getBody() != null && orderRes.getBody().getData() != null) {
-                var order = orderRes.getBody().getData();
-                if (order.getUser() != null) {
+            if (orderRes != null) {
+                var responseBody = orderRes.getBody();
+                if (responseBody != null && responseBody.getData() != null) {
+                    var order = responseBody.getData();
+                    if (order.getUser() != null) {
                     List<OrderDeliveredEvent.Item> items = Collections.emptyList();
                     if (order.getOrderDetails() != null) {
                         items = order.getOrderDetails().stream()
@@ -314,6 +344,7 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                                     log.info("Sent order delivered event for order: {}", orderId);
                                 }
                             });
+                    }
                 }
             }
         } catch (Exception e) {

@@ -6,6 +6,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class TestUtils {
 
@@ -27,36 +28,36 @@ public class TestUtils {
     public static <T> ResponseEntity<T> postRequest(RestTemplate restTemplate, String url, Object body, 
                                                    Class<T> responseType, String token) {
         HttpHeaders headers = createHeaders(token);
-        HttpEntity<Object> entity = new HttpEntity<>(body, headers);
-        return restTemplate.exchange(url, HttpMethod.POST, entity, responseType);
+        HttpEntity<Object> entity = new HttpEntity<>(body, Objects.requireNonNull(headers));
+        return restTemplate.exchange(Objects.requireNonNull(url), Objects.requireNonNull(HttpMethod.POST), entity, Objects.requireNonNull(responseType));
     }
 
     public static <T> ResponseEntity<T> getRequest(RestTemplate restTemplate, String url, 
                                                    Class<T> responseType, String token) {
         HttpHeaders headers = createHeaders(token);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        return restTemplate.exchange(url, HttpMethod.GET, entity, responseType);
+        HttpEntity<Void> entity = new HttpEntity<>(Objects.requireNonNull(headers));
+        return restTemplate.exchange(Objects.requireNonNull(url), Objects.requireNonNull(HttpMethod.GET), entity, Objects.requireNonNull(responseType));
     }
 
     public static <T> ResponseEntity<T> putRequest(RestTemplate restTemplate, String url, Object body, 
                                                    Class<T> responseType, String token) {
         HttpHeaders headers = createHeaders(token);
-        HttpEntity<Object> entity = new HttpEntity<>(body, headers);
-        return restTemplate.exchange(url, HttpMethod.PUT, entity, responseType);
+        HttpEntity<Object> entity = new HttpEntity<>(body, Objects.requireNonNull(headers));
+        return restTemplate.exchange(Objects.requireNonNull(url), Objects.requireNonNull(HttpMethod.PUT), entity, Objects.requireNonNull(responseType));
     }
 
     public static <T> ResponseEntity<T> patchRequest(RestTemplate restTemplate, String url, Object body, 
                                                      Class<T> responseType, String token) {
         HttpHeaders headers = createHeaders(token);
-        HttpEntity<Object> entity = new HttpEntity<>(body, headers);
-        return restTemplate.exchange(url, HttpMethod.PATCH, entity, responseType);
+        HttpEntity<Object> entity = new HttpEntity<>(body, Objects.requireNonNull(headers));
+        return restTemplate.exchange(Objects.requireNonNull(url), Objects.requireNonNull(HttpMethod.PATCH), entity, Objects.requireNonNull(responseType));
     }
 
     public static <T> ResponseEntity<T> deleteRequest(RestTemplate restTemplate, String url, 
                                                        Class<T> responseType, String token) {
         HttpHeaders headers = createHeaders(token);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        return restTemplate.exchange(url, HttpMethod.DELETE, entity, responseType);
+        HttpEntity<Void> entity = new HttpEntity<>(Objects.requireNonNull(headers));
+        return restTemplate.exchange(Objects.requireNonNull(url), Objects.requireNonNull(HttpMethod.DELETE), entity, Objects.requireNonNull(responseType));
     }
 
     public static Map<String, Object> createLoginRequest(String email, String password) {
@@ -80,10 +81,12 @@ public class TestUtils {
 
     public static String extractTokenFromResponse(Object response) {
         try {
+            @SuppressWarnings("unchecked")
             Map<String, Object> responseMap = objectMapper.convertValue(response, Map.class);
             if (responseMap.containsKey("data")) {
                 Object data = responseMap.get("data");
                 if (data instanceof Map) {
+                    @SuppressWarnings("unchecked")
                     Map<String, Object> dataMap = (Map<String, Object>) data;
                     // Try both token and accessToken
                     if (dataMap.containsKey("token")) {

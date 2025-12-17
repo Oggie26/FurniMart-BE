@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Wallet Module Integration Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SuppressWarnings({"rawtypes", "null", "unused"})
 public class WalletModuleIntegrationTest {
 
     @Autowired
@@ -77,6 +78,7 @@ public class WalletModuleIntegrationTest {
         
         // Extract userId from register response if available
         // Note: API may not return userId, so we'll get it from wallet later
+        @SuppressWarnings("unchecked")
         Map<String, Object> registerData = objectMapper.convertValue(
             registerResponse.getBody().getData(), Map.class
         );
@@ -98,6 +100,7 @@ public class WalletModuleIntegrationTest {
         assertThat(loginResponse.getBody().getData()).isNotNull();
         
         // Extract accessToken from login response
+        @SuppressWarnings("unchecked")
         Map<String, Object> loginData = objectMapper.convertValue(loginResponse.getBody().getData(), Map.class);
         accessToken = (String) loginData.get("token"); // API returns "token" not "accessToken"
         
@@ -114,6 +117,7 @@ public class WalletModuleIntegrationTest {
         assertThat(walletResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(walletResponse.getBody()).isNotNull();
         
+        @SuppressWarnings("unchecked")
         Map<String, Object> walletData = objectMapper.convertValue(
             walletResponse.getBody().getData(), Map.class
         );
@@ -153,6 +157,7 @@ public class WalletModuleIntegrationTest {
         assertThat(response.getBody().getStatus()).isEqualTo(200);
         
         // Verify balance is 0 initially
+        @SuppressWarnings("unchecked")
         Map<String, Object> walletData = objectMapper.convertValue(
             response.getBody().getData(), Map.class
         );
@@ -203,6 +208,7 @@ public class WalletModuleIntegrationTest {
             // VNPay URL typically contains "sandbox.vnpayment.vn" or similar
             assertThat(paymentUrl).containsAnyOf("vnpayment", "payment", "http", "https");
         } else if (data instanceof Map) {
+            @SuppressWarnings("unchecked")
             Map<String, Object> depositData = objectMapper.convertValue(data, Map.class);
             // Check for common payment URL field names
             String paymentUrl = null;
@@ -225,6 +231,8 @@ public class WalletModuleIntegrationTest {
             restTemplate, walletUrl, ApiResponse.class, accessToken
         );
         
+        assertThat(walletResponse.getBody()).isNotNull();
+        @SuppressWarnings("unchecked")
         Map<String, Object> walletData = objectMapper.convertValue(
             walletResponse.getBody().getData(), Map.class
         );
@@ -375,6 +383,8 @@ public class WalletModuleIntegrationTest {
                 restTemplate, walletUrl, ApiResponse.class, accessToken
             );
             
+            assertThat(walletResponse.getBody()).isNotNull();
+            @SuppressWarnings("unchecked")
             Map<String, Object> walletData = objectMapper.convertValue(
                 walletResponse.getBody().getData(), Map.class
             );
@@ -430,6 +440,7 @@ public class WalletModuleIntegrationTest {
             // or deposit attempt, or be empty if no transactions occurred
             assertThat(transactions).isNotNull();
         } else if (data instanceof Map) {
+            @SuppressWarnings("unchecked")
             Map<String, Object> historyData = objectMapper.convertValue(data, Map.class);
             // Check for common pagination/list field names
             if (historyData.containsKey("content")) {

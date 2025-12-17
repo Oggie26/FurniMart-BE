@@ -2,7 +2,6 @@ package com.example.orderservice.service;
 
 import com.example.orderservice.entity.*;
 import com.example.orderservice.enums.*;
-import com.example.orderservice.event.OrderCancelRollbackStockEvent;
 import com.example.orderservice.event.OrderCancelledEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
@@ -59,6 +58,7 @@ public class OrderServiceImpl implements OrderService {
     private final WarrantyClaimRepository warrantyClaimRepository;
     @Lazy
     private final WarrantyService warrantyService;
+    @SuppressWarnings("unused")
     private final VoucherRepository voucherRepository;
 
     @Override
@@ -301,12 +301,24 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
         orderRepository.save(order);
-        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-        ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
-        if (order.getPayment().getPaymentMethod().equals(PaymentMethod.VNPAY)){
-            userClient.refundToVNPay(wallet.getData().getId(),order.getTotal(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
-        }else{
-            userClient.refundToVNPay(wallet.getData().getId(),order.getDepositPrice(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+        
+        // ✅ Xử lý rollback inventory với try-catch (graceful handling)
+        try {
+            inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+            log.info("✅ Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
+        } catch (Exception e) {
+            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.", 
+                     cancelOrderRequest.getOrderId(), e.getMessage());
+            // Không throw - Cho phép cancellation tiếp tục
+        }
+        
+        if (user != null) {
+            ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
+            if (order.getPayment().getPaymentMethod().equals(PaymentMethod.VNPAY)){
+                userClient.refundToVNPay(wallet.getData().getId(),order.getTotal(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+            }else{
+                userClient.refundToVNPay(wallet.getData().getId(),order.getDepositPrice(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+            }
         }
 
         try {

@@ -1,0 +1,17 @@
+--- a/inventory-service/src/main/java/com/example/inventoryservice/service/InventoryServiceImpl.java
++++ b/inventory-service/src/main/java/com/example/inventoryservice/service/InventoryServiceImpl.java
+@@ -1532,6 +1532,11 @@
+     @Transactional
+     public void rollbackInventoryTicket(Long orderId) {
+ 
++        log.info("🔍 Bắt đầu rollback inventory cho order: {}", orderId);
++
+         List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
+ 
+         if (tickets == null || tickets.isEmpty()) {
+-            log.warn("🛑 Không tìm thấy ticket nào cho order {}", orderId);
++            log.warn("🛑 Không tìm thấy ticket nào cho order {}. Có thể order chưa được tạo ticket hoặc đã được rollback trước đó. Tiếp tục cancellation.", orderId);
++            // ✅ KHÔNG throw exception - Cho phép order cancellation tiếp tục
++            // Vì có thể order chưa được assign/store accept nên chưa có ticket
+             return;
+         }
