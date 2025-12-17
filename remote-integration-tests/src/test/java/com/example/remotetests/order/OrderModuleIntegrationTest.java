@@ -55,12 +55,17 @@ public class OrderModuleIntegrationTest {
             registerRequest, ApiResponse.class, null);
 
         Map<String, Object> loginRequest = TestUtils.createLoginRequest(testEmail, testPassword);
-        ResponseEntity<ApiResponse> loginResponse = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> loginResponse = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, userServiceUrl + "/api/auth/login", loginRequest, ApiResponse.class, null
         );
         
-        Map<String, Object> loginData = objectMapper.convertValue(loginResponse.getBody().getData(), Map.class);
-        accessToken = (String) loginData.get("accessToken");
+        ApiResponse<?> loginBody = loginResponse.getBody();
+        if (loginBody != null && loginBody.getData() != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> loginData = objectMapper.convertValue(loginBody.getData(), Map.class);
+            accessToken = (String) loginData.get("accessToken");
+        }
     }
 
     @Test
@@ -74,13 +79,18 @@ public class OrderModuleIntegrationTest {
         String orderUrl = baseUrl + "/api/orders";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, orderUrl, new HashMap<>(), ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getMessage()).contains("Giỏ hàng trống");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Giỏ hàng trống");
+        }
     }
 
     @Test
@@ -98,19 +108,26 @@ public class OrderModuleIntegrationTest {
         String orderUrl = baseUrl + "/api/orders";
 
         // Act
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, orderUrl, orderRequest, ApiResponse.class, accessToken
         );
 
         // Assert
         if (response.getStatusCode() == HttpStatus.CREATED) {
-            assertThat(response.getBody()).isNotNull();
-            assertThat(response.getBody().getMessage()).contains("Đặt hàng thành công");
-            
-            // Extract order ID for later tests
-            Map<String, Object> orderData = objectMapper.convertValue(response.getBody().getData(), Map.class);
-            if (orderData != null && orderData.containsKey("id")) {
-                orderId = Long.valueOf(orderData.get("id").toString());
+            ApiResponse<?> responseBody = response.getBody();
+            assertThat(responseBody).isNotNull();
+            if (responseBody != null) {
+                assertThat(responseBody.getMessage()).contains("Đặt hàng thành công");
+                
+                // Extract order ID for later tests
+                if (responseBody.getData() != null) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> orderData = objectMapper.convertValue(responseBody.getData(), Map.class);
+                    if (orderData != null && orderData.containsKey("id")) {
+                        orderId = Long.valueOf(orderData.get("id").toString());
+                    }
+                }
             }
         }
     }
@@ -128,13 +145,18 @@ public class OrderModuleIntegrationTest {
             String cancelUrl = baseUrl + "/api/orders/" + orderId + "/cancel";
 
             // Act
-            ResponseEntity<ApiResponse> response = TestUtils.putRequest(
+            @SuppressWarnings("unchecked")
+            ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.putRequest(
                 restTemplate, cancelUrl, new HashMap<>(), ApiResponse.class, accessToken
             );
 
             // Assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getMessage()).contains("Hủy đơn hàng thành công");
+            ApiResponse<?> responseBody = response.getBody();
+            assertThat(responseBody).isNotNull();
+            if (responseBody != null) {
+                assertThat(responseBody.getMessage()).contains("Hủy đơn hàng thành công");
+            }
         }
     }
 
@@ -153,13 +175,18 @@ public class OrderModuleIntegrationTest {
         TestUtils.postRequest(restTemplate, voucherUrl, voucherRequest, ApiResponse.class, accessToken);
         
         // Try to create again with same code
-        ResponseEntity<ApiResponse> response = TestUtils.postRequest(
+        @SuppressWarnings("unchecked")
+        ResponseEntity<ApiResponse<?>> response = (ResponseEntity<ApiResponse<?>>) (ResponseEntity<?>) TestUtils.postRequest(
             restTemplate, voucherUrl, voucherRequest, ApiResponse.class, accessToken
         );
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody().getMessage()).contains("Mã voucher đã tồn tại");
+        ApiResponse<?> responseBody = response.getBody();
+        assertThat(responseBody).isNotNull();
+        if (responseBody != null) {
+            assertThat(responseBody.getMessage()).contains("Mã voucher đã tồn tại");
+        }
     }
 }
 

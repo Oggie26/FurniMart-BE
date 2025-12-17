@@ -3,7 +3,6 @@ package com.example.remotetests.user;
 import com.example.remotetests.config.TestConfig;
 import com.example.remotetests.dto.ApiResponse;
 import com.example.remotetests.util.TestUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Auth Module Integration Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SuppressWarnings({"rawtypes", "null"})
 public class AuthModuleIntegrationTest {
 
     @Autowired
@@ -127,6 +127,7 @@ public class AuthModuleIntegrationTest {
         assertThat(loginResponse.getBody()).isNotNull();
         
         // Extract token
+        @SuppressWarnings("unchecked")
         Map<String, Object> loginData = objectMapper.convertValue(loginResponse.getBody().getData(), Map.class);
         String token = (String) loginData.get("token");
         assertThat(token).isNotNull();
@@ -143,6 +144,7 @@ public class AuthModuleIntegrationTest {
         assertThat(walletResponse.getBody().getStatus()).isEqualTo(200);
         
         // Verify wallet data structure
+        @SuppressWarnings("unchecked")
         Map<String, Object> walletData = objectMapper.convertValue(walletResponse.getBody().getData(), Map.class);
         assertThat(walletData).isNotNull();
         assertThat(walletData).containsKey("id");
@@ -218,6 +220,7 @@ public class AuthModuleIntegrationTest {
         assertThat(response.getBody().getMessage()).contains("Đăng nhập thành công");
         
         // Check token exists (API returns "token" not "accessToken")
+        @SuppressWarnings("unchecked")
         Map<String, Object> data = objectMapper.convertValue(response.getBody().getData(), Map.class);
         assertThat(data).containsKey("token");
         assertThat(data.get("token")).isNotNull();

@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("User Module Integration Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SuppressWarnings({"rawtypes", "null"})
 public class UserModuleIntegrationTest {
 
     @Autowired
@@ -92,6 +93,7 @@ public class UserModuleIntegrationTest {
         assertThat(loginResponse.getBody().getData()).isNotNull();
         
         // Step 3: Extract accessToken from login response
+        @SuppressWarnings("unchecked")
         Map<String, Object> loginData = objectMapper.convertValue(loginResponse.getBody().getData(), Map.class);
         accessToken = (String) loginData.get("token"); // API returns "token" not "accessToken"
         
@@ -119,6 +121,7 @@ public class UserModuleIntegrationTest {
         assertThat(response.getBody().getData()).isNotNull();
         
         // Verify body contains user info
+        @SuppressWarnings("unchecked")
         Map<String, Object> userData = objectMapper.convertValue(response.getBody().getData(), Map.class);
         assertThat(userData).isNotNull();
         // Verify common user fields exist
@@ -168,6 +171,7 @@ public class UserModuleIntegrationTest {
         assertThat(response.getBody().getData()).isNotNull();
         
         // Verify updated data
+        @SuppressWarnings("unchecked")
         Map<String, Object> userData = objectMapper.convertValue(response.getBody().getData(), Map.class);
         assertThat(userData.get("fullName")).isEqualTo("Updated Test User Name");
     }
@@ -219,6 +223,8 @@ public class UserModuleIntegrationTest {
         ResponseEntity<ApiResponse> profileResponse = TestUtils.getRequest(
             restTemplate, profileUrl, ApiResponse.class, accessToken
         );
+        assertThat(profileResponse.getBody()).isNotNull();
+        @SuppressWarnings("unchecked")
         Map<String, Object> userData = objectMapper.convertValue(profileResponse.getBody().getData(), Map.class);
         String userId = (String) userData.get("id");
         

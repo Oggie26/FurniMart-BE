@@ -13,7 +13,6 @@ import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.AuthResponse;
-import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.response.UserResponse;
 import com.example.orderservice.response.WarrantyClaimResponse;
