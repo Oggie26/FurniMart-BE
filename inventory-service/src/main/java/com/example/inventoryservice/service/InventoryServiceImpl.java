@@ -2077,8 +2077,8 @@ public class InventoryServiceImpl implements InventoryService {
         return userId.getData().getId();
     }
 
-    private OrderResponse getOrder(Long orderId) {
-        if (orderId == null || orderId <= 0) {
+    private OrderResponse getOrder(long orderId) {
+        if (orderId <= 0) {
             throw new AppException(ErrorCode.ORDER_NOT_FOUND);
         }
 
