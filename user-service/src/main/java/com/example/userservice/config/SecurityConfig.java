@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.example.userservice.filter.RateLimitingFilter;
+import com.example.userservice.filter.ServiceAuthFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -24,6 +25,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final ServiceAuthFilter serviceAuthFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -55,11 +57,13 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/auth/google/login",
+                                "/api/auth/refresh",
+                                "/api/auth/verify-token",
+                                // Note: /api/auth/{email} is protected by ServiceAuthFilter - requires service token
                                 "/api/users/{id}",
                                 "/api/addresses/*",
                                 "/api//employees/profile",
                                 "/api/stores/**",
-                                "/api/auth/refresh",
                                 "/api/stores",
                                 "/swagger-ui.html",
                                 "/ws/**",
@@ -79,6 +83,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(serviceAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
