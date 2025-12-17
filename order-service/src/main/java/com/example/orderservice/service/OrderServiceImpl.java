@@ -315,7 +315,8 @@ public class OrderServiceImpl implements OrderService {
                         wallet.getData().getId(),
                         amountToRefund,
                         cancelOrderRequest.getReason(),
-                        String.valueOf(cancelOrderRequest.getOrderId()));
+                        String.valueOf(cancelOrderRequest.getOrderId()),
+                        "FURNIMART_INTERNAL_KEY");
             }
         }
 
@@ -1120,7 +1121,8 @@ public class OrderServiceImpl implements OrderService {
                         walletResponse.getData().getId(),
                         refundAmount,
                         "Refund for order return " + orderId,
-                        referenceId);
+                        referenceId,
+                        "FURNIMART_INTERNAL_KEY");
                 // mark payment as refunded
                 payment.setPaymentStatus(PaymentStatus.REFUNDED);
                 paymentRepository.save(payment);

@@ -224,12 +224,34 @@ public class WalletController {
 
         @PostMapping("/{walletId}/refund")
         @Operation(summary = "Refund to wallet")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
         public ApiResponse<WalletResponse> refund(
                         @PathVariable String walletId,
                         @RequestParam Double amount,
                         @RequestParam(required = false) String description,
-                        @RequestParam(required = false) String referenceId) {
+                        @RequestParam(required = false) String referenceId,
+                        HttpServletRequest request) {
+
+                // Check for internal system key or Admin/Staff role
+                String internalKey = request.getHeader("X-Internal-Sys");
+                boolean isInternal = "FURNIMART_INTERNAL_KEY".equals(internalKey);
+
+                if (!isInternal) {
+                        // If not internal call, strictly require ADMIN or STAFF
+                        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+                                        .getContext().getAuthentication();
+
+                        boolean hasPermission = auth.getAuthorities().stream()
+                                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                                                        || a.getAuthority().equals("ROLE_STAFF"));
+
+                        if (!hasPermission) {
+                                log.warn("Access denied to refund endpoint for user: {}", auth.getName());
+                                // Throw 403-like exception. Assuming AppException handles this or generic
+                                // runtime
+                                throw new RuntimeException(
+                                                "Access Denied: Requires ADMIN/STAFF role or Internal System Key");
+                        }
+                }
 
                 return ApiResponse.<WalletResponse>builder()
                                 .status(HttpStatus.OK.value())

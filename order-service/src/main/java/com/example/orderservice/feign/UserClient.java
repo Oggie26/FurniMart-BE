@@ -37,7 +37,8 @@ public interface UserClient {
                         @PathVariable("walletId") String walletId,
                         @RequestParam("amount") Double amount,
                         @RequestParam(value = "description", required = false) String description,
-                        @RequestParam(value = "referenceId", required = false) String referenceId);
+                        @RequestParam(value = "referenceId", required = false) String referenceId,
+                        @org.springframework.web.bind.annotation.RequestHeader("X-Internal-Sys") String internalKey);
 
         @GetMapping("/api/wallets/user/{userId}")
         ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId);
