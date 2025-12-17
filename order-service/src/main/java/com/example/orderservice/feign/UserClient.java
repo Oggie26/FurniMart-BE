@@ -38,4 +38,12 @@ public interface UserClient {
 
     @GetMapping("/api/wallets/user/{userId}")
     ApiResponse<WalletResponse> getWalletByUserId(@PathVariable String userId);
+
+    @PostMapping("/api/wallets/{walletId}/refund-to-vnpay")
+    @Operation(summary = "Refund from wallet to VNPay")
+    ApiResponse<WalletResponse> refundToVNPay(
+            @PathVariable String walletId,
+            @RequestParam Double amount,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Long orderId);
 }

@@ -1,11 +1,7 @@
 package com.example.orderservice.service;
 
 import com.example.orderservice.entity.*;
-import com.example.orderservice.enums.EnumProcessOrder;
-import com.example.orderservice.enums.ErrorCode;
-import com.example.orderservice.enums.OrderType;
-import com.example.orderservice.enums.PaymentMethod;
-import com.example.orderservice.enums.PaymentStatus;
+import com.example.orderservice.enums.*;
 import com.example.orderservice.event.OrderCancelRollbackStockEvent;
 import com.example.orderservice.event.OrderCancelledEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -301,15 +297,19 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
-        String referenceId = "ORDER-" + order.getId();
+        UserResponse user = safeGetUser(order.getUserId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);
         inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-        userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
+        ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
+        if (order.getPayment().getPaymentMethod().equals(PaymentMethod.VNPAY)){
+            userClient.refundToVNPay(wallet.getData().getId(),order.getTotal(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+        }else{
+            userClient.refundToVNPay(wallet.getData().getId(),order.getDepositPrice(),cancelOrderRequest.getReason(),cancelOrderRequest.getOrderId());
+        }
 
         try {
-            UserResponse user = safeGetUser(order.getUserId());
             if (user != null) {
                 OrderCancelledEvent event = OrderCancelledEvent.builder()
                         .orderId(order.getId())

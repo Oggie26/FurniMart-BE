@@ -110,6 +110,7 @@ public class OrderController {
                                 payment.setPaymentMethod(PaymentMethod.VNPAY);
                                 orderRepository.save(order);
                                 paymentRepository.save(payment);
+                                cartService.clearCart();
                                 return ApiResponse.<Void>builder()
                                         .status(HttpStatus.OK.value())
                                         .message("Chuyển hướng sang VNPay")
