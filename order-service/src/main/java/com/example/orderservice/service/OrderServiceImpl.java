@@ -177,6 +177,7 @@ public class OrderServiceImpl implements OrderService {
                 .addressId(request.getAddressId())
                 .reason(request.getReason())
                 .orderDate(new Date())
+                .warrantyClaimId(request.getWarrantyClaimId())
                 .build();
 
         List<OrderDetail> orderDetails = request.getOrderDetails().stream()

@@ -37,5 +37,6 @@ public class StaffCreateOrderRequest {
     private String note;
 
     private String reason;
-}
 
+    private Long warrantyClaimId;
+}
