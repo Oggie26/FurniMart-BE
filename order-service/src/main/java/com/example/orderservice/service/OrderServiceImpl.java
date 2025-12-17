@@ -1,11 +1,7 @@
 package com.example.orderservice.service;
 
 import com.example.orderservice.entity.*;
-import com.example.orderservice.enums.EnumProcessOrder;
-import com.example.orderservice.enums.ErrorCode;
-import com.example.orderservice.enums.OrderType;
-import com.example.orderservice.enums.PaymentMethod;
-import com.example.orderservice.enums.PaymentStatus;
+import com.example.orderservice.enums.*;
 import com.example.orderservice.event.OrderCancelRollbackStockEvent;
 import com.example.orderservice.event.OrderCancelledEvent;
 import com.example.orderservice.event.OrderCreatedEvent;
@@ -301,14 +297,16 @@ public class OrderServiceImpl implements OrderService {
         }
         order.getProcessOrders().add(process);
         String referenceId = "ORDER-" + order.getId();
+        UserResponse user = safeGetUser(order.getUserId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);
-        inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+        if (!user.getRole().equals(EnumRole.CUSTOMER)){
+            inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
+        }
         userClient.refundToWallet(getUserId(), order.getTotal(), referenceId);
 
         try {
-            UserResponse user = safeGetUser(order.getUserId());
             if (user != null) {
                 OrderCancelledEvent event = OrderCancelledEvent.builder()
                         .orderId(order.getId())
