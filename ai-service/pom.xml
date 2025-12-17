@@ -75,17 +75,8 @@
 			<version>1.0.0-M4</version>
 		</dependency>
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-
-		<!-- Database driver for JPA (PostgreSQL) -->
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-		</dependency>
+		<!-- NOTE: ai-service hiện tại không sử dụng JPA/Database, 
+		     nên bỏ starter JPA để tránh Spring tự cấu hình DataSource gây lỗi khi không có DB. -->
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
