@@ -107,6 +107,7 @@ public class VNPayController {
 
                         Order order = orderRepository.findByIdAndIsDeletedFalse(Long.parseLong(orderId))
                                         .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+
                         payment.setOrder(order);
                         paymentRepository.save(payment);
                         orderService.updateOrderStatus(order.getId(), EnumProcessOrder.PAYMENT);

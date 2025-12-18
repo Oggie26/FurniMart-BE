@@ -89,17 +89,34 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderDetails(details);
         order.setStatus(EnumProcessOrder.PENDING);
 
+        // Save order first to get the ID
+        Order savedOrder = orderRepository.save(order);
+
+        // Create Payment entity
+        PaymentStatus paymentStatus = PaymentStatus.PENDING;
+        Payment payment = Payment.builder()
+                .order(savedOrder)
+                .paymentMethod(paymentMethod)
+                .paymentStatus(paymentStatus)
+                .date(new Date())
+                .total(savedOrder.getTotal())
+                .userId(savedOrder.getUserId())
+                .build();
+
+        paymentRepository.save(payment);
+        savedOrder.setPayment(payment);
+
         try {
-            UserResponse user = safeGetUser(order.getUserId());
-            AddressResponse address = safeGetAddress(order.getAddressId());
-            String pdfPath = pdfService.generateOrderPDF(order, user, address);
-            order.setPdfFilePath(pdfPath);
-            orderRepository.save(order);
+            UserResponse user = safeGetUser(savedOrder.getUserId());
+            AddressResponse address = safeGetAddress(savedOrder.getAddressId());
+            String pdfPath = pdfService.generateOrderPDF(savedOrder, user, address);
+            savedOrder.setPdfFilePath(pdfPath);
+            orderRepository.save(savedOrder);
         } catch (Exception e) {
-            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
+            log.error("Failed to generate PDF for order {}: {}", savedOrder.getId(), e.getMessage());
         }
 
-        return mapToResponse(order);
+        return mapToResponse(savedOrder);
     }
 
     @Override
@@ -301,15 +318,15 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
         orderRepository.save(order);
-        
+
         try {
             inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
             log.info("✅ Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
         } catch (Exception e) {
-            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.", 
-                     cancelOrderRequest.getOrderId(), e.getMessage());
+            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.",
+                    cancelOrderRequest.getOrderId(), e.getMessage());
         }
-        
+
         if (user != null) {
             ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
             if (wallet != null && wallet.getData() != null) {
