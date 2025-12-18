@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service" />
+    <list default="true" id="def38710-d699-41a7-b646-e6af016071a0" name="Changes" comment="fix ai service">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/example/aiservice/feign/AuthClient.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/example/aiservice/feign/AuthClient.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -165,7 +168,7 @@
       <workItem from="1765816139585" duration="96000" />
       <workItem from="1765959929348" duration="1546000" />
       <workItem from="1765985178528" duration="125000" />
-      <workItem from="1765996728917" duration="1159000" />
+      <workItem from="1765996728917" duration="2231000" />
     </task>
     <task id="LOCAL-00001" summary="fix ai service">
       <option name="closed" value="true" />
