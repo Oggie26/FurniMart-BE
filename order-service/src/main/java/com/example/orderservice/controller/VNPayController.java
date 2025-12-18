@@ -101,11 +101,16 @@ public class VNPayController {
             if ("00".equals(responseCode)) {
                 if (isMobile) {
                     try {
-                        orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
                         Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
-                                        .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+                                .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
                         payment.setPaymentStatus(PaymentStatus.PAID);
+
+                        Order order = orderRepository.findByIdAndIsDeletedFalse(Long.parseLong(orderId))
+                                        .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
+                        payment.setOrder(order);
                         paymentRepository.save(payment);
+                        orderService.updateOrderStatus(order.getId(), EnumProcessOrder.PAYMENT);
+
                         System.out.println("Đơn hàng #" + orderId + " → PAYMENT");
                     } catch (Exception e) {
                         System.err.println("Lỗi cập nhật DB đơn hàng #" + orderId + ": " + e.getMessage());

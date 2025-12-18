@@ -130,8 +130,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
             orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.FINISHED);
             orderClient.confirmCodPayment(request.getOrderId());
             warrantyClient.generateWarranties(request.getOrderId());
-
-            // Send Kafka Notification
             sendDeliveryNotification(request.getOrderId(), deliveryStaffId, new Date());
 
         } catch (Exception ex) {

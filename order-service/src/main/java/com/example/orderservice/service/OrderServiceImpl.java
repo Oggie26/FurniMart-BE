@@ -302,14 +302,12 @@ public class OrderServiceImpl implements OrderService {
         processOrderRepository.save(process);
         orderRepository.save(order);
         
-        // ✅ Xử lý rollback inventory với try-catch (graceful handling)
         try {
             inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
             log.info("✅ Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
         } catch (Exception e) {
             log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.", 
                      cancelOrderRequest.getOrderId(), e.getMessage());
-            // Không throw - Cho phép cancellation tiếp tục
         }
         
         if (user != null) {
@@ -524,7 +522,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
-        // Sanitize search keyword to prevent injection
         if (request != null && !request.trim().isEmpty()) {
             String trimmed = request.trim();
             trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");
