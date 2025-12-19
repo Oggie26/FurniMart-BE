@@ -45,3 +45,6 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka
+
+app:
+  service-token: ${SERVICE_TOKEN:internal-service-token-12345}

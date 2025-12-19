@@ -89,17 +89,32 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderDetails(details);
         order.setStatus(EnumProcessOrder.PENDING);
 
+        Order savedOrder = orderRepository.save(order);
+
+        PaymentStatus paymentStatus = PaymentStatus.PENDING;
+        Payment payment = Payment.builder()
+                .order(savedOrder)
+                .paymentMethod(paymentMethod)
+                .paymentStatus(paymentStatus)
+                .date(new Date())
+                .total(savedOrder.getTotal())
+                .userId(savedOrder.getUserId())
+                .build();
+
+        paymentRepository.save(payment);
+        savedOrder.setPayment(payment);
+
         try {
-            UserResponse user = safeGetUser(order.getUserId());
-            AddressResponse address = safeGetAddress(order.getAddressId());
-            String pdfPath = pdfService.generateOrderPDF(order, user, address);
-            order.setPdfFilePath(pdfPath);
-            orderRepository.save(order);
+            UserResponse user = safeGetUser(savedOrder.getUserId());
+            AddressResponse address = safeGetAddress(savedOrder.getAddressId());
+            String pdfPath = pdfService.generateOrderPDF(savedOrder, user, address);
+            savedOrder.setPdfFilePath(pdfPath);
+            orderRepository.save(savedOrder);
         } catch (Exception e) {
-            log.error("Failed to generate PDF for order {}: {}", order.getId(), e.getMessage());
+            log.error("Failed to generate PDF for order {}: {}", savedOrder.getId(), e.getMessage());
         }
 
-        return mapToResponse(order);
+        return mapToResponse(savedOrder);
     }
 
     @Override
@@ -301,17 +316,15 @@ public class OrderServiceImpl implements OrderService {
 
         processOrderRepository.save(process);
         orderRepository.save(order);
-        
-        // ✅ Xử lý rollback inventory với try-catch (graceful handling)
+
         try {
             inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
             log.info("✅ Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
         } catch (Exception e) {
-            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.", 
-                     cancelOrderRequest.getOrderId(), e.getMessage());
-            // Không throw - Cho phép cancellation tiếp tục
+            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.",
+                    cancelOrderRequest.getOrderId(), e.getMessage());
         }
-        
+
         if (user != null) {
             ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
             if (wallet != null && wallet.getData() != null) {
@@ -428,12 +441,17 @@ public class OrderServiceImpl implements OrderService {
             Payment payment = paymentRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-            if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
-                payment.setPaymentStatus(PaymentStatus.PAID);
-                paymentRepository.save(payment);
+            // Check if payment is already processed (idempotency)
+            if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+                log.info("Payment for order {} is already PAID. Skipping duplicate update.", orderId);
             } else {
-                payment.setPaymentStatus(PaymentStatus.DEPOSITED);
-                paymentRepository.save(payment);
+                if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
+                    payment.setPaymentStatus(PaymentStatus.PAID);
+                    paymentRepository.save(payment);
+                } else {
+                    payment.setPaymentStatus(PaymentStatus.DEPOSITED);
+                    paymentRepository.save(payment);
+                }
             }
 
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
@@ -481,41 +499,7 @@ public class OrderServiceImpl implements OrderService {
                 payment.setPaymentStatus(PaymentStatus.PAID);
                 paymentRepository.save(payment);
             }
-
-            var user = safeGetUser(order.getUserId());
-
-            List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                    .map(detail -> {
-                        var pc = getProductColorResponse(detail.getProductColorId());
-                        return OrderCreatedEvent.OrderItem.builder()
-                                .productColorId(detail.getProductColorId())
-                                .quantity(detail.getQuantity())
-                                .productName(pc.getProduct().getName())
-                                .price(detail.getPrice())
-                                .colorName(pc.getColor().getColorName())
-                                .build();
-                    })
-                    .toList();
-
-            OrderCreatedEvent event = OrderCreatedEvent.builder()
-                    .email(user.getEmail())
-                    .fullName(user.getFullName())
-                    .orderDate(order.getOrderDate())
-                    .totalPrice(order.getTotal())
-                    .orderId(order.getId())
-                    .storeId(order.getStoreId())
-                    .addressLine(getAddress(order.getAddressId()))
-                    .paymentMethod(order.getPayment().getPaymentMethod())
-                    .items(orderItems)
-                    .build();
-
-            kafkaTemplate.send("order-created-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null)
-                            log.error("Kafka send failed: {}", ex.getMessage());
-                        else
-                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
-                    });
+            log.info("Order {} reached FINISHED status. Payment updated if COD.", orderId);
         }
 
         return mapToResponse(order);
@@ -524,7 +508,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageResponse<OrderResponse> searchOrderByCustomer(String request, int page, int size) {
-        // Sanitize search keyword to prevent injection
         if (request != null && !request.trim().isEmpty()) {
             String trimmed = request.trim();
             trimmed = trimmed.replaceAll("[<>\"'%;()&+]", "");

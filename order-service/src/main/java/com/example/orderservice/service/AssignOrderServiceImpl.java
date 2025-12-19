@@ -1,4 +1,5 @@
 package com.example.orderservice.service;
+
 import lombok.extern.slf4j.Slf4j;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.Payment;
@@ -51,7 +52,7 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         AddressResponse address = safeGetAddress(order.getAddressId());
 
-        if (order.getPayment().getPaymentMethod() == null){
+        if (order.getPayment() == null || order.getPayment().getPaymentMethod() == null) {
             throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
         }
         if (address == null) {
@@ -85,7 +86,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
                 .orderId(order.getId())
                 .storeId(order.getStoreId())
                 .addressLine(getAddress(order.getAddressId()))
-                .paymentMethod(order.getPayment().getPaymentMethod() != null ? order.getPayment().getPaymentMethod() : null )
+                .paymentMethod(
+                        order.getPayment().getPaymentMethod() != null ? order.getPayment().getPaymentMethod() : null)
                 .items(orderItems)
                 .build();
 

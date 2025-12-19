@@ -75,7 +75,7 @@
 			<version>1.0.0-M4</version>
 		</dependency>
 
-		<!-- NOTE: ai-service hiện tại không sử dụng JPA/Database, 
+		<!-- NOTE: ai-service hiện tại không sử dụng JPA/Database,
 		     nên bỏ starter JPA để tránh Spring tự cấu hình DataSource gây lỗi khi không có DB. -->
 
 		<dependency>
@@ -114,6 +114,7 @@
 			<artifactId>jjwt-api</artifactId>
 			<version>0.11.5</version>
 		</dependency>
+
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
