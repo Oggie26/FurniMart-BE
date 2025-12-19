@@ -103,8 +103,6 @@ public class VNPayController {
                     try {
                         Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
                                 .orElseThrow((() -> new AppException(ErrorCode.ORDER_NOT_FOUND)));
-
-                        // Check if payment is already processed (idempotency)
                         if (payment.getPaymentStatus() == PaymentStatus.PAID) {
                             log.info("Payment for order {} is already PAID. Skipping duplicate processing.", orderId);
                         } else {
