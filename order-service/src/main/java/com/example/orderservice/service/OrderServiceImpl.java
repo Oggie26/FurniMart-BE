@@ -499,41 +499,7 @@ public class OrderServiceImpl implements OrderService {
                 payment.setPaymentStatus(PaymentStatus.PAID);
                 paymentRepository.save(payment);
             }
-
-            var user = safeGetUser(order.getUserId());
-
-            List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                    .map(detail -> {
-                        var pc = getProductColorResponse(detail.getProductColorId());
-                        return OrderCreatedEvent.OrderItem.builder()
-                                .productColorId(detail.getProductColorId())
-                                .quantity(detail.getQuantity())
-                                .productName(pc.getProduct().getName())
-                                .price(detail.getPrice())
-                                .colorName(pc.getColor().getColorName())
-                                .build();
-                    })
-                    .toList();
-
-            OrderCreatedEvent event = OrderCreatedEvent.builder()
-                    .email(user.getEmail())
-                    .fullName(user.getFullName())
-                    .orderDate(order.getOrderDate())
-                    .totalPrice(order.getTotal())
-                    .orderId(order.getId())
-                    .storeId(order.getStoreId())
-                    .addressLine(getAddress(order.getAddressId()))
-                    .paymentMethod(order.getPayment().getPaymentMethod())
-                    .items(orderItems)
-                    .build();
-
-            kafkaTemplate.send("order-created-topic", event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null)
-                            log.error("Kafka send failed: {}", ex.getMessage());
-                        else
-                            log.info("Successfully sent order creation event for: {}", event.getOrderId());
-                    });
+            log.info("Order {} reached FINISHED status. Payment updated if COD.", orderId);
         }
 
         return mapToResponse(order);
