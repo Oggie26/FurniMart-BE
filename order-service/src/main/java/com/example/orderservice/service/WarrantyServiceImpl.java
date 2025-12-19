@@ -165,6 +165,12 @@ public class WarrantyServiceImpl implements WarrantyService {
         Order originalOrder = orderRepository.findByIdAndIsDeletedFalse(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
+        // Validation: Đảm bảo đơn hàng có storeId (đã được bán bởi một cửa hàng)
+        if (originalOrder.getStoreId() == null || originalOrder.getStoreId().isEmpty()) {
+            log.error("Order {} does not have a storeId assigned", request.getOrderId());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
         Long addressId = request.getAddressId();
         if (addressId == null) {
             addressId = originalOrder.getAddressId();
@@ -189,12 +195,21 @@ public class WarrantyServiceImpl implements WarrantyService {
         originalOrder.setWarrantyClaimId(savedClaim.getId());
         orderRepository.save(originalOrder);
 
+        String orderStoreId = originalOrder.getStoreId();
+
         for (com.example.orderservice.request.WarrantyClaimItemRequest item : request.getItems()) {
             Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(item.getWarrantyId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
 
             if (!warranty.canClaimWarranty()) {
                 throw new AppException(ErrorCode.WARRANTY_CANNOT_BE_CLAIMED);
+            }
+
+            // Validation: Đảm bảo warranty thuộc về cùng store với order
+            if (warranty.getStoreId() == null || !warranty.getStoreId().equals(orderStoreId)) {
+                log.error("Warranty {} belongs to store {}, but order {} belongs to store {}", 
+                    warranty.getId(), warranty.getStoreId(), request.getOrderId(), orderStoreId);
+                throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
             String customerPhotosJson = null;
@@ -556,14 +571,13 @@ public class WarrantyServiceImpl implements WarrantyService {
 
     private Double getVisibleRepairCost(WarrantyClaim claim) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isStaffOrAdmin = false;
+        boolean isStaffOrManager = false;
         if (authentication != null) {
-            isStaffOrAdmin = authentication.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") ||
-                            a.getAuthority().equals("ROLE_MANAGER") ||
+            isStaffOrManager = authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_BRANCH_MANAGER") ||
                             a.getAuthority().equals("ROLE_STAFF"));
         }
-        return isStaffOrAdmin ? claim.getRepairCost() : null;
+        return isStaffOrManager ? claim.getRepairCost() : null;
     }
 
     private WarrantyClaimResponse toWarrantyClaimResponseWithAddress(WarrantyClaim claim) {
