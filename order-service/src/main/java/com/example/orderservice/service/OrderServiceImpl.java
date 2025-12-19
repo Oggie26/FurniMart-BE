@@ -89,10 +89,8 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderDetails(details);
         order.setStatus(EnumProcessOrder.PENDING);
 
-        // Save order first to get the ID
         Order savedOrder = orderRepository.save(order);
 
-        // Create Payment entity
         PaymentStatus paymentStatus = PaymentStatus.PENDING;
         Payment payment = Payment.builder()
                 .order(savedOrder)
@@ -443,12 +441,17 @@ public class OrderServiceImpl implements OrderService {
             Payment payment = paymentRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-            if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
-                payment.setPaymentStatus(PaymentStatus.PAID);
-                paymentRepository.save(payment);
+            // Check if payment is already processed (idempotency)
+            if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+                log.info("Payment for order {} is already PAID. Skipping duplicate update.", orderId);
             } else {
-                payment.setPaymentStatus(PaymentStatus.DEPOSITED);
-                paymentRepository.save(payment);
+                if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
+                    payment.setPaymentStatus(PaymentStatus.PAID);
+                    paymentRepository.save(payment);
+                } else {
+                    payment.setPaymentStatus(PaymentStatus.DEPOSITED);
+                    paymentRepository.save(payment);
+                }
             }
 
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
