@@ -105,16 +105,16 @@ public class WarrantyController {
         }
 
         @GetMapping("/store/{storeId}")
-        @Operation(summary = "Get warranties by Store ID")
+        @Operation(summary = "Get warranty claims by Store ID")
         @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
-        public ApiResponse<PageResponse<WarrantyResponse>> getWarrantiesByStore(
+        public ApiResponse<PageResponse<WarrantyClaimResponse>> getWarrantyClaimsByStore(
                         @PathVariable String storeId,
                         @RequestParam(defaultValue = "1") @Min(value = 1, message = "Page must be at least 1") int page,
                         @RequestParam(defaultValue = "10") @Min(value = 1, message = "Size must be at least 1") @Max(value = 100, message = "Size must not exceed 100") int size) {
-                return ApiResponse.<PageResponse<WarrantyResponse>>builder()
+                return ApiResponse.<PageResponse<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
-                                .message("Warranties retrieved successfully")
-                                .data(warrantyService.getWarrantiesByStore(storeId, page, size))
+                                .message("Warranty claims retrieved successfully")
+                                .data(warrantyService.getWarrantyClaimsByStore(storeId, page, size))
                                 .build();
         }
 

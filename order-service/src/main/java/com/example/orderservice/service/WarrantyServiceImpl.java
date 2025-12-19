@@ -139,6 +139,25 @@ public class WarrantyServiceImpl implements WarrantyService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<WarrantyClaimResponse> getWarrantyClaimsByStore(String storeId, int page, int size) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+        Page<WarrantyClaim> claimPage = warrantyClaimRepository.findByStoreIdOrderByClaimDateDesc(storeId, pageable);
+
+        List<WarrantyClaimResponse> responses = claimPage.getContent().stream()
+                .map(this::toWarrantyClaimResponseWithAddress)
+                .collect(Collectors.toList());
+
+        return PageResponse.<WarrantyClaimResponse>builder()
+                .number(page)
+                .size(size)
+                .totalPages(claimPage.getTotalPages())
+                .totalElements(claimPage.getTotalElements())
+                .content(responses)
+                .build();
+    }
+
+    @Override
     @Transactional
     public WarrantyClaimResponse createWarrantyClaim(WarrantyClaimRequest request) {
         log.info("Creating warranty claim for order: {}", request.getOrderId());
@@ -545,5 +564,26 @@ public class WarrantyServiceImpl implements WarrantyService {
                             a.getAuthority().equals("ROLE_STAFF"));
         }
         return isStaffOrAdmin ? claim.getRepairCost() : null;
+    }
+
+    private WarrantyClaimResponse toWarrantyClaimResponseWithAddress(WarrantyClaim claim) {
+        WarrantyClaimResponse response = toWarrantyClaimResponse(claim);
+        
+        // Fetch address information
+        if (claim.getAddressId() != null) {
+            try {
+                ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(claim.getAddressId());
+                if (addressResponse != null && addressResponse.getData() != null) {
+                    AddressResponse addressData = addressResponse.getData();
+                    response.setAddress(addressData.getAddressLine() != null ? addressData.getAddressLine() : addressData.getFullAddress());
+                    response.setName(addressData.getName());
+                    response.setPhone(addressData.getPhone());
+                }
+            } catch (Exception e) {
+                log.error("Failed to fetch address for warranty claim {}: {}", claim.getId(), e.getMessage());
+            }
+        }
+        
+        return response;
     }
 }

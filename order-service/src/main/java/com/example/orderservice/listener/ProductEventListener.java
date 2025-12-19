@@ -16,7 +16,11 @@ public class ProductEventListener {
 
     private final CacheManager cacheManager;
 
-    @KafkaListener(topics = "product-updated-topic", groupId = "order-service-group")
+    @KafkaListener(
+            topics = "product-updated-topic", 
+            groupId = "order-service-group",
+            containerFactory = "productUpdatedKafkaListenerContainerFactory"
+    )
     public void handleProductUpdate(ProductUpdatedEvent event) {
         log.info("Received product update event for id: {}", event.getProductId());
 

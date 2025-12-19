@@ -78,6 +78,15 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        // Improve consumer stability and rebalance handling
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 30000); // 30 seconds
+        props.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, 10000); // 10 seconds
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 300000); // 5 minutes
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 500);
+        // Retry configuration
+        props.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, 1000);
         return props;
     }
 
@@ -97,5 +106,24 @@ public class KafkaConfig {
         return factory;
     }
 
+    // Consumer factory for ProductUpdatedEvent
+    @Bean
+    public ConsumerFactory<String, com.example.orderservice.event.ProductUpdatedEvent> productUpdatedConsumerFactory() {
+        Map<String, Object> props = baseConfigs();
+        // Use a different group ID for product updates if needed, or reuse the same
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new JsonDeserializer<>(com.example.orderservice.event.ProductUpdatedEvent.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, com.example.orderservice.event.ProductUpdatedEvent> productUpdatedKafkaListenerContainerFactory() {
+        var factory = new ConcurrentKafkaListenerContainerFactory<String, com.example.orderservice.event.ProductUpdatedEvent>();
+        factory.setConsumerFactory(productUpdatedConsumerFactory());
+        // Enable error handling
+        factory.setCommonErrorHandler(new org.springframework.kafka.listener.DefaultErrorHandler());
+        return factory;
+    }
 
 }

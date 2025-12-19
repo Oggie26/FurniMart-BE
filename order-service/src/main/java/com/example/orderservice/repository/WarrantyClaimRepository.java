@@ -3,6 +3,8 @@ package com.example.orderservice.repository;
 import com.example.orderservice.entity.WarrantyClaim;
 import com.example.orderservice.enums.WarrantyActionType;
 import com.example.orderservice.enums.WarrantyClaimStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -42,4 +44,7 @@ public interface WarrantyClaimRepository extends JpaRepository<WarrantyClaim, Lo
     Double sumRefundAmount();
 
     Long countByStatusAndIsDeletedFalse(WarrantyClaimStatus status);
+
+    @Query("SELECT wc FROM WarrantyClaim wc, Order o WHERE wc.orderId = o.id AND o.storeId = :storeId AND wc.isDeleted = false AND o.isDeleted = false ORDER BY wc.claimDate DESC")
+    Page<WarrantyClaim> findByStoreIdOrderByClaimDateDesc(@Param("storeId") String storeId, Pageable pageable);
 }
