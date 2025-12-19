@@ -56,12 +56,12 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         log.info("Creating delivery confirmation for order: {}", request.getOrderId());
 
         // ✅ KIỂM TRA: Đã có delivery confirmation chưa? (Idempotency)
-        Optional<DeliveryConfirmation> existingConfirmation = 
-            deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId());
-        
+        Optional<DeliveryConfirmation> existingConfirmation = deliveryConfirmationRepository
+                .findByOrderIdAndIsDeletedFalse(request.getOrderId());
+
         if (existingConfirmation.isPresent()) {
-            log.warn("Delivery confirmation already exists for order: {}. Returning existing confirmation.", 
-                     request.getOrderId());
+            log.warn("Delivery confirmation already exists for order: {}. Returning existing confirmation.",
+                    request.getOrderId());
             return toDeliveryConfirmationResponse(existingConfirmation.get());
         }
 
@@ -109,36 +109,35 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         } catch (DataIntegrityViolationException e) {
             // ✅ Xử lý duplicate QR code
             if (e.getMessage() != null && e.getMessage().contains("qr_code")) {
-                log.warn("Duplicate QR code detected for order: {}. Fetching existing confirmation.", 
-                         request.getOrderId());
-                existingConfirmation = 
-                    deliveryConfirmationRepository.findByOrderIdAndIsDeletedFalse(request.getOrderId());
+                log.warn("Duplicate QR code detected for order: {}. Fetching existing confirmation.",
+                        request.getOrderId());
+                existingConfirmation = deliveryConfirmationRepository
+                        .findByOrderIdAndIsDeletedFalse(request.getOrderId());
                 if (existingConfirmation.isPresent()) {
                     return toDeliveryConfirmationResponse(existingConfirmation.get());
                 }
             }
             throw e;
         }
-        
+
+        // Update delivery assignment status to DELIVERED
         DeliveryAssignment deliveryAssignment = deliveryAssignmentRepository
                 .findByOrderIdAndIsDeletedFalse(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         deliveryAssignment.setStatus(DeliveryStatus.DELIVERED);
         deliveryAssignmentRepository.save(deliveryAssignment);
 
-        try {
-            orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.FINISHED);
-            orderClient.confirmCodPayment(request.getOrderId());
-            warrantyClient.generateWarranties(request.getOrderId());
+        // ✅ NOTE: Order status update, COD confirmation, warranty generation, and
+        // notification
+        // will be triggered when customer scans QR code to confirm receipt (scanQRCode
+        // method)
+        // This prevents duplicate processing and ensures proper flow:
+        // 1. Delivery staff creates confirmation (this method)
+        // 2. Customer scans QR to confirm receipt (scanQRCode method)
+        // 3. Only then: order finalized, warranty created, notification sent
 
-            // Send Kafka Notification
-            sendDeliveryNotification(request.getOrderId(), deliveryStaffId, new Date());
-
-        } catch (Exception ex) {
-            log.warn("Post-delivery side-effects failed for order {}: {}", request.getOrderId(), ex.getMessage());
-        }
-
-        log.info("Created delivery confirmation: {} for order: {}", savedConfirmation.getId(), request.getOrderId());
+        log.info("Created delivery confirmation: {} for order: {}. Waiting for customer QR scan to finalize.",
+                savedConfirmation.getId(), request.getOrderId());
         return toDeliveryConfirmationResponse(savedConfirmation);
     }
 
@@ -180,17 +179,25 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
 
         DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
 
-        // Set order status to FINISHED
+        // ✅ FINALIZE ORDER: This is the single point where order is finalized
+        // Only executed when customer confirms receipt by scanning QR code
         try {
+            // 1. Update order status to FINISHED
             orderClient.updateOrderStatus(confirmation.getOrderId(), EnumProcessOrder.FINISHED);
 
-            // Send Kafka Notification
-            // Delivery staff ID might not be in context if customer scans?
-            // DeliveryConfirmation has deliveryStaffId.
+            // 2. Confirm COD payment if applicable
+            orderClient.confirmCodPayment(confirmation.getOrderId());
+
+            // 3. Send delivery notification via Kafka
             sendDeliveryNotification(confirmation.getOrderId(), confirmation.getDeliveryStaffId(), new Date());
 
+            log.info(
+                    "Order {} finalized successfully: status updated, COD confirmed, notification sent. (Warranties are generated by order-service)",
+                    confirmation.getOrderId());
         } catch (Exception ex) {
-            log.warn("Failed to update order {} to FINISHED: {}", confirmation.getOrderId(), ex.getMessage());
+            log.error("Failed to finalize order {} after QR scan: {}", confirmation.getOrderId(), ex.getMessage(), ex);
+            // Note: Confirmation is already saved, so we don't rollback
+            // Admin should be notified to manually check this order
         }
 
         log.info("QR code scanned successfully for order: {}", confirmation.getOrderId());
@@ -305,45 +312,45 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                 if (responseBody != null && responseBody.getData() != null) {
                     var order = responseBody.getData();
                     if (order.getUser() != null) {
-                    List<OrderDeliveredEvent.Item> items = Collections.emptyList();
-                    if (order.getOrderDetails() != null) {
-                        items = order.getOrderDetails().stream()
-                                .map(d -> OrderDeliveredEvent.Item.builder()
-                                        .productColorId(d.getProductColorId())
-                                        .quantity(d.getQuantity())
-                                        .price(d.getPrice())
-                                        // Note: AddressResponse/OrderResponse in delivery-service might differ from
-                                        // order-service
-                                        // Assuming basic fields are available or defaulting
-                                        .productName("Product " + d.getProductColorId()) // Placeholder if name not
-                                                                                         // available
-                                        .colorName("")
-                                        .build())
-                                .collect(Collectors.toList());
-                        // If we have ProductColor object in OrderDetailResponse, use it.
-                        // Checking OrderDetailResponse: usually has primitives unless populated.
-                        // OrderDetailResponse in delivery-service (step 244) exists.
-                        // We will check its content if we need better names.
-                    }
+                        List<OrderDeliveredEvent.Item> items = Collections.emptyList();
+                        if (order.getOrderDetails() != null) {
+                            items = order.getOrderDetails().stream()
+                                    .map(d -> OrderDeliveredEvent.Item.builder()
+                                            .productColorId(d.getProductColorId())
+                                            .quantity(d.getQuantity())
+                                            .price(d.getPrice())
+                                            // Note: AddressResponse/OrderResponse in delivery-service might differ from
+                                            // order-service
+                                            // Assuming basic fields are available or defaulting
+                                            .productName("Product " + d.getProductColorId()) // Placeholder if name not
+                                                                                             // available
+                                            .colorName("")
+                                            .build())
+                                    .collect(Collectors.toList());
+                            // If we have ProductColor object in OrderDetailResponse, use it.
+                            // Checking OrderDetailResponse: usually has primitives unless populated.
+                            // OrderDetailResponse in delivery-service (step 244) exists.
+                            // We will check its content if we need better names.
+                        }
 
-                    OrderDeliveredEvent event = OrderDeliveredEvent.builder()
-                            .orderId(orderId)
-                            .email(order.getUser().getEmail())
-                            .fullName(order.getUser().getFullName())
-                            .deliveryDate(deliveryDate)
-                            .deliveryStaffId(deliveryStaffId)
-                            .totalAmount(order.getTotal())
-                            .items(items)
-                            .build();
+                        OrderDeliveredEvent event = OrderDeliveredEvent.builder()
+                                .orderId(orderId)
+                                .email(order.getUser().getEmail())
+                                .fullName(order.getUser().getFullName())
+                                .deliveryDate(deliveryDate)
+                                .deliveryStaffId(deliveryStaffId)
+                                .totalAmount(order.getTotal())
+                                .items(items)
+                                .build();
 
-                    genericKafkaTemplate.send("order-delivered-topic", event)
-                            .whenComplete((result, ex) -> {
-                                if (ex != null) {
-                                    log.error("Failed to send order delivered event: {}", ex.getMessage());
-                                } else {
-                                    log.info("Sent order delivered event for order: {}", orderId);
-                                }
-                            });
+                        genericKafkaTemplate.send("order-delivered-topic", event)
+                                .whenComplete((result, ex) -> {
+                                    if (ex != null) {
+                                        log.error("Failed to send order delivered event: {}", ex.getMessage());
+                                    } else {
+                                        log.info("Sent order delivered event for order: {}", orderId);
+                                    }
+                                });
                     }
                 }
             }

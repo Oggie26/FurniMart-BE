@@ -101,15 +101,18 @@ public class VNPayController {
             if ("00".equals(responseCode)) {
                 if (isMobile) {
                     try {
-                        orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
                         Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
-                                        .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
-                        payment.setPaymentStatus(PaymentStatus.PAID);
-                        paymentRepository.save(payment);
-                        System.out.println("Đơn hàng #" + orderId + " → PAYMENT");
+                                .orElseThrow((() -> new AppException(ErrorCode.ORDER_NOT_FOUND)));
+                        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+                            log.info("Payment for order {} is already PAID. Skipping duplicate processing.", orderId);
+                        } else {
+                            payment.setPaymentStatus(PaymentStatus.PAID);
+                            paymentRepository.save(payment);
+                            orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+                            log.info("Successfully processed payment for order #{}", orderId);
+                        }
                     } catch (Exception e) {
-                        System.err.println("Lỗi cập nhật DB đơn hàng #" + orderId + ": " + e.getMessage());
-                        e.printStackTrace();
+                        log.error("Error updating payment for order #{}: {}", orderId, e.getMessage(), e);
                     }
 
                     String html = String.format(
@@ -149,12 +152,21 @@ public class VNPayController {
 
                     response.getWriter().write(html);
                 } else {
-                    orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
                     Payment payment = paymentRepository.findByOrderId(Long.valueOf(orderId))
-                            .orElseThrow((() ->  new AppException(ErrorCode.ORDER_NOT_FOUND)));
-                    payment.setPaymentStatus(PaymentStatus.PAID);
-                    paymentRepository.save(payment);
-                    response.sendRedirect(webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+                            .orElseThrow((() -> new AppException(ErrorCode.ORDER_NOT_FOUND)));
+
+                    // Check if payment is already processed (idempotency)
+                    if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+                        log.info("Payment for order {} is already PAID. Skipping duplicate processing.", orderId);
+                    } else {
+                        payment.setPaymentStatus(PaymentStatus.PAID);
+                        paymentRepository.save(payment);
+                        orderService.updateOrderStatus(Long.parseLong(orderId), EnumProcessOrder.PAYMENT);
+                        log.info("Successfully processed payment for order #{}", orderId);
+                    }
+
+                    response.sendRedirect(
+                            webUrl + "?status=success&orderId=" + URLEncoder.encode(orderId, StandardCharsets.UTF_8));
                 }
             } else {
                 if (isMobile) {

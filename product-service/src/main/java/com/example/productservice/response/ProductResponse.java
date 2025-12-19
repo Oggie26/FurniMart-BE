@@ -29,4 +29,5 @@ public class ProductResponse {
     private EnumStatus status;
     private List<ProductColorDTO> productColors;
     private List<MaterialResponse> materials;
+    private List<ImageResponse> images;
 }

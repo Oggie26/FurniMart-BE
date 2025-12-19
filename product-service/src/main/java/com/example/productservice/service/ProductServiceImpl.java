@@ -239,6 +239,17 @@ public class ProductServiceImpl implements ProductService {
         }
 
         private ProductResponse mapToResponse(Product product) {
+                List<ProductColorDTO> productColors = product.getProductColors() != null
+                                ? product.getProductColors().stream()
+                                                .map(this::mapProductColorToDTO)
+                                                .toList()
+                                : null;
+
+                List<ImageResponse> allImages = productColors != null ? productColors.stream()
+                                .flatMap(pc -> pc.getImages().stream())
+                                .distinct()
+                                .collect(Collectors.toList()) : null;
+
                 return ProductResponse.builder()
                                 .id(product.getId())
                                 .name(product.getName())
@@ -252,11 +263,8 @@ public class ProductServiceImpl implements ProductService {
                                 .thumbnailImage(product.getThumbnailImage())
                                 .width(product.getWidth())
                                 .height(product.getHeight())
-                                // .fullName()
-                                // .userId()
-                                .productColors(product.getProductColors() != null ? product.getProductColors().stream()
-                                                .map(this::mapProductColorToDTO)
-                                                .toList() : null)
+                                .productColors(productColors)
+                                .images(allImages)
                                 .status(product.getStatus())
                                 .length(product.getLength())
                                 .weight(product.getWeight())
@@ -338,39 +346,43 @@ public class ProductServiceImpl implements ProductService {
                 Page<Product> productPage = productRepository.searchByKeywordNative(keyword, pageable);
 
                 return productPage.getContent().stream().map(product -> {
-                        List<com.example.productservice.response.ProductColorQuickResponse> colors = product.getProductColors().stream()
-                                .map(pc -> {
-                                        Integer stock = 0;
-                                        try {
-                                                ApiResponse<Integer> stockResponse = inventoryClient.getAvailableStockByProductColorId(pc.getId());
-                                                if (stockResponse != null && stockResponse.getData() != null) {
-                                                        stock = stockResponse.getData();
+                        List<com.example.productservice.response.ProductColorQuickResponse> colors = product
+                                        .getProductColors().stream()
+                                        .map(pc -> {
+                                                Integer stock = 0;
+                                                try {
+                                                        ApiResponse<Integer> stockResponse = inventoryClient
+                                                                        .getAvailableStockByProductColorId(pc.getId());
+                                                        if (stockResponse != null && stockResponse.getData() != null) {
+                                                                stock = stockResponse.getData();
+                                                        }
+                                                } catch (Exception e) {
+                                                        log.warn("Failed to fetch stock for {}: {}", pc.getId(),
+                                                                        e.getMessage());
                                                 }
-                                        } catch (Exception e) {
-                                                log.warn("Failed to fetch stock for {}: {}", pc.getId(), e.getMessage());
-                                        }
-                                        
-                                        String imageUrl = null;
-                                        if (pc.getImages() != null && !pc.getImages().isEmpty()) {
-                                            imageUrl = pc.getImages().get(0).getImageUrl();
-                                        }
 
-                                        return com.example.productservice.response.ProductColorQuickResponse.builder()
-                                                .id(pc.getId())
-                                                .colorName(pc.getColor().getColorName())
-                                                .imageUrl(imageUrl)
-                                                .currentStock(stock)
-                                                .build();
-                                })
-                                .collect(Collectors.toList());
+                                                String imageUrl = null;
+                                                if (pc.getImages() != null && !pc.getImages().isEmpty()) {
+                                                        imageUrl = pc.getImages().get(0).getImageUrl();
+                                                }
+
+                                                return com.example.productservice.response.ProductColorQuickResponse
+                                                                .builder()
+                                                                .id(pc.getId())
+                                                                .colorName(pc.getColor().getColorName())
+                                                                .imageUrl(imageUrl)
+                                                                .currentStock(stock)
+                                                                .build();
+                                        })
+                                        .collect(Collectors.toList());
 
                         return com.example.productservice.response.ProductQuickLookupResponse.builder()
-                                .id(product.getId())
-                                .name(product.getName())
-                                .price(product.getPrice())
-                                .thumbnailImage(product.getThumbnailImage())
-                                .colors(colors)
-                                .build();
+                                        .id(product.getId())
+                                        .name(product.getName())
+                                        .price(product.getPrice())
+                                        .thumbnailImage(product.getThumbnailImage())
+                                        .colors(colors)
+                                        .build();
                 }).collect(Collectors.toList());
         }
 }
