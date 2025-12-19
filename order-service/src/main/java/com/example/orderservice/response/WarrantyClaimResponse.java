@@ -17,10 +17,13 @@ import java.util.List;
 @AllArgsConstructor
 public class WarrantyClaimResponse {
 
-    private Long id;
+    private Long id; // claimId
     private Long orderId;
     private String customerId;
     private Long addressId;
+    private String address; // Địa chỉ nhận bảo hành
+    private String name; // Tên người nhận
+    private String phone; // Số điện thoại
     private LocalDateTime claimDate;
     private List<WarrantyClaimDetailResponse> items;
     // private Long warrantyId; // Removed
