@@ -9,6 +9,7 @@ import com.example.orderservice.feign.AuthClient;
 import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.repository.WarrantyRepository;
+import com.example.orderservice.repository.WarrantyClaimRepository;
 import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.ApiResponse;
@@ -48,15 +49,16 @@ public class WarrantyController {
         private final AuthClient authClient;
         private final UserClient userClient;
         private final WarrantyRepository warrantyRepository;
+        private final WarrantyClaimRepository warrantyClaimRepository;
         private final OrderRepository orderRepository;
 
         // ========== CUSTOMER ENDPOINTS ==========
 
         @GetMapping("/customer/{customerId}")
         @Operation(summary = "Get warranties by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getWarrantiesByCustomer(@PathVariable String customerId) {
-                // Verify customer can only access their own data (unless ADMIN)
+                // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
                 return ApiResponse.<List<WarrantyResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -67,9 +69,9 @@ public class WarrantyController {
 
         @GetMapping("/customer/{customerId}/active")
         @Operation(summary = "Get active warranties by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getActiveWarrantiesByCustomer(@PathVariable String customerId) {
-                // Verify customer can only access their own data (unless ADMIN)
+                // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
                 return ApiResponse.<List<WarrantyResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -80,9 +82,9 @@ public class WarrantyController {
 
         @GetMapping("/{warrantyId}")
         @Operation(summary = "Get warranty by ID")
-        @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<WarrantyResponse> getWarrantyById(@PathVariable Long warrantyId) {
-                // Verify warranty ownership (unless ADMIN)
+                // Verify warranty ownership
                 verifyWarrantyOwnership(warrantyId);
                 return ApiResponse.<WarrantyResponse>builder()
                                 .status(HttpStatus.OK.value())
@@ -93,9 +95,9 @@ public class WarrantyController {
 
         @GetMapping("/order/{orderId}")
         @Operation(summary = "Get warranties by order ID")
-        @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getWarrantiesByOrder(@PathVariable Long orderId) {
-                // Verify order ownership (unless ADMIN)
+                // Verify order ownership
                 verifyOrderOwnership(orderId);
                 return ApiResponse.<List<WarrantyResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -106,11 +108,13 @@ public class WarrantyController {
 
         @GetMapping("/store/{storeId}")
         @Operation(summary = "Get warranty claims by Store ID")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+        @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<PageResponse<WarrantyClaimResponse>> getWarrantyClaimsByStore(
                         @PathVariable String storeId,
                         @RequestParam(defaultValue = "1") @Min(value = 1, message = "Page must be at least 1") int page,
                         @RequestParam(defaultValue = "10") @Min(value = 1, message = "Size must be at least 1") @Max(value = 100, message = "Size must not exceed 100") int size) {
+                // Verify user has access to this store
+                verifyStoreAccess(storeId);
                 return ApiResponse.<PageResponse<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty claims retrieved successfully")
@@ -135,9 +139,9 @@ public class WarrantyController {
 
         @GetMapping("/claims/customer/{customerId}")
         @Operation(summary = "Get warranty claims by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByCustomer(@PathVariable String customerId) {
-                // Verify customer can only access their own data (unless ADMIN)
+                // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -148,9 +152,9 @@ public class WarrantyController {
 
         @GetMapping("/claims/warranty/{warrantyId}")
         @Operation(summary = "Get warranty claims by warranty ID")
-        @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
+        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByWarranty(@PathVariable Long warrantyId) {
-                // Verify warranty ownership (unless ADMIN)
+                // Verify warranty ownership
                 verifyWarrantyOwnership(warrantyId);
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -159,22 +163,33 @@ public class WarrantyController {
                                 .build();
         }
 
-        // ========== ADMIN ENDPOINTS ==========
+        // ========== MANAGER/STAFF ENDPOINTS ==========
 
         @GetMapping("/claims")
-        @Operation(summary = "Get all warranty claims (Admin only)")
-        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Get all warranty claims (Manager only)")
+        @PreAuthorize("hasRole('BRANCH_MANAGER')")
         public ApiResponse<List<WarrantyClaimResponse>> getAllWarrantyClaims() {
+                // Manager chỉ xem được claims của store mình
+                String currentUserId = getCurrentUserId();
+                ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
+                if (userResponse == null || userResponse.getData() == null || 
+                    userResponse.getData().getStoreIds() == null || userResponse.getData().getStoreIds().isEmpty()) {
+                    throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+                // Lấy storeId đầu tiên của manager
+                String managerStoreId = userResponse.getData().getStoreIds().get(0);
+                // Trả về claims của store đó (sử dụng getWarrantyClaimsByStore với page lớn)
+                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService.getWarrantyClaimsByStore(managerStoreId, 1, 1000);
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
-                                .message("All warranty claims retrieved successfully")
-                                .data(warrantyService.getAllWarrantyClaims())
+                                .message("Warranty claims retrieved successfully")
+                                .data(pageResponse.getContent())
                                 .build();
         }
 
         @GetMapping("/claims/status/{status}")
-        @Operation(summary = "Get warranty claims by status (Admin only)")
-        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Get warranty claims by status (Manager only)")
+        @PreAuthorize("hasRole('BRANCH_MANAGER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByStatus(@PathVariable String status) {
                 // Validate status enum
                 try {
@@ -182,21 +197,36 @@ public class WarrantyController {
                 } catch (IllegalArgumentException e) {
                         throw new AppException(ErrorCode.INVALID_STATUS);
                 }
+                // Manager chỉ xem được claims của store mình
+                String currentUserId = getCurrentUserId();
+                ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
+                if (userResponse == null || userResponse.getData() == null || 
+                    userResponse.getData().getStoreIds() == null || userResponse.getData().getStoreIds().isEmpty()) {
+                    throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+                String managerStoreId = userResponse.getData().getStoreIds().get(0);
+                // Lấy tất cả claims của store, rồi filter theo status
+                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService.getWarrantyClaimsByStore(managerStoreId, 1, 1000);
+                List<WarrantyClaimResponse> filtered = pageResponse.getContent().stream()
+                        .filter(claim -> claim.getStatus().name().equalsIgnoreCase(status))
+                        .collect(java.util.stream.Collectors.toList());
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty claims retrieved successfully")
-                                .data(warrantyService.getWarrantyClaimsByStatus(status))
+                                .data(filtered)
                                 .build();
         }
 
         @PutMapping("/claims/{claimId}/status")
-        @Operation(summary = "Update warranty claim status (Admin only)")
-        @PreAuthorize("hasRole('ADMIN')")
+        @Operation(summary = "Update warranty claim status (Manager only)")
+        @PreAuthorize("hasRole('BRANCH_MANAGER')")
         public ApiResponse<WarrantyClaimResponse> updateWarrantyClaimStatus(
                         @PathVariable Long claimId,
                         @RequestParam String status,
                         @RequestParam(required = false) String adminResponse,
                         @RequestParam(required = false) String resolutionNotes) {
+                // Verify claim belongs to manager's store
+                verifyClaimStoreAccess(claimId);
                 // Validate status enum
                 try {
                         WarrantyClaimStatus.valueOf(status.toUpperCase());
@@ -212,11 +242,13 @@ public class WarrantyController {
         }
 
         @PostMapping("/claims/{claimId}/resolve")
-        @Operation(summary = "Resolve warranty claim with action (Admin/Staff)")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+        @Operation(summary = "Resolve warranty claim with action (Manager/Staff)")
+        @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<WarrantyClaimResponse> resolveWarrantyClaim(
                         @PathVariable Long claimId,
                         @Valid @RequestBody WarrantyClaimResolutionRequest request) {
+                // Verify claim belongs to user's store
+                verifyClaimStoreAccess(claimId);
                 request.setClaimId(claimId); // Ensure claim ID matches path variable
                 return ApiResponse.<WarrantyClaimResponse>builder()
                                 .status(HttpStatus.OK.value())
@@ -237,11 +269,13 @@ public class WarrantyController {
 //        }
 
         @GetMapping("/report")
-        @Operation(summary = "Get warranty report (Admin/Manager only)")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+        @Operation(summary = "Get warranty report (Manager only)")
+        @PreAuthorize("hasRole('BRANCH_MANAGER')")
         public ApiResponse<WarrantyReportResponse> getWarrantyReport(
                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+                // Manager chỉ xem được report của store mình
+                // Note: Hiện tại getWarrantyReport trả về tất cả, có thể cần filter theo storeId trong tương lai
                 return ApiResponse.<WarrantyReportResponse>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty report retrieved successfully")
@@ -257,15 +291,7 @@ public class WarrantyController {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
 
-                // Check if user is ADMIN - admins can access any customer's data
-                boolean isAdmin = authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-                if (isAdmin) {
-                        return; // Admin can access any customer's data
-                }
-
-                // For non-admin users, verify they can only access their own data
+                // Customers can only access their own data
                 String currentUserId = getCurrentUserId();
                 if (!Objects.equals(currentUserId, customerId)) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -301,15 +327,7 @@ public class WarrantyController {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
 
-                // Check if user is ADMIN - admins can access any warranty
-                boolean isAdmin = authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-                if (isAdmin) {
-                        return; // Admin can access any warranty
-                }
-
-                // For non-admin users, verify they own the warranty
+                // Customers can only access their own warranties
                 Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(warrantyId)
                                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
 
@@ -321,7 +339,7 @@ public class WarrantyController {
 
         /**
          * Verify that the current user owns the specified order.
-         * Customers can only access their own orders, while ADMIN can access any order.
+         * Customers can only access their own orders.
          */
         private void verifyOrderOwnership(Long orderId) {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -329,15 +347,7 @@ public class WarrantyController {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
 
-                // Check if user is ADMIN - admins can access any order
-                boolean isAdmin = authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-
-                if (isAdmin) {
-                        return; // Admin can access any order
-                }
-
-                // For non-admin users, verify they own the order
+                // Customers can only access their own orders
                 Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
@@ -345,5 +355,69 @@ public class WarrantyController {
                 if (!Objects.equals(order.getUserId(), currentUserId)) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
+        }
+
+        /**
+         * Verify that the current user (Manager/Staff) has access to the specified store.
+         * Manager/Staff can only access stores they are assigned to.
+         */
+        private void verifyStoreAccess(String storeId) {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication == null || !authentication.isAuthenticated()) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+
+                String currentUserId = getCurrentUserId();
+                ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
+                
+                if (userResponse == null || userResponse.getData() == null) {
+                        throw new AppException(ErrorCode.NOT_FOUND_USER);
+                }
+
+                UserResponse user = userResponse.getData();
+                
+                // Check if user is Manager or Staff
+                boolean isManager = authentication.getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_BRANCH_MANAGER"));
+                boolean isStaff = authentication.getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_STAFF"));
+
+                if (!isManager && !isStaff) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+
+                // Verify user is assigned to this store
+                if (user.getStoreIds() == null || user.getStoreIds().isEmpty()) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+
+                if (!user.getStoreIds().contains(storeId)) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+        }
+
+        /**
+         * Verify that the current user (Manager/Staff) has access to the warranty claim's store.
+         * Manager/Staff can only access claims from stores they are assigned to.
+         */
+        private void verifyClaimStoreAccess(Long claimId) {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication == null || !authentication.isAuthenticated()) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                }
+
+                // Get claim to find its order and store
+                com.example.orderservice.entity.WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(claimId)
+                                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
+
+                Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())
+                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+                if (order.getStoreId() == null || order.getStoreId().isEmpty()) {
+                        throw new AppException(ErrorCode.INVALID_REQUEST);
+                }
+
+                // Verify user has access to this store
+                verifyStoreAccess(order.getStoreId());
         }
 }
