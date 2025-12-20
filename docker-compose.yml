@@ -74,18 +74,7 @@ services:
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
 
       # Middleware
-      - "traefik.http.routers.api-gateway.middlewares=api-cors,api-ratelimit"
-
-      # --- CẤU HÌNH CORS "ALLOW ALL" (Dùng Regex) ---
-      # 1. Cho phép tất cả Method
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS,PATCH"
-
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlistregex=.*"
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowcredentials=true"
-
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolallowheaders=*"
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
-      - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
+      - "traefik.http.routers.api-gateway.middlewares=api-ratelimit"
 
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=50"

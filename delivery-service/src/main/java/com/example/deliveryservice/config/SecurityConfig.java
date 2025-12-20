@@ -1,5 +1,6 @@
 package com.example.deliveryservice.config;
 
+import com.example.deliveryservice.filter.ServiceAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final ServiceAuthFilter serviceAuthFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,10 +42,10 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/static/**",
                                 "/*.js",
-                                "/*.css"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                                "/*.css")
+                        .permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(serviceAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
