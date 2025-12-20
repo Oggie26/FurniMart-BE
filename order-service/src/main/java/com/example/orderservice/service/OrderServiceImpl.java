@@ -1137,13 +1137,20 @@ public class OrderServiceImpl implements OrderService {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        for (OrderDetail detail : order.getOrderDetails()) {
-            try {
-                inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
-            } catch (Exception e) {
-                log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        // 3. Restore stock to inventory ONLY if it's a normal return (not warranty return)
+        // Warranty returns are damaged products and should NOT be added back to inventory
+        if (order.getOrderType() != OrderType.WARRANTY_RETURN) {
+            log.info("Restoring stock for normal return order: {}", orderId);
+            for (OrderDetail detail : order.getOrderDetails()) {
+                try {
+                    inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
+                } catch (Exception e) {
+                    log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
+                    throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                }
             }
+        } else {
+            log.info("Skipping stock restoration for warranty return order {} (damaged products cannot be resold)", orderId);
         }
 
         return mapToResponse(orderRepository.save(order));
