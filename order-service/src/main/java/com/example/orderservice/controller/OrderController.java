@@ -81,7 +81,7 @@ public class OrderController {
                         voucher = voucherRepository.findByCodeAndIsDeletedFalse(voucherCode).orElse(null);
                 }
 
-                Double voucherValue = (voucher != null) ? voucher.getAmount().doubleValue() : 0.0;
+                Double voucherValue = (voucher != null) ? voucher.getAmount() : 0.0;
 
                 OrderResponse orderResponse = null;
                 Order order = null;
@@ -97,11 +97,9 @@ public class OrderController {
 
                         double depositAmount = 0;
 
-                        // Get existing payment created by createOrder()
                         Payment payment = paymentRepository.findByOrderId(order.getId())
                                         .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
-                        // Update payment with new total
                         payment.setTotal(newTotal);
 
                         if (paymentMethod == PaymentMethod.VNPAY) {
@@ -191,7 +189,6 @@ public class OrderController {
 
                         double depositAmount = 0;
 
-                        // Get existing payment created by createOrder()
                         Payment payment = paymentRepository.findByOrderId(order.getId())
                                         .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
