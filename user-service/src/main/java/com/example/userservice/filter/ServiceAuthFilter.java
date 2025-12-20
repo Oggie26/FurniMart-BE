@@ -45,12 +45,19 @@ public class ServiceAuthFilter extends OncePerRequestFilter {
 
         // 1. Check Service Token
         if (providedServiceToken != null && providedServiceToken.equals(serviceToken)) {
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    "internal-service",
-                    null,
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_SERVICE")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            log.debug("Service token validated for request to: {}", path);
+            // Only set internal-service authentication if no user JWT is present.
+            // If a JWT is present, we skip setting context here to allow JwtAuthFilter
+            // to populate the SecurityContext with the actual user's details.
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                        "internal-service",
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_SERVICE")));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("Service token validated (no user context) for request to: {}", path);
+            } else {
+                log.debug("Service token validated (user context present) for request to: {}", path);
+            }
             filterChain.doFilter(request, response);
             return;
         }

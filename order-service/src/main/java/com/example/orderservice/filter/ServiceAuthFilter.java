@@ -33,14 +33,19 @@ public class ServiceAuthFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
         String providedServiceToken = request.getHeader("X-Service-Token");
+        String authHeader = request.getHeader("Authorization");
 
         if (providedServiceToken != null && providedServiceToken.equals(serviceToken)) {
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    "internal-service",
-                    null,
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_SERVICE")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            log.debug("Service token validated for request to: {}", path);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                        "internal-service",
+                        null,
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_SERVICE")));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                log.debug("Service token validated (no user context) for request to: {}", path);
+            } else {
+                log.debug("Service token validated (user context present) for request to: {}", path);
+            }
             filterChain.doFilter(request, response);
             return;
         }

@@ -26,7 +26,6 @@ public class FeignClientInterceptor implements RequestInterceptor {
         // 1. Add Service Token for internal calls
         template.header("X-Service-Token", serviceToken);
 
-        // 2. Forward User JWT if present (for user context)
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
