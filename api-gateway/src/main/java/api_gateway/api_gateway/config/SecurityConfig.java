@@ -9,6 +9,11 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.server.adapter.ForwardedHeaderTransformer;
 
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import java.util.List;
+
 @Configuration
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
@@ -31,34 +36,32 @@ public class SecurityConfig {
         return new ForwardedHeaderTransformer();
     }
 
-    // @Bean
-    // public CorsConfigurationSource corsConfigurationSource() {
-    // CorsConfiguration config = new CorsConfiguration();
-    // config.setAllowedOrigins(List.of(
-    // "http://localhost:5173",
-    // "http://127.0.0.1:5173",
-    // "http://localhost:3000",
-    // "http://127.0.0.1:3000",
-    // "http://152.53.244.124",
-    // "https://furnimart-web.vercel.app",
-    // "https://furnimart.click",
-    // "exp://192.168.102.7:8081",
-    // "http://172.20.10.4:8081",
-    // "exp://172.20.10.4:8081",
-    // "http://localhost:8081",
-    // "http://152.53.244.124:8080"
-    // ));
-    // config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH",
-    // "OPTIONS"));
-    // config.setAllowedHeaders(List.of("*"));
-    // config.setExposedHeaders(List.of("Authorization", "Content-Type"));
-    // config.setAllowCredentials(true);
-    // config.setMaxAge(3600L);
-    //
-    // UrlBasedCorsConfigurationSource source = new
-    // UrlBasedCorsConfigurationSource();
-    // source.registerCorsConfiguration("/**", config);
-    //
-    // return source;
-    // }
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://152.53.244.124",
+                "https://furnimart-web.vercel.app",
+                "https://furnimart.click",
+                "http://furnimart.click",
+                "exp://192.168.102.7:8081",
+                "http://172.20.10.4:8081",
+                "exp://172.20.10.4:8081",
+                "http://localhost:8081",
+                "http://152.53.244.124:8080"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+
+        return source;
+    }
 }
