@@ -68,7 +68,7 @@ public class AuthController {
     @PostMapping("/register")
     @Operation(summary = "Đăng kí", description = "API đăng kí")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<AuthResponse> register(@RequestBody @Valid RegisterRequest registerRequest){
+    public ApiResponse<AuthResponse> register(@RequestBody @Valid RegisterRequest registerRequest) {
 
         return ApiResponse.<AuthResponse>builder()
                 .status(HttpStatus.CREATED.value())
@@ -78,7 +78,7 @@ public class AuthController {
                 .build();
     }
 
-    @GetMapping("/{email}")
+    @GetMapping("/{email:.+}")
     public ApiResponse<AuthResponse> getUserByUsername(@PathVariable String email) {
         AuthResponse authResponse = authService.getUserByUsername(email);
         return ApiResponse.<AuthResponse>builder()
