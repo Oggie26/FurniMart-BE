@@ -426,7 +426,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(status);
         orderRepository.save(order);
 
-        if (status.equals(EnumProcessOrder.DELIVERED) || status.equals(EnumProcessOrder.FINISHED)) {
+        if (status.equals(EnumProcessOrder.DELIVERED)) {
             try {
                 warrantyService.createWarrantiesForOrder(orderId);
                 log.info("Warranties created for order: {}", orderId);
