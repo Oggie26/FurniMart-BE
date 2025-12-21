@@ -455,13 +455,16 @@ public class OrderServiceImpl implements OrderService {
             }
 
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                    .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                            .productColorId(detail.getProductColorId())
-                            .quantity(detail.getQuantity())
-                            .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                            .price(detail.getPrice())
-                            .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                            .build())
+                    .map(detail -> {
+                        ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
+                        return OrderCreatedEvent.OrderItem.builder()
+                                .productColorId(detail.getProductColorId())
+                                .quantity(detail.getQuantity())
+                                .productName(productInfo.getProduct().getName())
+                                .price(detail.getPrice())
+                                .colorName(productInfo.getColor().getColorName())
+                                .build();
+                    })
                     .toList();
 
             OrderCreatedEvent event = OrderCreatedEvent.builder()
@@ -1137,8 +1140,10 @@ public class OrderServiceImpl implements OrderService {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        // 3. Restore stock to inventory ONLY if it's a normal return (not warranty return)
-        // Warranty returns are damaged products and should NOT be added back to inventory
+        // 3. Restore stock to inventory ONLY if it's a normal return (not warranty
+        // return)
+        // Warranty returns are damaged products and should NOT be added back to
+        // inventory
         if (order.getOrderType() != OrderType.WARRANTY_RETURN) {
             log.info("Restoring stock for normal return order: {}", orderId);
             for (OrderDetail detail : order.getOrderDetails()) {
@@ -1150,7 +1155,8 @@ public class OrderServiceImpl implements OrderService {
                 }
             }
         } else {
-            log.info("Skipping stock restoration for warranty return order {} (damaged products cannot be resold)", orderId);
+            log.info("Skipping stock restoration for warranty return order {} (damaged products cannot be resold)",
+                    orderId);
         }
 
         return mapToResponse(orderRepository.save(order));

@@ -83,7 +83,7 @@ services:
     build: ./product-service
     container_name: product-service
     ports:
-      - "8084:8084"
+      - "8084:8084" 
     depends_on:
       - eureka-server
       - product-db
