@@ -74,17 +74,32 @@ public class OrderEventListener {
     }
 
     private OrderResponse getOrderResponse(long orderId) {
-        try {
-            ApiResponse<OrderResponse> response = orderClient.getOrderById(orderId);
-            if (response != null && response.getData() != null) {
-                return response.getData();
-            } else {
-                log.warn("OrderClient returned null for orderId {}", orderId);
-                return null;
+~        int maxRetries = 3;
+        long retryDelay = 2000; // 2 seconds
+
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                ApiResponse<OrderResponse> response = orderClient.getOrderById(orderId);
+                if (response != null && response.getData() != null) {
+                    return response.getData();
+                }
+                log.warn("OrderClient returned null data for orderId {}, attempt {}/{}", orderId, i + 1, maxRetries);
+            } catch (Exception e) {
+                log.warn("Error fetching order with id {} (attempt {}/{}): {}", orderId, i + 1, maxRetries,
+                        e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("Error fetching order with id {}: {}", orderId, e.getMessage(), e);
-            throw new AppException(ErrorCode.NOT_FOUND_ORDER);
+
+            if (i < maxRetries - 1) {
+                try {
+                    Thread.sleep(retryDelay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
+
+        log.error("Failed to fetch order with id {} after {} attempts", orderId, maxRetries);
+        throw new AppException(ErrorCode.NOT_FOUND_ORDER);
     }
 }
