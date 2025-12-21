@@ -74,7 +74,7 @@ public class OrderEventListener {
     }
 
     private OrderResponse getOrderResponse(long orderId) {
-~        int maxRetries = 3;
+      int maxRetries = 3;
         long retryDelay = 2000; // 2 seconds
 
         for (int i = 0; i < maxRetries; i++) {
