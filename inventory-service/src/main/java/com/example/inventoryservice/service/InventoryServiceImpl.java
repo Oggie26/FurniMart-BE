@@ -166,7 +166,7 @@ public class InventoryServiceImpl implements InventoryService {
                                 .type(EnumTypes.TRANSFER)
                                 .purpose(EnumPurpose.REQUEST)
                                 .warehouse(toWarehouse)
-                                .transferStatus(TransferStatus.PENDING)
+                                .transferStatus(TransferStatus.PENDING_CONFIRM)
                                 .date(LocalDate.now())
                                 .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName()
                                         + " - Mã phiếu xuất: " + inventory.getCode())
