@@ -45,6 +45,12 @@ public interface WarrantyClaimRepository extends JpaRepository<WarrantyClaim, Lo
 
     Long countByStatusAndIsDeletedFalse(WarrantyClaimStatus status);
 
-    @Query("SELECT wc FROM WarrantyClaim wc, Order o WHERE wc.orderId = o.id AND o.storeId = :storeId AND wc.isDeleted = false AND o.isDeleted = false ORDER BY wc.claimDate DESC")
+    @Query("SELECT wc FROM WarrantyClaim wc WHERE wc.orderId IN (SELECT o.id FROM Order o WHERE o.storeId = :storeId AND o.isDeleted = false) AND wc.isDeleted = false ORDER BY wc.claimDate DESC")
     Page<WarrantyClaim> findByStoreIdOrderByClaimDateDesc(@Param("storeId") String storeId, Pageable pageable);
+
+    @Query("SELECT DISTINCT wc FROM WarrantyClaim wc JOIN wc.claimDetails d WHERE d.warranty.orderDetailId = :orderDetailId AND wc.status = :status AND wc.isDeleted = false")
+    List<WarrantyClaim> findPendingClaimsByOrderDetailId(@Param("orderDetailId") Long orderDetailId, @Param("status") WarrantyClaimStatus status);
+
+    @Query("SELECT DISTINCT wc FROM WarrantyClaim wc JOIN wc.claimDetails d WHERE d.warranty.orderDetailId = :orderDetailId AND wc.status IN :statuses AND wc.isDeleted = false")
+    List<WarrantyClaim> findActiveClaimsByOrderDetailId(@Param("orderDetailId") Long orderDetailId, @Param("statuses") List<WarrantyClaimStatus> statuses);
 }
