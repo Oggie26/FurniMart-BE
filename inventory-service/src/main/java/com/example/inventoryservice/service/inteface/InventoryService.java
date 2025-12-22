@@ -20,8 +20,7 @@ public interface InventoryService {
 
     void transferStock(TransferStockRequest request);
 
-    ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId );
-
+    ReserveStockResponse reserveStock(String productColorId, int quantity, long orderId);
 
     ReserveStockResponse releaseReservedStock(String productColorId, int quantity, Long orderId);
 
@@ -66,4 +65,6 @@ public interface InventoryService {
     InventoryWarehouseViewResponse getWarehouseInventoryView(String warehouseId);
 
     void rollbackInventoryTicket(Long orderId);
+
+    void cancelInventoryTicket(Long ticketId);
 }
