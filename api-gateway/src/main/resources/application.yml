@@ -26,7 +26,7 @@
                      - id: product-service
                        uri: lb://product-service
                        predicates:
-                         - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**, /api/product-colors/**
+                         - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**,/api/ratings/** , /api/product-colors/**
                        filters: []
 
                      # NOTIFICATION SERVICE
