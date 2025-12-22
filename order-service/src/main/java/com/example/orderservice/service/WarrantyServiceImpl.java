@@ -783,6 +783,7 @@ public class WarrantyServiceImpl implements WarrantyService {
         return response;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public Double calculateRefundAmount(OrderReturnedEvent event) {
         log.info("Calculating refund amount for order: {}, warranty claim: {}", 

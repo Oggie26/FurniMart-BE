@@ -1,5 +1,6 @@
 package com.example.orderservice.service.inteface;
 
+import com.example.orderservice.event.OrderReturnedEvent;
 import com.example.orderservice.request.WarrantyClaimRequest;
 import com.example.orderservice.request.WarrantyClaimResolutionRequest;
 import com.example.orderservice.response.PageResponse;
@@ -64,4 +65,7 @@ public interface WarrantyService {
 
     // Get warranty statistics report
     WarrantyReportResponse getWarrantyReport(LocalDateTime startDate, LocalDateTime endDate);
+
+    // Calculate refund amount for returned order
+    Double calculateRefundAmount(OrderReturnedEvent event);
 }
