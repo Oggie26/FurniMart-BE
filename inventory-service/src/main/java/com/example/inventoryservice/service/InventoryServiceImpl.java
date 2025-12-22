@@ -80,14 +80,16 @@ public class InventoryServiceImpl implements InventoryService {
                     .type(EnumTypes.TRANSFER)
                     .purpose(EnumPurpose.REQUEST)
                     .warehouse(toWarehouse)
-                    .transferStatus(TransferStatus.PENDING)
+                    .transferStatus(TransferStatus.PENDING_CONFIRM)
                     .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName() + " - Mã phiếu xuất: "
                             + inventory.getCode())
+                    .toWarehouseId(warehouse.getId())
+                    .toWarehouseName(warehouse.getWarehouseName())
                     .date(LocalDate.now())
                     .build();
 
-            inventory.setToWarehouseId(warehouse.getId());
-            inventory.setToWarehouseName(warehouse.getWarehouseName());
+            inventory.setToWarehouseId(toWarehouse.getId());
+            inventory.setToWarehouseName(toWarehouse.getWarehouseName());
             inventoryRepository.save(transferInventory);
         }
 
@@ -153,29 +155,11 @@ public class InventoryServiceImpl implements InventoryService {
                         throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
 
                     // -----------------------------
-                    // CHUYỂN KHO → TẠO PHIẾU YÊU CẦU
+                    // CHUYỂN KHO → THÊM VÀO PHIẾU NHẬN (ĐÃ TẠO Ở TRÊN)
                     // -----------------------------
-                    if (isTransferOut && request.getToWarehouseId() != null) {
-
-                        Warehouse toWarehouse = warehouseRepository
-                                .findByIdAndIsDeletedFalse(request.getToWarehouseId())
-                                .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
-
-                        Inventory transferReq = Inventory.builder()
-                                .employeeId(getProfile())
-                                .type(EnumTypes.TRANSFER)
-                                .purpose(EnumPurpose.REQUEST)
-                                .warehouse(toWarehouse)
-                                .transferStatus(TransferStatus.PENDING_CONFIRM)
-                                .date(LocalDate.now())
-                                .note("Nhận hàng chuyển từ kho " + warehouse.getWarehouseName()
-                                        + " - Mã phiếu xuất: " + inventory.getCode())
-                                .build();
-
-                        inventoryRepository.save(transferReq);
-
+                    if (isTransferOut && transferInventory != null) {
                         createInventoryItem(
-                                transferReq,
+                                transferInventory,
                                 null,
                                 itemReq.getProductColorId(),
                                 itemReq.getQuantity());
@@ -1537,7 +1521,9 @@ public class InventoryServiceImpl implements InventoryService {
         List<Inventory> tickets = inventoryRepository.findAllByOrderId(orderId);
 
         if (tickets == null || tickets.isEmpty()) {
-            log.warn("🛑 Không tìm thấy ticket nào cho order {}. Có thể order chưa được tạo ticket hoặc đã được rollback trước đó. Tiếp tục cancellation.", orderId);
+            log.warn(
+                    "🛑 Không tìm thấy ticket nào cho order {}. Có thể order chưa được tạo ticket hoặc đã được rollback trước đó. Tiếp tục cancellation.",
+                    orderId);
             // ✅ KHÔNG throw exception - Cho phép order cancellation tiếp tục
             // Vì có thể order chưa được assign/store accept nên chưa có ticket
             return;
