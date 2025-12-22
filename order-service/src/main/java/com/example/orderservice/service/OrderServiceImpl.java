@@ -426,13 +426,23 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(status);
         orderRepository.save(order);
 
-        if (status.equals(EnumProcessOrder.DELIVERED)) {
+        if (status.equals(EnumProcessOrder.FINISHED)) {
             try {
                 warrantyService.createWarrantiesForOrder(orderId);
                 log.info("Warranties created for order: {}", orderId);
             } catch (Exception e) {
                 log.error("Failed to create warranties for order: {}", orderId, e);
             }
+
+            Payment payment = paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+            if (payment.getPaymentMethod() == PaymentMethod.COD
+                    && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
+                payment.setPaymentStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
+            }
+            log.info("Order {} reached FINISHED status. Payment updated if COD.", orderId);
         }
 
         if (status.equals(EnumProcessOrder.PAYMENT)) {
@@ -492,17 +502,6 @@ public class OrderServiceImpl implements OrderService {
                 log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
             }
 
-        }
-        if (status.equals(EnumProcessOrder.FINISHED)) {
-            Payment payment = paymentRepository.findByOrderId(orderId)
-                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-            if (payment.getPaymentMethod() == PaymentMethod.COD
-                    && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
-                payment.setPaymentStatus(PaymentStatus.PAID);
-                paymentRepository.save(payment);
-            }
-            log.info("Order {} reached FINISHED status. Payment updated if COD.", orderId);
         }
 
         return mapToResponse(order);
