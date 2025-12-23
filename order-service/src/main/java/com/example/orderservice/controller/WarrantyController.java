@@ -185,13 +185,11 @@ public class WarrantyController {
         @GetMapping("/claims/status/{status}")
         @Operation(summary = "Get warranty claims by status (Manager only)")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByStatus(@PathVariable String status) {
-                // Validate status enum
                 try {
                         WarrantyClaimStatus.valueOf(status.toUpperCase());
                 } catch (IllegalArgumentException e) {
                         throw new AppException(ErrorCode.INVALID_STATUS);
                 }
-                // Manager chỉ xem được claims của store mình
                 String currentUserId = getCurrentUserId();
                 ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
                 if (userResponse == null || userResponse.getData() == null ||
