@@ -165,17 +165,14 @@ public class WarrantyController {
         @GetMapping("/claims")
         @Operation(summary = "Get all warranty claims (Manager only)")
         public ApiResponse<List<WarrantyClaimResponse>> getAllWarrantyClaims() {
-                // Manager chỉ xem được claims của store mình
                 String currentUserId = getCurrentUserId();
-                ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
+                ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(currentUserId);
                 if (userResponse == null || userResponse.getData() == null ||
                                 userResponse.getData().getStoreIds() == null
                                 || userResponse.getData().getStoreIds().isEmpty()) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
-                // Lấy storeId đầu tiên của manager
-                String managerStoreId = userResponse.getData().getStoreIds().get(0);
-                // Trả về claims của store đó (sử dụng getWarrantyClaimsByStore với page lớn)
+                String managerStoreId = userResponse.getData().getStoreIds().getFirst();
                 PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
                                 .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
@@ -223,9 +220,6 @@ public class WarrantyController {
                         @RequestParam String status,
                         @RequestParam(required = false) String adminResponse,
                         @RequestParam(required = false) String resolutionNotes) {
-                // Verify claim belongs to manager's store
-                verifyClaimStoreAccess(claimId);
-                // Validate status enum
                 try {
                         WarrantyClaimStatus.valueOf(status.toUpperCase());
                 } catch (IllegalArgumentException e) {
@@ -244,8 +238,6 @@ public class WarrantyController {
         public ApiResponse<WarrantyClaimResponse> resolveWarrantyClaim(
                         @PathVariable Long claimId,
                         @Valid @RequestBody WarrantyClaimResolutionRequest request) {
-                // Verify claim belongs to user's store
-                verifyClaimStoreAccess(claimId);
                 request.setClaimId(claimId); // Ensure claim ID matches path variable
                 return ApiResponse.<WarrantyClaimResponse>builder()
                                 .status(HttpStatus.OK.value())
