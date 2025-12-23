@@ -124,29 +124,56 @@ public class InventoryServiceImpl implements InventoryService {
 
                     int remainingQty = itemReq.getQuantity();
 
+                    // --- Validation Block ---
+                    long currentStock = 0;
+                    long availableForTransfer = 0;
+                    for (InventoryItem i : itemsInStock) {
+                        currentStock += i.getQuantity();
+                        availableForTransfer += (i.getQuantity() - i.getReservedQuantity());
+                    }
+
+                    if (currentStock < remainingQty) {
+                        throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+                    }
+                    // Nếu là chuyển kho, không được lấy hàng Reserved
+                    if (!isStockOut && availableForTransfer < remainingQty) {
+                        throw new AppException(ErrorCode.NOT_ENOUGH_QUANTITY);
+                    }
+                    // ------------------------
+
                     for (InventoryItem it : itemsInStock) {
                         if (remainingQty <= 0)
                             break;
 
                         int available = it.getQuantity();
+
+                        // Logic kiểm tra available cho Transfer vs Sale
+                        if (!isStockOut) {
+                            available = it.getQuantity() - it.getReservedQuantity();
+                        }
+
                         if (available <= 0)
                             continue;
 
                         int toExport = Math.min(available, remainingQty);
 
-                        // Giảm reserved nếu là xuất bán
+                        // 1. Trừ kho thực tế
+                        it.setQuantity(it.getQuantity() - toExport);
+
+                        // 2. Nếu là bán hàng, update Reserved
                         if (isStockOut && it.getReservedQuantity() > 0) {
                             int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
                             it.setReservedQuantity(newReserved);
-                            inventoryItemRepository.save(it);
                         }
+                        inventoryItemRepository.save(it);
 
-                        // Tạo lịch sử xuất kho thực sự (số âm)
+                        // 3. Tạo record lịch sử (Số dương, nhưng không có Location -> Không tính vào
+                        // tồn kho)
                         createInventoryItem(
                                 inventory,
-                                it.getLocationItem().getId(),
+                                null, // Không gắn location để tránh bị tính vào query getActualStock
                                 itemReq.getProductColorId(),
-                                -toExport);
+                                toExport); // Số dương đẻ hiển thị đẹp
 
                         remainingQty -= toExport;
                     }
@@ -1082,7 +1109,7 @@ public class InventoryServiceImpl implements InventoryService {
         if (locationItemId != null && !locationItemId.isBlank()) {
             locationItem = locationItemRepository.findByIdAndIsDeletedFalse(locationItemId)
                     .orElseThrow(() -> new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND));
-        } else if (inventory.getType() != EnumTypes.TRANSFER) {
+        } else if (inventory.getType() != EnumTypes.TRANSFER && inventory.getType() != EnumTypes.EXPORT) {
             throw new AppException(ErrorCode.LOCATIONITEM_NOT_FOUND);
         }
 
