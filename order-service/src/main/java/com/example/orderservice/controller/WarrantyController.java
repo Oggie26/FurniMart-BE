@@ -172,14 +172,16 @@ public class WarrantyController {
                 // Manager chỉ xem được claims của store mình
                 String currentUserId = getCurrentUserId();
                 ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
-                if (userResponse == null || userResponse.getData() == null || 
-                    userResponse.getData().getStoreIds() == null || userResponse.getData().getStoreIds().isEmpty()) {
-                    throw new AppException(ErrorCode.UNAUTHENTICATED);
+                if (userResponse == null || userResponse.getData() == null ||
+                                userResponse.getData().getStoreIds() == null
+                                || userResponse.getData().getStoreIds().isEmpty()) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
                 // Lấy storeId đầu tiên của manager
                 String managerStoreId = userResponse.getData().getStoreIds().get(0);
                 // Trả về claims của store đó (sử dụng getWarrantyClaimsByStore với page lớn)
-                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService.getWarrantyClaimsByStore(managerStoreId, 1, 1000);
+                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
+                                .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty claims retrieved successfully")
@@ -200,16 +202,18 @@ public class WarrantyController {
                 // Manager chỉ xem được claims của store mình
                 String currentUserId = getCurrentUserId();
                 ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
-                if (userResponse == null || userResponse.getData() == null || 
-                    userResponse.getData().getStoreIds() == null || userResponse.getData().getStoreIds().isEmpty()) {
-                    throw new AppException(ErrorCode.UNAUTHENTICATED);
+                if (userResponse == null || userResponse.getData() == null ||
+                                userResponse.getData().getStoreIds() == null
+                                || userResponse.getData().getStoreIds().isEmpty()) {
+                        throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
                 String managerStoreId = userResponse.getData().getStoreIds().get(0);
                 // Lấy tất cả claims của store, rồi filter theo status
-                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService.getWarrantyClaimsByStore(managerStoreId, 1, 1000);
+                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
+                                .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
                 List<WarrantyClaimResponse> filtered = pageResponse.getContent().stream()
-                        .filter(claim -> claim.getStatus().name().equalsIgnoreCase(status))
-                        .collect(java.util.stream.Collectors.toList());
+                                .filter(claim -> claim.getStatus().name().equalsIgnoreCase(status))
+                                .collect(java.util.stream.Collectors.toList());
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty claims retrieved successfully")
@@ -257,16 +261,17 @@ public class WarrantyController {
                                 .build();
         }
 
-//        @PostMapping("/claims/{claimId}/create-order")
-//        @Operation(summary = "Create order from warranty claim (Return)")
-//        @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
-//        public ApiResponse<OrderResponse> createWarrantyOrder(@PathVariable Long claimId) {
-//                return ApiResponse.<OrderResponse>builder()
-//                                .status(HttpStatus.CREATED.value())
-//                                .message("Warranty order created successfully")
-//                                .data(warrantyService.createWarrantyOrder(claimId))
-//                                .build();
-//        }
+        // @PostMapping("/claims/{claimId}/create-order")
+        // @Operation(summary = "Create order from warranty claim (Return)")
+        // @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('STAFF')")
+        // public ApiResponse<OrderResponse> createWarrantyOrder(@PathVariable Long
+        // claimId) {
+        // return ApiResponse.<OrderResponse>builder()
+        // .status(HttpStatus.CREATED.value())
+        // .message("Warranty order created successfully")
+        // .data(warrantyService.createWarrantyOrder(claimId))
+        // .build();
+        // }
 
         @GetMapping("/report")
         @Operation(summary = "Get warranty report (Manager only)")
@@ -275,7 +280,8 @@ public class WarrantyController {
                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
                 // Manager chỉ xem được report của store mình
-                // Note: Hiện tại getWarrantyReport trả về tất cả, có thể cần filter theo storeId trong tương lai
+                // Note: Hiện tại getWarrantyReport trả về tất cả, có thể cần filter theo
+                // storeId trong tương lai
                 return ApiResponse.<WarrantyReportResponse>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty report retrieved successfully")
@@ -298,7 +304,6 @@ public class WarrantyController {
                 }
         }
 
-
         private String getCurrentUserId() {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()
@@ -313,7 +318,16 @@ public class WarrantyController {
                         throw new AppException(ErrorCode.NOT_FOUND_USER);
                 }
 
-                ApiResponse<UserResponse> userIdResponse = userClient.getUserByAccountId(response.getData().getId());
+                ApiResponse<UserResponse> userIdResponse;
+                try {
+                        userIdResponse = userClient.getUserByAccountId(response.getData().getId());
+                } catch (feign.FeignException e) {
+                        if (e.status() == 404) {
+                                throw new AppException(ErrorCode.NOT_FOUND_USER);
+                        }
+                        throw e;
+                }
+
                 if (userIdResponse == null || userIdResponse.getData() == null) {
                         throw new AppException(ErrorCode.NOT_FOUND_USER);
                 }
@@ -357,10 +371,7 @@ public class WarrantyController {
                 }
         }
 
-        /**
-         * Verify that the current user (Manager/Staff) has access to the specified store.
-         * Manager/Staff can only access stores they are assigned to.
-         */
+
         private void verifyStoreAccess(String storeId) {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {
@@ -369,13 +380,13 @@ public class WarrantyController {
 
                 String currentUserId = getCurrentUserId();
                 ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
-                
+
                 if (userResponse == null || userResponse.getData() == null) {
                         throw new AppException(ErrorCode.NOT_FOUND_USER);
                 }
 
                 UserResponse user = userResponse.getData();
-                
+
                 // Check if user is Manager or Staff
                 boolean isManager = authentication.getAuthorities().stream()
                                 .anyMatch(a -> a.getAuthority().equals("ROLE_BRANCH_MANAGER"));
@@ -397,7 +408,8 @@ public class WarrantyController {
         }
 
         /**
-         * Verify that the current user (Manager/Staff) has access to the warranty claim's store.
+         * Verify that the current user (Manager/Staff) has access to the warranty
+         * claim's store.
          * Manager/Staff can only access claims from stores they are assigned to.
          */
         private void verifyClaimStoreAccess(Long claimId) {
@@ -407,7 +419,8 @@ public class WarrantyController {
                 }
 
                 // Get claim to find its order and store
-                com.example.orderservice.entity.WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(claimId)
+                com.example.orderservice.entity.WarrantyClaim claim = warrantyClaimRepository
+                                .findByIdAndIsDeletedFalse(claimId)
                                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
 
                 Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())

@@ -77,8 +77,8 @@ public class WarrantyServiceImpl implements WarrantyService {
                 warranty.setOrderDetailId(orderDetail.getId());
                 warranty.setProductColorId(orderDetail.getProductColorId());
                 warranty.setCustomerId(order.getUserId());
-                warranty.setDeliveryDate(LocalDateTime.now()); // This should be set when order is actually delivered
-                warranty.setWarrantyDurationMonths(24); // 2 years
+                warranty.setDeliveryDate(LocalDateTime.now());
+                warranty.setWarrantyDurationMonths(24);
                 warranty.setDescription("Standard 2-year warranty");
                 warranty.setAddress(address);
                 warranty.setStoreId(order.getStoreId());
