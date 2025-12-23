@@ -763,9 +763,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                     int release = Math.min(reserved, remaining);
 
-                    // ✅ FIX: Tăng lại quantity (trả hàng về available)
                     stockItem.setQuantity(stockItem.getQuantity() + release);
-                    // ✅ Giảm reservedQuantity
                     stockItem.setReservedQuantity(reserved - release);
 
                     remaining -= release;
@@ -1053,9 +1051,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         for (String pid : allProductColorIds) {
             try {
-                // Các hàm tính toán này (getTotal/getAvailable) nên dùng query SUM thuần túy
-                // (native query hoặc JPQL select sum)
-                // để tránh load entity.
                 int available = getAvailableStockByProductColorId(pid);
 
                 if (available <= defaultThreshold && available >= 0) {
@@ -1081,7 +1076,6 @@ public class InventoryServiceImpl implements InventoryService {
         return alerts;
     }
 
-    // ----------------- PRIVATE HELPERS -----------------
 
     private Inventory createInventory(String warehouseId, EnumTypes type, EnumPurpose purpose, String note) {
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(warehouseId)
@@ -1143,13 +1137,12 @@ public class InventoryServiceImpl implements InventoryService {
                         .quantity(item.getQuantity())
                         .reservedQuantity(item.getReservedQuantity())
                         .productColorId(item.getProductColorId())
-                        .productName(item.getProductColorId())
+                        .productName(getProductName(item.getProductColorId()).getProduct().getName())
                         .locationId(item.getLocationItem() != null ? item.getLocationItem().getId() : null)
                         .inventoryId(item.getInventory().getId())
                         .build())
                 .collect(Collectors.toList());
 
-        // Map Reserved Warehouses
         Map<String, WarehouseReserveInfo> warehouseMap = new HashMap<>();
 
         Optional.ofNullable(inventory.getReservedWarehouses())
@@ -1163,7 +1156,6 @@ public class InventoryServiceImpl implements InventoryService {
                                 .isAssignedWarehouse(rw.getIsAssignedWarehouse())
                                 .build()));
 
-        // Đảm bảo kho gốc luôn hiển thị (dù sl=0)
         if (inventory.getWarehouse() != null) {
             warehouseMap.computeIfAbsent(inventory.getWarehouse().getId(),
                     id -> WarehouseReserveInfo.builder()
@@ -1322,9 +1314,7 @@ public class InventoryServiceImpl implements InventoryService {
 
                 int release = Math.min(reserved, remaining);
 
-                // ✅ Trả hàng về available
                 stockItem.setQuantity(stockItem.getQuantity() + release);
-                // ✅ Giảm reserved
                 stockItem.setReservedQuantity(reserved - release);
 
                 remaining -= release;
@@ -1340,7 +1330,6 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
 
-        // ✅ Xóa ticket
         inventoryRepository.delete(ticket);
         log.info("🗑 Đã xóa ticket {}", ticket.getId());
     }
