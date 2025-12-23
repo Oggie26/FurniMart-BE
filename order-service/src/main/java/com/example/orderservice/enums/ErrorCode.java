@@ -59,6 +59,7 @@ public enum ErrorCode {
     INVALID_WARRANTY_ACTION(1227, "Invalid warranty action type", HttpStatus.BAD_REQUEST),
     WARRANTY_CLAIM_ALREADY_RESOLVED(1228, "Warranty claim has already been resolved", HttpStatus.BAD_REQUEST),
     CANNOT_CREATE_WARRANTY_ORDER(1229, "Cannot create order from warranty claim", HttpStatus.BAD_REQUEST),
+    WARRANTY_CLAIM_PENDING_EXISTS(1230, "A pending warranty claim already exists for this order detail", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -14,6 +14,10 @@ import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.service.inteface.WarrantyService;
 import com.example.orderservice.feign.UserClient;
+import feign.FeignException;
+import com.example.orderservice.event.OrderReturnedEvent;
+import com.example.orderservice.event.WarrantyClaimApprovedEvent;
+import com.example.orderservice.event.WarrantyClaimRejectedEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,6 +48,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final OrderDetailRepository orderDetailRepository;
     private final ObjectMapper objectMapper;
     private final UserClient userClient;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Override
     @Transactional
@@ -66,17 +72,18 @@ public class WarrantyServiceImpl implements WarrantyService {
                     log.error("Failed to fetch address for warranty creation: {}", e.getMessage());
                 }
 
-                Warranty warranty = Warranty.builder()
-                        .order(order)
-                        .orderDetailId(orderDetail.getId())
-                        .productColorId(orderDetail.getProductColorId())
-                        .customerId(order.getUserId())
-                        .deliveryDate(LocalDateTime.now()) // This should be set when order is actually delivered
-                        .warrantyDurationMonths(24) // 2 years
-                        .description("Standard 2-year warranty")
-                        .address(address)
-                        .storeId(order.getStoreId())
-                        .build();
+                Warranty warranty = new Warranty();
+                warranty.setOrder(order);
+                warranty.setOrderDetailId(orderDetail.getId());
+                warranty.setProductColorId(orderDetail.getProductColorId());
+                warranty.setCustomerId(order.getUserId());
+                warranty.setDeliveryDate(LocalDateTime.now()); // This should be set when order is actually delivered
+                warranty.setWarrantyDurationMonths(24); // 2 years
+                warranty.setDescription("Standard 2-year warranty");
+                warranty.setAddress(address);
+                warranty.setStoreId(order.getStoreId());
+                warranty.setClaimCount(0);
+                warranty.setMaxClaims(3);
 
                 warrantyRepository.save(warranty);
                 log.info("Created warranty for order detail: {}", orderDetail.getId());
@@ -182,21 +189,9 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.ADDRESS_NOT_FOUND);
         }
 
-        WarrantyClaim claim = WarrantyClaim.builder()
-                .orderId(request.getOrderId())
-                .customerId(originalOrder.getUserId())
-                .addressId(addressId)
-                .status(WarrantyClaimStatus.PENDING)
-                .build();
-
-        WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
-
-        // Gán claimId vào đơn hàng để OrderResponse.warrantyClaimId không còn null
-        originalOrder.setWarrantyClaimId(savedClaim.getId());
-        orderRepository.save(originalOrder);
-
         String orderStoreId = originalOrder.getStoreId();
 
+        // Validation: Kiểm tra tất cả warranties trước khi tạo claim (chống spam và validate sớm)
         for (com.example.orderservice.request.WarrantyClaimItemRequest item : request.getItems()) {
             Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(item.getWarrantyId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
@@ -211,6 +206,42 @@ public class WarrantyServiceImpl implements WarrantyService {
                     warranty.getId(), warranty.getStoreId(), request.getOrderId(), orderStoreId);
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
+
+            // Validation: Kiểm tra xem đã có claim PENDING hoặc APPROVED cho orderDetailId này chưa (chống spam)
+            // Cho phép tạo claim mới nếu claim trước đó bị REJECTED hoặc đã RESOLVED
+            List<WarrantyClaimStatus> activeStatuses = List.of(
+                WarrantyClaimStatus.PENDING, 
+                WarrantyClaimStatus.APPROVED,
+                WarrantyClaimStatus.UNDER_REVIEW
+            );
+            List<WarrantyClaim> existingActiveClaims = warrantyClaimRepository
+                    .findActiveClaimsByOrderDetailId(warranty.getOrderDetailId(), activeStatuses);
+            if (!existingActiveClaims.isEmpty()) {
+                log.warn("Customer {} attempted to create duplicate warranty claim for orderDetailId {}. Existing active claim (status: {}) found: {}", 
+                    originalOrder.getUserId(), warranty.getOrderDetailId(), 
+                    existingActiveClaims.get(0).getStatus(), existingActiveClaims.get(0).getId());
+                throw new AppException(ErrorCode.WARRANTY_CLAIM_PENDING_EXISTS);
+            }
+        }
+
+        // Sau khi validate xong, mới tạo claim
+        WarrantyClaim claim = WarrantyClaim.builder()
+                .orderId(request.getOrderId())
+                .customerId(originalOrder.getUserId())
+                .addressId(addressId)
+                .status(WarrantyClaimStatus.PENDING)
+                .build();
+
+        WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
+
+        // Gán claimId vào đơn hàng để OrderResponse.warrantyClaimId không còn null
+        originalOrder.setWarrantyClaimId(savedClaim.getId());
+        orderRepository.save(originalOrder);
+
+        // Tạo claim details sau khi đã validate và tạo claim
+        for (com.example.orderservice.request.WarrantyClaimItemRequest item : request.getItems()) {
+            Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(item.getWarrantyId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
 
             String customerPhotosJson = null;
             if (item.getCustomerPhotos() != null && !item.getCustomerPhotos().isEmpty()) {
@@ -269,8 +300,19 @@ public class WarrantyServiceImpl implements WarrantyService {
         WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(claimId)
                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
 
+        // Validation: Kiểm tra trạng thái hiện tại để tránh race condition (Câu 8)
+        // Nếu claim đã được xử lý (không còn PENDING/UNDER_REVIEW), không cho phép update
+        WarrantyClaimStatus currentStatus = claim.getStatus();
+        if (currentStatus == WarrantyClaimStatus.RESOLVED || 
+            currentStatus == WarrantyClaimStatus.REJECTED || 
+            currentStatus == WarrantyClaimStatus.CANCELLED) {
+            log.warn("Attempted to update warranty claim {} that is already in final status: {}", claimId, currentStatus);
+            throw new AppException(ErrorCode.WARRANTY_CLAIM_ALREADY_RESOLVED);
+        }
+
         try {
             WarrantyClaimStatus newStatus = WarrantyClaimStatus.valueOf(status.toUpperCase());
+            WarrantyClaimStatus oldStatus = claim.getStatus();
             claim.setStatus(newStatus);
             claim.setAdminResponse(adminResponse);
             claim.setResolutionNotes(resolutionNotes);
@@ -281,11 +323,74 @@ public class WarrantyServiceImpl implements WarrantyService {
 
             // Get current admin user ID
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String adminId = null;
             if (authentication != null && authentication.getPrincipal() instanceof String) {
-                claim.setAdminId(authentication.getName());
+                adminId = authentication.getName();
+                claim.setAdminId(adminId);
             }
 
             WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
+
+            // Publish event khi status chuyển sang APPROVED (Câu 3)
+            if (newStatus == WarrantyClaimStatus.APPROVED && oldStatus != WarrantyClaimStatus.APPROVED) {
+                try {
+                    WarrantyClaimApprovedEvent event = WarrantyClaimApprovedEvent.builder()
+                            .claimId(savedClaim.getId())
+                            .orderId(savedClaim.getOrderId())
+                            .customerId(savedClaim.getCustomerId())
+                            .addressId(savedClaim.getAddressId())
+                            .actionType(savedClaim.getActionType())
+                            .refundAmount(savedClaim.getRefundAmount())
+                            .repairCost(savedClaim.getRepairCost())
+                            .exchangeProductColorId(savedClaim.getExchangeProductColorId())
+                            .approvedAt(LocalDateTime.now())
+                            .approvedBy(adminId)
+                            .build();
+
+                    kafkaTemplate.send("warranty-claim-approved-topic", event)
+                            .whenComplete((result, ex) -> {
+                                if (ex != null) {
+                                    log.error("Failed to send WarrantyClaimApprovedEvent for claim {}: {}", claimId, ex.getMessage());
+                                } else {
+                                    log.info("Successfully sent WarrantyClaimApprovedEvent for claim: {}", claimId);
+                                }
+                            });
+                } catch (Exception e) {
+                    log.error("Error publishing WarrantyClaimApprovedEvent for claim {}: {}", claimId, e.getMessage(), e);
+                    // Không throw exception để không rollback transaction
+                }
+            }
+
+            // Publish event khi status chuyển sang REJECTED
+            if (newStatus == WarrantyClaimStatus.REJECTED && oldStatus != WarrantyClaimStatus.REJECTED) {
+                try {
+                    String rejectionReason = adminResponse != null && !adminResponse.isEmpty() 
+                            ? adminResponse 
+                            : (resolutionNotes != null && !resolutionNotes.isEmpty() ? resolutionNotes : "Không có lý do cụ thể");
+                    
+                    WarrantyClaimRejectedEvent event = WarrantyClaimRejectedEvent.builder()
+                            .claimId(savedClaim.getId())
+                            .orderId(savedClaim.getOrderId())
+                            .customerId(savedClaim.getCustomerId())
+                            .rejectionReason(rejectionReason)
+                            .rejectedAt(LocalDateTime.now())
+                            .rejectedBy(adminId)
+                            .build();
+
+                    kafkaTemplate.send("warranty-claim-rejected-topic", event)
+                            .whenComplete((result, ex) -> {
+                                if (ex != null) {
+                                    log.error("Failed to send WarrantyClaimRejectedEvent for claim {}: {}", claimId, ex.getMessage());
+                                } else {
+                                    log.info("Successfully sent WarrantyClaimRejectedEvent for claim: {}", claimId);
+                                }
+                            });
+                } catch (Exception e) {
+                    log.error("Error publishing WarrantyClaimRejectedEvent for claim {}: {}", claimId, e.getMessage(), e);
+                    // Không throw exception để không rollback transaction
+                }
+            }
+
             return toWarrantyClaimResponse(savedClaim);
         } catch (IllegalArgumentException e) {
             throw new AppException(ErrorCode.INVALID_STATUS);
@@ -315,6 +420,12 @@ public class WarrantyServiceImpl implements WarrantyService {
             claim.setAdminId(authentication.getName());
         }
 
+        WarrantyClaimStatus oldStatus = claim.getStatus();
+        String adminId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof String) {
+            adminId = authentication.getName();
+        }
+
         switch (request.getActionType()) {
             case RETURN:
                 claim.setStatus(WarrantyClaimStatus.RESOLVED);
@@ -332,6 +443,71 @@ public class WarrantyServiceImpl implements WarrantyService {
         }
 
         WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
+
+        // Publish event khi status chuyển sang APPROVED (nếu resolveWarrantyClaim được dùng để approve)
+        // Note: resolveWarrantyClaim thường set status là RESOLVED hoặc REJECTED, không phải APPROVED
+        // Nhưng để đảm bảo, nếu có trường hợp approve qua method này, vẫn publish event
+        if (savedClaim.getStatus() == WarrantyClaimStatus.APPROVED && oldStatus != WarrantyClaimStatus.APPROVED) {
+            try {
+                WarrantyClaimApprovedEvent event = WarrantyClaimApprovedEvent.builder()
+                        .claimId(savedClaim.getId())
+                        .orderId(savedClaim.getOrderId())
+                        .customerId(savedClaim.getCustomerId())
+                        .addressId(savedClaim.getAddressId())
+                        .actionType(savedClaim.getActionType())
+                        .refundAmount(savedClaim.getRefundAmount())
+                        .repairCost(savedClaim.getRepairCost())
+                        .exchangeProductColorId(savedClaim.getExchangeProductColorId())
+                        .approvedAt(LocalDateTime.now())
+                        .approvedBy(adminId)
+                        .build();
+
+                kafkaTemplate.send("warranty-claim-approved-topic", event)
+                        .whenComplete((result, ex) -> {
+                            if (ex != null) {
+                                log.error("Failed to send WarrantyClaimApprovedEvent for claim {}: {}", request.getClaimId(), ex.getMessage());
+                            } else {
+                                log.info("Successfully sent WarrantyClaimApprovedEvent for claim: {}", request.getClaimId());
+                            }
+                        });
+            } catch (Exception e) {
+                log.error("Error publishing WarrantyClaimApprovedEvent for claim {}: {}", request.getClaimId(), e.getMessage(), e);
+                // Không throw exception để không rollback transaction
+            }
+        }
+
+        // Publish event khi status chuyển sang REJECTED (khi actionType = DO_NOTHING)
+        if (savedClaim.getStatus() == WarrantyClaimStatus.REJECTED && oldStatus != WarrantyClaimStatus.REJECTED) {
+            try {
+                String rejectionReason = savedClaim.getAdminResponse() != null && !savedClaim.getAdminResponse().isEmpty()
+                        ? savedClaim.getAdminResponse()
+                        : (savedClaim.getResolutionNotes() != null && !savedClaim.getResolutionNotes().isEmpty()
+                                ? savedClaim.getResolutionNotes()
+                                : "Không có lý do cụ thể");
+
+                WarrantyClaimRejectedEvent event = WarrantyClaimRejectedEvent.builder()
+                        .claimId(savedClaim.getId())
+                        .orderId(savedClaim.getOrderId())
+                        .customerId(savedClaim.getCustomerId())
+                        .rejectionReason(rejectionReason)
+                        .rejectedAt(LocalDateTime.now())
+                        .rejectedBy(adminId)
+                        .build();
+
+                kafkaTemplate.send("warranty-claim-rejected-topic", event)
+                        .whenComplete((result, ex) -> {
+                            if (ex != null) {
+                                log.error("Failed to send WarrantyClaimRejectedEvent for claim {}: {}", request.getClaimId(), ex.getMessage());
+                            } else {
+                                log.info("Successfully sent WarrantyClaimRejectedEvent for claim: {}", request.getClaimId());
+                            }
+                        });
+            } catch (Exception e) {
+                log.error("Error publishing WarrantyClaimRejectedEvent for claim {}: {}", request.getClaimId(), e.getMessage(), e);
+                // Không throw exception để không rollback transaction
+            }
+        }
+
         return toWarrantyClaimResponse(savedClaim);
     }
 
@@ -593,11 +769,100 @@ public class WarrantyServiceImpl implements WarrantyService {
                     response.setName(addressData.getName());
                     response.setPhone(addressData.getPhone());
                 }
+            } catch (feign.FeignException e) {
+                log.warn("Feign error when fetching address {} for warranty claim {}: {} (status: {})", 
+                    claim.getAddressId(), claim.getId(), e.getMessage(), e.status());
+                // Continue without address information rather than failing the entire request
             } catch (Exception e) {
-                log.error("Failed to fetch address for warranty claim {}: {}", claim.getId(), e.getMessage());
+                log.error("Unexpected error when fetching address {} for warranty claim {}: {}", 
+                    claim.getAddressId(), claim.getId(), e.getMessage(), e);
+                // Continue without address information rather than failing the entire request
             }
         }
         
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double calculateRefundAmount(OrderReturnedEvent event) {
+        log.info("Calculating refund amount for order: {}, warranty claim: {}", 
+                event.getOrderId(), event.getWarrantyClaimId());
+
+        // Lấy thông tin order
+        Order order = orderRepository.findByIdAndIsDeletedFalse(event.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Tính tổng giá trị các items được return
+        double returnedItemsTotal = 0.0;
+        int totalOrderItems = 0;
+        
+        if (order.getOrderDetails() == null || order.getOrderDetails().isEmpty()) {
+            log.warn("Order {} has no order details. Cannot calculate refund.", event.getOrderId());
+            return 0.0;
+        }
+
+        // Đếm tổng số items trong order
+        totalOrderItems = order.getOrderDetails().stream()
+                .mapToInt(OrderDetail::getQuantity)
+                .sum();
+
+        // Tính tổng giá trị các items được return
+        for (OrderReturnedEvent.ReturnedItem returnedItem : event.getItems()) {
+            // Tìm OrderDetail tương ứng
+            OrderDetail orderDetail = order.getOrderDetails().stream()
+                    .filter(detail -> detail.getProductColorId().equals(returnedItem.getProductColorId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (orderDetail != null) {
+                // Tính giá trị: price * quantity (của returned item)
+                double itemValue = orderDetail.getPrice() * returnedItem.getQuantity();
+                returnedItemsTotal += itemValue;
+                log.debug("Returned item: {} x {} = {}", 
+                        returnedItem.getProductColorId(), returnedItem.getQuantity(), itemValue);
+            } else {
+                log.warn("OrderDetail not found for productColorId: {} in order: {}", 
+                        returnedItem.getProductColorId(), event.getOrderId());
+            }
+        }
+
+        if (returnedItemsTotal <= 0) {
+            log.warn("Returned items total is 0 or negative for order: {}", event.getOrderId());
+            return 0.0;
+        }
+
+        // Tính voucher discount (nếu có)
+        double voucherDiscount = 0.0;
+        if (order.getVouchers() != null && !order.getVouchers().isEmpty()) {
+            // Tính tổng voucher discount
+            double totalVoucherDiscount = order.getVouchers().stream()
+                    .mapToDouble(v -> v.getAmount() != null ? v.getAmount().doubleValue() : 0.0)
+                    .sum();
+
+            // Tính số lượng items được return
+            int returnedItemsQuantity = event.getItems().stream()
+                    .mapToInt(OrderReturnedEvent.ReturnedItem::getQuantity)
+                    .sum();
+
+            // Tính voucher discount tương ứng với phần items được return
+            // Công thức: (Voucher Discount / Total Items) * Returned Items
+            if (totalOrderItems > 0) {
+                voucherDiscount = (totalVoucherDiscount / totalOrderItems) * returnedItemsQuantity;
+                log.info("Total voucher discount: {}, Total order items: {}, Returned items: {}, Proportional discount: {}", 
+                        totalVoucherDiscount, totalOrderItems, returnedItemsQuantity, voucherDiscount);
+            }
+        }
+
+        // Refund Amount = Returned Items Total - Proportional Voucher Discount
+        double refundAmount = returnedItemsTotal - voucherDiscount;
+        
+        // Đảm bảo refund amount không âm
+        refundAmount = Math.max(0.0, refundAmount);
+
+        log.info("Refund calculation for order {}: Returned items total: {}, Voucher discount: {}, Final refund: {}", 
+                event.getOrderId(), returnedItemsTotal, voucherDiscount, refundAmount);
+
+        return refundAmount;
     }
 }
