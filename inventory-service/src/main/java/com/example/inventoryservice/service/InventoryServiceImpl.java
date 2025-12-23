@@ -134,12 +134,15 @@ public class InventoryServiceImpl implements InventoryService {
 
                         int toExport = Math.min(available, remainingQty);
 
+                        // Update Actual Quantity
+                        it.setQuantity(it.getQuantity() - toExport);
+
                         // Giảm reserved nếu là xuất bán
                         if (isStockOut && it.getReservedQuantity() > 0) {
                             int newReserved = Math.max(0, it.getReservedQuantity() - toExport);
                             it.setReservedQuantity(newReserved);
-                            inventoryItemRepository.save(it);
                         }
+                        inventoryItemRepository.save(it);
 
                         // Tạo lịch sử xuất kho thực sự (số âm)
                         createInventoryItem(
