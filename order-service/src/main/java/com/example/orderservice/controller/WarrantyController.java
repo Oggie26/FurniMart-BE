@@ -2,6 +2,7 @@ package com.example.orderservice.controller;
 
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.Warranty;
+import com.example.orderservice.entity.WarrantyClaim;
 import com.example.orderservice.enums.ErrorCode;
 import com.example.orderservice.enums.WarrantyClaimStatus;
 import com.example.orderservice.exception.AppException;
@@ -379,7 +380,7 @@ public class WarrantyController {
                 }
 
                 String currentUserId = getCurrentUserId();
-                ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
+                ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(currentUserId);
 
                 if (userResponse == null || userResponse.getData() == null) {
                         throw new AppException(ErrorCode.NOT_FOUND_USER);
@@ -387,17 +388,6 @@ public class WarrantyController {
 
                 UserResponse user = userResponse.getData();
 
-                // Check if user is Manager or Staff
-                boolean isManager = authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_BRANCH_MANAGER"));
-                boolean isStaff = authentication.getAuthorities().stream()
-                                .anyMatch(a -> a.getAuthority().equals("ROLE_STAFF"));
-
-                if (!isManager && !isStaff) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                // Verify user is assigned to this store
                 if (user.getStoreIds() == null || user.getStoreIds().isEmpty()) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
@@ -407,11 +397,6 @@ public class WarrantyController {
                 }
         }
 
-        /**
-         * Verify that the current user (Manager/Staff) has access to the warranty
-         * claim's store.
-         * Manager/Staff can only access claims from stores they are assigned to.
-         */
         private void verifyClaimStoreAccess(Long claimId) {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()) {
@@ -419,7 +404,7 @@ public class WarrantyController {
                 }
 
                 // Get claim to find its order and store
-                com.example.orderservice.entity.WarrantyClaim claim = warrantyClaimRepository
+                WarrantyClaim claim = warrantyClaimRepository
                                 .findByIdAndIsDeletedFalse(claimId)
                                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
 
@@ -430,7 +415,6 @@ public class WarrantyController {
                         throw new AppException(ErrorCode.INVALID_REQUEST);
                 }
 
-                // Verify user has access to this store
                 verifyStoreAccess(order.getStoreId());
         }
 }
