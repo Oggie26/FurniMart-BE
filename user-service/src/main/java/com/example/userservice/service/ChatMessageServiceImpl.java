@@ -57,8 +57,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
             // Only staff can send messages in WAITING_STAFF mode
             Account senderAccount = sender.getAccount();
             if (senderAccount == null || senderAccount.getRole() != EnumRole.STAFF) {
-                throw new AppException(ErrorCode.INVALID_CHAT_STATE, 
-                    "Không thể gửi tin nhắn khi đang chờ nhân viên. Vui lòng đợi nhân viên kết nối.");
+                throw new AppException(ErrorCode.INVALID_CHAT_STATE);
             }
         }
 
