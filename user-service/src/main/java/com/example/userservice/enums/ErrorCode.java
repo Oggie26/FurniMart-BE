@@ -69,7 +69,7 @@ public enum ErrorCode {
     // Chat mode related errors
     CHAT_NOT_READY(1237, "Chat is not ready for messaging", HttpStatus.BAD_REQUEST),
     CHAT_ALREADY_ACCEPTED(1238, "Chat request has already been accepted", HttpStatus.BAD_REQUEST),
-    INVALID_CHAT_STATE(1239, "Chat is in invalid state for this operation", HttpStatus.BAD_REQUEST),
+    INVALID_CHAT_STATE(1239, "Không thể gửi tin nhắn khi đang chờ nhân viên. Vui lòng đợi nhân viên kết nối.", HttpStatus.BAD_REQUEST),
     STAFF_NOT_ONLINE(1240, "No staff is currently online", HttpStatus.BAD_REQUEST),
     AI_SERVICE_UNAVAILABLE(1241, "AI service is currently unavailable", HttpStatus.SERVICE_UNAVAILABLE),
     AI_BOT_NOT_CONFIGURED(1242, "AI bot user is not configured. Please contact administrator", HttpStatus.INTERNAL_SERVER_ERROR),
