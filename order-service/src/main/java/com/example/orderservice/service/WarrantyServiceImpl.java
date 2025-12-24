@@ -50,6 +50,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     private final UserClient userClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
+
     @Override
     @Transactional
     public void createWarrantiesForOrder(Long orderId) {
