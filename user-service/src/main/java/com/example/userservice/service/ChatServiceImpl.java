@@ -793,16 +793,17 @@ public class ChatServiceImpl implements ChatService {
             throw new AppException(ErrorCode.INVALID_CHAT_STATE);
         }
 
-        // Change chat mode back to AI
-        chat.setChatMode(Chat.ChatMode.AI);
+        // Keep chat data: maintain STAFF_CONNECTED mode, set status to INACTIVE
+        // Don't change chatMode or clear assignedStaffId to preserve chat history
+        chat.setStatus(EnumStatus.INACTIVE);
         chat.setStaffChatEndedAt(LocalDateTime.now());
-        chat.setAssignedStaffId(null); // Clear assignment
+        // Keep assignedStaffId to preserve chat history
         chatRepository.save(chat);
 
         // Notify both customer and staff
         notifyChatEnded(chat);
 
-        log.info("Chat {} ended by user {}", chatId, currentUserId);
+        log.info("Chat {} ended by user {}. Chat data preserved with status INACTIVE.", chatId, currentUserId);
         return toChatResponse(chat);
     }
 
@@ -1052,7 +1053,7 @@ public class ChatServiceImpl implements ChatService {
         WebSocketMessage message = WebSocketMessage.builder()
                 .type("STAFF_CHAT_ENDED")
                 .chatId(chat.getId())
-                .content("Chat với staff đã kết thúc. Bạn có thể tiếp tục chat với AI.")
+                .content("Chat với staff đã kết thúc. Lịch sử chat được lưu lại.")
                 .timestamp(System.currentTimeMillis())
                 .build();
 
