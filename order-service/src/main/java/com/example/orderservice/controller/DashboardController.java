@@ -1,15 +1,23 @@
 package com.example.orderservice.controller;
 
+import com.example.orderservice.enums.ErrorCode;
+import com.example.orderservice.exception.AppException;
+import com.example.orderservice.feign.AuthClient;
+import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.response.AdminDashboardResponse;
 import com.example.orderservice.response.ApiResponse;
+import com.example.orderservice.response.AuthResponse;
 import com.example.orderservice.response.ManagerDashboardResponse;
 import com.example.orderservice.response.StaffDashboardResponse;
+import com.example.orderservice.response.UserResponse;
 import com.example.orderservice.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,6 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class DashboardController {
 
     private final DashboardService dashboardService;
+    private final AuthClient authClient;
+    private final UserClient userClient;
 
     @GetMapping("/admin")
     @Operation(summary = "Get Admin Dashboard Data", description = "Returns total revenue, active stores, users, top products, and revenue chart")
@@ -54,8 +64,8 @@ public class DashboardController {
     @Operation(summary = "Get Staff Dashboard Data", description = "Returns personal revenue, created orders count, and pending store orders count")
     @PreAuthorize("hasRole('STAFF')")
     public ApiResponse<StaffDashboardResponse> getStaffDashboard() {
-        // Get current user ID from SecurityContext
-        String staffId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        // Get current staff user ID from SecurityContext
+        String staffId = getStaffUserId();
         
         StaffDashboardResponse data = dashboardService.getStaffDashboard(staffId);
         
@@ -64,6 +74,29 @@ public class DashboardController {
                 .message("Staff dashboard data retrieved successfully")
                 .data(data)
                 .build();
+    }
+
+    private String getStaffUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        String username = authentication.getName();
+        ApiResponse<AuthResponse> authResponse = authClient.getUserByUsername(username);
+
+        if (authResponse == null || authResponse.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+
+        // For staff, use getEmployeeByAccountId instead of getUserByAccountId
+        ApiResponse<UserResponse> userResponse = userClient.getEmployeeByAccountId(authResponse.getData().getId());
+        if (userResponse == null || userResponse.getData() == null) {
+            throw new AppException(ErrorCode.NOT_FOUND_USER);
+        }
+
+        return userResponse.getData().getId();
     }
 }
 

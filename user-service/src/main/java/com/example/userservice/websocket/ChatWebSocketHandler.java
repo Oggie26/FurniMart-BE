@@ -2,12 +2,15 @@ package com.example.userservice.websocket;
 
 import com.example.userservice.entity.ChatMessage;
 import com.example.userservice.entity.User;
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.ChatMessageRequest;
 import com.example.userservice.response.ChatMessageResponse;
+import com.example.userservice.response.ChatResponse;
 import com.example.userservice.response.WebSocketMessage;
 import com.example.userservice.service.inteface.ChatMessageService;
+import com.example.userservice.service.inteface.ChatService;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -41,6 +44,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
     private final ChatMessageService chatMessageService;
+    private final ChatService chatService;
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
@@ -59,6 +63,9 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                     .content("Connected to chat")
                     .timestamp(System.currentTimeMillis())
                     .build());
+            
+            // If user is staff, notify them about waiting chats
+            notifyStaffAboutWaitingChats(userId);
         } else {
             log.warn("No user ID found in WebSocket connection, closing session");
             session.close(CloseStatus.BAD_DATA);
@@ -417,5 +424,38 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     // Public method to get online user IDs
     public Set<String> getOnlineUserIds() {
         return new HashSet<>(userSessions.keySet());
+    }
+
+    /**
+     * Notify staff about waiting chats when they connect
+     */
+    private void notifyStaffAboutWaitingChats(String userId) {
+        try {
+            // Check if user is staff
+            User user = userRepository.findByIdAndIsDeletedFalse(userId).orElse(null);
+            if (user == null || user.getAccount() == null || user.getAccount().getRole() != EnumRole.STAFF) {
+                return; // Not a staff member
+            }
+
+            // Get waiting chats
+            List<ChatResponse> waitingChats = chatService.getChatsWaitingForStaff();
+            
+            if (!waitingChats.isEmpty()) {
+                WebSocketMessage message = WebSocketMessage.builder()
+                        .type("WAITING_CHATS_NOTIFICATION")
+                        .content(String.format("Có %d chat đang chờ hỗ trợ", waitingChats.size()))
+                        .data(Map.of(
+                                "waitingChatCount", waitingChats.size(),
+                                "message", String.format("Có %d chat đang chờ hỗ trợ. Vui lòng kiểm tra queue.", waitingChats.size())
+                        ))
+                        .timestamp(System.currentTimeMillis())
+                        .build();
+
+                sendMessageToUser(userId, message);
+                log.info("Notified staff {} about {} waiting chats", userId, waitingChats.size());
+            }
+        } catch (Exception e) {
+            log.error("Error notifying staff about waiting chats: {}", e.getMessage(), e);
+        }
     }
 }

@@ -122,6 +122,50 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public List<ChatResponse> getLatestChats() {
+        String currentUserId = getCurrentUserId();
+        List<Chat> allChats = chatRepository.findChatsByUserId(currentUserId);
+        
+        // Convert to ChatResponse with unread count for sorting
+        List<ChatResponse> chatResponses = allChats.stream()
+                .map(this::toChatResponse)
+                .collect(Collectors.toList());
+        
+        // Sort: unread first (unreadCount > 0), then by updatedAt descending
+        // Within unread, sort by updatedAt descending
+        // Within read, sort by updatedAt descending
+        chatResponses.sort((c1, c2) -> {
+            boolean c1HasUnread = c1.getUnreadCount() != null && c1.getUnreadCount() > 0;
+            boolean c2HasUnread = c2.getUnreadCount() != null && c2.getUnreadCount() > 0;
+            
+            // If one has unread and the other doesn't, unread comes first
+            if (c1HasUnread && !c2HasUnread) {
+                return -1;
+            }
+            if (!c1HasUnread && c2HasUnread) {
+                return 1;
+            }
+            
+            // Both have unread or both don't - sort by updatedAt descending
+            if (c1.getUpdatedAt() != null && c2.getUpdatedAt() != null) {
+                return c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+            }
+            if (c1.getUpdatedAt() != null) {
+                return -1;
+            }
+            if (c2.getUpdatedAt() != null) {
+                return 1;
+            }
+            return 0;
+        });
+        
+        // Return top 10
+        return chatResponses.stream()
+                .limit(10)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public PageResponse<ChatResponse> getUserChatsWithPagination(int page, int size) {
         String currentUserId = getCurrentUserId();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));

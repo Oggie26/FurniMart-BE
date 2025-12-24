@@ -10,17 +10,19 @@ import java.util.Optional;
 
 @Repository
 public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssignment, Long> {
-    
+
     Optional<DeliveryAssignment> findByOrderIdAndIsDeletedFalse(Long orderId);
-    
+
     List<DeliveryAssignment> findByStoreIdAndIsDeletedFalse(String storeId);
 
     List<DeliveryAssignment> findByDeliveryStaffIdAndIsDeletedFalse(String deliveryStaffId);
-    
-    List<DeliveryAssignment> findByStatusAndIsDeletedFalse(DeliveryStatus status);
-    
-    List<DeliveryAssignment> findByStoreIdAndStatusAndIsDeletedFalse(String storeId, DeliveryStatus status);
-    
-    List<DeliveryAssignment> findByDeliveryStaffIdAndStatusAndIsDeletedFalse(String deliveryStaffId, DeliveryStatus status);
-}
 
+    List<DeliveryAssignment> findByStatusAndIsDeletedFalse(DeliveryStatus status);
+
+    List<DeliveryAssignment> findByStoreIdAndStatusAndIsDeletedFalse(String storeId, DeliveryStatus status);
+
+    List<DeliveryAssignment> findByDeliveryStaffIdAndStatusAndIsDeletedFalse(String deliveryStaffId,
+            DeliveryStatus status);
+
+    List<DeliveryAssignment> findByStatusInAndIsDeletedFalse(List<DeliveryStatus> statuses);
+}
