@@ -77,17 +77,6 @@ public class ChatController {
                 .build();
     }
 
-    @GetMapping("/latest")
-    @Operation(summary = "Get latest chats with unread priority", description = "Returns 10 latest chats prioritizing unread first, then read. Includes customer name, avatar, and latest message.")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
-    public ApiResponse<List<ChatResponse>> getLatestChats() {
-        return ApiResponse.<List<ChatResponse>>builder()
-                .status(HttpStatus.OK.value())
-                .message("Latest chats retrieved successfully")
-                .data(chatService.getLatestChats())
-                .build();
-    }
-
     @GetMapping("/paginated")
     @Operation(summary = "Get user's chats with pagination")
     @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
