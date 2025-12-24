@@ -508,7 +508,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         List<Warehouse> warehouses = warehouseRepository.findAllOrderByPriority(assignedWarehouseId);
 
-        List<WarehouseReserveInfo> globalList = new ArrayList<>();
+        List<WarehouseReserveInfo> localReservations = new ArrayList<>();
         int totalReserved = 0;
 
         for (Warehouse wh : warehouses) {
@@ -522,22 +522,41 @@ public class InventoryServiceImpl implements InventoryService {
 
             if (reservedHere > 0) {
                 totalReserved += reservedHere;
+                localReservations.add(
+                        WarehouseReserveInfo.builder()
+                                .warehouseId(wh.getId())
+                                .warehouseName(wh.getWarehouseName())
+                                .reservedQuantity(reservedHere)
+                                .isAssignedWarehouse(isAssigned)
+                                .build());
             }
-
-            globalList.add(
-                    WarehouseReserveInfo.builder()
-                            .warehouseId(wh.getId())
-                            .warehouseName(wh.getWarehouseName())
-                            .reservedQuantity(reservedHere)
-                            .isAssignedWarehouse(wh.getId().equals(assignedWarehouseId))
-                            .build());
 
             if (totalReserved >= quantity)
                 break;
         }
 
-        StringBuilder globalOverview = new StringBuilder("\n--- TỔNG THỂ GIỮ HÀNG ---\n");
-        for (WarehouseReserveInfo info : globalList) {
+        // 2. Consolidate ALL participating stores for this ORDER (not just this
+        // product)
+        List<Inventory> allTickets = inventoryRepository.findAllByOrderId(orderId).stream()
+                .filter(t -> t.getType() == EnumTypes.RESERVE)
+                .collect(Collectors.toList());
+
+        List<WarehouseReserveInfo> aggregatedGlobalList = new ArrayList<>();
+
+        for (Inventory ticket : allTickets) {
+            String whId = ticket.getWarehouse().getId();
+            int whTotalQty = ticket.getInventoryItems().stream().mapToInt(InventoryItem::getQuantity).sum();
+
+            aggregatedGlobalList.add(WarehouseReserveInfo.builder()
+                    .warehouseId(whId)
+                    .warehouseName(ticket.getWarehouse().getWarehouseName())
+                    .reservedQuantity(whTotalQty)
+                    .isAssignedWarehouse(whId.equals(assignedWarehouseId))
+                    .build());
+        }
+
+        StringBuilder globalOverview = new StringBuilder("\n--- TỔNG THỂ GIỮ HÀNG (TOÀN ĐƠN) ---\n");
+        for (WarehouseReserveInfo info : aggregatedGlobalList) {
             globalOverview.append(String.format(
                     "%s: %d cái%s\n",
                     info.getWarehouseName(),
@@ -545,13 +564,38 @@ public class InventoryServiceImpl implements InventoryService {
                     info.isAssignedWarehouse() ? " (Kho được assign - ưu tiên)" : ""));
         }
 
+        // 3. Update ALL tickets for this order so their DB record shows full
+        // participation
+        for (Inventory ticket : allTickets) {
+            ticket.getReservedWarehouses().clear();
+            for (WarehouseReserveInfo info : aggregatedGlobalList) {
+                ticket.getReservedWarehouses().add(InventoryReservedWarehouse.builder()
+                        .warehouseId(info.getWarehouseId())
+                        .warehouseName(info.getWarehouseName())
+                        .reservedQuantity(info.getReservedQuantity())
+                        .orderId(orderId)
+                        .inventory(ticket)
+                        .isAssignedWarehouse(info.isAssignedWarehouse())
+                        .build());
+            }
+        }
+        inventoryRepository.saveAll(allTickets);
+
         Map<String, String> printContentByWarehouse = new HashMap<>();
-        for (WarehouseReserveInfo info : globalList) {
+        for (WarehouseReserveInfo info : aggregatedGlobalList) {
+            // Find the specific reservation for THIS product in this warehouse (if any)
+            int currentProductReservedHere = 0;
+            for (WarehouseReserveInfo pInfo : localReservations) {
+                if (pInfo.getWarehouseId().equals(info.getWarehouseId())) {
+                    currentProductReservedHere = pInfo.getReservedQuantity();
+                    break;
+                }
+            }
 
             String perWh = "PHIẾU GIỮ HÀNG CHO KHO: " + info.getWarehouseName() + "\n"
                     + "Đơn hàng: " + orderId + "\n"
-                    + "Sản phẩm: " + productColorId + "\n"
-                    + "Số lượng kho này giữ: " + info.getReservedQuantity() + "\n"
+                    + "Sản phẩm hiện tại: " + productColorId + "\n"
+                    + "Số lượng [Sản phẩm này] kho này giữ: " + currentProductReservedHere + "\n"
                     + (info.isAssignedWarehouse() ? "→ Đây là kho được assign, ưu tiên.\n" : "")
                     + globalOverview;
 
@@ -563,7 +607,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .productColorId(productColorId)
                 .totalNeeded(quantity)
                 .totalReserved(totalReserved)
-                .globalReservations(globalList)
+                .globalReservations(aggregatedGlobalList)
                 .warehousePrintContentMap(printContentByWarehouse)
                 .build();
     }
@@ -619,21 +663,21 @@ public class InventoryServiceImpl implements InventoryService {
                         .reservedWarehouses(new ArrayList<>())
                         .build());
 
-        ticket.getReservedWarehouses().add(
-                InventoryReservedWarehouse.builder()
-                        .warehouseId(warehouse.getId())
-                        .warehouseName(warehouse.getWarehouseName())
-                        .reservedQuantity(reservedHere)
-                        .orderId(orderId)
-                        .inventory(ticket)
-                        .isAssignedWarehouse(isAssigned)
-                        .build());
+        // Update or add InventoryItems for this product
+        boolean itemExists = false;
+        for (InventoryItem ticketItem : ticket.getInventoryItems()) {
+            if (ticketItem.getProductColorId().equals(productColorId)) {
+                ticketItem.setQuantity(ticketItem.getQuantity() + reservedHere);
+                itemExists = true;
+                break;
+            }
+        }
 
-        for (var entry : takenPerColor.entrySet()) {
+        if (!itemExists) {
             ticket.getInventoryItems().add(
                     InventoryItem.builder()
-                            .productColorId(entry.getKey())
-                            .quantity(entry.getValue())
+                            .productColorId(productColorId)
+                            .quantity(reservedHere)
                             .inventory(ticket)
                             .build());
         }
@@ -1075,7 +1119,6 @@ public class InventoryServiceImpl implements InventoryService {
         }
         return alerts;
     }
-
 
     private Inventory createInventory(String warehouseId, EnumTypes type, EnumPurpose purpose, String note) {
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(warehouseId)
