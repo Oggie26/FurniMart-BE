@@ -100,6 +100,56 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @Transactional
+    public ChatResponse quickCreateChatForCustomer() {
+        String currentUserId = getCurrentUserId();
+        User currentUser = userRepository.findByIdAndIsDeletedFalse(currentUserId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        // Verify user is a customer
+        if (currentUser.getAccount() == null || currentUser.getAccount().getRole() != EnumRole.CUSTOMER) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // Generate default chat name with timestamp
+        String defaultName = "Chat hỗ trợ - " + LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+        );
+
+        Chat chat = Chat.builder()
+                .name(defaultName)
+                .description("Chat hỗ trợ khách hàng")
+                .type(Chat.ChatType.PRIVATE)
+                .status(EnumStatus.ACTIVE)
+                .createdBy(currentUser)
+                .chatMode(Chat.ChatMode.WAITING_STAFF) // Start in WAITING_STAFF mode (skip AI)
+                .staffRequestedAt(LocalDateTime.now())
+                .build();
+
+        Chat savedChat = chatRepository.save(chat);
+
+        // Add creator as admin
+        ChatParticipant creatorParticipant = ChatParticipant.builder()
+                .chat(savedChat)
+                .user(currentUser)
+                .role(ChatParticipant.ParticipantRole.ADMIN)
+                .status(EnumStatus.ACTIVE)
+                .lastReadAt(LocalDateTime.now())
+                .build();
+        chatParticipantRepository.save(creatorParticipant);
+
+        // Notify staff or customer based on staff availability
+        if (hasOnlineStaff()) {
+            notifyAllOnlineStaff(savedChat, currentUser);
+        } else {
+            notifyCustomerNoStaffOnline(currentUser, savedChat);
+        }
+
+        log.info("Quick chat created for customer {} in WAITING_STAFF mode: {}", currentUserId, savedChat.getId());
+        return toChatResponse(savedChat);
+    }
+
+    @Override
     public ChatResponse getChatById(String chatId) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
@@ -568,8 +618,14 @@ public class ChatServiceImpl implements ChatService {
         chat.setStaffRequestedAt(LocalDateTime.now());
         chatRepository.save(chat);
 
-        // Get online staff and send notifications
-        notifyAllOnlineStaff(chat, customer);
+        // Check if there are online staff
+        if (hasOnlineStaff()) {
+            // Get online staff and send notifications
+            notifyAllOnlineStaff(chat, customer);
+        } else {
+            // Notify customer that no staff are online
+            notifyCustomerNoStaffOnline(customer, chat);
+        }
 
         log.info("Customer {} requested staff connection for chat {}", currentUserId, chatId);
         return toChatResponse(chat);
@@ -588,30 +644,118 @@ public class ChatServiceImpl implements ChatService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        Chat chat = chatRepository.findById(chatId)
+        Chat newChat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
 
         // Check if chat is in WAITING_STAFF mode
-        if (chat.getChatMode() != Chat.ChatMode.WAITING_STAFF) {
+        if (newChat.getChatMode() != Chat.ChatMode.WAITING_STAFF) {
             throw new AppException(ErrorCode.CHAT_ALREADY_ACCEPTED);
         }
 
-        // Atomic update - only first staff wins
-        chat.setChatMode(Chat.ChatMode.STAFF_CONNECTED);
-        chat.setAssignedStaffId(staff.getId());
-        chatRepository.save(chat);
+        String customerId = newChat.getCreatedBy().getId();
+        String staffUserId = getStaffUserId(staff);
+        
+        // Check if there's an existing private chat between customer and staff
+        Chat oldChat = null;
+        if (staffUserId != null) {
+            Optional<Chat> existingChat = chatRepository.findPrivateChatBetweenUsers(customerId, staffUserId);
+            if (existingChat.isPresent()) {
+                oldChat = existingChat.get();
+            }
+        }
 
-        // Add staff to chat participants if not exists
-        addStaffToChatParticipants(chat, staff);
-
-        // Notify customer
-        notifyCustomerStaffConnected(chat, staff);
+        Chat finalChat;
+        
+        if (oldChat != null) {
+            // Merge into old chat: copy messages, update old chat, delete new chat
+            log.info("Found existing chat {} between customer {} and staff {}. Merging new chat {} into old chat.", 
+                    oldChat.getId(), customerId, staff.getId(), newChat.getId());
+            
+            // Copy all messages from new chat to old chat
+            // Use a map to track message ID mapping for replyTo relationships
+            Map<String, ChatMessage> messageIdMap = new HashMap<>();
+            List<ChatMessage> newChatMessages = chatMessageRepository.findMessagesByChatId(newChat.getId());
+            
+            // First pass: create all messages without replyTo
+            for (ChatMessage message : newChatMessages) {
+                ChatMessage copiedMessage = ChatMessage.builder()
+                        .content(message.getContent())
+                        .type(message.getType())
+                        .status(message.getStatus())
+                        .chat(oldChat)
+                        .sender(message.getSender())
+                        .replyTo(null) // Will set in second pass
+                        .attachmentUrl(message.getAttachmentUrl())
+                        .attachmentType(message.getAttachmentType())
+                        .isEdited(message.getIsEdited())
+                        .isDeleted(message.getIsDeleted())
+                        .build();
+                
+                // Preserve original timestamps if possible
+                if (message.getCreatedAt() != null) {
+                    copiedMessage.setCreatedAt(message.getCreatedAt());
+                }
+                if (message.getUpdatedAt() != null) {
+                    copiedMessage.setUpdatedAt(message.getUpdatedAt());
+                }
+                
+                ChatMessage savedMessage = chatMessageRepository.save(copiedMessage);
+                messageIdMap.put(message.getId(), savedMessage);
+            }
+            
+            // Second pass: update replyTo relationships
+            for (ChatMessage message : newChatMessages) {
+                if (message.getReplyTo() != null) {
+                    ChatMessage copiedMessage = messageIdMap.get(message.getId());
+                    ChatMessage originalReplyTo = message.getReplyTo();
+                    // Find the copied version of the replyTo message
+                    // Since we're copying from new chat, replyTo should also be in new chat
+                    ChatMessage copiedReplyTo = messageIdMap.get(originalReplyTo.getId());
+                    if (copiedMessage != null && copiedReplyTo != null) {
+                        copiedMessage.setReplyTo(copiedReplyTo);
+                        chatMessageRepository.save(copiedMessage);
+                    }
+                }
+            }
+            
+            // Update old chat
+            oldChat.setChatMode(Chat.ChatMode.STAFF_CONNECTED);
+            oldChat.setAssignedStaffId(staff.getId());
+            oldChat.setStaffRequestedAt(newChat.getStaffRequestedAt());
+            chatRepository.save(oldChat);
+            
+            // Add staff to old chat participants if not exists
+            addStaffToChatParticipants(oldChat, staff);
+            
+            // Soft delete new chat
+            newChat.setStatus(EnumStatus.DELETED);
+            newChat.setIsDeleted(true);
+            chatRepository.save(newChat);
+            
+            finalChat = oldChat;
+            
+            // Notify customer about old chat
+            notifyCustomerStaffConnected(oldChat, staff);
+        } else {
+            // No old chat exists, use new chat
+            newChat.setChatMode(Chat.ChatMode.STAFF_CONNECTED);
+            newChat.setAssignedStaffId(staff.getId());
+            chatRepository.save(newChat);
+            
+            // Add staff to chat participants if not exists
+            addStaffToChatParticipants(newChat, staff);
+            
+            finalChat = newChat;
+            
+            // Notify customer
+            notifyCustomerStaffConnected(newChat, staff);
+        }
 
         // Notify other staff that chat was accepted
-        notifyOtherStaffChatAccepted(chat, staff.getId());
+        notifyOtherStaffChatAccepted(finalChat, staff.getId());
 
-        log.info("Staff {} accepted chat connection for chat {}", staff.getId(), chatId);
-        return toChatResponse(chat);
+        log.info("Staff {} accepted chat connection for chat {}", staff.getId(), finalChat.getId());
+        return toChatResponse(finalChat);
     }
 
     @Override
@@ -694,6 +838,36 @@ public class ChatServiceImpl implements ChatService {
         String accountId = staff.getAccount().getId();
         Set<String> onlineAccountIds = getOnlineAccountIdsFromWebSocket();
         return onlineAccountIds.contains(accountId);
+    }
+
+    @Override
+    public List<ChatResponse> getChatsWaitingForStaff() {
+        List<Chat> waitingChats = chatRepository.findChatsWaitingForStaff();
+        return waitingChats.stream()
+                .map(this::toChatResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public int getOnlineStaffCount() {
+        return getOnlineStaff().size();
+    }
+
+    @Override
+    public boolean hasOnlineStaff() {
+        return getOnlineStaffCount() > 0;
+    }
+
+    @Override
+    public String getEstimatedWaitTime() {
+        int onlineCount = getOnlineStaffCount();
+        if (onlineCount == 0) {
+            return "Thường trả lời trong 5-10 phút.";
+        } else if (onlineCount <= 2) {
+            return "Thường trả lời trong 3-5 phút.";
+        } else {
+            return "Thường trả lời trong 1-3 phút.";
+        }
     }
 
     // ========== HELPER METHODS ==========
@@ -898,5 +1072,23 @@ public class ChatServiceImpl implements ChatService {
         }
 
         log.info("Notified customer and staff that chat {} ended", chat.getId());
+    }
+
+    private void notifyCustomerNoStaffOnline(User customer, Chat chat) {
+        String estimatedWaitTime = getEstimatedWaitTime();
+        WebSocketMessage message = WebSocketMessage.builder()
+                .type("NO_STAFF_ONLINE")
+                .chatId(chat.getId())
+                .content(String.format("Hiện tại không có nhân viên online. %s Chúng tôi sẽ thông báo khi có nhân viên sẵn sàng.", estimatedWaitTime))
+                .data(Map.of(
+                        "chatId", chat.getId(),
+                        "estimatedWaitTime", estimatedWaitTime,
+                        "message", "Hiện tại không có nhân viên online. Chúng tôi sẽ thông báo khi có nhân viên sẵn sàng."
+                ))
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        chatWebSocketHandler.sendMessageToUser(customer.getId(), message);
+        log.info("Notified customer {} that no staff are online for chat {}", customer.getId(), chat.getId());
     }
 }

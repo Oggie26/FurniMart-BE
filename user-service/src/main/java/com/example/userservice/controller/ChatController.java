@@ -4,6 +4,7 @@ import com.example.userservice.request.ChatRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.ChatResponse;
 import com.example.userservice.response.PageResponse;
+import com.example.userservice.response.StaffOnlineStatusResponse;
 import com.example.userservice.service.inteface.ChatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,6 +35,23 @@ public class ChatController {
                 .status(HttpStatus.CREATED.value())
                 .message("Chat created successfully")
                 .data(chatService.createChat(request))
+                .build();
+    }
+
+    @PostMapping("/quick-create")
+    @Operation(
+            summary = "Quick create chat for customer",
+            description = "Tạo chat nhanh cho khách hàng - không cần nhập tên hay chọn participants. " +
+                          "Tên chat sẽ được tự động tạo với timestamp. Chat sẽ ở chế độ AI. " +
+                          "Customer có thể chat với AI, hoặc bấm nút 'Gặp nhân viên' để yêu cầu gặp staff."
+    )
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<ChatResponse> quickCreateChat() {
+        return ApiResponse.<ChatResponse>builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Chat created successfully")
+                .data(chatService.quickCreateChatForCustomer())
                 .build();
     }
 
@@ -207,6 +225,17 @@ public class ChatController {
                 .build();
     }
 
+    @GetMapping("/waiting-staff")
+    @Operation(summary = "Get chats waiting for staff (Staff only)")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    public ApiResponse<List<ChatResponse>> getChatsWaitingForStaff() {
+        return ApiResponse.<List<ChatResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Waiting chats retrieved successfully")
+                .data(chatService.getChatsWaitingForStaff())
+                .build();
+    }
+
     @PostMapping("/{id}/accept-staff")
     @Operation(summary = "Accept staff connection (Staff only)")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
@@ -226,6 +255,31 @@ public class ChatController {
                 .status(HttpStatus.OK.value())
                 .message("Staff chat ended")
                 .data(chatService.endStaffChat(id))
+                .build();
+    }
+
+    @GetMapping("/staff/online-count")
+    @Operation(
+            summary = "Get online staff count and estimated wait time",
+            description = "Lấy số lượng staff đang online và thời gian ước tính chờ. " +
+                        "Dành cho customer để biết tình trạng hỗ trợ."
+    )
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('STAFF') or hasRole('ADMIN')")
+    public ApiResponse<StaffOnlineStatusResponse> getStaffOnlineStatus() {
+        int onlineCount = chatService.getOnlineStaffCount();
+        boolean hasOnlineStaff = chatService.hasOnlineStaff();
+        String estimatedWaitTime = chatService.getEstimatedWaitTime();
+
+        StaffOnlineStatusResponse response = StaffOnlineStatusResponse.builder()
+                .onlineCount(onlineCount)
+                .hasOnlineStaff(hasOnlineStaff)
+                .estimatedWaitTime(estimatedWaitTime)
+                .build();
+
+        return ApiResponse.<StaffOnlineStatusResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Staff online status retrieved successfully")
+                .data(response)
                 .build();
     }
 }

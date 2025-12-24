@@ -10,6 +10,8 @@ public interface ChatService {
 
     ChatResponse createChat(ChatRequest chatRequest);
 
+    ChatResponse quickCreateChatForCustomer();
+
     ChatResponse getChatById(String chatId);
 
     List<ChatResponse> getUserChats();
@@ -44,4 +46,8 @@ public interface ChatService {
     ChatResponse endStaffChat(String chatId);
     List<com.example.userservice.entity.Employee> getOnlineStaff();
     boolean isStaffOnline(String staffId);
+    List<ChatResponse> getChatsWaitingForStaff();
+    int getOnlineStaffCount();
+    boolean hasOnlineStaff();
+    String getEstimatedWaitTime();
 }
