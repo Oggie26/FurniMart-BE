@@ -72,6 +72,18 @@ public class ChatController {
                 .build();
     }
 
+    @GetMapping("/latest")
+    @Operation(summary = "Get latest chats with unread priority (unread first, then read)")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")
+    public ApiResponse<List<ChatResponse>> getLatestChatsWithUnreadPriority(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ApiResponse.<List<ChatResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Latest chats retrieved successfully with unread priority")
+                .data(chatService.getLatestChatsWithUnreadPriority(limit))
+                .build();
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update chat")
     @PreAuthorize("hasRole('ADMIN') or hasRole('CUSTOMER') or hasRole('STAFF')")

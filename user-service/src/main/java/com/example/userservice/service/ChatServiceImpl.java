@@ -143,6 +143,45 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public List<ChatResponse> getLatestChatsWithUnreadPriority(int limit) {
+        String currentUserId = getCurrentUserId();
+        List<Chat> allChats = chatRepository.findChatsByUserId(currentUserId);
+        
+        // Convert to ChatResponse (includes unreadCount calculation)
+        List<ChatResponse> chatResponses = allChats.stream()
+                .map(this::toChatResponse)
+                .collect(Collectors.toList());
+        
+        // Sort: unread first (unreadCount > 0), then by updatedAt DESC
+        List<ChatResponse> sortedChats = chatResponses.stream()
+                .sorted((c1, c2) -> {
+                    // Priority: unread first
+                    boolean c1HasUnread = c1.getUnreadCount() != null && c1.getUnreadCount() > 0;
+                    boolean c2HasUnread = c2.getUnreadCount() != null && c2.getUnreadCount() > 0;
+                    
+                    if (c1HasUnread && !c2HasUnread) {
+                        return -1; // c1 comes first
+                    } else if (!c1HasUnread && c2HasUnread) {
+                        return 1; // c2 comes first
+                    } else {
+                        // Both have same unread status, sort by updatedAt DESC
+                        if (c1.getUpdatedAt() != null && c2.getUpdatedAt() != null) {
+                            return c2.getUpdatedAt().compareTo(c1.getUpdatedAt());
+                        } else if (c1.getUpdatedAt() != null) {
+                            return -1;
+                        } else if (c2.getUpdatedAt() != null) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                })
+                .limit(limit)
+                .collect(Collectors.toList());
+        
+        return sortedChats;
+    }
+
+    @Override
     @Transactional
     public ChatResponse updateChat(String chatId, ChatRequest chatRequest) {
         Chat chat = chatRepository.findById(chatId)

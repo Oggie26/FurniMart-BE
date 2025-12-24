@@ -16,6 +16,8 @@ public interface ChatService {
 
     PageResponse<ChatResponse> getUserChatsWithPagination(int page, int size);
 
+    List<ChatResponse> getLatestChatsWithUnreadPriority(int limit);
+
     ChatResponse updateChat(String chatId, ChatRequest chatRequest);
 
     void deleteChat(String chatId);
