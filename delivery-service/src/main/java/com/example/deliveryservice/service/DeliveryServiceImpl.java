@@ -41,6 +41,41 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final StoreClient storeClient;
     private final InventoryClient inventoryClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final com.example.deliveryservice.feign.AuthClient authClient;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponse> getFreeDrivers() {
+        log.info("Fetching free delivery drivers");
+
+        // 1. Get all delivery staff from user-service
+        ApiResponse<List<UserResponse>> response = authClient.getAllDeliveryStaff();
+        if (response == null || response.getData() == null) {
+            log.warn("Failed to fetch delivery staff from user-service");
+            return new ArrayList<>();
+        }
+        List<UserResponse> allDrivers = response.getData();
+
+        // 2. Get all active assignments
+        List<DeliveryStatus> activeStatuses = List.of(
+                DeliveryStatus.ASSIGNED,
+                DeliveryStatus.PREPARING,
+                DeliveryStatus.READY,
+                DeliveryStatus.IN_TRANSIT);
+
+        List<DeliveryAssignment> activeAssignments = deliveryAssignmentRepository
+                .findByStatusInAndIsDeletedFalse(activeStatuses);
+
+        // 3. Filter out drivers who have active assignments
+        List<String> busyDriverIds = activeAssignments.stream()
+                .map(DeliveryAssignment::getDeliveryStaffId)
+                .filter(id -> id != null && !id.isEmpty())
+                .collect(Collectors.toList());
+
+        return allDrivers.stream()
+                .filter(driver -> !busyDriverIds.contains(driver.getId()))
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional

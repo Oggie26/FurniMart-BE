@@ -9,34 +9,37 @@ import com.example.deliveryservice.response.StoreBranchInfoResponse;
 import java.util.List;
 
 public interface DeliveryService {
-    
+
     // Assign order to delivery staff
     DeliveryAssignmentResponse assignOrderToDelivery(AssignOrderRequest request);
-    
+
     // Get store branch information with stock availability (for guests)
     StoreBranchInfoResponse getStoreBranchInfo(String storeId);
-    
+
     // Generate invoice (for branch manager)
-//    DeliveryAssignmentResponse generateInvoice(Long orderId);
-    
+    // DeliveryAssignmentResponse generateInvoice(Long orderId);
+
     // Prepare products for delivery (for staff)
     DeliveryAssignmentResponse prepareProducts(PrepareProductsRequest request);
-    
+
     // Monitor delivery progress (for branch manager)
     DeliveryProgressResponse getDeliveryProgressByStore(String storeId);
-    
+
     // Get delivery assignments by store
     List<DeliveryAssignmentResponse> getDeliveryAssignmentsByStore(String storeId);
-    
+
     // Get delivery assignments by delivery staff
     List<DeliveryAssignmentResponse> getDeliveryAssignmentsByStaff(String deliveryStaffId);
-    
+
     // Get delivery assignment by order ID
     DeliveryAssignmentResponse getDeliveryAssignmentByOrderId(Long orderId);
-    
+
     // Update delivery status
     DeliveryAssignmentResponse updateDeliveryStatus(Long assignmentId, String status);
-    
+
     // Reject assignment (for delivery staff)
     DeliveryAssignmentResponse rejectAssignment(Long assignmentId, String reason, String deliveryStaffId);
+
+    // Get free delivery drivers
+    List<com.example.deliveryservice.response.UserResponse> getFreeDrivers();
 }
