@@ -35,4 +35,7 @@ public interface ChatRepository extends JpaRepository<Chat, String> {
     @Query("SELECT c FROM Chat c WHERE c.isDeleted = false AND " +
            "(c.name LIKE %:searchTerm% OR c.description LIKE %:searchTerm%)")
     Page<Chat> searchChats(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query("SELECT c FROM Chat c WHERE c.chatMode = 'WAITING_STAFF' AND c.isDeleted = false ORDER BY c.staffRequestedAt ASC")
+    List<Chat> findChatsWaitingForStaff();
 }
