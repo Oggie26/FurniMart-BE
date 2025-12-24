@@ -21,6 +21,7 @@ import com.example.userservice.service.inteface.ChatService;
 import com.example.userservice.websocket.ChatWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,7 +39,6 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
 
     private final ChatRepository chatRepository;
@@ -48,6 +48,23 @@ public class ChatServiceImpl implements ChatService {
     private final EmployeeRepository employeeRepository;
     private final AccountRepository accountRepository;
     private final ChatWebSocketHandler chatWebSocketHandler;
+
+    public ChatServiceImpl(
+            ChatRepository chatRepository,
+            ChatParticipantRepository chatParticipantRepository,
+            ChatMessageRepository chatMessageRepository,
+            UserRepository userRepository,
+            EmployeeRepository employeeRepository,
+            AccountRepository accountRepository,
+            @Lazy ChatWebSocketHandler chatWebSocketHandler) {
+        this.chatRepository = chatRepository;
+        this.chatParticipantRepository = chatParticipantRepository;
+        this.chatMessageRepository = chatMessageRepository;
+        this.userRepository = userRepository;
+        this.employeeRepository = employeeRepository;
+        this.accountRepository = accountRepository;
+        this.chatWebSocketHandler = chatWebSocketHandler;
+    }
 
     @Override
     @Transactional
