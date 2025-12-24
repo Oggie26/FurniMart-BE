@@ -30,6 +30,9 @@ CHANGELOG.md
 .env.swp
 letsencrypt/
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
 # SSH and Server Information (Sensitive)
 SSH_CONNECTION_INFO.md
 *_CONNECTION_INFO.md
@@ -81,3 +84,14 @@ conflicts_backup/
 *_BACKUP/
 Funimart-*.zip
 Funimart-*/
+
+# Node.js dependencies (QUAN TRỌNG)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Playwright & Test results
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
