@@ -41,7 +41,8 @@ public class StaffController {
     @PutMapping("/{id}")
     @Operation(summary = "Update staff information")
     @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
-    public ApiResponse<StaffResponse> updateStaff(@PathVariable String id, @Valid @RequestBody StaffUpdateRequest request) {
+    public ApiResponse<StaffResponse> updateStaff(@PathVariable String id,
+            @Valid @RequestBody StaffUpdateRequest request) {
         return ApiResponse.<StaffResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Staff updated successfully")
@@ -112,7 +113,7 @@ public class StaffController {
                 .build();
     }
 
-    @GetMapping("/email/{email}")
+    @GetMapping("/email/{email:.+}")
     @Operation(summary = "Get staff by email")
     @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<StaffResponse> getStaffByEmail(@PathVariable String email) {

@@ -426,13 +426,23 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(status);
         orderRepository.save(order);
 
-        if (status.equals(EnumProcessOrder.DELIVERED) || status.equals(EnumProcessOrder.FINISHED)) {
+        if (status.equals(EnumProcessOrder.FINISHED)) {
             try {
                 warrantyService.createWarrantiesForOrder(orderId);
                 log.info("Warranties created for order: {}", orderId);
             } catch (Exception e) {
                 log.error("Failed to create warranties for order: {}", orderId, e);
             }
+
+            Payment payment = paymentRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+            if (payment.getPaymentMethod() == PaymentMethod.COD
+                    && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
+                payment.setPaymentStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
+            }
+            log.info("Order {} reached FINISHED status. Payment updated if COD.", orderId);
         }
 
         if (status.equals(EnumProcessOrder.PAYMENT)) {
@@ -455,13 +465,16 @@ public class OrderServiceImpl implements OrderService {
             }
 
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
-                    .map(detail -> OrderCreatedEvent.OrderItem.builder()
-                            .productColorId(detail.getProductColorId())
-                            .quantity(detail.getQuantity())
-                            .productName(getProductColorResponse(detail.getProductColorId()).getProduct().getName())
-                            .price(detail.getPrice())
-                            .colorName(getProductColorResponse(detail.getProductColorId()).getColor().getColorName())
-                            .build())
+                    .map(detail -> {
+                        ProductColorResponse productInfo = getProductColorResponse(detail.getProductColorId());
+                        return OrderCreatedEvent.OrderItem.builder()
+                                .productColorId(detail.getProductColorId())
+                                .quantity(detail.getQuantity())
+                                .productName(productInfo.getProduct().getName())
+                                .price(detail.getPrice())
+                                .colorName(productInfo.getColor().getColorName())
+                                .build();
+                    })
                     .toList();
 
             OrderCreatedEvent event = OrderCreatedEvent.builder()
@@ -489,17 +502,6 @@ public class OrderServiceImpl implements OrderService {
                 log.error("Failed to send Kafka event {}, error: {}", event.getFullName(), e.getMessage());
             }
 
-        }
-        if (status.equals(EnumProcessOrder.FINISHED)) {
-            Payment payment = paymentRepository.findByOrderId(orderId)
-                    .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-            if (payment.getPaymentMethod() == PaymentMethod.COD
-                    && payment.getPaymentStatus() == PaymentStatus.DEPOSITED) {
-                payment.setPaymentStatus(PaymentStatus.PAID);
-                paymentRepository.save(payment);
-            }
-            log.info("Order {} reached FINISHED status. Payment updated if COD.", orderId);
         }
 
         return mapToResponse(order);
@@ -1137,13 +1139,23 @@ public class OrderServiceImpl implements OrderService {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        for (OrderDetail detail : order.getOrderDetails()) {
-            try {
-                inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
-            } catch (Exception e) {
-                log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        // 3. Restore stock to inventory ONLY if it's a normal return (not warranty
+        // return)
+        // Warranty returns are damaged products and should NOT be added back to
+        // inventory
+        if (order.getOrderType() != OrderType.WARRANTY_RETURN) {
+            log.info("Restoring stock for normal return order: {}", orderId);
+            for (OrderDetail detail : order.getOrderDetails()) {
+                try {
+                    inventoryClient.restoreStock(detail.getProductColorId(), detail.getQuantity());
+                } catch (Exception e) {
+                    log.error("Failed to restore stock for order {}: {}", orderId, e.getMessage());
+                    throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+                }
             }
+        } else {
+            log.info("Skipping stock restoration for warranty return order {} (damaged products cannot be resold)",
+                    orderId);
         }
 
         return mapToResponse(orderRepository.save(order));

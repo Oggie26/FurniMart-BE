@@ -59,10 +59,11 @@ public class SecurityConfig {
                                 "/api/auth/google/login",
                                 "/api/auth/refresh",
                                 "/api/auth/verify-token",
-                                // Note: /api/auth/{email} is protected by ServiceAuthFilter - requires service token
+                                // Note: /api/auth/{email} is protected by ServiceAuthFilter - requires service
+                                // token
                                 "/api/users/{id}",
                                 "/api/addresses/*",
-                                "/api//employees/profile",
+                                "/api/employees/profile",
                                 "/api/stores/**",
                                 "/api/ai/analyze/**",
                                 "/api/stores",
@@ -80,10 +81,9 @@ public class SecurityConfig {
                                 "/*.ico",
                                 "/chat-test.html",
                                 "/sockjs-node/**",
-                                "/webjars/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                                "/webjars/**")
+                        .permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(serviceAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

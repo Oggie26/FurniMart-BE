@@ -34,6 +34,9 @@ spring:
     suffix: .html
     mode: HTML
 
+app:
+  service-token: ${SERVICE_TOKEN:internal-service-token-12345}
+
 jwt:
   secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
   expiration: 3600000

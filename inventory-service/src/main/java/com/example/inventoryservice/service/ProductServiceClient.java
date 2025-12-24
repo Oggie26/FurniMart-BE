@@ -16,7 +16,7 @@ public class ProductServiceClient {
 
     private final ProductClient productClient;
 
-    @Cacheable(value = "product-colors", key = "#id")
+    @Cacheable(value = "product-colors-v2", key = "#id")
     public ProductColorResponse getProductColor(String id) {
         try {
             ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
@@ -29,7 +29,7 @@ public class ProductServiceClient {
         return null;
     }
 
-    @Cacheable(value = "products", key = "#id")
+    @Cacheable(value = "products-v2", key = "#id")
     public ProductResponse getProductById(String id) {
         try {
             ApiResponse<ProductResponse> response = productClient.getProductById(id);

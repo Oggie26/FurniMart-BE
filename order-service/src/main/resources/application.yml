@@ -97,6 +97,7 @@ cloudinary:
 
 # PDF Configuration
 app:
+  service-token: ${SERVICE_TOKEN:internal-service-token-12345}
   pdf:
     directory: ./pdfs
 

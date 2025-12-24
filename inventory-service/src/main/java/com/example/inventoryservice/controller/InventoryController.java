@@ -509,4 +509,29 @@ public class InventoryController {
                 }
         }
 
+        @Operation(summary = "Hủy một phiếu giữ hàng lẻ")
+        @DeleteMapping("/cancel/ticket/{ticketId}")
+        public ApiResponse<Void> cancelInventoryTicket(@PathVariable Long ticketId) {
+                try {
+                        inventoryService.cancelInventoryTicket(ticketId);
+                        return ApiResponse.<Void>builder()
+                                        .status(200)
+                                        .message("Hủy phiếu " + ticketId + " thành công")
+                                        .data(null)
+                                        .build();
+                } catch (AppException e) {
+                        return ApiResponse.<Void>builder()
+                                        .status(400)
+                                        .message(e.getMessage())
+                                        .data(null)
+                                        .build();
+                } catch (Exception e) {
+                        return ApiResponse.<Void>builder()
+                                        .status(500)
+                                        .message("Hủy phiếu thất bại: " + e.getMessage())
+                                        .data(null)
+                                        .build();
+                }
+        }
+
 }

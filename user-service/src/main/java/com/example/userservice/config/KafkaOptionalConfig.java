@@ -15,11 +15,12 @@ import java.util.concurrent.CompletableFuture;
 
 @Configuration
 @Slf4j
+@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = false)
 public class KafkaOptionalConfig {
 
 
     @Bean
-    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = false)
     @SuppressWarnings("null")
     public KafkaTemplate<String, Object> kafkaTemplate() {
 
@@ -43,14 +44,14 @@ public class KafkaOptionalConfig {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = false)
     @Nullable
     public ProducerFactory<String, Object> producerFactory() {
         return null;
     }
 
     @Bean
-    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = false)
     @SuppressWarnings("null")
     public KafkaTemplate<String, AccountCreatedEvent> accountCreatedEventKafkaTemplate() {
 
@@ -67,7 +68,7 @@ public class KafkaOptionalConfig {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = true)
+    @ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "false", matchIfMissing = false)
     @Nullable
     public ProducerFactory<String, AccountCreatedEvent> accountCreatedEventProducerFactory() {
         return null;

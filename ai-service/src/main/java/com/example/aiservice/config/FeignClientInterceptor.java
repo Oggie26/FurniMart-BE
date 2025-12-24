@@ -23,30 +23,16 @@ public class FeignClientInterceptor implements RequestInterceptor {
 
     @Override
     public void apply(RequestTemplate template) {
-        // Forward Authorization header from incoming request
+        // 1. Add Service Token for internal calls
+        template.header("X-Service-Token", serviceToken);
+
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
             String authorization = request.getHeader("Authorization");
-            if (authorization != null) {
+            if (authorization != null && authorization.startsWith("Bearer ")) {
                 template.header("Authorization", authorization);
             }
-        }
-
-        // Add service token header for internal service calls to user-service
-        // Check URL and path for /api/auth/ endpoint
-        String url = template.url();
-        String path = template.path();
-        
-        boolean isAuthEndpoint = (url != null && url.contains("/api/auth/")) 
-                                || (path != null && path.contains("/api/auth/"));
-        
-        if (isAuthEndpoint) {
-            template.header("X-Service-Token", serviceToken);
-            log.info("✅ Added X-Service-Token header for auth endpoint request (url: {}, path: {})", 
-                     url, path);
-        } else {
-            log.debug("Skipping X-Service-Token for non-auth endpoint: url={}, path={}", url, path);
         }
     }
 }

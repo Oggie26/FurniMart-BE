@@ -10,8 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductColorResponse implements java.io.Serializable {
-    private static final long serialVersionUID = 1L;
+public class ProductColorResponse {
     private String id;
     private ProductResponse product;
     private ColorResponse color;

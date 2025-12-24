@@ -55,7 +55,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     public DeliveryConfirmationResponse createDeliveryConfirmation(DeliveryConfirmationRequest request) {
         log.info("Creating delivery confirmation for order: {}", request.getOrderId());
 
-        // ✅ KIỂM TRA: Đã có delivery confirmation chưa? (Idempotency)
         Optional<DeliveryConfirmation> existingConfirmation = deliveryConfirmationRepository
                 .findByOrderIdAndIsDeletedFalse(request.getOrderId());
 
@@ -107,7 +106,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         try {
             savedConfirmation = deliveryConfirmationRepository.save(confirmation);
         } catch (DataIntegrityViolationException e) {
-            // ✅ Xử lý duplicate QR code
             if (e.getMessage() != null && e.getMessage().contains("qr_code")) {
                 log.warn("Duplicate QR code detected for order: {}. Fetching existing confirmation.",
                         request.getOrderId());
@@ -120,21 +118,11 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
             throw e;
         }
 
-        // Update delivery assignment status to DELIVERED
         DeliveryAssignment deliveryAssignment = deliveryAssignmentRepository
                 .findByOrderIdAndIsDeletedFalse(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         deliveryAssignment.setStatus(DeliveryStatus.DELIVERED);
         deliveryAssignmentRepository.save(deliveryAssignment);
-
-        // ✅ NOTE: Order status update, COD confirmation, warranty generation, and
-        // notification
-        // will be triggered when customer scans QR code to confirm receipt (scanQRCode
-        // method)
-        // This prevents duplicate processing and ensures proper flow:
-        // 1. Delivery staff creates confirmation (this method)
-        // 2. Customer scans QR to confirm receipt (scanQRCode method)
-        // 3. Only then: order finalized, warranty created, notification sent
 
         log.info("Created delivery confirmation: {} for order: {}. Waiting for customer QR scan to finalize.",
                 savedConfirmation.getId(), request.getOrderId());
@@ -178,17 +166,10 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
         confirmation.setStatus(DeliveryConfirmationStatus.DELIVERED);
 
         DeliveryConfirmation savedConfirmation = deliveryConfirmationRepository.save(confirmation);
+        orderClient.updateOrderStatus(confirmation.getOrderId(), EnumProcessOrder.FINISHED);
 
-        // ✅ FINALIZE ORDER: This is the single point where order is finalized
-        // Only executed when customer confirms receipt by scanning QR code
         try {
-            // 1. Update order status to FINISHED
-            orderClient.updateOrderStatus(confirmation.getOrderId(), EnumProcessOrder.FINISHED);
-
-            // 2. Confirm COD payment if applicable
             orderClient.confirmCodPayment(confirmation.getOrderId());
-
-            // 3. Send delivery notification via Kafka
             sendDeliveryNotification(confirmation.getOrderId(), confirmation.getDeliveryStaffId(), new Date());
 
             log.info(

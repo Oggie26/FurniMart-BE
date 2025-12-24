@@ -32,7 +32,6 @@ public class VoucherServiceImpl implements VoucherService {
     public VoucherResponse createVoucher(VoucherRequest request) {
         log.info("Creating voucher with code: {}", request.getCode());
 
-        // Check if voucher code already exists
         if (voucherRepository.existsByCodeAndIsDeletedFalse(request.getCode())) {
             throw new AppException(ErrorCode.VOUCHER_CODE_EXISTS);
         }
