@@ -14,6 +14,8 @@ public interface ChatService {
 
     List<ChatResponse> getUserChats();
 
+    List<ChatResponse> getLatestChats();
+
     PageResponse<ChatResponse> getUserChatsWithPagination(int page, int size);
 
     ChatResponse updateChat(String chatId, ChatRequest chatRequest);

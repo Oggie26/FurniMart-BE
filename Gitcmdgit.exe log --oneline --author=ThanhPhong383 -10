@@ -1,0 +1,20 @@
+[33m20dd13a[m[33m ([m[1;31morigin/ThanhPhong383[m[33m, [m[1;32mThanhPhong383[m[33m)[m Update by ThanhPhong383
+[33mfa8eba4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat: Cap nhat chat - Them endpoint waiting-staff va cap nhat ChatMessageServiceImpl
+[33m0983bcd[m first commit
+[33m7bf95c1[m feat: Cap nhat tinh nang chat moi nhat - Them API tao chat voi ho tro AI mode - Them WebSocket handler cho real-time chat - Them cac entity: Chat, ChatMessage, ChatParticipant - Them service layer cho chat va chat message - Them repository cho chat entities - Cap nhat documentation cho API chat - Ho tro chat mode: AI, WAITING_STAFF, STAFF_CONNECTED - Them tinh nang quick create chat cho customer
+[33m07e3a9d[m[33m ([m[1;31morigin/branch/phong[m[33m)[m assign free driver to order
+[33m4a21014[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: Add API get latest chats with unread priority - Returns 10 latest chats prioritizing unread first, then read - Includes customer name, avatar, and latest message
+[33m2bc0f00[m Cap nhat gitignore va cac file khac
+[33m7693e97[m Merge pull request #61 from Oggie26/branch/phong
+[33mbaf8984[m Merge pull request #60 from Oggie26/main
+[33mf601205[m Fix COD payment
+[33m68de98e[m Revert "fix"
+[33m21b605e[m fix
+[33m54c3c6a[m Fix COD payment
+[33m7bd8aeb[m Fix COD payment
+[33mf78d4b4[m Fix COD payment
+[33m2db4662[m Fix COD payment
+[33m510e2ff[m fix
+[33m0a4bcc6[m fix ai-service
+[33m30f077b[m fix bug
+[33m7b02565[m Revert "fix"
