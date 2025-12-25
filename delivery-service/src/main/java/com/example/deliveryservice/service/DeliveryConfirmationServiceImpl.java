@@ -177,8 +177,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                     confirmation.getOrderId());
         } catch (Exception ex) {
             log.error("Failed to finalize order {} after QR scan: {}", confirmation.getOrderId(), ex.getMessage(), ex);
-            // Note: Confirmation is already saved, so we don't rollback
-            // Admin should be notified to manually check this order
         }
 
         log.info("QR code scanned successfully for order: {}", confirmation.getOrderId());

@@ -451,18 +451,14 @@ public class OrderServiceImpl implements OrderService {
             Payment payment = paymentRepository.findByOrderId(orderId)
                     .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-            // Check if payment is already processed (idempotency)
-            if (payment.getPaymentStatus() == PaymentStatus.PAID) {
-                log.info("Payment for order {} is already PAID. Skipping duplicate update.", orderId);
+            if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
+                payment.setPaymentStatus(PaymentStatus.PAID);
+                paymentRepository.save(payment);
             } else {
-                if (payment.getPaymentMethod().equals(PaymentMethod.VNPAY)) {
-                    payment.setPaymentStatus(PaymentStatus.PAID);
-                    paymentRepository.save(payment);
-                } else {
-                    payment.setPaymentStatus(PaymentStatus.DEPOSITED);
-                    paymentRepository.save(payment);
-                }
+                payment.setPaymentStatus(PaymentStatus.DEPOSITED);
+                paymentRepository.save(payment);
             }
+
 
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> {

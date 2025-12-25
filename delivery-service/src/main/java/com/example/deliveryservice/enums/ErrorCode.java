@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 
 @Getter
-public enum  ErrorCode {
+public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // 11xx
@@ -43,11 +43,15 @@ public enum  ErrorCode {
     // Delivery-specific error codes
     ORDER_NOT_FOUND(1235, "Order not found with orderId: {0}", HttpStatus.NOT_FOUND),
     STORE_NOT_FOUND(1236, "Store not found with storeId: {0}", HttpStatus.NOT_FOUND),
-    DELIVERY_ASSIGNMENT_NOT_FOUND(1237, "Delivery assignment not found with assignmentId: {0} OR orderId: {0}", HttpStatus.NOT_FOUND),
-    DELIVERY_CONFIRMATION_NOT_FOUND(1238, "Delivery confirmation not found with orderId: {0} OR qrCode: {0}", HttpStatus.NOT_FOUND),
+    DELIVERY_ASSIGNMENT_NOT_FOUND(1237, "Delivery assignment not found with assignmentId: {0} OR orderId: {0}",
+            HttpStatus.NOT_FOUND),
+    DELIVERY_CONFIRMATION_NOT_FOUND(1238, "Delivery confirmation not found with orderId: {0} OR qrCode: {0}",
+            HttpStatus.NOT_FOUND),
     ASSIGNMENT_ALREADY_EXISTS(1231, "Order đã được assign. Assignment ID: {0}, Status: {1}", HttpStatus.BAD_REQUEST),
-    INVOICE_ALREADY_GENERATED(1232, "Invoice đã được generate cho order này. Assignment ID: {0}", HttpStatus.BAD_REQUEST),
-    PRODUCTS_ALREADY_PREPARED(1233, "Products đã được prepare cho order này. Assignment ID: {0}", HttpStatus.BAD_REQUEST),
+    INVOICE_ALREADY_GENERATED(1232, "Invoice đã được generate cho order này. Assignment ID: {0}",
+            HttpStatus.BAD_REQUEST),
+    PRODUCTS_ALREADY_PREPARED(1233, "Products đã được prepare cho order này. Assignment ID: {0}",
+            HttpStatus.BAD_REQUEST),
     INSUFFICIENT_STOCK(1234, "Stock không đủ", HttpStatus.BAD_REQUEST),
     COLOR_EXISTED(1225, "Color has existed", HttpStatus.BAD_REQUEST),
     COLOR_NOT_FOUND(1226, "Color not found", HttpStatus.NOT_FOUND),
@@ -55,6 +59,7 @@ public enum  ErrorCode {
     COLOR_NAME_NOT_FOUND(1228, "Color name not found", HttpStatus.NOT_FOUND),
     HEX_CODE_EXISTED(1229, "Hex code has existed", HttpStatus.BAD_REQUEST),
     HEX_CODE_NOT_FOUND(1230, "Hex code not found", HttpStatus.NOT_FOUND),
+    LOCATION_NOT_FOUND(1239, "Driver location not found", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

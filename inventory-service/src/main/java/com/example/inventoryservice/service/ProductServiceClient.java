@@ -6,7 +6,6 @@ import com.example.inventoryservice.response.ProductColorResponse;
 import com.example.inventoryservice.response.ProductResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,7 +15,6 @@ public class ProductServiceClient {
 
     private final ProductClient productClient;
 
-    @Cacheable(value = "product-colors-v2", key = "#id")
     public ProductColorResponse getProductColor(String id) {
         try {
             ApiResponse<ProductColorResponse> response = productClient.getProductColor(id);
@@ -29,7 +27,6 @@ public class ProductServiceClient {
         return null;
     }
 
-    @Cacheable(value = "products-v2", key = "#id")
     public ProductResponse getProductById(String id) {
         try {
             ApiResponse<ProductResponse> response = productClient.getProductById(id);
