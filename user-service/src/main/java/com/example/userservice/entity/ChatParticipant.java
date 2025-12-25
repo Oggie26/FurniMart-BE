@@ -25,8 +25,12 @@ public class ChatParticipant extends AbstractEntity {
     private Chat chat;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", nullable = true)
+    private Employee employee;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -46,6 +50,17 @@ public class ChatParticipant extends AbstractEntity {
     @Builder.Default
     @Column
     private Boolean isPinned = false;
+
+    @PrePersist
+    @PreUpdate
+    private void validateParticipant() {
+        if (user == null && employee == null) {
+            throw new IllegalStateException("ChatParticipant must have either user or employee");
+        }
+        if (user != null && employee != null) {
+            throw new IllegalStateException("ChatParticipant cannot have both user and employee");
+        }
+    }
 
     public enum ParticipantRole {
         ADMIN,

@@ -39,7 +39,7 @@
                      - id: delivery-service
                        uri: lb://delivery-service
                        predicates:
-                         - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**, /api/delivery/assignments/**
+                         - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**, /api/driver-location/**, /api/delivery/assignments/**
                        filters: [ ]
 
                      # ORDER SERVICE

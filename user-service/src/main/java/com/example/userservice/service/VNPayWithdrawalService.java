@@ -13,16 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-/**
- * Service để xử lý rút tiền về VNPay
- * 
- * Lưu ý: VNPay không có API trực tiếp để rút tiền về tài khoản ngân hàng.
- * Có 2 cách xử lý:
- * 1. Sử dụng VNPay Gateway API (nếu có merchant account với quyền withdrawal)
- * 2. Xử lý thủ công: Tạo yêu cầu, admin xử lý, update status qua webhook
- * 
- * Implementation này hỗ trợ cả 2 cách.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,16 +35,6 @@ public class VNPayWithdrawalService {
 
     private final RestTemplate restTemplate;
 
-    /**
-     * Xử lý rút tiền qua VNPay API
-     * 
-     * @param amount Số tiền rút
-     * @param bankAccountNumber Số tài khoản ngân hàng
-     * @param bankName Tên ngân hàng
-     * @param accountHolderName Tên chủ tài khoản
-     * @param referenceId Reference ID để tracking
-     * @return true nếu thành công, false nếu thất bại
-     */
     @Async
     public boolean processWithdrawal(Double amount, String bankAccountNumber, 
                                     String bankName, String accountHolderName, 
@@ -63,11 +43,9 @@ public class VNPayWithdrawalService {
                 amount, bankAccountNumber, bankName, referenceId);
 
         try {
-            // Nếu có VNPay withdrawal API URL, gọi API trực tiếp
             if (withdrawalUrl != null && !withdrawalUrl.isEmpty()) {
                 return callVNPayWithdrawalAPI(amount, bankAccountNumber, bankName, accountHolderName, referenceId);
             } else {
-                // Nếu không có API, xử lý async (giả lập hoặc chờ webhook)
                 return processWithdrawalAsync(amount, bankAccountNumber, bankName, accountHolderName, referenceId);
             }
         } catch (Exception e) {
@@ -76,9 +54,6 @@ public class VNPayWithdrawalService {
         }
     }
 
-    /**
-     * Gọi VNPay API trực tiếp (nếu có)
-     */
     private boolean callVNPayWithdrawalAPI(Double amount, String bankAccountNumber,
                                           String bankName, String accountHolderName,
                                           String referenceId) {
@@ -88,7 +63,7 @@ public class VNPayWithdrawalService {
             long vnpAmount = Math.round(amount * 100); // Convert to cents
 
             params.put("vnp_Version", "2.1.0");
-            params.put("vnp_Command", "withdraw"); // VNPay withdrawal command
+            params.put("vnp_Command", "withdraw");
             params.put("vnp_TmnCode", tmnCode);
             params.put("vnp_Amount", String.valueOf(vnpAmount));
             params.put("vnp_CurrCode", "VND");
@@ -100,19 +75,16 @@ public class VNPayWithdrawalService {
             params.put("vnp_BankAccountName", accountHolderName);
             params.put("vnp_CallbackUrl", withdrawalCallbackUrl);
 
-            // Thời gian
             TimeZone tz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
             sdf.setTimeZone(tz);
             String vnp_CreateDate = sdf.format(new Date());
             params.put("vnp_CreateDate", vnp_CreateDate);
 
-            // Tạo hash
             String hashData = buildHashData(params);
             String vnp_SecureHash = hmacSHA512(hashSecret, hashData);
             params.put("vnp_SecureHash", vnp_SecureHash);
 
-            // Gọi VNPay API
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             
@@ -132,7 +104,6 @@ public class VNPayWithdrawalService {
             log.info("VNPay withdrawal API response: Status={}, Body={}", 
                     response.getStatusCode(), response.getBody());
 
-            // Parse response (tùy format VNPay trả về)
             return parseVNPayResponse(response.getBody());
 
         } catch (Exception e) {
@@ -141,13 +112,6 @@ public class VNPayWithdrawalService {
         }
     }
 
-    /**
-     * Xử lý async (không có API trực tiếp)
-     * Có thể:
-     * 1. Gửi request đến admin để xử lý thủ công
-     * 2. Chờ webhook callback từ VNPay
-     * 3. Hoặc giả lập xử lý (cho testing)
-     */
     private boolean processWithdrawalAsync(Double amount, String bankAccountNumber,
                                           String bankName, String accountHolderName,
                                           String referenceId) {
@@ -158,26 +122,20 @@ public class VNPayWithdrawalService {
         // Option 2: Queue for manual processing
         // Option 3: Wait for webhook callback
         
-        // For now, simulate processing (remove in production)
         try {
-            Thread.sleep(2000); // Simulate processing time
+            Thread.sleep(2000);
             log.info("Withdrawal request queued for processing. Reference: {}", referenceId);
-            // In production, this should queue the request and wait for webhook
-            return true; // Return true to indicate request accepted (not completed)
+            return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
         }
     }
 
-    /**
-     * Map tên ngân hàng sang bank code của VNPay
-     */
     private String mapBankNameToCode(String bankName) {
         if (bankName == null) return "NCB";
         
         String name = bankName.toUpperCase();
-        // Map common bank names to VNPay bank codes
         if (name.contains("VIETCOMBANK") || name.contains("VCB")) return "VCB";
         if (name.contains("VIETINBANK") || name.contains("VTB")) return "VTB";
         if (name.contains("BIDV")) return "BID";
@@ -189,19 +147,16 @@ public class VNPayWithdrawalService {
         if (name.contains("VPBANK") || name.contains("VP")) return "VPB";
         if (name.contains("SACOMBANK") || name.contains("STB")) return "STB";
         
-        return "NCB"; // Default: NCB
+        return "NCB";
     }
 
-    /**
-     * Build hash data string for VNPay
-     */
     private String buildHashData(Map<String, String> params) {
         List<String> fieldNames = new ArrayList<>(params.keySet());
         Collections.sort(fieldNames);
 
         StringBuilder hashData = new StringBuilder();
         for (String field : fieldNames) {
-            if (field.equals("vnp_SecureHash")) continue; // Skip secure hash
+            if (field.equals("vnp_SecureHash")) continue;
             
             String value = params.get(field);
             if (value != null && !value.isEmpty()) {
@@ -219,9 +174,6 @@ public class VNPayWithdrawalService {
         return hashData.toString();
     }
 
-    /**
-     * Build query string from params
-     */
     private String buildQueryString(Map<String, String> params) {
         StringBuilder query = new StringBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
@@ -237,17 +189,12 @@ public class VNPayWithdrawalService {
         return query.toString();
     }
 
-    /**
-     * Parse VNPay API response
-     */
     private boolean parseVNPayResponse(String responseBody) {
         if (responseBody == null || responseBody.isEmpty()) {
             return false;
         }
 
         try {
-            // VNPay thường trả về JSON hoặc query string
-            // Parse response code
             if (responseBody.contains("vnp_ResponseCode=00") || 
                 responseBody.contains("\"ResponseCode\":\"00\"") ||
                 responseBody.contains("success")) {
@@ -262,9 +209,6 @@ public class VNPayWithdrawalService {
         }
     }
 
-    /**
-     * HMAC SHA512 hash
-     */
     private String hmacSHA512(String key, String data) {
         try {
             javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA512");
@@ -287,9 +231,6 @@ public class VNPayWithdrawalService {
         return sb.toString();
     }
 
-    /**
-     * Validate webhook callback from VNPay
-     */
     public boolean validateWithdrawalCallback(Map<String, String> params) {
         String receivedHash = params.get("vnp_SecureHash");
         if (receivedHash == null || receivedHash.isEmpty()) {
@@ -307,22 +248,6 @@ public class VNPayWithdrawalService {
         return calculatedHash.equalsIgnoreCase(receivedHash);
     }
 
-    /**
-     * Xử lý hoàn tiền (refund) qua VNPay API
-     * 
-     * VNPay Refund API:
-     * - URL: https://sandbox.vnpayment.vn/merchant_webapi/api/transaction
-     * - Command: vnp_Command = "refund"
-     * 
-     * @param originalTxnRef Mã giao dịch thanh toán ban đầu (orderId hoặc vnp_TxnRef)
-     * @param vnpTransactionNo Mã giao dịch VNPay từ thanh toán ban đầu (từ callback)
-     * @param originalTransactionDate Thời gian giao dịch ban đầu (format: yyyyMMddHHmmss)
-     * @param amount Số tiền hoàn (VND)
-     * @param isFullRefund true nếu hoàn toàn phần, false nếu hoàn một phần
-     * @param orderInfo Nội dung hoàn tiền
-     * @param ipAddress IP của server
-     * @return true nếu thành công, false nếu thất bại
-     */
     @Async
     public boolean processRefund(String originalTxnRef, String vnpTransactionNo, 
                                 String originalTransactionDate, Double amount,
@@ -339,18 +264,13 @@ public class VNPayWithdrawalService {
         }
     }
 
-    /**
-     * Gọi VNPay Refund API
-     */
     private boolean callVNPayRefundAPI(String originalTxnRef, String vnpTransactionNo,
                                       String originalTransactionDate, Double amount,
                                       boolean isFullRefund, String orderInfo, String ipAddress) {
         try {
-            // Tạo request parameters theo format VNPay
             Map<String, String> params = new LinkedHashMap<>();
-            long vnpAmount = Math.round(amount * 100); // Convert to cents
+            long vnpAmount = Math.round(amount * 100);
 
-            // Generate unique request ID (format: timestamp + random)
             String vnpRequestId = String.format("%d%04d", 
                     System.currentTimeMillis() % 1000000000L,
                     new Random().nextInt(10000));
@@ -359,7 +279,7 @@ public class VNPayWithdrawalService {
             params.put("vnp_Version", "2.1.0");
             params.put("vnp_Command", "refund");
             params.put("vnp_TmnCode", tmnCode);
-            params.put("vnp_TransactionType", isFullRefund ? "02" : "03"); // 02: toàn phần, 03: một phần
+            params.put("vnp_TransactionType", isFullRefund ? "02" : "03");
             params.put("vnp_TxnRef", originalTxnRef);
             params.put("vnp_Amount", String.valueOf(vnpAmount));
             params.put("vnp_OrderInfo", orderInfo != null ? orderInfo : "Hoan tien don hang");
@@ -367,7 +287,6 @@ public class VNPayWithdrawalService {
             params.put("vnp_TransactionDate", originalTransactionDate);
             params.put("vnp_CreateBy", "SYSTEM");
             
-            // Thời gian tạo yêu cầu hoàn tiền
             TimeZone tz = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
             sdf.setTimeZone(tz);
@@ -375,12 +294,10 @@ public class VNPayWithdrawalService {
             params.put("vnp_CreateDate", vnpCreateDate);
             params.put("vnp_IpAddr", ipAddress != null ? ipAddress : "127.0.0.1");
 
-            // Tạo hash
             String hashData = buildHashData(params);
             String vnp_SecureHash = hmacSHA512(hashSecret, hashData);
             params.put("vnp_SecureHash", vnp_SecureHash);
 
-            // Gọi VNPay API
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             
@@ -400,7 +317,6 @@ public class VNPayWithdrawalService {
             log.info("VNPay refund API response: Status={}, Body={}", 
                     response.getStatusCode(), response.getBody());
 
-            // Parse response
             return parseVNPayRefundResponse(response.getBody());
 
         } catch (Exception e) {
@@ -409,17 +325,12 @@ public class VNPayWithdrawalService {
         }
     }
 
-    /**
-     * Parse VNPay refund API response
-     */
     private boolean parseVNPayRefundResponse(String responseBody) {
         if (responseBody == null || responseBody.isEmpty()) {
             return false;
         }
 
         try {
-            // VNPay thường trả về JSON hoặc query string
-            // ResponseCode = "00" nghĩa là thành công
             if (responseBody.contains("vnp_ResponseCode=00") || 
                 responseBody.contains("\"ResponseCode\":\"00\"") ||
                 responseBody.contains("\"vnp_ResponseCode\":\"00\"") ||

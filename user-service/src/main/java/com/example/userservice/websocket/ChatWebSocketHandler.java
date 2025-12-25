@@ -1,9 +1,13 @@
 package com.example.userservice.websocket;
 
+import com.example.userservice.entity.Account;
 import com.example.userservice.entity.ChatMessage;
+import com.example.userservice.entity.Employee;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
+import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.ChatParticipantRepository;
+import com.example.userservice.repository.EmployeeRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.request.ChatMessageRequest;
 import com.example.userservice.response.ChatMessageResponse;
@@ -29,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,6 +48,8 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
+    private final EmployeeRepository employeeRepository;
+    private final AccountRepository accountRepository;
     private final ChatMessageService chatMessageService;
     private final ChatService chatService;
 
@@ -50,21 +57,18 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
         log.info("WebSocket connection established: {}", session.getId());
         
-        // Extract user ID from query parameters or headers
         String userId = extractUserIdFromSession(session);
         if (userId != null) {
             sessions.put(session.getId(), session);
             userSessions.put(userId, session.getId());
             log.info("User {} connected to WebSocket", userId);
             
-            // Send connection confirmation
             sendMessage(session, WebSocketMessage.builder()
                     .type("CONNECTION_ESTABLISHED")
                     .content("Connected to chat")
                     .timestamp(System.currentTimeMillis())
                     .build());
             
-            // If user is staff, notify them about waiting chats
             notifyStaffAboutWaitingChats(userId);
         } else {
             log.warn("No user ID found in WebSocket connection, closing session");
@@ -417,7 +421,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         }
     }
 
-    // Public method to broadcast to all users
     public void broadcastToAll(WebSocketMessage message) {
         sessions.values().forEach(session -> {
             if (session.isOpen()) {
@@ -426,23 +429,46 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         });
     }
 
-    // Public method to get online user IDs
     public Set<String> getOnlineUserIds() {
         return new HashSet<>(userSessions.keySet());
     }
 
-    /**
-     * Notify staff about waiting chats when they connect
-     */
     private void notifyStaffAboutWaitingChats(String userId) {
         try {
-            // Check if user is staff
-            User user = userRepository.findByIdAndIsDeletedFalse(userId).orElse(null);
-            if (user == null || user.getAccount() == null || user.getAccount().getRole() != EnumRole.STAFF) {
-                return; // Not a staff member
+            // Check if user is staff - userId could be Employee.id, User.id, or Account.id
+            boolean isStaff = false;
+            
+            // First, try to find as Employee (most common for staff)
+            // Use findEmployeeById which already filters by isDeleted and includes STAFF role
+            Optional<Employee> employeeOpt = employeeRepository.findEmployeeById(userId)
+                    .filter(emp -> emp.getAccount() != null 
+                            && emp.getAccount().getRole() == EnumRole.STAFF);
+            
+            if (employeeOpt.isPresent()) {
+                isStaff = true;
+                log.debug("User {} identified as STAFF (Employee)", userId);
+            } else {
+                // Try to find as User (less common for staff, but possible)
+                Optional<User> userOpt = userRepository.findByIdAndIsDeletedFalse(userId);
+                if (userOpt.isPresent() && userOpt.get().getAccount() != null 
+                        && userOpt.get().getAccount().getRole() == EnumRole.STAFF) {
+                    isStaff = true;
+                    log.debug("User {} identified as STAFF (User)", userId);
+                } else {
+                    // Try to find as Account (if userId is actually accountId)
+                    Optional<Account> accountOpt = accountRepository.findByIdAndIsDeletedFalse(userId);
+                    if (accountOpt.isPresent() && accountOpt.get().getRole() == EnumRole.STAFF) {
+                        isStaff = true;
+                        log.debug("User {} identified as STAFF (Account)", userId);
+                    }
+                }
+            }
+            
+            if (!isStaff) {
+                log.debug("User {} is not a staff member, skipping notification", userId);
+                return;
             }
 
-            // Get waiting chats
             List<ChatResponse> waitingChats = chatService.getChatsWaitingForStaff();
             
             if (!waitingChats.isEmpty()) {
@@ -458,9 +484,11 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
                 sendMessageToUser(userId, message);
                 log.info("Notified staff {} about {} waiting chats", userId, waitingChats.size());
+            } else {
+                log.debug("No waiting chats to notify staff {}", userId);
             }
         } catch (Exception e) {
-            log.error("Error notifying staff about waiting chats: {}", e.getMessage(), e);
+            log.error("Error notifying staff about waiting chats for user {}: {}", userId, e.getMessage(), e);
         }
     }
 }

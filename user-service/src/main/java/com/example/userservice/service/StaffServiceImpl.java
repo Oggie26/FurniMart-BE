@@ -3,7 +3,7 @@ package com.example.userservice.service;
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.Employee;
 import com.example.userservice.entity.EmployeeStore;
-import com.example.userservice.entity.User; // Only used in deprecated toStaffResponse(User) method
+import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
@@ -55,7 +55,6 @@ public class StaffServiceImpl implements StaffService {
             throw new AppException(ErrorCode.PHONE_EXISTS);
         }
 
-        // Create account with STAFF role
         Account account = Account.builder()
                 .email(staffRequest.getEmail())
                 .password(passwordEncoder.encode(staffRequest.getPassword()))
@@ -70,10 +69,8 @@ public class StaffServiceImpl implements StaffService {
         Account savedAccount = accountRepository.save(account);
         log.info("Created account for STAFF: {}", savedAccount.getId());
 
-        // Generate employee code
         String employeeCode = generateEmployeeCode(EnumRole.STAFF);
 
-        // Create Employee entity (NOT User)
         Employee staff = Employee.builder()
                 .code(employeeCode)
                 .fullName(staffRequest.getFullName())
@@ -92,10 +89,8 @@ public class StaffServiceImpl implements StaffService {
         Employee savedStaff = employeeRepository.save(staff);
         log.info("Created STAFF employee: {} with code: {}", savedStaff.getId(), employeeCode);
         
-        // Handle store assignments if provided
         if (staffRequest.getStoreIds() != null && !staffRequest.getStoreIds().isEmpty()) {
             for (String storeId : staffRequest.getStoreIds()) {
-                // Validate store exists
                 storeRepository.findByIdAndIsDeletedFalse(storeId)
                         .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
                 
@@ -115,7 +110,6 @@ public class StaffServiceImpl implements StaffService {
         String prefix;
         switch (role) {
             case ADMIN: prefix = "ADM"; break;
-            // SELLER role removed - use STAFF instead
             case BRANCH_MANAGER: prefix = "MGR"; break;
             case DELIVERY: prefix = "DLV"; break;
             case STAFF: prefix = "STF"; break;
@@ -132,7 +126,6 @@ public class StaffServiceImpl implements StaffService {
         Employee existingStaff = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if the employee is actually a STAFF member
         if (!EnumRole.STAFF.equals(existingStaff.getAccount().getRole())) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
@@ -193,19 +186,15 @@ public class StaffServiceImpl implements StaffService {
             accountRepository.save(existingStaff.getAccount());
         }
 
-        // Handle store assignments if provided
         if (staffRequest.getStoreIds() != null) {
-            // Remove existing store assignments
             List<EmployeeStore> existingEmployeeStores = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(id);
             for (EmployeeStore employeeStore : existingEmployeeStores) {
                 employeeStore.setIsDeleted(true);
                 employeeStoreRepository.save(employeeStore);
             }
             
-            // Add new store assignments
             if (!staffRequest.getStoreIds().isEmpty()) {
                 for (String storeId : staffRequest.getStoreIds()) {
-                    // Validate store exists
                     storeRepository.findByIdAndIsDeletedFalse(storeId)
                             .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND));
                     
@@ -226,7 +215,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public StaffResponse getStaffById(String id) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching STAFF employee by id: {}", id);
         Employee staff = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -240,7 +228,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public List<StaffResponse> getAllStaff() {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching all STAFF employees");
         List<Employee> employees = employeeRepository.findAllEmployees().stream()
                 .filter(emp -> EnumRole.STAFF.equals(emp.getAccount().getRole()))
@@ -253,7 +240,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public List<StaffResponse> getStaffByStatus(String status) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching STAFF employees by status: {}", status);
         EnumStatus enumStatus = EnumStatus.valueOf(status.toUpperCase());
         List<Employee> employees = employeeRepository.findAllEmployees().stream()
@@ -268,19 +254,16 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public PageResponse<StaffResponse> getStaffWithPagination(int page, int size) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching staff with pagination - page: {}, size: {}", page, size);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Employee> employeePage = employeeRepository.findAllEmployees(pageable);
         
-        // Filter to only STAFF role
         List<StaffResponse> staffResponses = employeePage.getContent().stream()
                 .filter(emp -> EnumRole.STAFF.equals(emp.getAccount().getRole()))
                 .map(this::toStaffResponseFromEmployee)
                 .collect(Collectors.toList());
 
-        // Get total count of STAFF employees
         long totalStaffElements = employeeRepository.countEmployeesByRole(EnumRole.STAFF);
         int totalStaffPages = (int) Math.ceil((double) totalStaffElements / size);
 
@@ -297,19 +280,16 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public PageResponse<StaffResponse> searchStaff(String searchTerm, int page, int size) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Searching staff with term: {} - page: {}, size: {}", searchTerm, page, size);
         
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Employee> employeePage = employeeRepository.searchEmployees(searchTerm, pageable);
         
-        // Filter to only STAFF role
         List<StaffResponse> staffResponses = employeePage.getContent().stream()
                 .filter(emp -> EnumRole.STAFF.equals(emp.getAccount().getRole()))
                 .map(this::toStaffResponseFromEmployee)
                 .collect(Collectors.toList());
 
-        // Get total count of matching STAFF employees
         long totalStaffElements = employeeRepository.findAllEmployees().stream()
                 .filter(emp -> EnumRole.STAFF.equals(emp.getAccount().getRole()))
                 .filter(emp -> {
@@ -337,7 +317,6 @@ public class StaffServiceImpl implements StaffService {
     @Override
     @Transactional
     public void deleteStaff(String id) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Deleting STAFF employee: {}", id);
         Employee staff = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -358,7 +337,6 @@ public class StaffServiceImpl implements StaffService {
     @Override
     @Transactional
     public void disableStaff(String id) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Disabling STAFF employee: {}", id);
         Employee staff = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -378,7 +356,6 @@ public class StaffServiceImpl implements StaffService {
     @Override
     @Transactional
     public void enableStaff(String id) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Enabling STAFF employee: {}", id);
         Employee staff = employeeRepository.findEmployeeById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -397,7 +374,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public StaffResponse getStaffByEmail(String email) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching STAFF employee by email: {}", email);
         Employee employee = employeeRepository.findByEmailAndIsDeletedFalse(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_FOUND));
@@ -411,7 +387,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public StaffResponse getStaffByPhone(String phone) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching STAFF employee by phone: {}", phone);
         Employee employee = employeeRepository.findByPhoneAndIsDeletedFalse(phone)
                 .orElseThrow(() -> new AppException(ErrorCode.PHONE_NOT_FOUND));
@@ -425,7 +400,6 @@ public class StaffServiceImpl implements StaffService {
 
     @Override
     public List<StaffResponse> getStaffByDepartment(String department) {
-        // Query from EmployeeRepository since STAFF is now in employees table
         log.info("Fetching STAFF employees by department: {}", department);
         List<Employee> employees = employeeRepository.findAllEmployees().stream()
                 .filter(emp -> EnumRole.STAFF.equals(emp.getAccount().getRole()))
@@ -438,7 +412,6 @@ public class StaffServiceImpl implements StaffService {
     }
 
     private StaffResponse toStaffResponseFromEmployee(Employee employee) {
-        // Load storeIds for the employee
         List<String> storeIds = employeeStoreRepository.findByEmployeeIdAndIsDeletedFalse(employee.getId())
                 .stream()
                 .map(EmployeeStore::getStoreId)
