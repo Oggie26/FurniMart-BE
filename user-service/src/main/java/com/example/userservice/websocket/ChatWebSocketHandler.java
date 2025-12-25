@@ -270,7 +270,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             
             for (var participant : participants) {
                 String participantUserId = participant.getUser().getId();
-                if (!participantUserId.equals(excludeUserId)) {
+                if (excludeUserId == null || !participantUserId.equals(excludeUserId)) {
                     String sessionId = userSessions.get(participantUserId);
                     if (sessionId != null) {
                         WebSocketSession participantSession = sessions.get(sessionId);
@@ -283,6 +283,11 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         } catch (Exception e) {
             log.error("Error broadcasting to chat: {}", chatId, e);
         }
+    }
+
+    // Public method to broadcast message to all participants in a chat (for AI responses)
+    public void broadcastToChat(String chatId, WebSocketMessage message) {
+        broadcastToChat(chatId, message, null);
     }
 
     private void broadcastTypingToChat(String chatId, String userId, String typingStatus) {

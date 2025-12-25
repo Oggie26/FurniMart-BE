@@ -139,8 +139,7 @@ public class ChatServiceImpl implements ChatService {
                 .type(Chat.ChatType.PRIVATE)
                 .status(EnumStatus.ACTIVE)
                 .createdBy(currentUser)
-                .chatMode(Chat.ChatMode.WAITING_STAFF) // Start in WAITING_STAFF mode (skip AI)
-                .staffRequestedAt(LocalDateTime.now())
+                .chatMode(Chat.ChatMode.AI) // Start in AI mode - customer can chat with AI immediately
                 .build();
 
         Chat savedChat = chatRepository.save(chat);
@@ -155,14 +154,8 @@ public class ChatServiceImpl implements ChatService {
                 .build();
         chatParticipantRepository.save(creatorParticipant);
 
-        // Notify staff or customer based on staff availability
-        if (hasOnlineStaff()) {
-            notifyAllOnlineStaff(savedChat, currentUser);
-        } else {
-            notifyCustomerNoStaffOnline(currentUser, savedChat);
-        }
-
-        log.info("Quick chat created for customer {} in WAITING_STAFF mode: {}", currentUserId, savedChat.getId());
+        // No need to notify staff immediately - will notify when customer requests staff via requestStaffConnection()
+        log.info("Quick chat created for customer {} in AI mode: {}", currentUserId, savedChat.getId());
         return toChatResponse(savedChat);
     }
 
@@ -849,9 +842,10 @@ public class ChatServiceImpl implements ChatService {
             throw new AppException(ErrorCode.INVALID_CHAT_STATE);
         }
 
-        // Keep chat data: maintain STAFF_CONNECTED mode, set status to INACTIVE
-        // Don't change chatMode or clear assignedStaffId to preserve chat history
-        chat.setStatus(EnumStatus.INACTIVE);
+        // Change chatMode back to AI so customer can continue chatting with AI
+        // Keep assignedStaffId to preserve chat history (know which staff helped)
+        chat.setChatMode(Chat.ChatMode.AI);
+        chat.setStatus(EnumStatus.ACTIVE); // Set back to ACTIVE so customer can continue chatting
         chat.setStaffChatEndedAt(LocalDateTime.now());
         // Keep assignedStaffId to preserve chat history
         chatRepository.save(chat);
