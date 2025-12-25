@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 import com.example.userservice.entity.*;
+import com.example.userservice.enums.EnumRole;
 import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.enums.ErrorCode;
 import com.example.userservice.exception.AppException;
@@ -49,6 +50,16 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         // Check if user is a participant
         chatParticipantRepository.findActiveParticipantByChatIdAndUserId(messageRequest.getChatId(), currentUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
+
+        // Validate chatMode - block customer from sending messages in WAITING_STAFF mode
+        Chat.ChatMode chatMode = chat.getChatMode() != null ? chat.getChatMode() : Chat.ChatMode.AI;
+        if (chatMode == Chat.ChatMode.WAITING_STAFF) {
+            // Only staff can send messages in WAITING_STAFF mode
+            Account senderAccount = sender.getAccount();
+            if (senderAccount == null || senderAccount.getRole() != EnumRole.STAFF) {
+                throw new AppException(ErrorCode.INVALID_CHAT_STATE);
+            }
+        }
 
         ChatMessage replyTo = null;
         if (messageRequest.getReplyToMessageId() != null) {

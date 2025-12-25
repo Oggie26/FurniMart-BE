@@ -10,11 +10,17 @@ public interface ChatService {
 
     ChatResponse createChat(ChatRequest chatRequest);
 
+    ChatResponse quickCreateChatForCustomer();
+
     ChatResponse getChatById(String chatId);
 
     List<ChatResponse> getUserChats();
 
+    List<ChatResponse> getLatestChats();
+
     PageResponse<ChatResponse> getUserChatsWithPagination(int page, int size);
+
+    List<ChatResponse> getLatestChatsWithUnreadPriority(int limit);
 
     ChatResponse updateChat(String chatId, ChatRequest chatRequest);
 
@@ -42,4 +48,8 @@ public interface ChatService {
     ChatResponse endStaffChat(String chatId);
     List<com.example.userservice.entity.Employee> getOnlineStaff();
     boolean isStaffOnline(String staffId);
+    List<ChatResponse> getChatsWaitingForStaff();
+    int getOnlineStaffCount();
+    boolean hasOnlineStaff();
+    String getEstimatedWaitTime();
 }
