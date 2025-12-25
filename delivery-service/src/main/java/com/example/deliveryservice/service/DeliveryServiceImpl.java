@@ -106,8 +106,6 @@ public class DeliveryServiceImpl implements DeliveryService {
                 order.getStoreId(),
                 assignedBy);
 
-        validatePrerequisites(assignment, request.getOrderId());
-
         DeliveryAssignment saved = assignDeliveryStaffAtomically(
                 assignment,
                 request.getDeliveryStaffId(),
