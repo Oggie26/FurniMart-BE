@@ -357,7 +357,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                                     savedAIMessage.getCreatedAt().getTime() : System.currentTimeMillis())
                             .build();
 
-                    chatWebSocketHandler.broadcastToChat(chatId, wsMessage, null);
+                    chatWebSocketHandler.broadcastToChat(chatId, wsMessage);
                 } catch (Exception e) {
                     log.error("Error broadcasting AI response via WebSocket", e);
                 }
@@ -426,8 +426,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .phone("0000000000")
                 .status(EnumStatus.ACTIVE)
                 .account(savedAccount)
-                .isDeleted(false)
                 .build();
+        newUser.setIsDeleted(false);
         
         return userRepository.save(newUser);
     }
