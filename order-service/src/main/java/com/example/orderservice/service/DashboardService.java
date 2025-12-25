@@ -231,7 +231,7 @@ public class DashboardService {
                     // Get customer info
                     String customerName = "N/A";
                     String customerPhone = "N/A";
-                    String deliveryAddress = "N/A";
+                    AddressResponse deliveryAddress = null;
                     try {
                         ApiResponse<UserResponse> userResponse = userClient.getUserById(order.getUserId());
                         if (userResponse != null && userResponse.getData() != null) {
@@ -242,8 +242,7 @@ public class DashboardService {
                         
                         ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(order.getAddressId());
                         if (addressResponse != null && addressResponse.getData() != null) {
-                            AddressResponse address = addressResponse.getData();
-                            deliveryAddress = address.getAddressLine() != null ? address.getAddressLine() : "N/A";
+                            deliveryAddress = addressResponse.getData();
                         }
                     } catch (Exception e) {
                         log.warn("Error fetching user/address for order {}: {}", order.getId(), e.getMessage());
