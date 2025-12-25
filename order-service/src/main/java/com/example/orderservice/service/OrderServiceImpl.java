@@ -251,7 +251,7 @@ public class OrderServiceImpl implements OrderService {
                         .quantity(detail.getQuantity())
                         .price(detail.getPrice())
                         .productName(detail.getProductColorId())
-                        .colorName("")
+                        .colorName(detail.getProductColorId())
                         .build())
                 .collect(Collectors.toList());
 
@@ -268,6 +268,21 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         try {
+            deliveryClient.createAssignment(order.getId(), order.getStoreId());
+            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
+            ProcessOrder processOrder = ProcessOrder.builder()
+                    .order(order)
+                    .status(EnumProcessOrder.READY_FOR_INVOICE)
+                    .createdAt(new Date())
+                    .build();
+            processOrderRepository.save(processOrder);
+            orderRepository.save(order);
+            log.info("Tự động tạo delivery assignment cho order {}", order.getId());
+        } catch (Exception e) {
+            log.error("Không thể tạo delivery assignment cho order {}: {}", order.getId(), e.getMessage());
+        }
+
+        try{
             kafkaTemplate.send("order-created-topic", event)
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
@@ -278,13 +293,6 @@ public class OrderServiceImpl implements OrderService {
                     });
         } catch (Exception e) {
             log.error("Failed to send Kafka event for user {}, error: {}", userData.getFullName(), e.getMessage());
-        }
-
-        try {
-            deliveryClient.createAssignment(savedOrder.getId(), savedOrder.getStoreId());
-            log.info("✅ Tự động tạo delivery assignment cho order {}", savedOrder.getId());
-        } catch (Exception e) {
-            log.error("❌ Không thể tạo delivery assignment cho order {}: {}", savedOrder.getId(), e.getMessage());
         }
 
         return mapToResponse(savedOrder);
@@ -326,9 +334,9 @@ public class OrderServiceImpl implements OrderService {
 
         try {
             inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
-            log.info("✅ Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
+            log.info("Rollback inventory thành công cho order: {}", cancelOrderRequest.getOrderId());
         } catch (Exception e) {
-            log.warn("⚠️ Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.",
+            log.warn("Không thể rollback inventory cho order {}: {}. Tiếp tục cancellation.",
                     cancelOrderRequest.getOrderId(), e.getMessage());
         }
 
@@ -520,9 +528,9 @@ public class OrderServiceImpl implements OrderService {
         if (status.equals(EnumProcessOrder.MANAGER_ACCEPT)) {
             try {
                 deliveryClient.createAssignment(orderId, order.getStoreId());
-                log.info("✅ Tự động tạo delivery assignment cho order {}", orderId);
+                log.info("Tự động tạo delivery assignment cho order {}", orderId);
             } catch (Exception e) {
-                log.error("❌ Không thể tạo delivery assignment cho order {}: {}", orderId, e.getMessage());
+                log.error("Không thể tạo delivery assignment cho order {}: {}", orderId, e.getMessage());
             }
         }
 
@@ -634,15 +642,12 @@ public class OrderServiceImpl implements OrderService {
     public PageResponse<OrderResponse> getOrdersByStoreId(String storeId, EnumProcessOrder status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // Validate store exists
         String validatedStoreId = getStoreById(storeId);
 
         Page<Order> orders;
         if (status != null) {
-            // Lọc theo storeId và status
             orders = orderRepository.findByStoreIdAndStatusAndIsDeletedFalse(validatedStoreId, status, pageable);
         } else {
-            // Lấy tất cả orders của store (không filter status)
             orders = orderRepository.findByStoreIdAndIsDeletedFalse(validatedStoreId, pageable);
         }
 
@@ -663,11 +668,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<ProcessOrderResponse> getOrderStatusHistory(Long orderId) {
-        // Kiểm tra đơn hàng có tồn tại không
+
         orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Lấy lịch sử status, sắp xếp theo thời gian (cũ nhất trước)
         List<ProcessOrder> processOrders = processOrderRepository.findByOrderIdOrderByCreatedAtAsc(orderId);
 
         return processOrders.stream()
@@ -705,8 +709,7 @@ public class OrderServiceImpl implements OrderService {
                             java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
                             hasPdfFile = pdfFile.exists();
                         } catch (Exception e) {
-                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(),
-                                    e.getMessage());
+                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(), e.getMessage());
                         }
                     }
                     // Set hasPdfFile vào response
@@ -953,7 +956,7 @@ public class OrderServiceImpl implements OrderService {
             ApiResponse<DeliveryConfirmationResponse> response = deliveryClient.getDeliveryConfirmation(orderId);
 
             if (response == null || response.getData() == null) {
-                return null; // Không có thông tin thì trả về null nhẹ nhàng
+                return null;
             }
             return response.getData();
 
