@@ -600,6 +600,38 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     }
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage message) {
+        // Get current user ID to determine if message is own message
+        String currentUserId = null;
+        Boolean isOwnMessage = false;
+        try {
+            currentUserId = getCurrentUserId();
+            String senderId = message.getSender().getId();
+            
+            // Direct comparison: senderId equals currentUserId
+            if (senderId.equals(currentUserId)) {
+                isOwnMessage = true;
+            } else {
+                // For staff: senderId is User ID, but currentUserId might be Employee ID
+                // Check if sender's account matches current user's account
+                User sender = message.getSender();
+                if (sender != null && sender.getAccount() != null) {
+                    Account senderAccount = sender.getAccount();
+                    
+                    // Get current account
+                    Account currentAccount = accountRepository.findByEmailAndIsDeletedFalse(
+                        SecurityContextHolder.getContext().getAuthentication().getName())
+                        .orElse(null);
+                    
+                    if (currentAccount != null && senderAccount.getId().equals(currentAccount.getId())) {
+                        isOwnMessage = true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // If unable to get current user (e.g., not authenticated), default to false
+            log.debug("Unable to get current user ID for isOwnMessage check: {}", e.getMessage());
+        }
+        
         return ChatMessageResponse.builder()
                 .id(message.getId())
                 .content(message.getContent())
@@ -615,6 +647,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .attachmentType(message.getAttachmentType())
                 .isEdited(message.getIsEdited())
                 .isDeleted(message.getIsDeleted())
+                .isOwnMessage(isOwnMessage)
                 .createdAt(message.getCreatedAt())
                 .updatedAt(message.getUpdatedAt())
                 .build();
