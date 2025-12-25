@@ -126,6 +126,7 @@ public class Account extends AbstractEntity implements UserDetails {
         private boolean accountNonExpired = true;
         private boolean accountNonLocked = true;
         private boolean credentialsNonExpired = true;
+        private Boolean isDeleted = false;
         private User user;
         private Employee employee;
 
@@ -140,6 +141,7 @@ public class Account extends AbstractEntity implements UserDetails {
         public AccountBuilder credentialsNonExpired(boolean credentialsNonExpired) { this.credentialsNonExpired = credentialsNonExpired; return this; }
         public AccountBuilder user(User user) { this.user = user; return this; }
         public AccountBuilder employee(Employee employee) { this.employee = employee; return this; }
+        public AccountBuilder isDeleted(Boolean isDeleted) { this.isDeleted = isDeleted; return this; }
 
         public Account build() {
             Account account = new Account();
@@ -152,6 +154,7 @@ public class Account extends AbstractEntity implements UserDetails {
             account.accountNonExpired = this.accountNonExpired;
             account.accountNonLocked = this.accountNonLocked;
             account.credentialsNonExpired = this.credentialsNonExpired;
+            account.isDeleted = this.isDeleted;
             account.user = this.user;
             account.employee = this.employee;
             return account;
