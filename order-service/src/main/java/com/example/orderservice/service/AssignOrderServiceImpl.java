@@ -1,5 +1,6 @@
 package com.example.orderservice.service;
 
+import com.example.orderservice.service.inteface.OrderService;
 import lombok.extern.slf4j.Slf4j;
 import com.example.orderservice.entity.Order;
 import com.example.orderservice.entity.Payment;
@@ -10,6 +11,7 @@ import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.event.OrderCreatedEvent;
 import com.example.orderservice.exception.AppException;
 import com.example.orderservice.feign.AIClient;
+import com.example.orderservice.feign.DeliveryClient;
 import com.example.orderservice.feign.InventoryClient;
 import com.example.orderservice.feign.ProductClient;
 import com.example.orderservice.feign.StoreClient;
@@ -41,6 +43,8 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final ProductClient productClient;
     private final AIClient aiClient;
+    private final DeliveryClient deliveryClient;
+    private final OrderService orderService;
     // private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
 
     @Override
@@ -50,9 +54,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Kiểm tra tránh lặp lại (Idempotency check)
-        // Nếu đã được gán cửa hàng rồi thì không gán lại trừ khi được yêu cầu đặc biệt
-        // (qua manager workflow)
         if (order.getStatus() == EnumProcessOrder.ASSIGN_ORDER_STORE ||
                 order.getStatus().ordinal() > EnumProcessOrder.ASSIGN_ORDER_STORE.ordinal()) {
             log.info("Order {} is already assigned to a store or beyond. Skipping assignment.", orderId);
@@ -209,6 +210,23 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
             orderRepository.save(order);
         }
+
+        try {
+            deliveryClient.createAssignment(order.getId(), order.getStoreId());
+            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
+            ProcessOrder processOrder = ProcessOrder.builder()
+                    .order(order)
+                    .status(EnumProcessOrder.READY_FOR_INVOICE)
+                    .createdAt(new Date())
+                    .build();
+            processOrderRepository.save(processOrder);
+            orderRepository.save(order);
+            log.info("Tự động tạo delivery assignment cho order {}", order.getId());
+        } catch (Exception e) {
+            log.error("Không thể tạo delivery assignment cho order {}: {}", order.getId(), e.getMessage());
+        }
+
+
     }
 
     private void handleManagerReject(Order order, String rejectedStoreId, String reason) {

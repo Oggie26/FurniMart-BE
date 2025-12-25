@@ -282,4 +282,17 @@ public class DeliveryController {
                                 .build();
         }
 
+        @PostMapping("/assignments/create")
+        @Operation(summary = "Create initial delivery assignment", description = "Create an initial delivery assignment for an order. This is usually called when a manager accepts an order.")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
+        public ApiResponse<DeliveryAssignmentResponse> createAssignment(
+                        @RequestParam Long orderId,
+                        @RequestParam String storeId) {
+                return ApiResponse.<DeliveryAssignmentResponse>builder()
+                                .status(HttpStatus.CREATED.value())
+                                .message("Delivery assignment created successfully")
+                                .data(deliveryService.createAssignment(orderId, storeId))
+                                .build();
+        }
+
 }
