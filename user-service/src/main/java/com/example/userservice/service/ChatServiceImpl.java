@@ -985,8 +985,24 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public List<ChatResponse> getChatsWaitingForStaff() {
-        List<Chat> waitingChats = chatRepository.findChatsWaitingForStaff();
-        return waitingChats.stream()
+        // Get current staff ID
+        String currentAccountId = getCurrentAccountId();
+        Employee staff = employeeRepository.findByAccountIdAndIsDeletedFalse(currentAccountId)
+                .orElse(null);
+        
+        // If not a staff member, return empty list (should not happen due to authorization, but safe check)
+        if (staff == null || staff.getAccount().getRole() != EnumRole.STAFF) {
+            log.warn("User {} is not a staff member, returning empty chat list", currentAccountId);
+            return new ArrayList<>();
+        }
+        
+        // Get both waiting chats and chats assigned to this staff
+        String staffId = staff.getId();
+        List<Chat> chats = chatRepository.findChatsWaitingForStaffOrAssignedToStaff(staffId);
+        
+        log.debug("Retrieved {} chats for staff {} (waiting and assigned)", chats.size(), staffId);
+        
+        return chats.stream()
                 .map(this::toChatResponse)
                 .collect(Collectors.toList());
     }
