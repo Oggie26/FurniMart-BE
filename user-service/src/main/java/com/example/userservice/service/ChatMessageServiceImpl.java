@@ -483,6 +483,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
                 // Broadcast AI response via WebSocket
                 try {
+                    ChatMessageResponse aiMessageResponse = toChatMessageResponse(savedAIMessage);
                     WebSocketMessage wsMessage = WebSocketMessage.builder()
                             .type("MESSAGE")
                             .chatId(chatId)
@@ -491,6 +492,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                             .messageType(savedAIMessage.getType())
                             .timestamp(savedAIMessage.getCreatedAt() != null ? 
                                     savedAIMessage.getCreatedAt().getTime() : System.currentTimeMillis())
+                            .data(aiMessageResponse) // Include full message data for frontend
                             .build();
 
                     chatWebSocketHandler.broadcastToChat(chatId, wsMessage);

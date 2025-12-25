@@ -2,6 +2,7 @@ package com.example.userservice.response;
 
 import com.example.userservice.entity.ChatMessage;
 import com.example.userservice.enums.EnumStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,6 +30,8 @@ public class ChatMessageResponse {
     private Boolean isEdited;
     private Boolean isDeleted;
     private Boolean isOwnMessage; // true if message is sent by current user
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", timezone = "UTC")
     private Date createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", timezone = "UTC")
     private Date updatedAt;
 }
