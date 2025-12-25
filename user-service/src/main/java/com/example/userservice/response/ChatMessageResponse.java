@@ -28,6 +28,7 @@ public class ChatMessageResponse {
     private String attachmentType;
     private Boolean isEdited;
     private Boolean isDeleted;
+    private Boolean isOwnMessage; // true if message is sent by current user
     private Date createdAt;
     private Date updatedAt;
 }
