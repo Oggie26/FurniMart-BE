@@ -109,7 +109,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 order.getStoreId(),
                 assignedBy);
 
-        // validatePrerequisites(assignment, request.getOrderId());
+        validatePrerequisites(assignment, request.getOrderId());
 
         DeliveryAssignment saved = assignDeliveryStaffAtomically(
                 assignment,
@@ -540,6 +540,32 @@ public class DeliveryServiceImpl implements DeliveryService {
                 .rejectedBy(assignment.getRejectedBy())
                 .order(order)
                 .build();
+    }
+
+    private void validatePrerequisites(DeliveryAssignment assignment, Long orderId) {
+        // Kiểm tra productsPrepared
+        if (assignment.getProductsPrepared() == null || !assignment.getProductsPrepared()) {
+            log.warn("Cannot assign delivery for order {}: Products not prepared yet. Assignment ID: {}", 
+                    orderId, assignment.getId());
+            throw new AppException(ErrorCode.PRODUCTS_NOT_PREPARED);
+        }
+        
+        // Kiểm tra status = READY
+        if (assignment.getStatus() != DeliveryStatus.READY) {
+            log.warn("Cannot assign delivery for order {}: Assignment status is {}, must be READY. Assignment ID: {}", 
+                    orderId, assignment.getStatus(), assignment.getId());
+            throw new AppException(ErrorCode.ASSIGNMENT_NOT_READY);
+        }
+        
+        // Kiểm tra invoiceGenerated
+        if (assignment.getInvoiceGenerated() == null || !assignment.getInvoiceGenerated()) {
+            log.warn("Cannot assign delivery for order {}: Invoice not generated yet. Assignment ID: {}", 
+                    orderId, assignment.getId());
+            throw new AppException(ErrorCode.INVOICE_NOT_GENERATED);
+        }
+        
+        log.info("All prerequisites validated for order {}: productsPrepared={}, status={}, invoiceGenerated={}", 
+                orderId, assignment.getProductsPrepared(), assignment.getStatus(), assignment.getInvoiceGenerated());
     }
 
     private DeliveryAssignment getOrCreateAssignment(Long orderId, String storeId, String assignedBy) {
