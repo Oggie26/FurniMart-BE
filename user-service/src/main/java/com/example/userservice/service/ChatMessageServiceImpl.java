@@ -72,6 +72,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     public ChatMessageResponse sendMessage(ChatMessageRequest messageRequest) {
         String currentUserId = getCurrentUserId();
+        log.debug("Sending message to chatId: {}, currentUserId: {}", messageRequest.getChatId(), currentUserId);
         
         // Try to find as User first, then Employee
         User sender = getUserOrEmployeeUser(currentUserId);
@@ -80,8 +81,48 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
 
         // Check if user is a participant
-        chatParticipantRepository.findActiveParticipantByChatIdAndUserId(messageRequest.getChatId(), currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
+        Optional<ChatParticipant> participant = chatParticipantRepository.findActiveParticipantByChatIdAndUserId(messageRequest.getChatId(), currentUserId);
+        
+        if (participant.isEmpty()) {
+            log.warn("Participant not found for chatId: {}, currentUserId: {}. Trying fallback checks for staff.", messageRequest.getChatId(), currentUserId);
+            
+            // Fallback check for staff: try to find by Employee ID
+            try {
+                Account account = accountRepository.findByEmailAndIsDeletedFalse(
+                    SecurityContextHolder.getContext().getAuthentication().getName())
+                    .orElse(null);
+                
+                if (account != null && account.getEmployee() != null) {
+                    String employeeId = account.getEmployee().getId();
+                    log.debug("Trying to find participant by employeeId: {}", employeeId);
+                    participant = chatParticipantRepository.findActiveParticipantByChatIdAndEmployeeId(messageRequest.getChatId(), employeeId);
+                    
+                    if (participant.isEmpty() && account.getRole() == EnumRole.STAFF) {
+                        // Additional fallback: check if staff is assigned to this chat
+                        if (chat.getAssignedStaffId() != null && 
+                            chat.getAssignedStaffId().equals(employeeId) &&
+                            chat.getChatMode() == Chat.ChatMode.STAFF_CONNECTED) {
+                            log.info("Staff {} is assigned to chat {} but not found as participant. Allowing access via assignedStaffId.", employeeId, messageRequest.getChatId());
+                            // Allow access - staff is assigned to this chat
+                        } else {
+                            log.error("Access denied: Staff {} is not a participant and not assigned to chat {}", employeeId, messageRequest.getChatId());
+                            throw new AppException(ErrorCode.ACCESS_DENIED);
+                        }
+                    } else if (participant.isEmpty()) {
+                        log.error("Access denied: Participant not found for chatId: {}, currentUserId: {}", messageRequest.getChatId(), currentUserId);
+                        throw new AppException(ErrorCode.ACCESS_DENIED);
+                    }
+                } else {
+                    log.error("Access denied: Participant not found for chatId: {}, currentUserId: {}", messageRequest.getChatId(), currentUserId);
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+            } catch (AppException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("Error in fallback check for chatId: {}, currentUserId: {}", messageRequest.getChatId(), currentUserId, e);
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+        }
 
         // Validate chatMode - block customer from sending messages in WAITING_STAFF mode
         Chat.ChatMode chatMode = chat.getChatMode() != null ? chat.getChatMode() : Chat.ChatMode.AI;
@@ -114,6 +155,29 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
         
+        // Convert to ChatMessageResponse for WebSocket broadcast
+        ChatMessageResponse messageResponse = toChatMessageResponse(savedMessage);
+        
+        // Broadcast message via WebSocket to all participants
+        try {
+            WebSocketMessage wsMessage = WebSocketMessage.builder()
+                    .type("MESSAGE")
+                    .chatId(messageResponse.getChatId())
+                    .senderId(messageResponse.getSenderId())
+                    .content(messageResponse.getContent())
+                    .messageType(messageResponse.getType())
+                    .timestamp(messageResponse.getCreatedAt() != null ? messageResponse.getCreatedAt().getTime() : System.currentTimeMillis())
+                    .data(messageResponse) // Include full message data for frontend
+                    .build();
+            
+            // Broadcast to all participants (excluding sender to avoid duplicate)
+            chatWebSocketHandler.broadcastToChat(messageRequest.getChatId(), wsMessage, currentUserId);
+            log.debug("Message broadcasted via WebSocket for chat: {}, messageId: {}", messageRequest.getChatId(), savedMessage.getId());
+        } catch (Exception e) {
+            log.error("Error broadcasting message via WebSocket for chat: {}", messageRequest.getChatId(), e);
+            // Don't throw - message is already saved, WebSocket broadcast failure shouldn't block the response
+        }
+        
         // If chat mode is AI, trigger async AI response
         if (chatMode == Chat.ChatMode.AI) {
             try {
@@ -124,7 +188,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
             }
         }
         
-        return toChatMessageResponse(savedMessage);
+        return messageResponse;
     }
     
 
@@ -132,10 +196,54 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     public List<ChatMessageResponse> getChatMessages(String chatId) {
         // Check if user is a participant
         String currentUserId = getCurrentUserId();
-        chatParticipantRepository.findActiveParticipantByChatIdAndUserId(chatId, currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
+        log.debug("Getting chat messages for chatId: {}, currentUserId: {}", chatId, currentUserId);
+        
+        Optional<ChatParticipant> participant = chatParticipantRepository.findActiveParticipantByChatIdAndUserId(chatId, currentUserId);
+        
+        if (participant.isEmpty()) {
+            log.warn("Participant not found for chatId: {}, currentUserId: {}. Trying fallback checks for staff.", chatId, currentUserId);
+            
+            // Fallback check for staff: try to find by Employee ID
+            try {
+                Account account = accountRepository.findByEmailAndIsDeletedFalse(
+                    SecurityContextHolder.getContext().getAuthentication().getName())
+                    .orElse(null);
+                
+                if (account != null && account.getEmployee() != null) {
+                    String employeeId = account.getEmployee().getId();
+                    log.debug("Trying to find participant by employeeId: {}", employeeId);
+                    participant = chatParticipantRepository.findActiveParticipantByChatIdAndEmployeeId(chatId, employeeId);
+                    
+                    if (participant.isEmpty() && account.getRole() == EnumRole.STAFF) {
+                        // Additional fallback: check if staff is assigned to this chat
+                        Chat chat = chatRepository.findById(chatId).orElse(null);
+                        if (chat != null && chat.getAssignedStaffId() != null && 
+                            chat.getAssignedStaffId().equals(employeeId) &&
+                            chat.getChatMode() == Chat.ChatMode.STAFF_CONNECTED) {
+                            log.info("Staff {} is assigned to chat {} but not found as participant. Allowing access via assignedStaffId.", employeeId, chatId);
+                            // Allow access - staff is assigned to this chat
+                        } else {
+                            log.error("Access denied: Staff {} is not a participant and not assigned to chat {}", employeeId, chatId);
+                            throw new AppException(ErrorCode.ACCESS_DENIED);
+                        }
+                    } else if (participant.isEmpty()) {
+                        log.error("Access denied: Participant not found for chatId: {}, currentUserId: {}", chatId, currentUserId);
+                        throw new AppException(ErrorCode.ACCESS_DENIED);
+                    }
+                } else {
+                    log.error("Access denied: Participant not found for chatId: {}, currentUserId: {}", chatId, currentUserId);
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+            } catch (AppException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("Error in fallback check for chatId: {}, currentUserId: {}", chatId, currentUserId, e);
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+        }
 
         List<ChatMessage> messages = chatMessageRepository.findMessagesByChatId(chatId);
+        log.debug("Retrieved {} messages for chatId: {}", messages.size(), chatId);
         return messages.stream()
                 .map(this::toChatMessageResponse)
                 .collect(Collectors.toList());
@@ -322,6 +430,18 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         throw new AppException(ErrorCode.USER_NOT_FOUND);
     }
 
+    private String getCurrentAccountId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        String email = authentication.getName();
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+        return account.getId();
+    }
+
     @Async
     public void processAIResponse(String chatId, String userMessageId, Chat chat) {
         try {
@@ -492,6 +612,28 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     }
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage message) {
+        // Determine if message is own message by comparing Account ID (consistent for both User and Employee)
+        Boolean isOwnMessage = false;
+        try {
+            // Get current account ID (consistent for both User and Employee)
+            String currentAccountId = getCurrentAccountId();
+            
+            // Get sender's account ID
+            User sender = message.getSender();
+            if (sender != null && sender.getAccount() != null) {
+                String senderAccountId = sender.getAccount().getId();
+                isOwnMessage = senderAccountId.equals(currentAccountId);
+            } else if (sender != null) {
+                // Fallback: compare User ID (for backward compatibility if account is null)
+                String currentUserId = getCurrentUserId();
+                String senderId = sender.getId();
+                isOwnMessage = senderId.equals(currentUserId);
+            }
+        } catch (Exception e) {
+            // If unable to get current account (e.g., not authenticated), default to false
+            log.debug("Unable to determine isOwnMessage: {}", e.getMessage());
+        }
+        
         return ChatMessageResponse.builder()
                 .id(message.getId())
                 .content(message.getContent())
@@ -507,6 +649,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
                 .attachmentType(message.getAttachmentType())
                 .isEdited(message.getIsEdited())
                 .isDeleted(message.getIsDeleted())
+                .isOwnMessage(isOwnMessage)
                 .createdAt(message.getCreatedAt())
                 .updatedAt(message.getUpdatedAt())
                 .build();
