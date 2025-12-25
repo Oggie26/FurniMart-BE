@@ -178,6 +178,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                     .content(response.getContent())
                     .messageType(response.getType())
                     .timestamp(response.getCreatedAt() != null ? response.getCreatedAt().getTime() : System.currentTimeMillis())
+                    .data(response) // Include full message data for frontend
                     .build();
 
             // Broadcast customer message
