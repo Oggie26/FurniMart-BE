@@ -46,7 +46,7 @@
                      - id: order-service
                        uri: lb://order-service
                        predicates:
-                         - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/warranties/**
+                         - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/warranties/**, /api/dashboard/**
                        filters: []
 
                      # INVENTORY SERVICE
