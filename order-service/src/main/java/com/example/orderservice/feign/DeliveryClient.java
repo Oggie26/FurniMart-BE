@@ -6,19 +6,25 @@ import com.example.orderservice.response.DeliveryConfirmationResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
 @FeignClient(name = "delivery-service")
 public interface DeliveryClient {
-    
+
     @GetMapping("/api/delivery/assignments/store/{storeId}")
     ApiResponse<List<DeliveryAssignmentResponse>> getDeliveryAssignmentsByStore(@PathVariable String storeId);
-    
+
     @GetMapping("/api/delivery/assignments/order/{orderId}")
     ApiResponse<DeliveryAssignmentResponse> getDeliveryAssignmentByOrderId(@PathVariable Long orderId);
 
     @GetMapping("/api/delivery-confirmations/order/{orderId}")
     ApiResponse<DeliveryConfirmationResponse> getDeliveryConfirmation(@PathVariable Long orderId);
-}
 
+    @PostMapping("/api/delivery/assignments/create")
+    ApiResponse<DeliveryAssignmentResponse> createAssignment(
+            @RequestParam("orderId") Long orderId,
+            @RequestParam("storeId") String storeId);
+}
