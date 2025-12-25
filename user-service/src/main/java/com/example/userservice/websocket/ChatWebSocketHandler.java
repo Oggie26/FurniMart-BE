@@ -50,21 +50,18 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
         log.info("WebSocket connection established: {}", session.getId());
         
-        // Extract user ID from query parameters or headers
         String userId = extractUserIdFromSession(session);
         if (userId != null) {
             sessions.put(session.getId(), session);
             userSessions.put(userId, session.getId());
             log.info("User {} connected to WebSocket", userId);
             
-            // Send connection confirmation
             sendMessage(session, WebSocketMessage.builder()
                     .type("CONNECTION_ESTABLISHED")
                     .content("Connected to chat")
                     .timestamp(System.currentTimeMillis())
                     .build());
             
-            // If user is staff, notify them about waiting chats
             notifyStaffAboutWaitingChats(userId);
         } else {
             log.warn("No user ID found in WebSocket connection, closing session");
@@ -412,7 +409,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         }
     }
 
-    // Public method to broadcast to all users
     public void broadcastToAll(WebSocketMessage message) {
         sessions.values().forEach(session -> {
             if (session.isOpen()) {
@@ -421,23 +417,17 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         });
     }
 
-    // Public method to get online user IDs
     public Set<String> getOnlineUserIds() {
         return new HashSet<>(userSessions.keySet());
     }
 
-    /**
-     * Notify staff about waiting chats when they connect
-     */
     private void notifyStaffAboutWaitingChats(String userId) {
         try {
-            // Check if user is staff
             User user = userRepository.findByIdAndIsDeletedFalse(userId).orElse(null);
             if (user == null || user.getAccount() == null || user.getAccount().getRole() != EnumRole.STAFF) {
                 return; // Not a staff member
             }
 
-            // Get waiting chats
             List<ChatResponse> waitingChats = chatService.getChatsWaitingForStaff();
             
             if (!waitingChats.isEmpty()) {
