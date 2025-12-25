@@ -19,6 +19,9 @@ public class ChatParticipantResponse {
     private String userId;
     private String userName;
     private String userAvatar;
+    private String employeeId;
+    private String employeeName;
+    private String employeeAvatar;
     private ChatParticipant.ParticipantRole role;
     private EnumStatus status;
     private LocalDateTime lastReadAt;
