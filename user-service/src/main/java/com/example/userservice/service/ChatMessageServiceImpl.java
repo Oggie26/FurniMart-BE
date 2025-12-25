@@ -17,7 +17,6 @@ import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.WebSocketMessage;
 import com.example.userservice.service.inteface.ChatMessageService;
 import com.example.userservice.websocket.ChatWebSocketHandler;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -30,7 +29,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -144,7 +142,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         chatParticipantRepository.findActiveParticipantByChatIdAndUserId(chatId, currentUserId)
                 .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<ChatMessage> messagePage = chatMessageRepository.findMessagesByChatId(chatId, pageable);
 
         List<ChatMessageResponse> messageResponses = messagePage.getContent().stream()
@@ -300,10 +298,22 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         }
         
         String email = authentication.getName(); // This returns the email
-        // Find the user by email to get the actual user ID
-        User user = userRepository.findByEmailAndIsDeletedFalse(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return user.getId();
+        // Find the account by email
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+        
+        // Check if account has User (Customer)
+        if (account.getUser() != null) {
+            return account.getUser().getId();
+        }
+        
+        // Check if account has Employee (Staff/Admin)
+        if (account.getEmployee() != null) {
+            return account.getEmployee().getId();
+        }
+        
+        // If neither exists, throw exception
+        throw new AppException(ErrorCode.USER_NOT_FOUND);
     }
 
     @Async
