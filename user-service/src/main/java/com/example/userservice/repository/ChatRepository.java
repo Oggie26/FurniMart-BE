@@ -38,4 +38,10 @@ public interface ChatRepository extends JpaRepository<Chat, String> {
 
     @Query("SELECT c FROM Chat c WHERE c.chatMode = 'WAITING_STAFF' AND c.isDeleted = false ORDER BY c.staffRequestedAt ASC")
     List<Chat> findChatsWaitingForStaff();
+
+    @Query("SELECT c FROM Chat c WHERE c.isDeleted = false AND " +
+           "(c.chatMode = 'WAITING_STAFF' OR (c.chatMode = 'STAFF_CONNECTED' AND c.assignedStaffId = :staffId)) " +
+           "ORDER BY CASE WHEN c.chatMode = 'WAITING_STAFF' THEN 0 ELSE 1 END, " +
+           "COALESCE(c.staffRequestedAt, c.updatedAt) ASC")
+    List<Chat> findChatsWaitingForStaffOrAssignedToStaff(@Param("staffId") String staffId);
 }
