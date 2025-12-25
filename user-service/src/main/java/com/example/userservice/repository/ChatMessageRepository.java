@@ -12,10 +12,10 @@ import java.util.Optional;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, String> {
 
-    @Query("SELECT m FROM ChatMessage m WHERE m.chat.id = :chatId AND m.isDeleted = false ORDER BY m.createdAt DESC")
+    @Query("SELECT m FROM ChatMessage m WHERE m.chat.id = :chatId AND m.isDeleted = false")
     Page<ChatMessage> findMessagesByChatId(@Param("chatId") String chatId, Pageable pageable);
 
-    @Query("SELECT m FROM ChatMessage m WHERE m.chat.id = :chatId AND m.isDeleted = false ORDER BY m.createdAt DESC")
+    @Query("SELECT m FROM ChatMessage m WHERE m.chat.id = :chatId AND m.isDeleted = false ORDER BY m.createdAt ASC")
     List<ChatMessage> findMessagesByChatId(@Param("chatId") String chatId);
 
     @Query("SELECT m FROM ChatMessage m WHERE m.sender.id = :userId AND m.isDeleted = false ORDER BY m.createdAt DESC")

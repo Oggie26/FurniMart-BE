@@ -2,9 +2,11 @@ package com.example.userservice.websocket;
 
 import com.example.userservice.entity.Account;
 import com.example.userservice.entity.ChatMessage;
+import com.example.userservice.entity.ChatParticipant;
 import com.example.userservice.entity.Employee;
 import com.example.userservice.entity.User;
 import com.example.userservice.enums.EnumRole;
+import com.example.userservice.enums.EnumStatus;
 import com.example.userservice.repository.AccountRepository;
 import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.EmployeeRepository;
@@ -140,9 +142,12 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 return;
             }
 
-            // Get user to set up security context
-            User user = userRepository.findByIdAndIsDeletedFalse(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            // Get user to set up security context - try User first, then Employee
+            User user = getUserOrEmployeeUser(userId);
+            if (user == null) {
+                sendError(session, "User not found: " + userId);
+                return;
+            }
 
             // Set up security context for ChatMessageService
             setSecurityContextForUser(user);
@@ -273,7 +278,11 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             var participants = chatParticipantRepository.findActiveParticipantsByChatId(chatId);
             
             for (var participant : participants) {
-                String participantUserId = participant.getUser().getId();
+                String participantUserId = getParticipantId(participant);
+                if (participantUserId == null) {
+                    continue;
+                }
+                
                 if (excludeUserId == null || !participantUserId.equals(excludeUserId)) {
                     String sessionId = userSessions.get(participantUserId);
                     if (sessionId != null) {
@@ -307,7 +316,11 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                     .build();
             
             for (var participant : participants) {
-                String participantUserId = participant.getUser().getId();
+                String participantUserId = getParticipantId(participant);
+                if (participantUserId == null) {
+                    continue;
+                }
+                
                 if (!participantUserId.equals(userId)) {
                     String sessionId = userSessions.get(participantUserId);
                     if (sessionId != null) {
@@ -490,5 +503,67 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         } catch (Exception e) {
             log.error("Error notifying staff about waiting chats for user {}: {}", userId, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Helper method to get participant ID from ChatParticipant (User or Employee)
+     */
+    private String getParticipantId(ChatParticipant participant) {
+        if (participant.getUser() != null) {
+            return participant.getUser().getId();
+        } else if (participant.getEmployee() != null) {
+            // For employees, we need to get the User ID from their account
+            // If employee has a User associated with their account, use that ID
+            // Otherwise, use the employee ID (but this might cause issues in WebSocket tracking)
+            Employee employee = participant.getEmployee();
+            if (employee.getAccount() != null && employee.getAccount().getUser() != null) {
+                return employee.getAccount().getUser().getId();
+            }
+            // Fallback to employee ID - WebSocket should track by this
+            return employee.getId();
+        }
+        return null;
+    }
+
+    /**
+     * Helper method to get User entity from either User ID or Employee ID
+     * For employees, returns the User associated with their account (or creates one if needed)
+     * Similar to logic in ChatServiceImpl.createChat() and ChatMessageServiceImpl.sendMessage()
+     */
+    private User getUserOrEmployeeUser(String userId) {
+        // Try to find as User first
+        Optional<User> userOpt = userRepository.findByIdAndIsDeletedFalse(userId);
+        if (userOpt.isPresent()) {
+            return userOpt.get();
+        }
+        
+        // Try to find as Employee
+        Optional<Employee> employeeOpt = employeeRepository.findEmployeeById(userId);
+        if (employeeOpt.isPresent()) {
+            Employee employee = employeeOpt.get();
+            Account account = employee.getAccount();
+            if (account != null && account.getUser() != null) {
+                return account.getUser();
+            }
+            // If employee doesn't have a User, create one (similar to ChatServiceImpl.createChat())
+            // This ensures employees can send messages via WebSocket
+            log.info("Creating User entity for Employee {} to send chat messages via WebSocket", userId);
+            try {
+                User newUser = User.builder()
+                        .fullName(employee.getFullName())
+                        .phone(employee.getPhone())
+                        .status(EnumStatus.ACTIVE)
+                        .avatar(employee.getAvatar())
+                        .account(account)
+                        .build();
+                newUser.setIsDeleted(false);
+                return userRepository.save(newUser);
+            } catch (Exception e) {
+                log.error("Error creating User for Employee {}: {}", userId, e.getMessage(), e);
+                return null;
+            }
+        }
+        
+        return null;
     }
 }
