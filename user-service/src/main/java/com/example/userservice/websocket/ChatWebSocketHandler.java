@@ -57,13 +57,16 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
-        log.info("WebSocket connection established: {}", session.getId());
+        String remoteAddress = session.getRemoteAddress() != null ? session.getRemoteAddress().toString() : "unknown";
+        log.info("WebSocket connection established: sessionId={}, remoteAddress={}, uri={}", 
+                session.getId(), remoteAddress, session.getUri());
         
         String userId = extractUserIdFromSession(session);
         if (userId != null) {
             sessions.put(session.getId(), session);
             userSessions.put(userId, session.getId());
-            log.info("User {} connected to WebSocket", userId);
+            log.info("User {} connected to WebSocket. Total active sessions: {}, Total users: {}", 
+                    userId, sessions.size(), userSessions.size());
             
             sendMessage(session, WebSocketMessage.builder()
                     .type("CONNECTION_ESTABLISHED")
@@ -73,7 +76,8 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             
             notifyStaffAboutWaitingChats(userId);
         } else {
-            log.warn("No user ID found in WebSocket connection, closing session");
+            log.warn("No user ID found in WebSocket connection, closing session. URI: {}, Headers: {}", 
+                    session.getUri(), session.getHandshakeHeaders());
             session.close(CloseStatus.BAD_DATA);
         }
     }
@@ -119,13 +123,17 @@ public class ChatWebSocketHandler implements WebSocketHandler {
 
     @Override
     public void handleTransportError(@NonNull WebSocketSession session, @NonNull Throwable exception) throws Exception {
-        log.error("WebSocket transport error for session: {}", session.getId(), exception);
+        String userId = getUserFromSession(session);
+        log.error("WebSocket transport error for session: {}, user: {}, error: {}", 
+                session.getId(), userId, exception.getMessage(), exception);
         cleanupSession(session);
     }
 
     @Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus closeStatus) throws Exception {
-        log.info("WebSocket connection closed: {} with status: {}", session.getId(), closeStatus);
+        String userId = getUserFromSession(session);
+        log.info("WebSocket connection closed: sessionId={}, user={}, closeStatus={}, reason={}. Remaining sessions: {}", 
+                session.getId(), userId, closeStatus.getCode(), closeStatus.getReason(), sessions.size());
         cleanupSession(session);
     }
 
@@ -346,9 +354,13 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             if (session.isOpen()) {
                 String jsonMessage = objectMapper.writeValueAsString(message);
                 session.sendMessage(new TextMessage(jsonMessage));
+                log.debug("WebSocket message sent: type={}, sessionId={}", message.getType(), session.getId());
+            } else {
+                log.warn("Attempted to send message to closed WebSocket session: {}", session.getId());
             }
         } catch (IOException e) {
-            log.error("Error sending WebSocket message", e);
+            log.error("Error sending WebSocket message to session: {}, message type: {}", 
+                    session.getId(), message.getType(), e);
         }
     }
 
