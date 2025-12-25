@@ -107,7 +107,6 @@ public class PDFService {
         html.append("<h3>Thông tin đơn hàng</h3>");
         html.append("<p><strong>Mã đơn hàng:</strong> #").append(order.getId()).append("</p>");
         html.append("<p><strong>Ngày đặt:</strong> ").append(dateFormat.format(order.getOrderDate())).append("</p>");
-        html.append("<p><strong>Trạng thái:</strong> ").append(order.getStatus()).append("</p>");
         if (order.getNote() != null && !order.getNote().isEmpty()) {
             html.append("<p><strong>Ghi chú:</strong> ").append(order.getNote()).append("</p>");
         }

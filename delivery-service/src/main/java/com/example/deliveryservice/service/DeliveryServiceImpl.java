@@ -367,7 +367,6 @@ public class DeliveryServiceImpl implements DeliveryService {
             log.info("Message: {}", message);
             log.info("===========================");
 
-            // TODO: Implement actual notification (Kafka, Email, SMS, etc.)
 
         } catch (Exception e) {
             log.error("Error notifying manager: {}", e.getMessage(), e);
@@ -493,7 +492,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         assignment.setAssignedBy(assignedBy);
         assignment.setAssignedAt(LocalDateTime.now());
         assignment.setEstimatedDeliveryDate(estimatedDeliveryDate);
-        assignment.setStatus(DeliveryStatus.ASSIGNED);
+        assignment.setStatus(DeliveryStatus.READY);
         if (notes != null && !notes.isEmpty()) {
             assignment.setNotes(notes);
         }
