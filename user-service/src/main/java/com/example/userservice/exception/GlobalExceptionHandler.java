@@ -10,9 +10,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 
@@ -87,10 +87,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException exception) {
         log.warn("Access Denied: {}", exception.getMessage());
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.<Void>builder()
-                        .status(HttpStatus.UNAUTHORIZED.value())
-                        .message(ErrorCode.UNAUTHENTICATED.getMessage())
+                        .status(ErrorCode.ACCESS_DENIED.getCode())
+                        .message(ErrorCode.ACCESS_DENIED.getMessage())
                         .build());
     }
 
