@@ -132,10 +132,54 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     public List<ChatMessageResponse> getChatMessages(String chatId) {
         // Check if user is a participant
         String currentUserId = getCurrentUserId();
-        chatParticipantRepository.findActiveParticipantByChatIdAndUserId(chatId, currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
+        log.debug("Getting chat messages for chatId: {}, currentUserId: {}", chatId, currentUserId);
+        
+        Optional<ChatParticipant> participant = chatParticipantRepository.findActiveParticipantByChatIdAndUserId(chatId, currentUserId);
+        
+        if (participant.isEmpty()) {
+            log.warn("Participant not found for chatId: {}, currentUserId: {}. Trying fallback checks for staff.", chatId, currentUserId);
+            
+            // Fallback check for staff: try to find by Employee ID
+            try {
+                Account account = accountRepository.findByEmailAndIsDeletedFalse(
+                    SecurityContextHolder.getContext().getAuthentication().getName())
+                    .orElse(null);
+                
+                if (account != null && account.getEmployee() != null) {
+                    String employeeId = account.getEmployee().getId();
+                    log.debug("Trying to find participant by employeeId: {}", employeeId);
+                    participant = chatParticipantRepository.findActiveParticipantByChatIdAndEmployeeId(chatId, employeeId);
+                    
+                    if (participant.isEmpty() && account.getRole() == EnumRole.STAFF) {
+                        // Additional fallback: check if staff is assigned to this chat
+                        Chat chat = chatRepository.findById(chatId).orElse(null);
+                        if (chat != null && chat.getAssignedStaffId() != null && 
+                            chat.getAssignedStaffId().equals(employeeId) &&
+                            chat.getChatMode() == Chat.ChatMode.STAFF_CONNECTED) {
+                            log.info("Staff {} is assigned to chat {} but not found as participant. Allowing access via assignedStaffId.", employeeId, chatId);
+                            // Allow access - staff is assigned to this chat
+                        } else {
+                            log.error("Access denied: Staff {} is not a participant and not assigned to chat {}", employeeId, chatId);
+                            throw new AppException(ErrorCode.ACCESS_DENIED);
+                        }
+                    } else if (participant.isEmpty()) {
+                        log.error("Access denied: Participant not found for chatId: {}, currentUserId: {}", chatId, currentUserId);
+                        throw new AppException(ErrorCode.ACCESS_DENIED);
+                    }
+                } else {
+                    log.error("Access denied: Participant not found for chatId: {}, currentUserId: {}", chatId, currentUserId);
+                    throw new AppException(ErrorCode.ACCESS_DENIED);
+                }
+            } catch (AppException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("Error in fallback check for chatId: {}, currentUserId: {}", chatId, currentUserId, e);
+                throw new AppException(ErrorCode.ACCESS_DENIED);
+            }
+        }
 
         List<ChatMessage> messages = chatMessageRepository.findMessagesByChatId(chatId);
+        log.debug("Retrieved {} messages for chatId: {}", messages.size(), chatId);
         return messages.stream()
                 .map(this::toChatMessageResponse)
                 .collect(Collectors.toList());

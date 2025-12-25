@@ -866,6 +866,7 @@ public class ChatServiceImpl implements ChatService {
             chatRepository.save(oldChat);
             
             // Add staff to old chat participants if not exists
+            log.debug("Adding staff {} to old chat {} participants", staff.getId(), oldChat.getId());
             addStaffToChatParticipants(oldChat, staff);
             
             // Soft delete new chat
@@ -884,12 +885,23 @@ public class ChatServiceImpl implements ChatService {
             chatRepository.save(newChat);
             
             // Add staff to chat participants if not exists
+            log.debug("Adding staff {} to new chat {} participants", staff.getId(), newChat.getId());
             addStaffToChatParticipants(newChat, staff);
             
             finalChat = newChat;
             
             // Notify customer
             notifyCustomerStaffConnected(newChat, staff);
+        }
+        
+        // Verify staff is a participant before returning
+        Optional<ChatParticipant> finalParticipant = chatParticipantRepository
+                .findActiveParticipantByChatIdAndEmployeeId(finalChat.getId(), staff.getId());
+        if (finalParticipant.isPresent()) {
+            log.info("Verified: Staff {} is a participant in final chat {}", staff.getId(), finalChat.getId());
+        } else {
+            log.warn("WARNING: Staff {} is NOT found as participant in final chat {} after acceptStaffConnection!", 
+                    staff.getId(), finalChat.getId());
         }
 
         // Notify other staff that chat was accepted
@@ -1078,8 +1090,20 @@ public class ChatServiceImpl implements ChatService {
                     .status(EnumStatus.ACTIVE)
                     .lastReadAt(LocalDateTime.now())
                     .build();
-            chatParticipantRepository.save(staffParticipant);
-            log.info("Added staff {} as participant to chat {}", staff.getId(), chat.getId());
+            ChatParticipant savedParticipant = chatParticipantRepository.save(staffParticipant);
+            log.info("Added staff {} (employeeId: {}) as participant to chat {}. Participant ID: {}", 
+                    staff.getId(), staff.getId(), chat.getId(), savedParticipant.getId());
+            
+            // Verify the participant was saved correctly
+            Optional<ChatParticipant> verifyParticipant = chatParticipantRepository
+                    .findActiveParticipantByChatIdAndEmployeeId(chat.getId(), staff.getId());
+            if (verifyParticipant.isPresent()) {
+                log.debug("Verified: Staff {} is now a participant in chat {}", staff.getId(), chat.getId());
+            } else {
+                log.error("WARNING: Staff {} was not found as participant in chat {} after saving!", staff.getId(), chat.getId());
+            }
+        } else {
+            log.debug("Staff {} is already a participant in chat {}", staff.getId(), chat.getId());
         }
     }
 
