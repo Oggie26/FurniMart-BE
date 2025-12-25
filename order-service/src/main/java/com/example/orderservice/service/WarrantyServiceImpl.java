@@ -153,7 +153,7 @@ public class WarrantyServiceImpl implements WarrantyService {
         Page<WarrantyClaim> claimPage = warrantyClaimRepository.findByStoreIdOrderByClaimDateDesc(storeId, pageable);
 
         List<WarrantyClaimResponse> responses = claimPage.getContent().stream()
-                .map(this::toWarrantyClaimResponseWithAddress)
+                .map(this::toWarrantyClaimResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<WarrantyClaimResponse>builder()
@@ -725,11 +725,31 @@ public class WarrantyServiceImpl implements WarrantyService {
             }).collect(Collectors.toList());
         }
 
+        // Fetch address information
+        AddressResponse addressResponse = null;
+        if (claim.getAddressId() != null) {
+            try {
+                ApiResponse<AddressResponse> addressApiResponse = userClient.getAddressById(claim.getAddressId());
+                if (addressApiResponse != null && addressApiResponse.getData() != null) {
+                    addressResponse = addressApiResponse.getData();
+                }
+            } catch (FeignException e) {
+                log.warn("Feign error when fetching address {} for warranty claim {}: {} (status: {})", 
+                    claim.getAddressId(), claim.getId(), e.getMessage(), e.status());
+                // Continue without address information rather than failing the entire request
+            } catch (Exception e) {
+                log.error("Unexpected error when fetching address {} for warranty claim {}: {}", 
+                    claim.getAddressId(), claim.getId(), e.getMessage(), e);
+                // Continue without address information rather than failing the entire request
+            }
+        }
+
         return WarrantyClaimResponse.builder()
                 .id(claim.getId())
                 .orderId(claim.getOrderId())
                 .customerId(claim.getCustomerId())
                 .addressId(claim.getAddressId())
+                .address(addressResponse) // Set AddressResponse đầy đủ
                 .claimDate(claim.getClaimDate())
                 .items(itemResponses)
                 .status(claim.getStatus())
@@ -757,32 +777,6 @@ public class WarrantyServiceImpl implements WarrantyService {
         return isStaffOrManager ? claim.getRepairCost() : null;
     }
 
-    private WarrantyClaimResponse toWarrantyClaimResponseWithAddress(WarrantyClaim claim) {
-        WarrantyClaimResponse response = toWarrantyClaimResponse(claim);
-        
-        // Fetch address information
-        if (claim.getAddressId() != null) {
-            try {
-                ApiResponse<AddressResponse> addressResponse = userClient.getAddressById(claim.getAddressId());
-                if (addressResponse != null && addressResponse.getData() != null) {
-                    AddressResponse addressData = addressResponse.getData();
-                    response.setAddress(addressData.getAddressLine() != null ? addressData.getAddressLine() : addressData.getFullAddress());
-                    response.setName(addressData.getName());
-                    response.setPhone(addressData.getPhone());
-                }
-            } catch (feign.FeignException e) {
-                log.warn("Feign error when fetching address {} for warranty claim {}: {} (status: {})", 
-                    claim.getAddressId(), claim.getId(), e.getMessage(), e.status());
-                // Continue without address information rather than failing the entire request
-            } catch (Exception e) {
-                log.error("Unexpected error when fetching address {} for warranty claim {}: {}", 
-                    claim.getAddressId(), claim.getId(), e.getMessage(), e);
-                // Continue without address information rather than failing the entire request
-            }
-        }
-        
-        return response;
-    }
 
     @Override
     @Transactional(readOnly = true)

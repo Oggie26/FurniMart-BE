@@ -21,9 +21,7 @@ public class WarrantyClaimResponse {
     private Long orderId;
     private String customerId;
     private Long addressId;
-    private String address; // Địa chỉ nhận bảo hành
-    private String name; // Tên người nhận
-    private String phone; // Số điện thoại
+    private AddressResponse address; // Địa chỉ đầy đủ nhận bảo hành
     private LocalDateTime claimDate;
     private List<WarrantyClaimDetailResponse> items;
     // private Long warrantyId; // Removed
