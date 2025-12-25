@@ -19,7 +19,6 @@ import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.WebSocketMessage;
 import com.example.userservice.service.inteface.ChatService;
 import com.example.userservice.websocket.ChatWebSocketHandler;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -70,44 +69,96 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public ChatResponse createChat(ChatRequest chatRequest) {
         String currentUserId = getCurrentUserId();
-        User currentUser = userRepository.findByIdAndIsDeletedFalse(currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Try to find as User first, then Employee
+        Optional<User> currentUserOpt = userRepository.findByIdAndIsDeletedFalse(currentUserId);
+        Optional<Employee> currentEmployeeOpt = employeeRepository.findEmployeeById(currentUserId);
+        
+        User creatorUser;
+        if (currentUserOpt.isPresent()) {
+            creatorUser = currentUserOpt.get();
+        } else if (currentEmployeeOpt.isPresent()) {
+            // If Employee creates chat, we need to create/get a User for them
+            // Since Chat.createdBy requires User type
+            Employee employee = currentEmployeeOpt.get();
+            Account account = employee.getAccount();
+            if (account.getUser() != null) {
+                creatorUser = account.getUser();
+            } else {
+                // Create minimal User for Employee to use as chat creator
+                creatorUser = User.builder()
+                        .fullName(employee.getFullName())
+                        .phone(employee.getPhone())
+                        .status(EnumStatus.ACTIVE)
+                        .avatar(employee.getAvatar())
+                        .account(account)
+                        .build();
+                creatorUser = userRepository.save(creatorUser);
+            }
+        } else {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
 
         Chat chat = Chat.builder()
                 .name(chatRequest.getName())
                 .description(chatRequest.getDescription())
                 .type(chatRequest.getType())
                 .status(EnumStatus.ACTIVE)
-                .createdBy(currentUser)
+                .createdBy(creatorUser)
                 .chatMode(Chat.ChatMode.AI) // Ensure new chats start in AI mode
                 .build();
 
         Chat savedChat = chatRepository.save(chat);
 
-        // Add creator as admin
-        ChatParticipant creatorParticipant = ChatParticipant.builder()
-                .chat(savedChat)
-                .user(currentUser)
-                .role(ChatParticipant.ParticipantRole.ADMIN)
-                .status(EnumStatus.ACTIVE)
-                .lastReadAt(LocalDateTime.now())
-                .build();
+        // Add creator as admin - use User if creator is User, Employee if creator is Employee
+        ChatParticipant creatorParticipant;
+        if (currentUserOpt.isPresent()) {
+            creatorParticipant = ChatParticipant.builder()
+                    .chat(savedChat)
+                    .user(creatorUser)
+                    .role(ChatParticipant.ParticipantRole.ADMIN)
+                    .status(EnumStatus.ACTIVE)
+                    .lastReadAt(LocalDateTime.now())
+                    .build();
+        } else {
+            creatorParticipant = ChatParticipant.builder()
+                    .chat(savedChat)
+                    .employee(currentEmployeeOpt.get())
+                    .role(ChatParticipant.ParticipantRole.ADMIN)
+                    .status(EnumStatus.ACTIVE)
+                    .lastReadAt(LocalDateTime.now())
+                    .build();
+        }
         chatParticipantRepository.save(creatorParticipant);
 
         // Add other participants
         if (chatRequest.getParticipantIds() != null && !chatRequest.getParticipantIds().isEmpty()) {
             for (String participantId : chatRequest.getParticipantIds()) {
                 if (!participantId.equals(currentUserId)) {
-                    User participant = userRepository.findByIdAndIsDeletedFalse(participantId)
-                            .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-                    ChatParticipant chatParticipant = ChatParticipant.builder()
-                            .chat(savedChat)
-                            .user(participant)
-                            .role(ChatParticipant.ParticipantRole.MEMBER)
-                            .status(EnumStatus.ACTIVE)
-                            .lastReadAt(LocalDateTime.now())
-                            .build();
+                    // Try to find as User first, then Employee
+                    Optional<User> participantUser = userRepository.findByIdAndIsDeletedFalse(participantId);
+                    Optional<Employee> participantEmployee = employeeRepository.findEmployeeById(participantId);
+                    
+                    ChatParticipant chatParticipant;
+                    if (participantUser.isPresent()) {
+                        chatParticipant = ChatParticipant.builder()
+                                .chat(savedChat)
+                                .user(participantUser.get())
+                                .role(ChatParticipant.ParticipantRole.MEMBER)
+                                .status(EnumStatus.ACTIVE)
+                                .lastReadAt(LocalDateTime.now())
+                                .build();
+                    } else if (participantEmployee.isPresent()) {
+                        chatParticipant = ChatParticipant.builder()
+                                .chat(savedChat)
+                                .employee(participantEmployee.get())
+                                .role(ChatParticipant.ParticipantRole.MEMBER)
+                                .status(EnumStatus.ACTIVE)
+                                .lastReadAt(LocalDateTime.now())
+                                .build();
+                    } else {
+                        throw new AppException(ErrorCode.USER_NOT_FOUND);
+                    }
                     chatParticipantRepository.save(chatParticipant);
                 }
             }
@@ -346,9 +397,6 @@ public class ChatServiceImpl implements ChatService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        User newParticipant = userRepository.findByIdAndIsDeletedFalse(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
         // Check if user is already a participant
         chatParticipantRepository.findByChatIdAndUserId(chatId, userId)
                 .ifPresent(existing -> {
@@ -360,15 +408,32 @@ public class ChatServiceImpl implements ChatService {
                     }
                 });
 
-        ChatParticipant chatParticipant = ChatParticipant.builder()
-                .chat(chat)
-                .user(newParticipant)
-                .role(ChatParticipant.ParticipantRole.MEMBER)
-                .status(EnumStatus.ACTIVE)
-                .lastReadAt(LocalDateTime.now())
-                .build();
-        chatParticipantRepository.save(chatParticipant);
+        // Try to find as User first
+        Optional<User> user = userRepository.findByIdAndIsDeletedFalse(userId);
+        Optional<Employee> employee = employeeRepository.findEmployeeById(userId);
 
+        ChatParticipant chatParticipant;
+        if (user.isPresent()) {
+            chatParticipant = ChatParticipant.builder()
+                    .chat(chat)
+                    .user(user.get())
+                    .role(ChatParticipant.ParticipantRole.MEMBER)
+                    .status(EnumStatus.ACTIVE)
+                    .lastReadAt(LocalDateTime.now())
+                    .build();
+        } else if (employee.isPresent()) {
+            chatParticipant = ChatParticipant.builder()
+                    .chat(chat)
+                    .employee(employee.get())
+                    .role(ChatParticipant.ParticipantRole.MEMBER)
+                    .status(EnumStatus.ACTIVE)
+                    .lastReadAt(LocalDateTime.now())
+                    .build();
+        } else {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        chatParticipantRepository.save(chatParticipant);
         return toChatResponse(chat);
     }
 
@@ -499,10 +564,22 @@ public class ChatServiceImpl implements ChatService {
         }
         
         String email = authentication.getName(); // This returns the email
-        // Find the user by email to get the actual user ID
-        User user = userRepository.findByEmailAndIsDeletedFalse(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return user.getId();
+        // Find the account by email
+        Account account = accountRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+        
+        // Check if account has User (Customer)
+        if (account.getUser() != null) {
+            return account.getUser().getId();
+        }
+        
+        // Check if account has Employee (Staff/Admin)
+        if (account.getEmployee() != null) {
+            return account.getEmployee().getId();
+        }
+        
+        // If neither exists, throw exception
+        throw new AppException(ErrorCode.USER_NOT_FOUND);
     }
 
     private ChatResponse toChatResponse(Chat chat) {
@@ -590,9 +667,9 @@ public class ChatServiceImpl implements ChatService {
             builder.staffChatEndedAt(java.sql.Timestamp.valueOf(chat.getStaffChatEndedAt()));
         }
         
-        // Load assigned staff name if exists
+        // Load assigned staff name if exists (assignedStaffId is Employee.id, not User.id)
         if (chat.getAssignedStaffId() != null) {
-            User staff = userRepository.findById(chat.getAssignedStaffId()).orElse(null);
+            Employee staff = employeeRepository.findEmployeeById(chat.getAssignedStaffId()).orElse(null);
             if (staff != null) {
                 builder.assignedStaffName(staff.getFullName());
             }
@@ -602,18 +679,30 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatParticipantResponse toChatParticipantResponse(ChatParticipant participant) {
-        return ChatParticipantResponse.builder()
+        ChatParticipantResponse.ChatParticipantResponseBuilder builder = ChatParticipantResponse.builder()
                 .id(participant.getId())
                 .chatId(participant.getChat().getId())
-                .userId(participant.getUser().getId())
-                .userName(participant.getUser().getFullName())
-                .userAvatar(participant.getUser().getAvatar())
                 .role(participant.getRole())
                 .status(participant.getStatus())
                 .lastReadAt(participant.getLastReadAt())
                 .isMuted(participant.getIsMuted())
-                .isPinned(participant.getIsPinned())
-                .build();
+                .isPinned(participant.getIsPinned());
+        
+        // Handle User participant
+        if (participant.getUser() != null) {
+            builder.userId(participant.getUser().getId())
+                   .userName(participant.getUser().getFullName())
+                   .userAvatar(participant.getUser().getAvatar());
+        }
+        
+        // Handle Employee participant
+        if (participant.getEmployee() != null) {
+            builder.employeeId(participant.getEmployee().getId())
+                   .employeeName(participant.getEmployee().getFullName())
+                   .employeeAvatar(participant.getEmployee().getAvatar());
+        }
+        
+        return builder.build();
     }
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage message) {
@@ -702,15 +791,18 @@ public class ChatServiceImpl implements ChatService {
         }
 
         String customerId = newChat.getCreatedBy().getId();
-        String staffUserId = getStaffUserId(staff);
+        // Get staff ID - could be User.id or Employee.id
+        String staffId = staff.getId();
+        // Check if staff has associated User for private chat lookup
+        String staffUserId = staff.getAccount() != null && staff.getAccount().getUser() != null 
+                ? staff.getAccount().getUser().getId() 
+                : staffId;
         
         // Check if there's an existing private chat between customer and staff
         Chat oldChat = null;
-        if (staffUserId != null) {
-            Optional<Chat> existingChat = chatRepository.findPrivateChatBetweenUsers(customerId, staffUserId);
-            if (existingChat.isPresent()) {
-                oldChat = existingChat.get();
-            }
+        Optional<Chat> existingChat = chatRepository.findPrivateChatBetweenUsers(customerId, staffUserId);
+        if (existingChat.isPresent()) {
+            oldChat = existingChat.get();
         }
 
         Chat finalChat;
@@ -959,24 +1051,13 @@ public class ChatServiceImpl implements ChatService {
 
     private void addStaffToChatParticipants(Chat chat, Employee staff) {
         // Check if staff is already a participant
-        String staffUserId = getStaffUserId(staff);
-        if (staffUserId == null) {
-            log.warn("Cannot add staff {} to chat participants: Staff has no associated User", staff.getId());
-            return;
-        }
-
         Optional<ChatParticipant> existingParticipant = chatParticipantRepository
-                .findActiveParticipantByChatIdAndUserId(chat.getId(), staffUserId);
+                .findActiveParticipantByChatIdAndEmployeeId(chat.getId(), staff.getId());
 
         if (existingParticipant.isEmpty()) {
-            // Create User for staff if needed (staff might not have User entity)
-            // For now, we'll use a workaround: create a minimal participant
-            // Note: This might need adjustment based on your schema
-            User staffUser = getOrCreateUserForEmployee(staff);
-            
             ChatParticipant staffParticipant = ChatParticipant.builder()
                     .chat(chat)
-                    .user(staffUser)
+                    .employee(staff)
                     .role(ChatParticipant.ParticipantRole.MEMBER)
                     .status(EnumStatus.ACTIVE)
                     .lastReadAt(LocalDateTime.now())
@@ -986,39 +1067,6 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    private String getStaffUserId(Employee staff) {
-        // Staff might not have a User entity directly
-        // We need to check if there's a User linked to the Account
-        // For now, return null and handle in addStaffToChatParticipants
-        Account account = staff.getAccount();
-        if (account != null && account.getUser() != null) {
-            return account.getUser().getId();
-        }
-        return null;
-    }
-
-    private User getOrCreateUserForEmployee(Employee employee) {
-        // Check if User exists for this Employee's Account
-        Account account = employee.getAccount();
-        if (account != null && account.getUser() != null) {
-            return account.getUser();
-        }
-
-        // Create a minimal User for staff (if needed)
-        // Note: This is a workaround - in production, you might want to ensure
-        // all Employees have associated Users, or adjust ChatParticipant to support Employee
-        log.warn("Employee {} does not have associated User. Creating minimal User.", employee.getId());
-        
-        User staffUser = User.builder()
-                .fullName(employee.getFullName())
-                .phone(employee.getPhone())
-                .status(EnumStatus.ACTIVE)
-                .avatar(employee.getAvatar())
-                .account(account)
-                .build();
-        
-        return userRepository.save(staffUser);
-    }
 
     private void notifyAllOnlineStaff(Chat chat, User customer) {
         List<Employee> onlineStaff = getOnlineStaff();
@@ -1042,12 +1090,12 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         for (Employee staff : onlineStaff) {
-            // Try to send via user ID
-            // Note: WebSocket handler tracks by user ID, so we need to get user ID
-            String userId = getStaffUserId(staff);
-            if (userId != null) {
-                chatWebSocketHandler.sendMessageToUser(userId, message);
-            }
+            // Try to send via user ID if exists, otherwise use employee ID
+            // Note: WebSocket handler tracks by user ID
+            String userId = staff.getAccount() != null && staff.getAccount().getUser() != null 
+                    ? staff.getAccount().getUser().getId() 
+                    : staff.getId();
+            chatWebSocketHandler.sendMessageToUser(userId, message);
         }
 
         log.info("Notified {} online staff about chat request {}", onlineStaff.size(), chat.getId());
@@ -1088,10 +1136,11 @@ public class ChatServiceImpl implements ChatService {
 
         for (Employee staff : onlineStaff) {
             if (!staff.getId().equals(acceptedStaffId)) {
-                String userId = getStaffUserId(staff);
-                if (userId != null) {
-                    chatWebSocketHandler.sendMessageToUser(userId, message);
-                }
+                // Try to send via user ID if exists, otherwise use employee ID
+                String userId = staff.getAccount() != null && staff.getAccount().getUser() != null 
+                        ? staff.getAccount().getUser().getId() 
+                        : staff.getId();
+                chatWebSocketHandler.sendMessageToUser(userId, message);
             }
         }
 
@@ -1113,12 +1162,13 @@ public class ChatServiceImpl implements ChatService {
 
         // Notify staff
         if (chat.getAssignedStaffId() != null) {
-            Employee staff = employeeRepository.findById(chat.getAssignedStaffId()).orElse(null);
+            Employee staff = employeeRepository.findEmployeeById(chat.getAssignedStaffId()).orElse(null);
             if (staff != null) {
-                String userId = getStaffUserId(staff);
-                if (userId != null) {
-                    chatWebSocketHandler.sendMessageToUser(userId, message);
-                }
+                // Try to send via user ID if exists, otherwise use employee ID
+                String userId = staff.getAccount() != null && staff.getAccount().getUser() != null 
+                        ? staff.getAccount().getUser().getId() 
+                        : staff.getId();
+                chatWebSocketHandler.sendMessageToUser(userId, message);
             }
         }
 
