@@ -118,7 +118,6 @@ public class EmployeeController {
 
         @GetMapping("/{id}")
         @Operation(summary = "Get employee by ID")
-        @PreAuthorize("hasAnyRole('ADMIN', 'BRANCH_MANAGER')")
         public ApiResponse<UserResponse> getEmployeeById(@PathVariable String id) {
                 return ApiResponse.<UserResponse>builder()
                                 .status(HttpStatus.OK.value())

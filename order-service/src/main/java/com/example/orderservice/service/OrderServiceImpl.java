@@ -295,7 +295,7 @@ public class OrderServiceImpl implements OrderService {
             log.error("Failed to send Kafka event for user {}, error: {}", userData.getFullName(), e.getMessage());
         }
 
-        return mapToResponse(savedOrder);
+        return mapToResponse(savedOrder);   
     }
 
     @Override
