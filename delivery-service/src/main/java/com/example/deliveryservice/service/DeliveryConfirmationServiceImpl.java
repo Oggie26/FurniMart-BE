@@ -9,7 +9,6 @@ import com.example.deliveryservice.exception.AppException;
 import com.example.deliveryservice.enums.ErrorCode;
 import com.example.deliveryservice.event.OrderDeliveredEvent;
 import com.example.deliveryservice.feign.OrderClient;
-import com.example.deliveryservice.feign.WarrantyClient;
 import com.example.deliveryservice.repository.DeliveryAssignmentRepository;
 import com.example.deliveryservice.repository.DeliveryConfirmationRepository;
 import com.example.deliveryservice.request.DeliveryConfirmationRequest;
@@ -47,7 +46,6 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
     private final DeliveryAssignmentRepository deliveryAssignmentRepository;
     private final ObjectMapper objectMapper;
     private final OrderClient orderClient;
-    private final WarrantyClient warrantyClient;
     private final KafkaTemplate<String, Object> genericKafkaTemplate;
 
     @Override
@@ -298,18 +296,10 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
                                             .productColorId(d.getProductColorId())
                                             .quantity(d.getQuantity())
                                             .price(d.getPrice())
-                                            // Note: AddressResponse/OrderResponse in delivery-service might differ from
-                                            // order-service
-                                            // Assuming basic fields are available or defaulting
-                                            .productName("Product " + d.getProductColorId()) // Placeholder if name not
-                                                                                             // available
+                                            .productName("Product " + d.getProductColorId())
                                             .colorName("")
                                             .build())
-                                    .collect(Collectors.toList());
-                            // If we have ProductColor object in OrderDetailResponse, use it.
-                            // Checking OrderDetailResponse: usually has primitives unless populated.
-                            // OrderDetailResponse in delivery-service (step 244) exists.
-                            // We will check its content if we need better names.
+                                    .collect(Collectors.toList());                
                         }
 
                         OrderDeliveredEvent event = OrderDeliveredEvent.builder()
