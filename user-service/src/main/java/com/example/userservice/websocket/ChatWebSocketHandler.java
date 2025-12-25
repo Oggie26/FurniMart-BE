@@ -273,7 +273,17 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         }
     }
 
-    private void broadcastToChat(String chatId, WebSocketMessage message, String excludeUserId) {
+    // Public method to broadcast message to all participants in a chat (for AI responses)
+    public void broadcastToChat(String chatId, WebSocketMessage message) {
+        broadcastToChatInternal(chatId, message, null);
+    }
+
+    // Public method to broadcast message to all participants except the sender
+    public void broadcastToChat(String chatId, WebSocketMessage message, String excludeUserId) {
+        broadcastToChatInternal(chatId, message, excludeUserId);
+    }
+
+    private void broadcastToChatInternal(String chatId, WebSocketMessage message, String excludeUserId) {
         try {
             var participants = chatParticipantRepository.findActiveParticipantsByChatId(chatId);
             
@@ -296,11 +306,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         } catch (Exception e) {
             log.error("Error broadcasting to chat: {}", chatId, e);
         }
-    }
-
-    // Public method to broadcast message to all participants in a chat (for AI responses)
-    public void broadcastToChat(String chatId, WebSocketMessage message) {
-        broadcastToChat(chatId, message, null);
     }
 
     private void broadcastTypingToChat(String chatId, String userId, String typingStatus) {
