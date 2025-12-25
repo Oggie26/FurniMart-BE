@@ -116,7 +116,7 @@ public class BlogController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Soft delete blog")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
     public ApiResponse<Void> deleteBlog(@PathVariable Integer id) {
         blogService.deleteBlog(id);
         return ApiResponse.<Void>builder()
@@ -127,7 +127,7 @@ public class BlogController {
 
     @PatchMapping("/{id}/toggle-status")
     @Operation(summary = "Toggle blog status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
     public ApiResponse<Void> toggleBlogStatus(@PathVariable Integer id) {
         blogService.toggleBlogStatus(id);
         return ApiResponse.<Void>builder()
