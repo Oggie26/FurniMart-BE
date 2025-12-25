@@ -50,6 +50,15 @@ public class AssignOrderServiceImpl implements AssignOrderService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
+        // Kiểm tra tránh lặp lại (Idempotency check)
+        // Nếu đã được gán cửa hàng rồi thì không gán lại trừ khi được yêu cầu đặc biệt
+        // (qua manager workflow)
+        if (order.getStatus() == EnumProcessOrder.ASSIGN_ORDER_STORE ||
+                order.getStatus().ordinal() > EnumProcessOrder.ASSIGN_ORDER_STORE.ordinal()) {
+            log.info("Order {} is already assigned to a store or beyond. Skipping assignment.", orderId);
+            return;
+        }
+
         AddressResponse address = safeGetAddress(order.getAddressId());
 
         if (order.getPayment() == null || order.getPayment().getPaymentMethod() == null) {

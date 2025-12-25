@@ -413,6 +413,18 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
+        if (order.getStatus() == status) {
+            log.info("Order {} is already in status {}. Skipping update.", orderId, status);
+            return mapToResponse(order);
+        }
+
+        if (status == EnumProcessOrder.PAYMENT &&
+                (order.getStatus() == EnumProcessOrder.ASSIGN_ORDER_STORE ||
+                        order.getStatus().ordinal() > EnumProcessOrder.ASSIGN_ORDER_STORE.ordinal())) {
+            log.info("Order {} is already ASSIGN_ORDER_STORE or beyond. Skipping duplicate PAYMENT update.", orderId);
+            return mapToResponse(order);
+        }
+
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(status);
@@ -429,7 +441,6 @@ public class OrderServiceImpl implements OrderService {
         if (status.equals(EnumProcessOrder.FINISHED)) {
             try {
                 warrantyService.createWarrantiesForOrder(orderId);
-                log.info("Warranties created for order: {}", orderId);
             } catch (Exception e) {
                 log.error("Failed to create warranties for order: {}", orderId, e);
             }
@@ -458,7 +469,6 @@ public class OrderServiceImpl implements OrderService {
                 payment.setPaymentStatus(PaymentStatus.DEPOSITED);
                 paymentRepository.save(payment);
             }
-
 
             List<OrderCreatedEvent.OrderItem> orderItems = order.getOrderDetails().stream()
                     .map(detail -> {
