@@ -16,7 +16,7 @@ public class OrderForShipperResponse {
     private Long orderId;
     private String customerName;
     private String customerPhone;
-    private String deliveryAddress;
+    private AddressResponse deliveryAddress; // Địa chỉ đầy đủ cho shipper
     private Double total;
     private Date orderDate;
     private EnumProcessOrder status;
