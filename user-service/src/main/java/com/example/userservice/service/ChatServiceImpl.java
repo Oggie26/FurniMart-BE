@@ -706,36 +706,26 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage message) {
-        // Get current user ID to determine if message is own message
-        String currentUserId = null;
+        // Determine if message is own message by comparing Account ID (consistent for both User and Employee)
         Boolean isOwnMessage = false;
         try {
-            currentUserId = getCurrentUserId();
-            String senderId = message.getSender().getId();
+            // Get current account ID (consistent for both User and Employee)
+            String currentAccountId = getCurrentAccountId();
             
-            // Direct comparison: senderId equals currentUserId
-            if (senderId.equals(currentUserId)) {
-                isOwnMessage = true;
-            } else {
-                // For staff: senderId is User ID, but currentUserId might be Employee ID
-                // Check if sender's account matches current user's account
-                User sender = message.getSender();
-                if (sender != null && sender.getAccount() != null) {
-                    Account senderAccount = sender.getAccount();
-                    
-                    // Get current account
-                    Account currentAccount = accountRepository.findByEmailAndIsDeletedFalse(
-                        SecurityContextHolder.getContext().getAuthentication().getName())
-                        .orElse(null);
-                    
-                    if (currentAccount != null && senderAccount.getId().equals(currentAccount.getId())) {
-                        isOwnMessage = true;
-                    }
-                }
+            // Get sender's account ID
+            User sender = message.getSender();
+            if (sender != null && sender.getAccount() != null) {
+                String senderAccountId = sender.getAccount().getId();
+                isOwnMessage = senderAccountId.equals(currentAccountId);
+            } else if (sender != null) {
+                // Fallback: compare User ID (for backward compatibility if account is null)
+                String currentUserId = getCurrentUserId();
+                String senderId = sender.getId();
+                isOwnMessage = senderId.equals(currentUserId);
             }
         } catch (Exception e) {
-            // If unable to get current user (e.g., not authenticated), default to false
-            log.debug("Unable to get current user ID for isOwnMessage check: {}", e.getMessage());
+            // If unable to get current account (e.g., not authenticated), default to false
+            log.debug("Unable to determine isOwnMessage: {}", e.getMessage());
         }
         
         return ChatMessageResponse.builder()
