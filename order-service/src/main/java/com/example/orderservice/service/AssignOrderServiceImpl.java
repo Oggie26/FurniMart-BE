@@ -213,11 +213,20 @@ public class AssignOrderServiceImpl implements AssignOrderService {
 
         try {
             deliveryClient.createAssignment(order.getId(), order.getStoreId());
-            orderService.updateOrderStatus(order.getId(), EnumProcessOrder.READY_FOR_INVOICE);
+            order.setStatus(EnumProcessOrder.READY_FOR_INVOICE);
+            ProcessOrder processOrder = ProcessOrder.builder()
+                    .order(order)
+                    .status(EnumProcessOrder.READY_FOR_INVOICE)
+                    .createdAt(new Date())
+                    .build();
+            processOrderRepository.save(processOrder);
+            orderRepository.save(order);
             log.info("Tự động tạo delivery assignment cho order {}", order.getId());
         } catch (Exception e) {
             log.error("Không thể tạo delivery assignment cho order {}: {}", order.getId(), e.getMessage());
         }
+
+
     }
 
     private void handleManagerReject(Order order, String rejectedStoreId, String reason) {
