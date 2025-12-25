@@ -115,7 +115,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                 request.getEstimatedDeliveryDate(),
                 request.getNotes());
 
-        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.READY_FOR_INVOICE);
+        orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
 
         try {
             sendDeliveryAssignedNotification(saved, order);
@@ -210,7 +210,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         assignment.setStatus(DeliveryStatus.READY);
 
         DeliveryAssignment saved = deliveryAssignmentRepository.save(assignment);
-        orderClient.updateOrderStatus(order.getId(), EnumProcessOrder.SHIPPING);
+        orderClient.updateOrderStatus(order.getId(), EnumProcessOrder.PACKAGED);
         log.info("Products prepared for order: {}. Status set to PREPARING. Manager needs to confirm readiness.",
                 request.getOrderId());
 
@@ -424,24 +424,24 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     private void validatePrerequisites(DeliveryAssignment assignment, Long orderId) {
         if (assignment.getProductsPrepared() == null || !assignment.getProductsPrepared()) {
-            log.warn("Cannot assign delivery for order {}: Products not prepared yet. Assignment ID: {}", 
+            log.warn("Cannot assign delivery for order {}: Products not prepared yet. Assignment ID: {}",
                     orderId, assignment.getId());
             throw new AppException(ErrorCode.PRODUCTS_NOT_PREPARED);
         }
-        
+
         if (assignment.getStatus() != DeliveryStatus.READY) {
-            log.warn("Cannot assign delivery for order {}: Assignment status is {}, must be READY. Assignment ID: {}", 
+            log.warn("Cannot assign delivery for order {}: Assignment status is {}, must be READY. Assignment ID: {}",
                     orderId, assignment.getStatus(), assignment.getId());
             throw new AppException(ErrorCode.ASSIGNMENT_NOT_READY);
         }
-        
+
         if (assignment.getInvoiceGenerated() == null || !assignment.getInvoiceGenerated()) {
-            log.warn("Cannot assign delivery for order {}: Invoice not generated yet. Assignment ID: {}", 
+            log.warn("Cannot assign delivery for order {}: Invoice not generated yet. Assignment ID: {}",
                     orderId, assignment.getId());
             throw new AppException(ErrorCode.INVOICE_NOT_GENERATED);
         }
-        
-        log.info("All prerequisites validated for order {}: productsPrepared={}, status={}, invoiceGenerated={}", 
+
+        log.info("All prerequisites validated for order {}: productsPrepared={}, status={}, invoiceGenerated={}",
                 orderId, assignment.getProductsPrepared(), assignment.getStatus(), assignment.getInvoiceGenerated());
     }
 
@@ -589,4 +589,14 @@ public class DeliveryServiceImpl implements DeliveryService {
         }
     }
 
+    @Override
+    @Transactional
+    public DeliveryAssignmentResponse createAssignment(Long orderId, String storeId) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String createdBy = authentication != null ? authentication.getName() : "SYSTEM";
+
+        DeliveryAssignment assignment = getOrCreateAssignment(orderId, storeId, createdBy);
+        return mapToResponse(assignment);
+    }
 }

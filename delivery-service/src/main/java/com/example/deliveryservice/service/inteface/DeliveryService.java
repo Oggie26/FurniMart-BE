@@ -29,4 +29,6 @@ public interface DeliveryService {
     DeliveryAssignmentResponse rejectAssignment(Long assignmentId, String reason, String deliveryStaffId);
 
     List<com.example.deliveryservice.response.UserResponse> getFreeDrivers();
+
+    DeliveryAssignmentResponse createAssignment(Long orderId, String storeId);
 }

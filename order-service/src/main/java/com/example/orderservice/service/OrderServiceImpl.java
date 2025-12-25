@@ -280,6 +280,13 @@ public class OrderServiceImpl implements OrderService {
             log.error("Failed to send Kafka event for user {}, error: {}", userData.getFullName(), e.getMessage());
         }
 
+        try {
+            deliveryClient.createAssignment(savedOrder.getId(), savedOrder.getStoreId());
+            log.info("✅ Tự động tạo delivery assignment cho order {}", savedOrder.getId());
+        } catch (Exception e) {
+            log.error("❌ Không thể tạo delivery assignment cho order {}: {}", savedOrder.getId(), e.getMessage());
+        }
+
         return mapToResponse(savedOrder);
     }
 
@@ -510,8 +517,16 @@ public class OrderServiceImpl implements OrderService {
 
         }
 
-        return mapToResponse(order);
+        if (status.equals(EnumProcessOrder.MANAGER_ACCEPT)) {
+            try {
+                deliveryClient.createAssignment(orderId, order.getStoreId());
+                log.info("✅ Tự động tạo delivery assignment cho order {}", orderId);
+            } catch (Exception e) {
+                log.error("❌ Không thể tạo delivery assignment cho order {}: {}", orderId, e.getMessage());
+            }
+        }
 
+        return mapToResponse(order);
     }
 
     @Override
