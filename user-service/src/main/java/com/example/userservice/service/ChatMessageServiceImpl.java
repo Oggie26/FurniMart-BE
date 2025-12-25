@@ -11,6 +11,7 @@ import com.example.userservice.repository.ChatParticipantRepository;
 import com.example.userservice.repository.ChatRepository;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.repository.AccountRepository;
+import com.example.userservice.repository.EmployeeRepository;
 import com.example.userservice.request.ChatMessageRequest;
 import com.example.userservice.response.ChatMessageResponse;
 import com.example.userservice.response.PageResponse;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +42,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     private final ChatRepository chatRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final UserRepository userRepository;
+    private final EmployeeRepository employeeRepository;
     private final AccountRepository accountRepository;
     private final AiServiceClient aiServiceClient;
     private final ChatWebSocketHandler chatWebSocketHandler;
@@ -51,6 +54,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
             ChatRepository chatRepository,
             ChatParticipantRepository chatParticipantRepository,
             UserRepository userRepository,
+            EmployeeRepository employeeRepository,
             AccountRepository accountRepository,
             AiServiceClient aiServiceClient,
             @Lazy ChatWebSocketHandler chatWebSocketHandler) {
@@ -58,6 +62,7 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         this.chatRepository = chatRepository;
         this.chatParticipantRepository = chatParticipantRepository;
         this.userRepository = userRepository;
+        this.employeeRepository = employeeRepository;
         this.accountRepository = accountRepository;
         this.aiServiceClient = aiServiceClient;
         this.chatWebSocketHandler = chatWebSocketHandler;
@@ -67,8 +72,9 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Transactional
     public ChatMessageResponse sendMessage(ChatMessageRequest messageRequest) {
         String currentUserId = getCurrentUserId();
-        User sender = userRepository.findByIdAndIsDeletedFalse(currentUserId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        
+        // Try to find as User first, then Employee
+        User sender = getUserOrEmployeeUser(currentUserId);
 
         Chat chat = chatRepository.findById(messageRequest.getChatId())
                 .orElseThrow(() -> new AppException(ErrorCode.CHAT_NOT_FOUND));
@@ -447,6 +453,42 @@ public class ChatMessageServiceImpl implements ChatMessageService {
             return false;
         }
         return AI_ASSISTANT_EMAIL.equals(message.getSender().getAccount().getEmail());
+    }
+
+    /**
+     * Helper method to get User entity from either User ID or Employee ID
+     * For employees, returns the User associated with their account (or creates one if needed)
+     * Similar to logic in ChatServiceImpl.createChat()
+     */
+    private User getUserOrEmployeeUser(String userId) {
+        // Try to find as User first
+        Optional<User> userOpt = userRepository.findByIdAndIsDeletedFalse(userId);
+        if (userOpt.isPresent()) {
+            return userOpt.get();
+        }
+        
+        // Try to find as Employee
+        Optional<Employee> employeeOpt = employeeRepository.findEmployeeById(userId);
+        if (employeeOpt.isPresent()) {
+            Employee employee = employeeOpt.get();
+            Account account = employee.getAccount();
+            if (account != null && account.getUser() != null) {
+                return account.getUser();
+            }
+            // If employee doesn't have a User, create one (similar to ChatServiceImpl.createChat())
+            log.info("Creating User entity for Employee {} to send chat messages", userId);
+            User newUser = User.builder()
+                    .fullName(employee.getFullName())
+                    .phone(employee.getPhone())
+                    .status(EnumStatus.ACTIVE)
+                    .avatar(employee.getAvatar())
+                    .account(account)
+                    .build();
+            newUser.setIsDeleted(false);
+            return userRepository.save(newUser);
+        }
+        
+        throw new AppException(ErrorCode.USER_NOT_FOUND);
     }
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage message) {
