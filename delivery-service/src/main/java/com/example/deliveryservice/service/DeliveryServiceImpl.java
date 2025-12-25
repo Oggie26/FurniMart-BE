@@ -458,7 +458,7 @@ public class DeliveryServiceImpl implements DeliveryService {
                     .deliveryStaffId(null)
                     .assignedBy(assignedBy)
                     .assignedAt(LocalDateTime.now())
-                    .status(DeliveryStatus.PREPARING)
+                    .status(DeliveryStatus.ASSIGNED)
                     .productsPrepared(false)
                     .invoiceGenerated(false)
                     .build();

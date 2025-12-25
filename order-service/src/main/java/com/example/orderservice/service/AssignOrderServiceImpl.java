@@ -44,7 +44,6 @@ public class AssignOrderServiceImpl implements AssignOrderService {
     private final ProductClient productClient;
     private final AIClient aiClient;
     private final DeliveryClient deliveryClient;
-    private final OrderService orderService;
     // private final KafkaTemplate<String, OrderAssignedEvent> kafkaTemplate;
 
     @Override
