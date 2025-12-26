@@ -40,27 +40,18 @@ public class RateLimitingConfig {
                 .build();
     }
 
-    /**
-     * Create bucket for login endpoint (stricter limits)
-     * 5 attempts per 15 minutes
-     * Cached per IP address
-     */
+
     public Bucket createLoginBucket(String ip) {
         String key = "login:" + ip;
         return cache.computeIfAbsent(key, k -> Bucket.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(10)
-                        .refillIntervally(10, Duration.ofMinutes(10))
+                        .capacity(20)
+                        .refillIntervally(20, Duration.ofMinutes(10))
                         .build())
                 .build());
     }
 
-    /**
-     * Create bucket for chat polling endpoints
-     * Allows 30 requests per minute (1 request every 2 seconds)
-     * This is more lenient than auth endpoints but still prevents excessive polling
-     * Cached per user identifier (email or IP)
-     */
+
     public Bucket createChatPollingBucket(String identifier) {
         String key = "chat-polling:" + identifier;
         return cache.computeIfAbsent(key, k -> Bucket.builder()
@@ -71,9 +62,7 @@ public class RateLimitingConfig {
                 .build());
     }
 
-    /**
-     * Clear bucket for a user (e.g., after successful login)
-     */
+
     public void clearBucket(String key) {
         cache.remove(key);
     }

@@ -30,7 +30,7 @@ public class PaymentController {
         private final UserClient userClient;
         private final PaymentRepository paymentRepository;
 
-        @PostMapping
+        @GetMapping
         @Operation(summary = "Get all payment")
         @ResponseStatus(HttpStatus.CREATED)
         public ApiResponse<List<Payment>> getAllTransactionPayment() {
