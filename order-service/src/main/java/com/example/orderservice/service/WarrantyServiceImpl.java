@@ -12,6 +12,7 @@ import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
 import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.PageResponse;
+import com.example.orderservice.response.UserResponse;
 import com.example.orderservice.service.inteface.WarrantyService;
 import com.example.orderservice.feign.UserClient;
 import feign.FeignException;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -314,6 +316,24 @@ public class WarrantyServiceImpl implements WarrantyService {
         try {
             WarrantyClaimStatus newStatus = WarrantyClaimStatus.valueOf(status.toUpperCase());
             WarrantyClaimStatus oldStatus = claim.getStatus();
+            
+            // Get current admin user ID for validation
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String adminId = null;
+            if (authentication != null && authentication.getPrincipal() instanceof String) {
+                adminId = authentication.getName();
+            }
+            
+            if (adminId == null) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            // Validate store access
+            validateStoreAccess(claim, adminId);
+
+            // Validate status transition
+            validateStatusTransition(currentStatus, newStatus);
+            
             claim.setStatus(newStatus);
             claim.setAdminResponse(adminResponse);
             claim.setResolutionNotes(resolutionNotes);
@@ -322,13 +342,7 @@ public class WarrantyServiceImpl implements WarrantyService {
                 claim.setResolvedDate(LocalDateTime.now());
             }
 
-            // Get current admin user ID
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String adminId = null;
-            if (authentication != null && authentication.getPrincipal() instanceof String) {
-                adminId = authentication.getName();
-                claim.setAdminId(adminId);
-            }
+            claim.setAdminId(adminId);
 
             WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
 
@@ -411,21 +425,52 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.WARRANTY_CLAIM_ALREADY_RESOLVED);
         }
 
-        claim.setActionType(request.getActionType());
-        claim.setAdminResponse(request.getAdminResponse());
-        claim.setResolutionNotes(request.getResolutionNotes());
-        claim.setResolvedDate(LocalDateTime.now());
-
+        // Get admin ID for validation
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof String) {
-            claim.setAdminId(authentication.getName());
-        }
-
-        WarrantyClaimStatus oldStatus = claim.getStatus();
         String adminId = null;
         if (authentication != null && authentication.getPrincipal() instanceof String) {
             adminId = authentication.getName();
         }
+        
+        if (adminId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        // Validate store access
+        validateStoreAccess(claim, adminId);
+
+        // Validate status transition (current status → RESOLVED/REJECTED)
+        WarrantyClaimStatus targetStatus = (request.getActionType() == WarrantyActionType.DO_NOTHING) 
+                ? WarrantyClaimStatus.REJECTED 
+                : WarrantyClaimStatus.RESOLVED;
+        validateStatusTransition(claim.getStatus(), targetStatus);
+
+        // Validate action-specific fields
+        switch (request.getActionType()) {
+            case RETURN:
+                if (request.getRefundAmount() == null || request.getRefundAmount() <= 0) {
+                    throw new AppException(ErrorCode.INVALID_REFUND_AMOUNT);
+                }
+                break;
+            case REPAIR:
+                if (request.getRepairCost() == null || request.getRepairCost() <= 0) {
+                    throw new AppException(ErrorCode.INVALID_REPAIR_COST);
+                }
+                break;
+            case DO_NOTHING:
+                // No additional validation needed
+                break;
+            default:
+                throw new AppException(ErrorCode.INVALID_WARRANTY_ACTION);
+        }
+
+        claim.setActionType(request.getActionType());
+        claim.setAdminResponse(request.getAdminResponse());
+        claim.setResolutionNotes(request.getResolutionNotes());
+        claim.setResolvedDate(LocalDateTime.now());
+        claim.setAdminId(adminId);
+
+        WarrantyClaimStatus oldStatus = claim.getStatus();
 
         switch (request.getActionType()) {
             case RETURN:
@@ -777,6 +822,65 @@ public class WarrantyServiceImpl implements WarrantyService {
         return isStaffOrManager ? claim.getRepairCost() : null;
     }
 
+    /**
+     * Validate admin has access to the store that owns the warranty claim
+     */
+    private void validateStoreAccess(WarrantyClaim claim, String adminId) {
+        Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        
+        if (order.getStoreId() == null || order.getStoreId().isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        
+        ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(adminId);
+        if (userResponse == null || userResponse.getData() == null 
+                || userResponse.getData().getStoreIds() == null 
+                || userResponse.getData().getStoreIds().isEmpty()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        
+        if (!userResponse.getData().getStoreIds().contains(order.getStoreId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_STORE_ACCESS);
+        }
+    }
+
+    /**
+     * Validate status transition is valid
+     */
+    private void validateStatusTransition(WarrantyClaimStatus currentStatus, WarrantyClaimStatus newStatus) {
+        // Same status is allowed
+        if (currentStatus == newStatus) {
+            return;
+        }
+        
+        // Valid transitions:
+        // PENDING → UNDER_REVIEW, REJECTED, RESOLVED
+        // UNDER_REVIEW → APPROVED, REJECTED, RESOLVED
+        // APPROVED → REJECTED, RESOLVED
+        Map<WarrantyClaimStatus, List<WarrantyClaimStatus>> validTransitions = Map.of(
+            WarrantyClaimStatus.PENDING, List.of(
+                WarrantyClaimStatus.UNDER_REVIEW, 
+                WarrantyClaimStatus.REJECTED, 
+                WarrantyClaimStatus.RESOLVED
+            ),
+            WarrantyClaimStatus.UNDER_REVIEW, List.of(
+                WarrantyClaimStatus.APPROVED, 
+                WarrantyClaimStatus.REJECTED, 
+                WarrantyClaimStatus.RESOLVED
+            ),
+            WarrantyClaimStatus.APPROVED, List.of(
+                WarrantyClaimStatus.REJECTED, 
+                WarrantyClaimStatus.RESOLVED
+            )
+        );
+        
+        List<WarrantyClaimStatus> allowed = validTransitions.get(currentStatus);
+        if (allowed == null || !allowed.contains(newStatus)) {
+            log.warn("Invalid status transition: {} → {}", currentStatus, newStatus);
+            throw new AppException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+    }
 
     @Override
     @Transactional(readOnly = true)

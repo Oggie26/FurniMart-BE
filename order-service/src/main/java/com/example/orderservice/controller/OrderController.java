@@ -13,6 +13,7 @@ import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.repository.VoucherRepository;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.StaffCreateOrderRequest;
+import com.example.orderservice.request.ComplaintRequest;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
@@ -276,6 +277,7 @@ public class OrderController {
         }
 
         @PostMapping("/{orderId}/manager-decision")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
         public ApiResponse<String> managerAcceptOrRejectOrder(
                         @PathVariable Long orderId,
                         @RequestParam(required = false) String storeId,
@@ -556,6 +558,22 @@ public class OrderController {
                                 .status(200)
                                 .message("Hủy đơn hàng thành công cho orderId: " + cancelOrderRequest.getOrderId())
                                 .data(null)
+                                .build();
+        }
+
+        @Operation(summary = "Tạo khiếu nại và xử lý hoàn tiền cọc", 
+                   description = "Khách hàng tạo khiếu nại. Hệ thống sẽ tự động kiểm tra và hoàn tiền cọc nếu đủ điều kiện: " +
+                                 "Lỗi cửa hàng + Khách từ chối/trả hàng + Khiếu nại trong 24h từ deliveryDate + Có thể liên lạc với khách")
+        @PostMapping("/{orderId}/complaint")
+        public ApiResponse<OrderResponse> processComplaint(
+                @PathVariable Long orderId,
+                @Valid @RequestBody ComplaintRequest request) {
+                OrderResponse orderResponse = orderService.processComplaint(orderId, request);
+                
+                return ApiResponse.<OrderResponse>builder()
+                                .status(200)
+                                .message("Khiếu nại đã được ghi nhận và xử lý")
+                                .data(orderResponse)
                                 .build();
         }
 
