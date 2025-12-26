@@ -16,12 +16,22 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.kafka.config.TopicBuilder;
 
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-    //    private final String BOOTSTRAP_SERVERS = "localhost:9092";
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
+
+    @Bean
+    public NewTopic orderCreatedTopic() {
+        return TopicBuilder.name("order-created-topic")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
     // ----------------- PRODUCER cho Object --------------------
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
@@ -37,7 +47,6 @@ public class KafkaConfig {
         return new KafkaTemplate<>(producerFactory());
     }
 
-
     @Bean
     public ProducerFactory<String, OrderCreatedEvent> accountCreatedEventProducerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -51,7 +60,6 @@ public class KafkaConfig {
     public KafkaTemplate<String, OrderCreatedEvent> accountCreatedEventKafkaTemplate() {
         return new KafkaTemplate<>(accountCreatedEventProducerFactory());
     }
-
 
     // ----------------- PRODUCER cho String (nếu cần) --------------------
     @Bean
@@ -69,7 +77,6 @@ public class KafkaConfig {
     }
 
     // ----------------- CONSUMER --------------------
-
 
     private Map<String, Object> baseConfigs() {
         Map<String, Object> props = new HashMap<>();

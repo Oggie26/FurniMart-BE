@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ProductUpdatedEvent {
     private String productId;
-    private String action; // "UPDATE"
+    private String action;
 }

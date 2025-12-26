@@ -16,13 +16,5 @@ public class ProductCreatedEvent {
     private Double price;
     private String description;
     private String categoryName;
-//    private String thumbnailImage;
-//    private Double weight;
-//    private Double height;
-//    private Double width;
-//    private Double length;
-//    private List<ProductColorDTO> productColors;
-//    private LocalDateTime createdAt;
-//    private List<MaterialResponse> materials;
 }
 

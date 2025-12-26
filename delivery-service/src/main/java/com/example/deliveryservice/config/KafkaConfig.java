@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import java.util.HashMap;
@@ -16,6 +18,14 @@ import java.util.Map;
 public class KafkaConfig {
 
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
+
+    @Bean
+    public NewTopic deliveryAssignedTopic() {
+        return TopicBuilder.name("delivery-assigned-topic")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
 
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
