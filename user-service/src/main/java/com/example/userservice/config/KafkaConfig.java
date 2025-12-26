@@ -5,10 +5,12 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
@@ -19,8 +21,17 @@ import java.util.Map;
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+    // private final String BOOTSTRAP_SERVERS = "localhost:9092";
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
+
+    @Bean
+    public NewTopic accountCreatedTopic() {
+        return TopicBuilder.name("account-created-topic")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
     // ----------------- PRODUCER cho Object --------------------
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
@@ -35,7 +46,6 @@ public class KafkaConfig {
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
-
 
     @Bean
     public ProducerFactory<String, AccountCreatedEvent> accountCreatedEventProducerFactory() {
