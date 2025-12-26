@@ -30,4 +30,7 @@ public interface BlogRepository extends JpaRepository<Blog, Integer> {
 
     // 6. Phân trang theo Employee
     Page<Blog> findByEmployee(Employee employee, Pageable pageable);
+    
+    // 7. Phân trang theo Employee và Status
+    Page<Blog> findByEmployeeAndStatus(Employee employee, Boolean status, Pageable pageable);
 }

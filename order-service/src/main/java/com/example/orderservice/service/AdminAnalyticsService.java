@@ -35,9 +35,15 @@ public class AdminAnalyticsService {
     public OverviewStatsResponse getOverviewStats() {
         log.info("Getting overview statistics");
 
-        // 1. Total Revenue
-        Double totalRevenue = orderRepository.getTotalRevenueByStatuses(COMPLETED_STATUSES);
-        if (totalRevenue == null) totalRevenue = 0.0;
+        // 1. Total Revenue (Net Revenue = Gross Revenue - Refunded Amount)
+        Double grossRevenue = orderRepository.getTotalRevenueByStatuses(COMPLETED_STATUSES);
+        if (grossRevenue == null) grossRevenue = 0.0;
+        
+        Double totalRefunded = orderRepository.getTotalRefundedAmountByStatuses(COMPLETED_STATUSES);
+        if (totalRefunded == null) totalRefunded = 0.0;
+        
+        Double totalRevenue = grossRevenue - totalRefunded;
+        if (totalRevenue < 0) totalRevenue = 0.0; // Ensure non-negative
 
         // 2. Total Orders
         long totalOrders = orderRepository.count();
@@ -83,10 +89,17 @@ public class AdminAnalyticsService {
             ApiResponse<List<StoreResponse>> storesResponse = storeClient.getAllStores();
             if (storesResponse != null && storesResponse.getData() != null) {
                 for (StoreResponse store : storesResponse.getData()) {
-                    // Get revenue for this store
-                    Double revenue = orderRepository.getTotalRevenueByStoreAndStatuses(
+                    // Get revenue for this store (Net Revenue = Gross Revenue - Refunded Amount)
+                    Double grossRevenue = orderRepository.getTotalRevenueByStoreAndStatuses(
                             store.getId(), COMPLETED_STATUSES);
-                    if (revenue == null) revenue = 0.0;
+                    if (grossRevenue == null) grossRevenue = 0.0;
+                    
+                    Double totalRefunded = orderRepository.getTotalRefundedAmountByStoreAndStatuses(
+                            store.getId(), COMPLETED_STATUSES);
+                    if (totalRefunded == null) totalRefunded = 0.0;
+                    
+                    Double revenue = grossRevenue - totalRefunded;
+                    if (revenue < 0) revenue = 0.0; // Ensure non-negative
 
                     // Get order count for this store
                     Long orderCount = orderRepository.countByStoreId(store.getId());

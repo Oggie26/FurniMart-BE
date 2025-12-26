@@ -93,6 +93,11 @@ public enum ErrorCode {
     WITHDRAWAL_REQUEST_INVALID_STATUS(1265, "Invalid status for this operation", HttpStatus.BAD_REQUEST),
     WITHDRAWAL_REQUEST_ALREADY_PROCESSED(1266, "Withdrawal request has already been processed", HttpStatus.BAD_REQUEST),
     WITHDRAWAL_REQUEST_CANNOT_CANCEL(1267, "Cannot cancel withdrawal request in current status", HttpStatus.BAD_REQUEST),
+    
+    // Blog related errors
+    BLOG_ACCESS_DENIED(1268, "Access denied to blog", HttpStatus.FORBIDDEN),
+    BLOG_HIERARCHY_DENIED(1269, "Cannot manage blog of peer or superior", HttpStatus.FORBIDDEN),
+    BLOG_TOGGLE_STATUS_DENIED(1270, "Cannot toggle blog status", HttpStatus.FORBIDDEN),
 
     ;
 

@@ -43,9 +43,15 @@ public class DashboardService {
     public AdminDashboardResponse getAdminDashboard() {
         log.info("Getting admin dashboard data");
 
-        // 1. Total Revenue
-        Double totalRevenue = orderRepository.getTotalRevenueByStatuses(COMPLETED_STATUSES);
-        if (totalRevenue == null) totalRevenue = 0.0;
+        // 1. Total Revenue (Net Revenue = Gross Revenue - Refunded Amount)
+        Double grossRevenue = orderRepository.getTotalRevenueByStatuses(COMPLETED_STATUSES);
+        if (grossRevenue == null) grossRevenue = 0.0;
+        
+        Double totalRefunded = orderRepository.getTotalRefundedAmountByStatuses(COMPLETED_STATUSES);
+        if (totalRefunded == null) totalRefunded = 0.0;
+        
+        Double totalRevenue = grossRevenue - totalRefunded;
+        if (totalRevenue < 0) totalRevenue = 0.0; // Ensure non-negative
 
         // 2. Total Active Stores
         Long totalActiveStores = 0L;
@@ -96,9 +102,15 @@ public class DashboardService {
     public ManagerDashboardResponse getManagerDashboard(String storeId) {
         log.info("Getting manager dashboard data for store: {}", storeId);
 
-        // 1. Branch Revenue
-        Double branchRevenue = orderRepository.getTotalRevenueByStoreAndStatuses(storeId, COMPLETED_STATUSES);
-        if (branchRevenue == null) branchRevenue = 0.0;
+        // 1. Branch Revenue (Net Revenue = Gross Revenue - Refunded Amount)
+        Double grossRevenue = orderRepository.getTotalRevenueByStoreAndStatuses(storeId, COMPLETED_STATUSES);
+        if (grossRevenue == null) grossRevenue = 0.0;
+        
+        Double totalRefunded = orderRepository.getTotalRefundedAmountByStoreAndStatuses(storeId, COMPLETED_STATUSES);
+        if (totalRefunded == null) totalRefunded = 0.0;
+        
+        Double branchRevenue = grossRevenue - totalRefunded;
+        if (branchRevenue < 0) branchRevenue = 0.0; // Ensure non-negative
 
         // 2. Pending Orders Count
         Long pendingOrdersCount = orderRepository.countOrdersByStoreAndStatus(storeId, EnumProcessOrder.PAYMENT);
@@ -172,18 +184,36 @@ public class DashboardService {
             cal.add(Calendar.DAY_OF_MONTH, -days);
             Date startDate = cal.getTime();
 
-            List<Object[]> results = orderRepository.getRevenueChartData(COMPLETED_STATUSES, startDate, endDate);
+            // Get gross revenue chart data
+            List<Object[]> revenueResults = orderRepository.getRevenueChartData(COMPLETED_STATUSES, startDate, endDate);
+            
+            // Get refunded amount chart data
+            List<Object[]> refundResults = orderRepository.getRefundedAmountChartData(COMPLETED_STATUSES, startDate, endDate);
+            
+            // Create a map of date -> refunded amount for quick lookup
+            Map<String, Double> refundMap = new HashMap<>();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            for (Object[] refund : refundResults) {
+                Date date = (Date) refund[0];
+                Double refundedAmount = ((Number) refund[1]).doubleValue();
+                refundMap.put(dateFormat.format(date), refundedAmount);
+            }
 
-            return results.stream()
+            // Calculate net revenue (gross revenue - refunded amount) for each date
+            return revenueResults.stream()
                     .map(result -> {
                         Date date = (Date) result[0];
-                        Double revenue = ((Number) result[1]).doubleValue();
+                        Double grossRevenue = ((Number) result[1]).doubleValue();
                         Long orderCount = ((Number) result[2]).longValue();
+                        
+                        String dateKey = dateFormat.format(date);
+                        Double refundedAmount = refundMap.getOrDefault(dateKey, 0.0);
+                        Double netRevenue = grossRevenue - refundedAmount;
+                        if (netRevenue < 0) netRevenue = 0.0; // Ensure non-negative
 
                         return RevenueChartData.builder()
-                                .date(dateFormat.format(date))
-                                .revenue(revenue)
+                                .date(dateKey)
+                                .revenue(netRevenue)
                                 .orderCount(orderCount)
                                 .build();
                     })
@@ -330,9 +360,15 @@ public class DashboardService {
         cal.set(Calendar.SECOND, 59);
         Date endDate = cal.getTime();
 
-        // 1. Personal Revenue (Today)
-        Double personalRevenue = orderRepository.getTotalRevenueByCreatedByAndDateRange(staffId, COMPLETED_STATUSES, startDate, endDate);
-        if (personalRevenue == null) personalRevenue = 0.0;
+        // 1. Personal Revenue (Today) - Net Revenue = Gross Revenue - Refunded Amount
+        Double grossRevenue = orderRepository.getTotalRevenueByCreatedByAndDateRange(staffId, COMPLETED_STATUSES, startDate, endDate);
+        if (grossRevenue == null) grossRevenue = 0.0;
+        
+        Double totalRefunded = orderRepository.getTotalRefundedAmountByCreatedByAndDateRange(staffId, COMPLETED_STATUSES, startDate, endDate);
+        if (totalRefunded == null) totalRefunded = 0.0;
+        
+        Double personalRevenue = grossRevenue - totalRefunded;
+        if (personalRevenue < 0) personalRevenue = 0.0; // Ensure non-negative
 
         // 2. Created Orders Count (Today)
         Long createdOrdersCount = orderRepository.countByCreatedByAndDateRange(staffId, startDate, endDate);

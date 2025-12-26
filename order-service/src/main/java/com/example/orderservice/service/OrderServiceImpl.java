@@ -31,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -1311,17 +1312,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public void refundDeposit(Long orderId) {
-        log.info("Processing deposit refund for order: {}", orderId);
+    public void refundPayment(Long orderId, boolean isStoreError) {
+        log.info("Processing payment refund for order: {}, isStoreError: {}", orderId, isStoreError);
 
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-        // Kiểm tra có tiền cọc
-        if (order.getDepositPrice() == null || order.getDepositPrice() <= 0) {
-            log.warn("Order {} has no deposit to refund", orderId);
-            throw new AppException(ErrorCode.NO_DEPOSIT_TO_REFUND);
-        }
 
         Payment payment = order.getPayment();
         if (payment == null) {
@@ -1331,8 +1326,50 @@ public class OrderServiceImpl implements OrderService {
 
         // Kiểm tra đã hoàn tiền chưa
         if (PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
-            log.warn("Order {} deposit already refunded", orderId);
+            log.warn("Order {} payment already refunded", orderId);
             throw new AppException(ErrorCode.DEPOSIT_ALREADY_REFUNDED);
+        }
+
+        // Tính số tiền hoàn lại theo chính sách
+        Double refundAmount;
+        String refundDescription;
+
+        if (isStoreError) {
+            // Trường hợp 1: Lỗi cửa hàng
+            if (payment.getPaymentMethod() == PaymentMethod.VNPAY) {
+                // VNPAY: Hoàn toàn bộ số tiền
+                refundAmount = order.getTotal();
+                refundDescription = "Hoàn toàn bộ tiền đơn hàng " + orderId + " - Lỗi cửa hàng";
+            } else {
+                // COD: Hoàn tiền cọc
+                if (order.getDepositPrice() == null || order.getDepositPrice() <= 0) {
+                    log.warn("Order {} has no deposit to refund", orderId);
+                    throw new AppException(ErrorCode.NO_DEPOSIT_TO_REFUND);
+                }
+                refundAmount = order.getDepositPrice();
+                refundDescription = "Hoàn tiền cọc đơn hàng " + orderId + " - Lỗi cửa hàng";
+            }
+        } else {
+            // Trường hợp 2: Không lỗi cửa hàng
+            if (payment.getPaymentMethod() == PaymentMethod.VNPAY) {
+                // VNPAY: Hoàn với khấu trừ phí phạt 10%
+                Double standardDeposit = order.getTotal() * 0.1; // 10% tiền cọc tiêu chuẩn
+                refundAmount = order.getTotal() - standardDeposit;
+                if (refundAmount <= 0) {
+                    log.error("Calculated refund amount is invalid for order {}: {}", orderId, refundAmount);
+                    throw new AppException(ErrorCode.PENALTY_CALCULATION_ERROR);
+                }
+                refundDescription = "Hoàn tiền đơn hàng " + orderId + " (khấu trừ phí phạt 10%) - Không lỗi cửa hàng";
+            } else {
+                // COD: Không hoàn tiền cọc
+                log.info("Order {} is COD and not store error - no refund", orderId);
+                return; // Không hoàn tiền
+            }
+        }
+
+        if (refundAmount == null || refundAmount <= 0) {
+            log.warn("Invalid refund amount for order {}: {}", orderId, refundAmount);
+            throw new AppException(ErrorCode.INVALID_REFUND_AMOUNT);
         }
 
         // Lấy wallet của user
@@ -1345,27 +1382,35 @@ public class OrderServiceImpl implements OrderService {
         payment.setPaymentStatus(PaymentStatus.REFUNDING);
         paymentRepository.save(payment);
 
-        // Hoàn tiền cọc
+        // Hoàn tiền
         try {
-            String referenceId = "DEPOSIT-REFUND-" + orderId + "-" + UUID.randomUUID();
+            String referenceId = "REFUND-" + orderId + "-" + UUID.randomUUID();
             userClient.refundToWallet(
                     walletResponse.getData().getId(),
-                    order.getDepositPrice(),
-                    "Hoàn tiền cọc đơn hàng " + orderId + " - " + order.getComplaintReason(),
+                    refundAmount,
+                    refundDescription + (order.getComplaintReason() != null ? " - " + order.getComplaintReason() : ""),
                     referenceId,
                     "FURNIMART_INTERNAL_KEY");
 
             payment.setPaymentStatus(PaymentStatus.REFUNDED);
             paymentRepository.save(payment);
 
-            log.info("Successfully refunded deposit {} to wallet for user {} (order: {}, ref: {})",
-                    order.getDepositPrice(), order.getUserId(), orderId, referenceId);
+            log.info("Successfully refunded {} to wallet for user {} (order: {}, ref: {}, isStoreError: {})",
+                    refundAmount, order.getUserId(), orderId, referenceId, isStoreError);
         } catch (Exception e) {
-            log.error("Failed to refund deposit to wallet for order {}: {}", orderId, e.getMessage());
+            log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
             payment.setPaymentStatus(PaymentStatus.REFUNDING);
             paymentRepository.save(payment);
-            throw new RuntimeException("Deposit refund failed: " + e.getMessage());
+            throw new RuntimeException("Payment refund failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void refundDeposit(Long orderId) {
+        // Deprecated: Use refundPayment instead, but keep for backward compatibility
+        // Assume it's store error for backward compatibility
+        refundPayment(orderId, true);
     }
 
     @Override
@@ -1414,20 +1459,49 @@ public class OrderServiceImpl implements OrderService {
             if (deliveryConfirmation != null && deliveryConfirmation.getDeliveryDate() != null) {
                 LocalDateTime deliveryDate = deliveryConfirmation.getDeliveryDate();
                 if (canRefundDeposit(orderId, deliveryDate)) {
-                    log.info("All conditions met for deposit refund. Processing refund for order: {}", orderId);
+                    log.info("All conditions met for refund. Processing refund for order: {} (Trường hợp 1: Lỗi cửa hàng)", orderId);
                     try {
-                        refundDeposit(orderId);
-                        log.info("Deposit refund processed successfully for order: {}", orderId);
+                        refundPayment(orderId, true); // isStoreError = true
+                        log.info("Refund processed successfully for order: {}", orderId);
                     } catch (Exception e) {
-                        log.error("Failed to refund deposit for order {}: {}", orderId, e.getMessage());
+                        log.error("Failed to refund for order {}: {}", orderId, e.getMessage());
                         // Không throw exception, vì complaint đã được approve, chỉ là hoàn tiền thất bại
                     }
                 } else {
-                    log.info("Deposit refund conditions not met for order: {}", orderId);
+                    log.info("Refund conditions not met for order: {}", orderId);
+                }
+            }
+        } else if (request.getApproved() && !request.getIsStoreError()) {
+            // Trường hợp 2: Không lỗi cửa hàng nhưng vẫn APPROVED (có thể hoàn với phí phạt)
+            order.setComplaintStatus(ComplaintStatus.APPROVED);
+            log.info("Complaint approved for order: {} but not store error. May apply penalty.", orderId);
+
+            // Kiểm tra điều kiện và hoàn tiền với phí phạt nếu VNPAY
+            DeliveryConfirmationResponse deliveryConfirmation = getDeliveryConfirmationResponse(orderId);
+            if (deliveryConfirmation != null && deliveryConfirmation.getDeliveryDate() != null) {
+                LocalDateTime deliveryDate = deliveryConfirmation.getDeliveryDate();
+                if (canRefundDeposit(orderId, deliveryDate)) {
+                    Payment payment = order.getPayment();
+                    if (payment != null && payment.getPaymentMethod() == PaymentMethod.VNPAY) {
+                        // Chỉ hoàn với phí phạt nếu VNPAY
+                        log.info("Processing refund with penalty for order: {} (Trường hợp 2: Không lỗi cửa hàng, VNPAY)", orderId);
+                        try {
+                            refundPayment(orderId, false); // isStoreError = false
+                            log.info("Refund with penalty processed successfully for order: {}", orderId);
+                        } catch (Exception e) {
+                            log.error("Failed to refund with penalty for order {}: {}", orderId, e.getMessage());
+                        }
+                    } else {
+                        log.info("Order {} is COD and not store error - no refund", orderId);
+                    }
+                } else {
+                    log.info("Refund conditions not met for order: {}", orderId);
                 }
             }
         } else {
+            // REJECTED
             order.setComplaintStatus(ComplaintStatus.REJECTED);
+            order.setIsStoreError(false); // Explicitly mark as not store error if rejected
             log.info("Complaint rejected for order: {}. Approved: {}, isStoreError: {}", 
                     orderId, request.getApproved(), request.getIsStoreError());
         }
@@ -1455,6 +1529,58 @@ public class OrderServiceImpl implements OrderService {
 
         orderRepository.save(order);
         log.info("Customer marked as refused for order: {}", orderId);
+    }
+
+    /**
+     * Scheduled task to automatically cancel complaint refund rights after 24 hours
+     * if customer is not contactable.
+     * Runs every hour.
+     */
+    @Scheduled(cron = "0 0 * * * ?") // Run every hour
+    @Transactional
+    public void autoCancelExpiredComplaints() {
+        log.info("Running scheduled task to auto-cancel expired complaints");
+
+        try {
+            // Get all orders with PENDING_REVIEW complaint status
+            List<Order> pendingComplaints = orderRepository.findAll().stream()
+                    .filter(order -> !order.getIsDeleted())
+                    .filter(order -> order.getComplaintStatus() == ComplaintStatus.PENDING_REVIEW)
+                    .filter(order -> Boolean.FALSE.equals(order.getCustomerContactable())) // Not contactable
+                    .collect(Collectors.toList());
+
+            int cancelledCount = 0;
+            LocalDateTime now = LocalDateTime.now();
+
+            for (Order order : pendingComplaints) {
+                try {
+                    // Get delivery date
+                    DeliveryConfirmationResponse deliveryConfirmation = getDeliveryConfirmationResponse(order.getId());
+                    if (deliveryConfirmation == null || deliveryConfirmation.getDeliveryDate() == null) {
+                        log.warn("Cannot auto-cancel complaint for order {}: No delivery confirmation found", order.getId());
+                        continue;
+                    }
+
+                    LocalDateTime deliveryDate = deliveryConfirmation.getDeliveryDate();
+                    LocalDateTime deadline = deliveryDate.plusHours(24);
+
+                    // Check if 24 hours have passed
+                    if (now.isAfter(deadline)) {
+                        order.setComplaintStatus(ComplaintStatus.REJECTED);
+                        order.setIsStoreError(false);
+                        orderRepository.save(order);
+                        cancelledCount++;
+                        log.info("Auto-cancelled complaint refund right for order {} (24h passed, customer not contactable)", order.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing auto-cancel for order {}: {}", order.getId(), e.getMessage());
+                }
+            }
+
+            log.info("Auto-cancelled {} expired complaints", cancelledCount);
+        } catch (Exception e) {
+            log.error("Error in autoCancelExpiredComplaints scheduled task: {}", e.getMessage(), e);
+        }
     }
 
 }

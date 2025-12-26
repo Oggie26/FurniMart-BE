@@ -4,7 +4,8 @@ public enum DeliveryConfirmationStatus {
     DELIVERED,
     CONFIRMED,
     DISPUTED,
-    CANCELLED
+    CANCELLED,
+    PENDING_REVIEW
 }
 
 

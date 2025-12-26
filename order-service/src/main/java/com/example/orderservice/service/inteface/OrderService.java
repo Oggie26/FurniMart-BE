@@ -60,7 +60,9 @@ public interface OrderService {
 
     boolean canRefundDeposit(Long orderId, LocalDateTime deliveryDate);
 
-    void refundDeposit(Long orderId);
+    void refundPayment(Long orderId, boolean isStoreError);
+
+    void refundDeposit(Long orderId); // Deprecated: Use refundPayment instead
 
     void markCustomerRefused(Long orderId, Boolean contactable);
 

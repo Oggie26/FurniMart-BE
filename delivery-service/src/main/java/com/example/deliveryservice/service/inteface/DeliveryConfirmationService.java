@@ -1,6 +1,7 @@
 package com.example.deliveryservice.service.inteface;
 
 import com.example.deliveryservice.request.DeliveryConfirmationRequest;
+import com.example.deliveryservice.request.IncidentReportRequest;
 import com.example.deliveryservice.request.QRCodeScanRequest;
 import com.example.deliveryservice.response.DeliveryConfirmationResponse;
 
@@ -25,6 +26,8 @@ public interface DeliveryConfirmationService {
     List<DeliveryConfirmationResponse> getScannedConfirmations();
 
     List<DeliveryConfirmationResponse> getUnscannedConfirmations();
+
+    DeliveryConfirmationResponse reportIncident(Long confirmationId, IncidentReportRequest request);
 }
 
 

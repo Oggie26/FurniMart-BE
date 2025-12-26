@@ -300,4 +300,81 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         @Param("endDate") java.util.Date endDate);
 
         Page<Order> findByCreatedByOrderByCreatedAtDesc(String createdBy, Pageable pageable);
+
+        // Refund queries for net revenue calculation
+        @Query("""
+            SELECT COALESCE(SUM(p.total), 0)
+            FROM Payment p
+            JOIN p.order o
+            WHERE o.isDeleted = false
+              AND o.status IN :statuses
+              AND p.paymentStatus = 'REFUNDED'
+        """)
+        Double getTotalRefundedAmountByStatuses(
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses);
+
+        @Query("""
+            SELECT COALESCE(SUM(p.total), 0)
+            FROM Payment p
+            JOIN p.order o
+            WHERE o.isDeleted = false
+              AND o.storeId = :storeId
+              AND o.status IN :statuses
+              AND p.paymentStatus = 'REFUNDED'
+        """)
+        Double getTotalRefundedAmountByStoreAndStatuses(
+            @Param("storeId") String storeId,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses);
+
+        @Query("""
+            SELECT COALESCE(SUM(p.total), 0)
+            FROM Payment p
+            JOIN p.order o
+            WHERE o.isDeleted = false
+              AND o.storeId = :storeId
+              AND o.status IN :statuses
+              AND o.orderDate >= :startDate
+              AND o.orderDate <= :endDate
+              AND p.paymentStatus = 'REFUNDED'
+        """)
+        Double getTotalRefundedAmountByStoreAndStatusesAndDateRange(
+            @Param("storeId") String storeId,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate);
+
+        @Query("""
+            SELECT COALESCE(SUM(p.total), 0)
+            FROM Payment p
+            JOIN p.order o
+            WHERE o.isDeleted = false
+              AND o.createdBy = :createdBy
+              AND o.status IN :statuses
+              AND o.orderDate >= :startDate
+              AND o.orderDate <= :endDate
+              AND p.paymentStatus = 'REFUNDED'
+        """)
+        Double getTotalRefundedAmountByCreatedByAndDateRange(
+            @Param("createdBy") String createdBy,
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate);
+
+        @Query("""
+            SELECT DATE(o.orderDate) as date,
+                   COALESCE(SUM(p.total), 0) as refundedAmount
+            FROM Payment p
+            JOIN p.order o
+            WHERE o.isDeleted = false
+              AND o.status IN :statuses
+              AND o.orderDate >= :startDate
+              AND o.orderDate <= :endDate
+              AND p.paymentStatus = 'REFUNDED'
+            GROUP BY DATE(o.orderDate)
+            ORDER BY DATE(o.orderDate) ASC
+        """)
+        List<Object[]> getRefundedAmountChartData(
+            @Param("statuses") List<com.example.orderservice.enums.EnumProcessOrder> statuses,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate);
 }
