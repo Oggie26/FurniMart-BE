@@ -763,14 +763,14 @@ public class InventoryServiceImpl implements InventoryService {
 
                     int release = Math.min(reserved, remaining);
 
-                    stockItem.setQuantity(stockItem.getQuantity() + release);
+                    // Fix BUG: Chỉ giảm reserved quantity, KHÔNG cộng lại quantity thực tế
+                    // (Vì khi reserve chỉ đánh dấu reserved chứ chưa trừ kho)
                     stockItem.setReservedQuantity(reserved - release);
 
                     remaining -= release;
 
-                    log.info("♻️ Trả lại {} cho stockItem {} (quantity: {} -> {}, reserved: {} -> {})",
+                    log.info("♻️ Un-reserve {} cho stockItem {} (reserved: {} -> {})",
                             release, stockItem.getId(),
-                            stockItem.getQuantity() - release, stockItem.getQuantity(),
                             reserved, stockItem.getReservedQuantity());
                 }
 
@@ -1076,7 +1076,6 @@ public class InventoryServiceImpl implements InventoryService {
         return alerts;
     }
 
-
     private Inventory createInventory(String warehouseId, EnumTypes type, EnumPurpose purpose, String note) {
         Warehouse warehouse = warehouseRepository.findByIdAndIsDeletedFalse(warehouseId)
                 .orElseThrow(() -> new AppException(ErrorCode.WAREHOUSE_NOT_FOUND));
@@ -1281,19 +1280,18 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public void cancelInventoryTicket(Long ticketId) {
-        log.info("🔍 Bắt đầu hủy phiếu giữ hàng lẻ: {}", ticketId);
 
         Inventory ticket = inventoryRepository.findById(ticketId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVENTORY_NOT_FOUND));
 
         if (ticket.getTransferStatus() != TransferStatus.FINISHED) {
-            log.warn("⛔ Không thể hủy ticket {} vì trạng thái không phải FINISHED (status: {})",
+            log.warn(" Không thể hủy ticket {} vì trạng thái không phải FINISHED (status: {})",
                     ticket.getId(), ticket.getTransferStatus());
             return;
         }
 
         String warehouseId = ticket.getWarehouse().getId();
-        log.info("📦 Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
+        log.info(" Rollback ticket {} tại kho {}", ticket.getId(), warehouseId);
 
         for (InventoryItem ticketItem : ticket.getInventoryItems()) {
             String productColorId = ticketItem.getProductColorId();
@@ -1319,14 +1317,14 @@ public class InventoryServiceImpl implements InventoryService {
 
                 remaining -= release;
 
-                log.info("♻️ Trả lại {} cho stockItem {} (quantity: {}, reserved: {})",
+                log.info("♻Trả lại {} cho stockItem {} (quantity: {}, reserved: {})",
                         release, stockItem.getId(), stockItem.getQuantity(), stockItem.getReservedQuantity());
             }
 
             inventoryItemRepository.saveAll(stockItems);
 
             if (remaining > 0) {
-                log.error("❌ Hủy phiếu thiếu {} cho productColor {}", remaining, productColorId);
+                log.error(" Hủy phiếu thiếu {} cho productColor {}", remaining, productColorId);
             }
         }
 
