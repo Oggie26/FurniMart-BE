@@ -282,7 +282,7 @@ public class OrderServiceImpl implements OrderService {
             log.error("Không thể tạo delivery assignment cho order {}: {}", order.getId(), e.getMessage());
         }
 
-        try{
+        try {
             kafkaTemplate.send("order-created-topic", event)
                     .whenComplete((result, ex) -> {
                         if (ex != null) {
@@ -295,7 +295,7 @@ public class OrderServiceImpl implements OrderService {
             log.error("Failed to send Kafka event for user {}, error: {}", userData.getFullName(), e.getMessage());
         }
 
-        return mapToResponse(savedOrder);   
+        return mapToResponse(savedOrder);
     }
 
     @Override
@@ -308,12 +308,12 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void cancelOrder(CancelOrderRequest cancelOrderRequest) {
-
-        Order order = orderRepository.findByIdAndIsDeletedFalse(cancelOrderRequest.getOrderId())
+        Order order = orderRepository.findByIdWithLock(cancelOrderRequest.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
         if (order.getStatus() == EnumProcessOrder.CANCELLED) {
-            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+            log.warn("Order {} đã được cancel trước đó. Bỏ qua request này để đảm bảo idempotency.", order.getId());
+            return;
         }
 
         order.setStatus(EnumProcessOrder.CANCELLED);
@@ -327,10 +327,11 @@ public class OrderServiceImpl implements OrderService {
             order.setProcessOrders(new ArrayList<>());
         }
         order.getProcessOrders().add(process);
-        UserResponse user = safeGetUser(order.getUserId());
 
         processOrderRepository.save(process);
         orderRepository.save(order);
+
+        UserResponse user = safeGetUser(order.getUserId());
 
         try {
             inventoryClient.rollbackInventory(cancelOrderRequest.getOrderId());
@@ -341,23 +342,28 @@ public class OrderServiceImpl implements OrderService {
         }
 
         if (user != null) {
-            ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
-            if (wallet != null && wallet.getData() != null) {
-                Double amountToRefund = 0.0;
-                if (PaymentMethod.VNPAY.equals(order.getPayment().getPaymentMethod())) {
-                    amountToRefund = order.getTotal();
-                } else {
-                    amountToRefund = order.getDepositPrice();
-                }
+            try {
+                ApiResponse<WalletResponse> wallet = userClient.getWalletByUserId(user.getId());
+                if (wallet != null && wallet.getData() != null) {
+                    Double amountToRefund = 0.0;
+                    if (PaymentMethod.VNPAY.equals(order.getPayment().getPaymentMethod())) {
+                        amountToRefund = order.getTotal();
+                    } else {
+                        amountToRefund = order.getDepositPrice();
+                    }
 
-                if (amountToRefund != null && amountToRefund > 0) {
-                    userClient.refundToWallet(
-                            wallet.getData().getId(),
-                            amountToRefund,
-                            cancelOrderRequest.getReason(),
-                            String.valueOf(cancelOrderRequest.getOrderId()),
-                            "FURNIMART_INTERNAL_KEY");
+                    if (amountToRefund != null && amountToRefund > 0) {
+                        userClient.refundToWallet(
+                                wallet.getData().getId(),
+                                amountToRefund,
+                                cancelOrderRequest.getReason(),
+                                String.valueOf(cancelOrderRequest.getOrderId()),
+                                "FURNIMART_INTERNAL_KEY");
+                        log.info("Refunded {} to wallet for order {}", amountToRefund, order.getId());
+                    }
                 }
+            } catch (Exception e) {
+                log.error("Failed to refund to wallet for order {}: {}", order.getId(), e.getMessage());
             }
         }
 
@@ -709,7 +715,8 @@ public class OrderServiceImpl implements OrderService {
                             java.io.File pdfFile = new java.io.File(order.getPdfFilePath());
                             hasPdfFile = pdfFile.exists();
                         } catch (Exception e) {
-                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(), e.getMessage());
+                            log.warn("Error checking PDF file existence for order {}: {}", order.getId(),
+                                    e.getMessage());
                         }
                     }
                     // Set hasPdfFile vào response
