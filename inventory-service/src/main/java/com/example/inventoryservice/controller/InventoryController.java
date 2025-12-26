@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,7 @@ public class InventoryController {
 
         @Operation(summary = "Tạo hoặc Cập nhật phiếu kho")
         @PostMapping
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<InventoryResponse> createOrUpdateInventory(
                         @Valid @RequestBody InventoryRequest request) {
 
@@ -53,6 +55,7 @@ public class InventoryController {
 
         @Operation(summary = "Thêm Chi Tiết Item vào Phiếu Kho")
         @PostMapping("/inventory/{inventoryId}/items")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<InventoryItemResponse> addInventoryItem(
                         @PathVariable Long inventoryId,
                         @Valid @RequestBody InventoryItemRequest request) {
@@ -72,6 +75,7 @@ public class InventoryController {
 
         @Operation(summary = "Nhập kho (Tạo phiếu IMPORT)")
         @PostMapping("/{warehouseId}/import")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<InventoryResponse> importStock(
                         @PathVariable String warehouseId,
                         @Valid @RequestBody InventoryItemRequest request) {
@@ -87,6 +91,7 @@ public class InventoryController {
 
         @Operation(summary = "Xuất kho (Tạo phiếu EXPORT)")
         @PostMapping("/{warehouseId}/export")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<InventoryResponse> exportStock(
                         @PathVariable String warehouseId,
                         @Valid @RequestBody InventoryItemRequest request) {
@@ -137,6 +142,7 @@ public class InventoryController {
 
         @Operation(summary = "Chuyển kho (Tạo phiếu TRANSFER)")
         @PostMapping("/transfer")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<Void> transferStock(
                         @Valid @RequestBody TransferStockRequest request) {
 
@@ -243,6 +249,7 @@ public class InventoryController {
 
         @Operation(summary = "Duyệt hoặc Từ chối phiếu chuyển kho")
         @PostMapping("/transfer/{inventoryId}/approve")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
         public ApiResponse<InventoryResponse> approveTransfer(
                         @PathVariable String inventoryId,
                         @RequestParam TransferStatus transferStatus) {

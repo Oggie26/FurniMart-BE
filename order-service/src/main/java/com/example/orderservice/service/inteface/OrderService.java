@@ -4,10 +4,12 @@ import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
+import com.example.orderservice.request.ComplaintRequest;
 import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.response.ProcessOrderResponse;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface OrderService {
@@ -51,5 +53,12 @@ public interface OrderService {
 
     PageResponse<OrderResponse> getMySales(int page, int size);
 
+    OrderResponse processComplaint(Long orderId, ComplaintRequest request);
+
+    boolean canRefundDeposit(Long orderId, LocalDateTime deliveryDate);
+
+    void refundDeposit(Long orderId);
+
+    void markCustomerRefused(Long orderId, Boolean contactable);
 
 }

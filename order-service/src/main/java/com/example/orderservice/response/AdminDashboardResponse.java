@@ -17,5 +17,7 @@ public class AdminDashboardResponse {
     private Long totalUsers;
     private List<TopProductResponse> topProducts;
     private List<RevenueChartData> revenueChart;
+    private RevenueByBranchResponse revenueByBranch;
+    private DeliveryPerformanceResponse deliveryPerformance;
 }
 

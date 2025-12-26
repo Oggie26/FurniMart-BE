@@ -98,4 +98,23 @@ public class Order extends AbstractEntity {
 
     @Column(name = "created_by")
     private String createdBy;
+
+    @Column(name = "complaint_reason", columnDefinition = "TEXT")
+    private String complaintReason;
+
+    @Column(name = "complaint_date")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date complaintDate;
+
+    @Column(name = "is_store_error")
+    private Boolean isStoreError;
+
+    @Column(name = "customer_refused")
+    private Boolean customerRefused;
+
+    @Column(name = "customer_contactable")
+    private Boolean customerContactable;
+
+    @Column(name = "complaint_evidence_photos", columnDefinition = "TEXT")
+    private String complaintEvidencePhotos; // JSON array of photo URLs
 }
