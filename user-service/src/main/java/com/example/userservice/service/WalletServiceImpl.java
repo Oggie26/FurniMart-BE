@@ -758,4 +758,32 @@ public class WalletServiceImpl implements WalletService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransactionResponse> getPaymentTransactions(Pageable pageable) {
+        Page<WalletTransaction> transactions = transactionRepository.findByTypeAndIsDeletedFalseOrderByCreatedAtDesc(
+                WalletTransactionType.PAYMENT, pageable);
+
+        return transactions.map(transaction -> {
+            Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(transaction.getWalletId()).orElse(null);
+            return mapToTransactionResponse(transaction, wallet);
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransactionResponse> getEscrowTransactions(Pageable pageable) {
+        List<WalletTransactionType> escrowTypes = List.of(
+                WalletTransactionType.ESCROW_DEPOSIT,
+                WalletTransactionType.ESCROW_WITHDRAWAL);
+
+        Page<WalletTransaction> transactions = transactionRepository.findByTypeInAndIsDeletedFalseOrderByCreatedAtDesc(
+                escrowTypes, pageable);
+
+        return transactions.map(transaction -> {
+            Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(transaction.getWalletId()).orElse(null);
+            return mapToTransactionResponse(transaction, wallet);
+        });
+    }
 }

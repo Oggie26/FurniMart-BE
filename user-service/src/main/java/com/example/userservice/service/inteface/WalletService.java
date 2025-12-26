@@ -59,4 +59,8 @@ public interface WalletService {
 
         void validateWalletAccess(String walletId);
 
+        Page<WalletTransactionResponse> getPaymentTransactions(Pageable pageable);
+
+        Page<WalletTransactionResponse> getEscrowTransactions(Pageable pageable);
+
 }

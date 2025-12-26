@@ -8,5 +8,7 @@ public enum WalletTransactionType {
     PAYMENT,
     REFUND,
     BONUS,
-    PENALTY
+    PENALTY,
+    ESCROW_DEPOSIT,
+    ESCROW_WITHDRAWAL
 }
