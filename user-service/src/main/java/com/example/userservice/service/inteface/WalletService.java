@@ -3,6 +3,7 @@ package com.example.userservice.service.inteface;
 import com.example.userservice.request.WalletRequest;
 import com.example.userservice.request.WalletTransactionRequest;
 import com.example.userservice.response.WalletResponse;
+import com.example.userservice.response.WalletTransactionAdminResponse;
 import com.example.userservice.response.WalletTransactionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -63,5 +64,5 @@ public interface WalletService {
 
         Page<WalletTransactionResponse> getEscrowTransactions(Pageable pageable);
 
-        List<WalletTransactionResponse> getAllTransactions();
+        List<WalletTransactionAdminResponse> getAllTransactions();
 }

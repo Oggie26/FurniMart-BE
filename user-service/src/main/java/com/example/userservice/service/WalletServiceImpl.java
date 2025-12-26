@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.example.userservice.request.WalletRequest;
 import com.example.userservice.request.WalletTransactionRequest;
 import com.example.userservice.response.WalletResponse;
+import com.example.userservice.response.WalletTransactionAdminResponse;
 import com.example.userservice.response.WalletTransactionResponse;
 import com.example.userservice.service.inteface.WalletService;
 import lombok.RequiredArgsConstructor;
@@ -714,6 +715,27 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
+    private WalletTransactionAdminResponse mapToTransactionAdminResponse(WalletTransaction transaction, Wallet wallet,
+            User user) {
+        return WalletTransactionAdminResponse.builder()
+                .id(transaction.getId())
+                .code(transaction.getCode())
+                .balanceBefore(transaction.getBalanceBefore())
+                .balanceAfter(transaction.getBalanceAfter())
+                .amount(transaction.getAmount())
+                .status(transaction.getStatus())
+                .type(transaction.getType())
+                .description(transaction.getDescription())
+                .referenceId(transaction.getReferenceId())
+                .walletId(transaction.getWalletId())
+                .walletCode(wallet != null ? wallet.getCode() : null)
+                .userId(user != null ? user.getId() : (wallet != null ? wallet.getUserId() : null))
+                .userName(user != null ? user.getFullName() : null)
+                .email(user != null && user.getAccount() != null ? user.getAccount().getEmail() : null)
+                .createdAt(transaction.getCreatedAt())
+                .build();
+    }
+
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction transaction, Wallet wallet) {
         return WalletTransactionResponse.builder()
                 .id(transaction.getId())
@@ -789,7 +811,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WalletTransactionResponse> getAllTransactions() {
+    public List<WalletTransactionAdminResponse> getAllTransactions() {
         List<WalletTransaction> transactions = transactionRepository.findAll();
 
         return transactions.stream()
@@ -797,7 +819,11 @@ public class WalletServiceImpl implements WalletService {
                 .sorted((t1, t2) -> t2.getCreatedAt().compareTo(t1.getCreatedAt()))
                 .map(transaction -> {
                     Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(transaction.getWalletId()).orElse(null);
-                    return mapToTransactionResponse(transaction, wallet);
+                    User user = null;
+                    if (wallet != null) {
+                        user = userRepository.findByIdAndIsDeletedFalse(wallet.getUserId()).orElse(null);
+                    }
+                    return mapToTransactionAdminResponse(transaction, wallet, user);
                 })
                 .collect(Collectors.toList());
     }
