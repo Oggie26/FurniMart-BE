@@ -132,4 +132,14 @@ public class Order extends AbstractEntity {
 
     @Column(name = "review_notes", columnDefinition = "TEXT")
     private String reviewNotes;
+
+    @Column(name = "incident_reported_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date incidentReportedAt;
+
+    @Column(name = "incident_reported_by")
+    private String incidentReportedBy;
+
+    @Column(name = "incident_photos", columnDefinition = "TEXT")
+    private String incidentPhotos; // JSON array of photo URLs
 }

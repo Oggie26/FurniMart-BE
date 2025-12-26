@@ -71,6 +71,8 @@ public enum ErrorCode {
     COMPLAINT_NOT_PENDING_REVIEW(1237, "Complaint không ở trạng thái PENDING_REVIEW", HttpStatus.BAD_REQUEST),
     COMPLAINT_ALREADY_REVIEWED(1238, "Complaint đã được review rồi", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED_TO_REVIEW(1239, "Không có quyền review complaint", HttpStatus.FORBIDDEN),
+    INCIDENT_ALREADY_REPORTED(1244, "Sự cố đã được báo trước đó", HttpStatus.BAD_REQUEST),
+    PENALTY_CALCULATION_ERROR(1245, "Lỗi tính toán phí phạt", HttpStatus.INTERNAL_SERVER_ERROR),
     
     // Warranty claim validation errors
     INVALID_REPAIR_COST(1240, "Repair cost must be greater than 0", HttpStatus.BAD_REQUEST),

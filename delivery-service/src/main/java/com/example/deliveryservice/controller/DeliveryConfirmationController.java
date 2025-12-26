@@ -1,6 +1,7 @@
 package com.example.deliveryservice.controller;
 
 import com.example.deliveryservice.request.DeliveryConfirmationRequest;
+import com.example.deliveryservice.request.IncidentReportRequest;
 import com.example.deliveryservice.request.QRCodeScanRequest;
 import com.example.deliveryservice.response.ApiResponse;
 import com.example.deliveryservice.response.DeliveryConfirmationResponse;
@@ -196,6 +197,27 @@ public class DeliveryConfirmationController {
                                 .status(HttpStatus.OK.value())
                                 .message("Unscanned delivery confirmations retrieved successfully")
                                 .data(deliveryConfirmationService.getUnscannedConfirmations())
+                                .build();
+        }
+
+        @PutMapping("/{confirmationId}/report-incident")
+        @Operation(summary = "Report incident during delivery", description = "Delivery staff can report an incident during delivery (customer refused, product defect, etc.). " +
+                        "This will set the delivery confirmation status to PENDING_REVIEW and update the order accordingly. Only DELIVERY role can use this API.")
+        @ApiResponses(value = {
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Incident reported successfully"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid request - Incident already reported or confirmation does not belong to this delivery staff"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Delivery confirmation not found"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthenticated"),
+                        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Access denied - Only DELIVERY role is allowed")
+        })
+        @PreAuthorize("hasRole('DELIVERY')")
+        public ApiResponse<DeliveryConfirmationResponse> reportIncident(
+                        @PathVariable Long confirmationId,
+                        @Valid @RequestBody IncidentReportRequest request) {
+                return ApiResponse.<DeliveryConfirmationResponse>builder()
+                                .status(HttpStatus.OK.value())
+                                .message("Sự cố đã được ghi nhận. Đơn hàng chuyển sang trạng thái chờ xem xét.")
+                                .data(deliveryConfirmationService.reportIncident(confirmationId, request))
                                 .build();
         }
 }

@@ -19,5 +19,7 @@ public class ComplaintReviewRequest {
     private Boolean approved;
 
     private String reviewNotes; // Optional: Admin review notes
+
+    private Boolean applyPenalty; // Optional: For Trường hợp 2 + VNPAY (penalty deduction)
 }
 

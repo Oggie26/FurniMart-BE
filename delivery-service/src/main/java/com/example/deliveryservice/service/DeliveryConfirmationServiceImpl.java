@@ -12,6 +12,7 @@ import com.example.deliveryservice.feign.OrderClient;
 import com.example.deliveryservice.repository.DeliveryAssignmentRepository;
 import com.example.deliveryservice.repository.DeliveryConfirmationRepository;
 import com.example.deliveryservice.request.DeliveryConfirmationRequest;
+import com.example.deliveryservice.request.IncidentReportRequest;
 import com.example.deliveryservice.request.QRCodeScanRequest;
 import com.example.deliveryservice.response.ApiResponse;
 import com.example.deliveryservice.response.DeliveryConfirmationResponse;
@@ -246,6 +247,75 @@ public class DeliveryConfirmationServiceImpl implements DeliveryConfirmationServ
             log.error("Error fetching QR code for order {}: {}", orderId, e.getMessage());
             return "QR_ERROR_" + orderId;
         }
+    }
+
+    @Override
+    @Transactional
+    public DeliveryConfirmationResponse reportIncident(Long confirmationId, IncidentReportRequest request) {
+        log.info("Reporting incident for delivery confirmation: {}", confirmationId);
+
+        DeliveryConfirmation confirmation = deliveryConfirmationRepository.findById(confirmationId)
+                .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND));
+        
+        if (confirmation.getIsDeleted()) {
+            throw new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND);
+        }
+
+        // Check if already reported
+        if (confirmation.getStatus() == DeliveryConfirmationStatus.PENDING_REVIEW) {
+            log.warn("Incident already reported for confirmation: {}", confirmationId);
+            throw new AppException(ErrorCode.INVALID_REQUEST); // Will add specific error code later
+        }
+
+        // Get current delivery staff ID
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String deliveryStaffId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof String) {
+            deliveryStaffId = authentication.getName();
+        }
+
+        if (deliveryStaffId == null || !deliveryStaffId.equals(confirmation.getDeliveryStaffId())) {
+            log.warn("Delivery staff {} tried to report incident for confirmation {} assigned to {}",
+                    deliveryStaffId, confirmationId, confirmation.getDeliveryStaffId());
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        // Update delivery confirmation status
+        confirmation.setStatus(DeliveryConfirmationStatus.PENDING_REVIEW);
+        deliveryConfirmationRepository.save(confirmation);
+
+        // Note: Incident photos and details will be stored in Order entity when customer creates complaint
+        // or when admin reviews. For now, we just mark the delivery confirmation as PENDING_REVIEW.
+
+        // Call order service to update order with incident info
+        try {
+            // Mark customer as refused if applicable
+            if (Boolean.TRUE.equals(request.getCustomerRefused())) {
+                Boolean contactable = request.getCustomerContactable() != null 
+                    ? request.getCustomerContactable() 
+                    : true; // Default to true if not provided
+                
+                orderClient.markCustomerRefused(
+                    confirmation.getOrderId(),
+                    contactable
+                );
+                log.info("Marked customer as refused for order: {}", confirmation.getOrderId());
+            }
+
+            // Update order with incident information via internal API
+            // Note: We'll need to add an internal endpoint to update incident fields
+            // For now, we'll rely on the markCustomerRefused call and the order's complaintStatus
+            // The incident fields will be updated when customer creates complaint or admin reviews
+        } catch (Exception e) {
+            log.error("Failed to update order with incident information for order {}: {}", 
+                    confirmation.getOrderId(), e.getMessage());
+            // Don't throw - incident is still reported
+        }
+
+        log.info("Incident reported successfully for delivery confirmation: {}. Status set to PENDING_REVIEW.", 
+                confirmationId);
+
+        return toDeliveryConfirmationResponse(confirmation);
     }
 
     private DeliveryConfirmationResponse toDeliveryConfirmationResponse(DeliveryConfirmation confirmation) {
