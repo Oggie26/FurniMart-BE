@@ -12,6 +12,7 @@ import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.ApiResponse;
 import com.example.orderservice.response.UserResponse;
 import com.example.orderservice.service.PDFService;
+import com.example.orderservice.service.inteface.OrderService;
 import java.util.ArrayList;
 import java.util.Date;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class InternalOrderController {
     private final PDFService pdfService;
     private final UserClient userClient;
     private final ProcessOrderRepository processOrderRepository;
+    private final OrderService orderService;
 
     @PostMapping("/{orderId}/generate-pdf")
     public ApiResponse<String> generatePDF(@PathVariable Long orderId) {
@@ -160,5 +162,20 @@ public class InternalOrderController {
             log.warn("Error getting address {}: {}", addressId, e.getMessage());
         }
         return null;
+    }
+
+    @PutMapping("/{orderId}/mark-customer-refused")
+    public ApiResponse<Void> markCustomerRefused(
+            @PathVariable Long orderId,
+            @RequestParam(value = "contactable", required = false) Boolean contactable) {
+        log.info("Internal API: Marking customer as refused for order: {}, contactable: {}", orderId, contactable);
+        
+        orderService.markCustomerRefused(orderId, contactable);
+        
+        return ApiResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Customer marked as refused")
+                .data(null)
+                .build();
     }
 }

@@ -9,11 +9,14 @@ import com.example.orderservice.feign.*;
 import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
+import com.example.orderservice.request.ComplaintRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.response.WalletResponse;
 import com.example.orderservice.service.inteface.CartService;
 import com.example.orderservice.service.inteface.OrderService;
 import com.example.orderservice.service.inteface.WarrantyService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -28,6 +31,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -61,6 +66,7 @@ public class OrderServiceImpl implements OrderService {
     private final WarrantyService warrantyService;
     @SuppressWarnings("unused")
     private final VoucherRepository voucherRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -775,6 +781,18 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        // Deserialize complaint evidence photos from JSON string
+        List<String> complaintEvidencePhotos = null;
+        if (order.getComplaintEvidencePhotos() != null && !order.getComplaintEvidencePhotos().isEmpty()) {
+            try {
+                complaintEvidencePhotos = objectMapper.readValue(order.getComplaintEvidencePhotos(), 
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+            } catch (JsonProcessingException e) {
+                log.warn("Error deserializing complaint evidence photos for order {}: {}", 
+                        order.getId(), e.getMessage());
+            }
+        }
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .user(safeGetUser(order.getUserId()) != null ? safeGetUser(order.getUserId()) : null)
@@ -835,6 +853,12 @@ public class OrderServiceImpl implements OrderService {
                 .depositPrice(order.getDepositPrice())
                 .orderType(order.getOrderType())
                 .warrantyClaimId(order.getWarrantyClaimId())
+                .complaintReason(order.getComplaintReason())
+                .complaintDate(order.getComplaintDate())
+                .isStoreError(order.getIsStoreError())
+                .customerRefused(order.getCustomerRefused())
+                .customerContactable(order.getCustomerContactable())
+                .complaintEvidencePhotos(complaintEvidencePhotos)
                 .build();
     }
 
@@ -1183,6 +1207,191 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public PageResponse<OrderResponse> getMySales(int page, int size) {
         return null;
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse processComplaint(Long orderId, ComplaintRequest request) {
+        log.info("Processing complaint for order: {}", orderId);
+
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Lấy deliveryDate từ DeliveryConfirmation
+        DeliveryConfirmationResponse deliveryConfirmation = getDeliveryConfirmationResponse(orderId);
+        if (deliveryConfirmation == null || deliveryConfirmation.getDeliveryDate() == null) {
+            throw new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND);
+        }
+
+        LocalDateTime deliveryDate = deliveryConfirmation.getDeliveryDate();
+        Date complaintDate = new Date();
+
+        // Serialize hình ảnh bằng chứng thành JSON string
+        String complaintEvidencePhotosJson = null;
+        if (request.getComplaintEvidencePhotos() != null && !request.getComplaintEvidencePhotos().isEmpty()) {
+            try {
+                complaintEvidencePhotosJson = objectMapper.writeValueAsString(request.getComplaintEvidencePhotos());
+            } catch (JsonProcessingException e) {
+                log.error("Error serializing complaint evidence photos for order {}: {}", orderId, e.getMessage());
+            }
+        }
+
+        // Lưu thông tin khiếu nại vào Order
+        order.setComplaintReason(request.getComplaintReason());
+        order.setComplaintDate(complaintDate);
+        order.setIsStoreError(request.getErrorType() == ComplaintErrorType.STORE_ERROR);
+        order.setCustomerRefused(request.getCustomerRefused());
+        order.setComplaintEvidencePhotos(complaintEvidencePhotosJson);
+        // Mặc định customerContactable = true, có thể cập nhật sau bởi admin/staff
+        if (order.getCustomerContactable() == null) {
+            order.setCustomerContactable(true);
+        }
+
+        orderRepository.save(order);
+
+        // Kiểm tra điều kiện hoàn tiền
+        if (canRefundDeposit(orderId, deliveryDate)) {
+            log.info("All conditions met for deposit refund. Processing refund for order: {}", orderId);
+            try {
+                refundDeposit(orderId);
+                log.info("Deposit refund processed successfully for order: {}", orderId);
+            } catch (Exception e) {
+                log.error("Failed to refund deposit for order {}: {}", orderId, e.getMessage());
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+            }
+        } else {
+            log.info("Deposit refund conditions not met for order: {}", orderId);
+        }
+
+        return mapToResponse(orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND)));
+    }
+
+    @Override
+    public boolean canRefundDeposit(Long orderId, LocalDateTime deliveryDate) {
+        log.info("Checking deposit refund conditions for order: {}", orderId);
+
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Kiểm tra 1: Lỗi thuộc về cửa hàng
+        if (order.getIsStoreError() == null || !order.getIsStoreError()) {
+            log.warn("Order {}: Not a store error", orderId);
+            return false;
+        }
+
+        // Kiểm tra 2: Khách từ chối nhận hoặc trả hàng
+        boolean customerRefusedOrReturned = Boolean.TRUE.equals(order.getCustomerRefused()) ||
+                EnumProcessOrder.RETURNED.equals(order.getStatus());
+        if (!customerRefusedOrReturned) {
+            log.warn("Order {}: Customer did not refuse or return", orderId);
+            return false;
+        }
+
+        // Kiểm tra 3: Khiếu nại trong 24h từ deliveryDate
+        if (order.getComplaintDate() == null) {
+            log.warn("Order {}: No complaint date", orderId);
+            return false;
+        }
+
+        LocalDateTime complaintDateTime = order.getComplaintDate().toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+        LocalDateTime deadline = deliveryDate.plusHours(24);
+
+        if (complaintDateTime.isAfter(deadline)) {
+            log.warn("Order {}: Complaint filed after 24 hours. DeliveryDate: {}, ComplaintDate: {}, Deadline: {}",
+                    orderId, deliveryDate, complaintDateTime, deadline);
+            return false;
+        }
+
+        // Kiểm tra 4: Có thể liên lạc với khách
+        if (order.getCustomerContactable() == null || !order.getCustomerContactable()) {
+            log.warn("Order {}: Customer not contactable", orderId);
+            return false;
+        }
+
+        log.info("All deposit refund conditions met for order: {}", orderId);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void refundDeposit(Long orderId) {
+        log.info("Processing deposit refund for order: {}", orderId);
+
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Kiểm tra có tiền cọc
+        if (order.getDepositPrice() == null || order.getDepositPrice() <= 0) {
+            log.warn("Order {} has no deposit to refund", orderId);
+            throw new AppException(ErrorCode.NO_DEPOSIT_TO_REFUND);
+        }
+
+        Payment payment = order.getPayment();
+        if (payment == null) {
+            log.warn("Order {} has no payment record", orderId);
+            throw new AppException(ErrorCode.PAYMENT_NOT_FOUND);
+        }
+
+        // Kiểm tra đã hoàn tiền chưa
+        if (PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
+            log.warn("Order {} deposit already refunded", orderId);
+            throw new AppException(ErrorCode.DEPOSIT_ALREADY_REFUNDED);
+        }
+
+        // Lấy wallet của user
+        ApiResponse<WalletResponse> walletResponse = userClient.getWalletByUserId(order.getUserId());
+        if (walletResponse == null || walletResponse.getData() == null) {
+            throw new RuntimeException("Wallet not found for user " + order.getUserId());
+        }
+
+        // Cập nhật payment status
+        payment.setPaymentStatus(PaymentStatus.REFUNDING);
+        paymentRepository.save(payment);
+
+        // Hoàn tiền cọc
+        try {
+            String referenceId = "DEPOSIT-REFUND-" + orderId + "-" + UUID.randomUUID();
+            userClient.refundToWallet(
+                    walletResponse.getData().getId(),
+                    order.getDepositPrice(),
+                    "Hoàn tiền cọc đơn hàng " + orderId + " - " + order.getComplaintReason(),
+                    referenceId,
+                    "FURNIMART_INTERNAL_KEY");
+
+            payment.setPaymentStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(payment);
+
+            log.info("Successfully refunded deposit {} to wallet for user {} (order: {}, ref: {})",
+                    order.getDepositPrice(), order.getUserId(), orderId, referenceId);
+        } catch (Exception e) {
+            log.error("Failed to refund deposit to wallet for order {}: {}", orderId, e.getMessage());
+            payment.setPaymentStatus(PaymentStatus.REFUNDING);
+            paymentRepository.save(payment);
+            throw new RuntimeException("Deposit refund failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void markCustomerRefused(Long orderId, Boolean contactable) {
+        log.info("Marking customer as refused for order: {}, contactable: {}", orderId, contactable);
+
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        order.setCustomerRefused(true);
+        if (contactable != null) {
+            order.setCustomerContactable(contactable);
+        } else {
+            // Default to true if not specified
+            order.setCustomerContactable(true);
+        }
+
+        orderRepository.save(order);
+        log.info("Customer marked as refused for order: {}", orderId);
     }
 
 }

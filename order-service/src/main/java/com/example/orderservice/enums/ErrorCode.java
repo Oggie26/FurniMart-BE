@@ -60,6 +60,20 @@ public enum ErrorCode {
     WARRANTY_CLAIM_ALREADY_RESOLVED(1228, "Warranty claim has already been resolved", HttpStatus.BAD_REQUEST),
     CANNOT_CREATE_WARRANTY_ORDER(1229, "Cannot create order from warranty claim", HttpStatus.BAD_REQUEST),
     WARRANTY_CLAIM_PENDING_EXISTS(1230, "A pending warranty claim already exists for this order detail", HttpStatus.BAD_REQUEST),
+    
+    // Complaint and deposit refund related errors
+    COMPLAINT_TOO_LATE(1231, "Khiếu nại sau 24 giờ kể từ ngày giao hàng", HttpStatus.BAD_REQUEST),
+    NOT_STORE_ERROR(1232, "Không phải lỗi cửa hàng", HttpStatus.BAD_REQUEST),
+    CUSTOMER_NOT_REFUSED(1233, "Khách hàng không từ chối nhận hàng", HttpStatus.BAD_REQUEST),
+    CUSTOMER_NOT_CONTACTABLE(1234, "Không liên lạc được với khách hàng", HttpStatus.BAD_REQUEST),
+    DEPOSIT_ALREADY_REFUNDED(1235, "Tiền cọc đã được hoàn trả", HttpStatus.BAD_REQUEST),
+    NO_DEPOSIT_TO_REFUND(1236, "Không có tiền cọc để hoàn trả", HttpStatus.BAD_REQUEST),
+    
+    // Warranty claim validation errors
+    INVALID_REPAIR_COST(1237, "Repair cost must be greater than 0", HttpStatus.BAD_REQUEST),
+    INVALID_REFUND_AMOUNT(1238, "Refund amount must be greater than 0", HttpStatus.BAD_REQUEST),
+    INVALID_STATUS_TRANSITION(1239, "Invalid status transition", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_STORE_ACCESS(1240, "Unauthorized access to this store's warranty claim", HttpStatus.FORBIDDEN),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

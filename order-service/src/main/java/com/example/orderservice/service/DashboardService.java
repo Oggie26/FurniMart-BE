@@ -31,6 +31,7 @@ public class DashboardService {
     private final ProductClient productClient;
     private final InventoryClient inventoryClient;
     private final DeliveryClient deliveryClient;
+    private final AdminAnalyticsService adminAnalyticsService;
 
     // Statuses that count as completed/revenue-generating orders
     private static final List<EnumProcessOrder> COMPLETED_STATUSES = Arrays.asList(
@@ -74,12 +75,20 @@ public class DashboardService {
         // 5. Revenue Chart (last 30 days)
         List<RevenueChartData> revenueChart = getRevenueChart(30);
 
+        // 6. Revenue by Branch
+        RevenueByBranchResponse revenueByBranch = adminAnalyticsService.getRevenueByBranch();
+
+        // 7. Delivery Performance
+        DeliveryPerformanceResponse deliveryPerformance = adminAnalyticsService.getDeliveryPerformance();
+
         return AdminDashboardResponse.builder()
                 .totalRevenue(totalRevenue)
                 .totalActiveStores(totalActiveStores)
                 .totalUsers(totalUsers)
                 .topProducts(topProducts)
                 .revenueChart(revenueChart)
+                .revenueByBranch(revenueByBranch)
+                .deliveryPerformance(deliveryPerformance)
                 .build();
     }
 
