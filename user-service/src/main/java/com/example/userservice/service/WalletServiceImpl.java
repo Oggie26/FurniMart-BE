@@ -730,4 +730,32 @@ public class WalletServiceImpl implements WalletService {
                 .createdAt(transaction.getCreatedAt())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validateWalletAccess(String walletId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // Check for Admin/Staff roles
+        boolean isStaffOrAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_STAFF"));
+
+        if (isStaffOrAdmin) {
+            return;
+        }
+
+        Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(walletId)
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        String email = auth.getName();
+        User user = userRepository.findByEmailAndIsDeletedFalse(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!wallet.getUserId().equals(user.getId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
 }

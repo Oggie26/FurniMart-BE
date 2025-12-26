@@ -49,8 +49,9 @@ public class WalletController {
 
         @GetMapping("/{id}")
         @Operation(summary = "Get wallet by ID")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#id).userId == authentication.name")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
         public ApiResponse<WalletResponse> getWalletById(@PathVariable String id) {
+                walletService.validateWalletAccess(id);
                 return ApiResponse.<WalletResponse>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Wallet retrieved successfully")
@@ -125,7 +126,6 @@ public class WalletController {
                                 .build();
         }
 
-        // Transaction endpoints
         @PostMapping("/transactions")
         @Operation(summary = "Create wallet transaction")
         @ResponseStatus(HttpStatus.CREATED)
@@ -152,8 +152,9 @@ public class WalletController {
 
         @GetMapping("/{walletId}/transactions")
         @Operation(summary = "Get transactions by wallet ID")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
         public ApiResponse<List<WalletTransactionResponse>> getTransactionsByWalletId(@PathVariable String walletId) {
+                walletService.validateWalletAccess(walletId);
                 return ApiResponse.<List<WalletTransactionResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Transactions retrieved successfully")
@@ -163,11 +164,12 @@ public class WalletController {
 
         @GetMapping("/{walletId}/transactions/paged")
         @Operation(summary = "Get transactions by wallet ID with pagination")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
         public ApiResponse<PageResponse<WalletTransactionResponse>> getTransactionsByWalletIdPaged(
                         @PathVariable String walletId,
                         @RequestParam(defaultValue = "0") int page,
                         @RequestParam(defaultValue = "10") int size) {
+                walletService.validateWalletAccess(walletId);
 
                 Pageable pageable = PageRequest.of(page, size);
                 Page<WalletTransactionResponse> transactions = walletService.getTransactionsByWalletId(walletId,
@@ -208,12 +210,13 @@ public class WalletController {
 
         @PostMapping("/{walletId}/withdraw")
         @Operation(summary = "Withdraw from wallet")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
         public ApiResponse<WalletResponse> withdraw(
                         @PathVariable String walletId,
                         @RequestParam Double amount,
                         @RequestParam(required = false) String description,
                         @RequestParam(required = false) String referenceId) {
+                walletService.validateWalletAccess(walletId);
 
                 return ApiResponse.<WalletResponse>builder()
                                 .status(HttpStatus.OK.value())
@@ -231,12 +234,10 @@ public class WalletController {
                         @RequestParam(required = false) String referenceId,
                         HttpServletRequest request) {
 
-                // Check for internal system key or Admin/Staff role
                 String internalKey = request.getHeader("X-Internal-Sys");
                 boolean isInternal = "FURNIMART_INTERNAL_KEY".equals(internalKey);
 
                 if (!isInternal) {
-                        // If not internal call, strictly require ADMIN or STAFF
                         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                                         .getContext().getAuthentication();
 
@@ -246,8 +247,6 @@ public class WalletController {
 
                         if (!hasPermission) {
                                 log.warn("Access denied to refund endpoint for user: {}", auth.getName());
-                                // Throw 403-like exception. Assuming AppException handles this or generic
-                                // runtime
                                 throw new RuntimeException(
                                                 "Access Denied: Requires ADMIN/STAFF role or Internal System Key");
                         }
@@ -262,13 +261,14 @@ public class WalletController {
 
         @PostMapping("/transfer")
         @Operation(summary = "Transfer between wallets")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#fromWalletId).userId == authentication.name")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
         public ApiResponse<WalletResponse> transfer(
                         @RequestParam String fromWalletId,
                         @RequestParam String toWalletId,
                         @RequestParam Double amount,
                         @RequestParam(required = false) String description,
                         @RequestParam(required = false) String referenceId) {
+                walletService.validateWalletAccess(fromWalletId);
 
                 return ApiResponse.<WalletResponse>builder()
                                 .status(HttpStatus.OK.value())
@@ -280,8 +280,9 @@ public class WalletController {
 
         @GetMapping("/{walletId}/balance")
         @Operation(summary = "Get wallet balance")
-        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or @walletService.getWalletById(#walletId).userId == authentication.name")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
         public ApiResponse<Double> getWalletBalance(@PathVariable String walletId) {
+                walletService.validateWalletAccess(walletId);
                 return ApiResponse.<Double>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Balance retrieved successfully")
