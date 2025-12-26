@@ -42,4 +42,9 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
 
     Optional<WalletTransaction> findByReferenceIdAndIsDeletedFalse(String referenceId);
 
+    Page<WalletTransaction> findByTypeAndIsDeletedFalseOrderByCreatedAtDesc(WalletTransactionType type,
+            Pageable pageable);
+
+    Page<WalletTransaction> findByTypeInAndIsDeletedFalseOrderByCreatedAtDesc(List<WalletTransactionType> types,
+            Pageable pageable);
 }
