@@ -83,7 +83,7 @@ services:
     build: ./product-service
     container_name: product-service
     ports:
-      - "8084:8084" 
+      - "8084:8084"
     depends_on:
       - eureka-server
       - product-db
@@ -332,53 +332,44 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      
-      # ========== CẤU HÌNH XỬ LÝ GÓI TIN LỚN ==========
-      # Tăng giới hạn kích thước request socket (mặc định 100MB)
-      KAFKA_SOCKET_REQUEST_MAX_BYTES: 524288000  # 500MB
-      # Tăng giới hạn kích thước message (mặc định 1MB)
-      KAFKA_MESSAGE_MAX_BYTES: 524288000  # 500MB
-      # Tăng giới hạn kích thước replica fetch (đồng bộ giữa các broker)
-      KAFKA_REPLICA_FETCH_MAX_BYTES: 524288000  # 500MB
-      
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+      # ========== CẤU HÌNH XỬ LÝ GÓI TIN HỢP LÝ ==========
+      # Giới hạn kích thước request socket (giảm từ 500MB xuống 20MB)
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 20971520
+      # Giới hạn kích thước message (giảm từ 500MB xuống 10MB - Chuẩn Production)
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      # Giới hạn kích thước replica fetch
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+
       # ========== CẤU HÌNH BỘ NHỚ VÀ PERFORMANCE ==========
-      # Heap size cho JVM (nên để ~50% của memory limit)
       KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
-      # Số lượng threads xử lý request
       KAFKA_NUM_NETWORK_THREADS: 8
       KAFKA_NUM_IO_THREADS: 8
-      # Số lượng threads xử lý background tasks
       KAFKA_BACKGROUND_THREADS: 10
-      
+
       # ========== CẤU HÌNH XỬ LÝ LỖI VÀ STABILITY ==========
-      # Tăng timeout cho Zookeeper connection
       KAFKA_ZOOKEEPER_SESSION_TIMEOUT_MS: 6000
-      # Tăng timeout cho Zookeeper connection init
       KAFKA_ZOOKEEPER_CONNECTION_TIMEOUT_MS: 18000
-      # Số lần retry khi mất kết nối Zookeeper
       KAFKA_ZOOKEEPER_SYNC_TIME_MS: 2000
-      
-      # ========== CẤU HÌNH LOG VÀ RETENTION ==========
-      # Thời gian giữ log (7 ngày)
-      KAFKA_LOG_RETENTION_HOURS: 168
-      # Kích thước tối đa của log segment
-      KAFKA_LOG_SEGMENT_BYTES: 1073741824  # 1GB
-      # Số lượng log segments tối đa
-      KAFKA_LOG_RETENTION_BYTES: 10737418240  # 10GB
-      # Compression cho log
+
+      # ========== CẤU HÌNH LOG VÀ RETENTION (QUAN TRỌNG ĐỂ TIẾT KIỆM DISK) ==========
+      # Thời gian giữ log (Giảm từ 7 ngày xuống còn 24 giờ cho môi trường Dev/Staging)
+      KAFKA_LOG_RETENTION_HOURS: 24
+      # Kích thước tối đa của log segment (Giảm từ 1GB xuống 100MB để dọn dẹp thường xuyên hơn)
+      KAFKA_LOG_SEGMENT_BYTES: 104857600
+      # Tổng dung lượng log tối đa cho mỗi partition (Giảm từ 10GB xuống 2GB)
+      KAFKA_LOG_RETENTION_BYTES: 2147483648
+      # Chính sách dọn dẹp
+      KAFKA_LOG_CLEANUP_POLICY: delete
       KAFKA_COMPRESSION_TYPE: producer
-      
+
       # ========== CẤU HÌNH CONSUMER/PRODUCER ==========
-      # Tăng batch size cho producer
       KAFKA_PRODUCER_BATCH_SIZE: 16384
-      # Tăng buffer memory cho producer
-      KAFKA_BUFFER_MEMORY: 33554432  # 32MB
-      # Linger time để tăng throughput
+      KAFKA_BUFFER_MEMORY: 33554432
       KAFKA_LINGER_MS: 10
-      
-      # ========== CẤU HÌNH SECURITY (nếu cần) ==========
-      # Disable unsafe operations (chỉ dùng trong dev)
+
+      # ========== CẤU HÌNH SECURITY & STABILITY ==========
       KAFKA_AUTO_LEADER_REBALANCE_ENABLE: "true"
       KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE: "false"
     networks:
