@@ -281,7 +281,7 @@ public class WalletController {
                                 .build();
         }
 
-        @GetMapping()
+        @GetMapping("/all/transactions")
         @Operation(summary = "Get Transaction Wallet")
         public ApiResponse<List<Wallet>> getTransactionWallet(){
                 return ApiResponse.<List<Wallet>>builder()
