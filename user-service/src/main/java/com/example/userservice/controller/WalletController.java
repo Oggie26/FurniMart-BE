@@ -1,5 +1,7 @@
 package com.example.userservice.controller;
 
+import com.example.userservice.entity.Wallet;
+import com.example.userservice.repository.WalletRepository;
 import com.example.userservice.request.WalletRequest;
 import com.example.userservice.request.WalletTransactionRequest;
 import com.example.userservice.response.ApiResponse;
@@ -34,6 +36,7 @@ public class WalletController {
 
         private final WalletService walletService;
         private final VNPayWithdrawalService vnPayWithdrawalService;
+        private final WalletRepository walletRepository;
 
         @PostMapping
         @Operation(summary = "Create new wallet")
@@ -278,6 +281,16 @@ public class WalletController {
                                 .build();
         }
 
+        @GetMapping()
+        @Operation(summary = "Get Transaction Wallet")
+        public ApiResponse<List<Wallet>> getTransactionWallet(){
+                return ApiResponse.<List<Wallet>>builder()
+                        .status(HttpStatus.OK.value())
+                        .message("Transfer completed successfully")
+                        .data(walletRepository.findAll())
+                        .build();
+        }
+
         @GetMapping("/{walletId}/balance")
         @Operation(summary = "Get wallet balance")
         @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF') or hasRole('CUSTOMER')")
@@ -305,24 +318,20 @@ public class WalletController {
                 String refundDescription = description != null ? description
                                 : "Refund to VNPay" + (orderId != null ? " for order #" + orderId : "");
 
-                // Withdraw from wallet (this creates the transaction)
                 WalletResponse walletResponse = walletService.withdraw(
                                 walletId,
                                 amount,
                                 refundDescription,
                                 orderId != null ? "ORDER_" + orderId : null);
 
-                // If VNPay transaction info is provided, call VNPay refund API
                 boolean vnpayRefundSuccess = false;
                 String originalTxnRef = orderId != null ? orderId.toString() : walletId;
 
                 if (vnpTransactionNo != null && !vnpTransactionNo.isEmpty()
                                 && originalTransactionDate != null && !originalTransactionDate.isEmpty()) {
                         try {
-                                // Get client IP address
                                 String ipAddress = getClientIpAddress(request);
 
-                                // Call VNPay refund API via VNPayWithdrawalService
                                 vnpayRefundSuccess = vnPayWithdrawalService.processRefund(
                                                 originalTxnRef,
                                                 vnpTransactionNo,
@@ -332,7 +341,6 @@ public class WalletController {
                                                 refundDescription,
                                                 ipAddress);
                         } catch (Exception e) {
-                                // Log error but don't fail the request (wallet withdrawal already succeeded)
                                 log.error("Error calling VNPay refund API: {}", e.getMessage());
                         }
                 }
@@ -351,9 +359,7 @@ public class WalletController {
                                 .build();
         }
 
-        /**
-         * Get client IP address from request
-         */
+
         private String getClientIpAddress(HttpServletRequest request) {
                 String ipAddress = request.getHeader("X-Forwarded-For");
                 if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
@@ -362,7 +368,6 @@ public class WalletController {
                 if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
                         ipAddress = request.getRemoteAddr();
                 }
-                // Handle multiple IPs in X-Forwarded-For header
                 if (ipAddress != null && ipAddress.contains(",")) {
                         ipAddress = ipAddress.split(",")[0].trim();
                 }
