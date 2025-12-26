@@ -1,11 +1,11 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.repository.WalletRepository;
 import com.example.userservice.request.WalletRequest;
 import com.example.userservice.request.WalletTransactionRequest;
 import com.example.userservice.response.ApiResponse;
 import com.example.userservice.response.PageResponse;
 import com.example.userservice.response.WalletResponse;
+import com.example.userservice.response.WalletTransactionAdminResponse;
 import com.example.userservice.response.WalletTransactionResponse;
 import com.example.userservice.service.VNPayWithdrawalService;
 import com.example.userservice.service.inteface.WalletService;
@@ -282,8 +282,8 @@ public class WalletController {
         @GetMapping("/all/transactions")
         @Operation(summary = "Get All Wallet Transactions")
         @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-        public ApiResponse<List<WalletTransactionResponse>> getAllTransactions() {
-                return ApiResponse.<List<WalletTransactionResponse>>builder()
+        public ApiResponse<List<WalletTransactionAdminResponse>> getAllTransactions() {
+                return ApiResponse.<List<WalletTransactionAdminResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Transactions retrieved successfully")
                                 .data(walletService.getAllTransactions())

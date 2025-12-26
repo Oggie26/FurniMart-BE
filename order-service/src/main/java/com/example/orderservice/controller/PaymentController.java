@@ -5,7 +5,8 @@ import com.example.orderservice.feign.UserClient;
 import com.example.orderservice.repository.PaymentRepository;
 import com.example.orderservice.request.VoucherRequest;
 import com.example.orderservice.response.ApiResponse;
-import com.example.orderservice.response.PaymentResponse;
+import com.example.orderservice.response.PaymentAdminResponse;
+import com.example.orderservice.response.UserResponse;
 import com.example.orderservice.response.VoucherResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -33,20 +34,43 @@ public class PaymentController {
         @GetMapping
         @Operation(summary = "Get all payments")
         @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-        public ApiResponse<List<PaymentResponse>> getAllTransactionPayment() {
+        public ApiResponse<List<PaymentAdminResponse>> getAllTransactionPayment() {
                 List<Payment> payments = paymentRepository.findAll();
-                List<PaymentResponse> responses = payments.stream()
-                                .map(payment -> PaymentResponse.builder()
-                                                .id(payment.getId())
-                                                .transactionCode(payment.getTransactionCode())
-                                                .total(payment.getTotal())
-                                                .paymentMethod(payment.getPaymentMethod())
-                                                .paymentStatus(payment.getPaymentStatus())
-                                                .date(payment.getDate())
-                                                .build())
+                List<PaymentAdminResponse> responses = payments.stream()
+                                .map(payment -> {
+                                        UserResponse user = null;
+                                        if (payment.getUserId() != null) {
+                                                try {
+                                                        ApiResponse<UserResponse> userApiResponse = userClient
+                                                                        .getUserById(payment.getUserId());
+                                                        if (userApiResponse != null
+                                                                        && userApiResponse.getData() != null) {
+                                                                user = userApiResponse.getData();
+                                                        }
+                                                } catch (Exception e) {
+                                                        log.error("Error fetching user {} from user-service: {}",
+                                                                        payment.getUserId(), e.getMessage());
+                                                }
+                                        }
+
+                                        return PaymentAdminResponse.builder()
+                                                        .id(payment.getId())
+                                                        .transactionCode(payment.getTransactionCode())
+                                                        .total(payment.getTotal())
+                                                        .paymentMethod(payment.getPaymentMethod())
+                                                        .paymentStatus(payment.getPaymentStatus())
+                                                        .date(payment.getDate())
+                                                        .userId(payment.getUserId())
+                                                        .userName(user != null ? user.getFullName() : null)
+                                                        .email(user != null ? user.getEmail() : null)
+                                                        .build();
+                                })
+                                .sorted((p1, p2) -> p2.getDate() != null && p1.getDate() != null
+                                                ? p2.getDate().compareTo(p1.getDate())
+                                                : 0)
                                 .collect(java.util.stream.Collectors.toList());
 
-                return ApiResponse.<List<PaymentResponse>>builder()
+                return ApiResponse.<List<PaymentAdminResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Get transaction successfully")
                                 .data(responses)
