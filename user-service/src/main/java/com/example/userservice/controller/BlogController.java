@@ -127,7 +127,7 @@ public class BlogController {
 
     @PatchMapping("/{id}/toggle-status")
     @Operation(summary = "Toggle blog status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
     public ApiResponse<Void> toggleBlogStatus(@PathVariable Integer id) {
         blogService.toggleBlogStatus(id);
         return ApiResponse.<Void>builder()

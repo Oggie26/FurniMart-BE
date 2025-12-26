@@ -17,6 +17,10 @@ public class BlogRequest {
     @NotBlank(message = "Blog content is required")
     private String content;
 
+    /**
+     * @deprecated employeeId is no longer used. It will be automatically retrieved from authentication context.
+     */
+    @Deprecated
     private String employeeId;
 
     @NotNull(message = "Status is required")

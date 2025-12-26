@@ -78,10 +78,17 @@ public class BranchAnalyticsService {
             }
         }
 
-        // Revenue today
-        Double revenueToday = orderRepository.getTotalRevenueByStoreAndStatusesAndDateRange(
+        // Revenue today (Net Revenue = Gross Revenue - Refunded Amount)
+        Double grossRevenue = orderRepository.getTotalRevenueByStoreAndStatusesAndDateRange(
                 storeId, COMPLETED_STATUSES, startOfDay, endOfDay);
-        if (revenueToday == null) revenueToday = 0.0;
+        if (grossRevenue == null) grossRevenue = 0.0;
+        
+        Double totalRefunded = orderRepository.getTotalRefundedAmountByStoreAndStatusesAndDateRange(
+                storeId, COMPLETED_STATUSES, startOfDay, endOfDay);
+        if (totalRefunded == null) totalRefunded = 0.0;
+        
+        Double revenueToday = grossRevenue - totalRefunded;
+        if (revenueToday < 0) revenueToday = 0.0; // Ensure non-negative
 
         // New customers today (users who placed their first order today)
         Long newCustomersToday = orderRepository.countNewCustomersByStoreAndDateRange(storeId, startOfDay, endOfDay);
@@ -171,19 +178,38 @@ public class BranchAnalyticsService {
         Date startDate = cal.getTime();
 
         try {
-            List<Object[]> results = orderRepository.getRevenueChartDataByStore(
+            // Get gross revenue chart data
+            List<Object[]> revenueResults = orderRepository.getRevenueChartDataByStore(
                     storeId, COMPLETED_STATUSES, startDate, endDate);
+            
+            // Get refunded amount chart data
+            List<Object[]> refundResults = orderRepository.getRefundedAmountChartData(
+                    COMPLETED_STATUSES, startDate, endDate);
+            
+            // Create a map of date -> refunded amount for quick lookup
+            Map<String, Double> refundMap = new HashMap<>();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            for (Object[] refund : refundResults) {
+                Date date = (Date) refund[0];
+                Double refundedAmount = ((Number) refund[1]).doubleValue();
+                refundMap.put(dateFormat.format(date), refundedAmount);
+            }
 
-            List<ActivityTrendResponse.TrendDataPoint> dataPoints = results.stream()
+            // Calculate net revenue (gross revenue - refunded amount) for each date
+            List<ActivityTrendResponse.TrendDataPoint> dataPoints = revenueResults.stream()
                     .map(result -> {
                         Date date = (Date) result[0];
-                        Double revenue = ((Number) result[1]).doubleValue();
+                        Double grossRevenue = ((Number) result[1]).doubleValue();
                         Long orderCount = ((Number) result[2]).longValue();
+                        
+                        String dateKey = dateFormat.format(date);
+                        Double refundedAmount = refundMap.getOrDefault(dateKey, 0.0);
+                        Double netRevenue = grossRevenue - refundedAmount;
+                        if (netRevenue < 0) netRevenue = 0.0; // Ensure non-negative
 
                         return ActivityTrendResponse.TrendDataPoint.builder()
-                                .date(dateFormat.format(date))
-                                .revenue(revenue)
+                                .date(dateKey)
+                                .revenue(netRevenue)
                                 .orderCount(orderCount)
                                 .build();
                     })
