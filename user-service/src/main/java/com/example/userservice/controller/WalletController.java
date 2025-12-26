@@ -1,6 +1,5 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.entity.Wallet;
 import com.example.userservice.repository.WalletRepository;
 import com.example.userservice.request.WalletRequest;
 import com.example.userservice.request.WalletTransactionRequest;
@@ -36,7 +35,6 @@ public class WalletController {
 
         private final WalletService walletService;
         private final VNPayWithdrawalService vnPayWithdrawalService;
-        private final WalletRepository walletRepository;
 
         @PostMapping
         @Operation(summary = "Create new wallet")
@@ -282,13 +280,14 @@ public class WalletController {
         }
 
         @GetMapping("/all/transactions")
-        @Operation(summary = "Get Transaction Wallet")
-        public ApiResponse<List<Wallet>> getTransactionWallet(){
-                return ApiResponse.<List<Wallet>>builder()
-                        .status(HttpStatus.OK.value())
-                        .message("Transfer completed successfully")
-                        .data(walletRepository.findAll())
-                        .build();
+        @Operation(summary = "Get All Wallet Transactions")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+        public ApiResponse<List<WalletTransactionResponse>> getAllTransactions() {
+                return ApiResponse.<List<WalletTransactionResponse>>builder()
+                                .status(HttpStatus.OK.value())
+                                .message("Transactions retrieved successfully")
+                                .data(walletService.getAllTransactions())
+                                .build();
         }
 
         @GetMapping("/{walletId}/balance")
@@ -358,7 +357,6 @@ public class WalletController {
                                 .data(walletResponse)
                                 .build();
         }
-
 
         private String getClientIpAddress(HttpServletRequest request) {
                 String ipAddress = request.getHeader("X-Forwarded-For");
