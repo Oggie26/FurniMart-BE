@@ -63,4 +63,5 @@ public interface WalletService {
 
         Page<WalletTransactionResponse> getEscrowTransactions(Pageable pageable);
 
+        List<WalletTransactionResponse> getAllTransactions();
 }

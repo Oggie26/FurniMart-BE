@@ -786,4 +786,19 @@ public class WalletServiceImpl implements WalletService {
             return mapToTransactionResponse(transaction, wallet);
         });
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WalletTransactionResponse> getAllTransactions() {
+        List<WalletTransaction> transactions = transactionRepository.findAll();
+
+        return transactions.stream()
+                .filter(transaction -> !Boolean.TRUE.equals(transaction.getIsDeleted()))
+                .sorted((t1, t2) -> t2.getCreatedAt().compareTo(t1.getCreatedAt()))
+                .map(transaction -> {
+                    Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(transaction.getWalletId()).orElse(null);
+                    return mapToTransactionResponse(transaction, wallet);
+                })
+                .collect(Collectors.toList());
+    }
 }

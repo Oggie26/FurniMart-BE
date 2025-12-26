@@ -31,15 +31,26 @@ public class PaymentController {
         private final PaymentRepository paymentRepository;
 
         @GetMapping
-        @Operation(summary = "Get all payment")
-        @ResponseStatus(HttpStatus.CREATED)
-        public ApiResponse<List<Payment>> getAllTransactionPayment() {
-                return ApiResponse.<List<Payment>>builder()
-                        .status(HttpStatus.CREATED.value())
-                        .message("Get transaction successfully")
-                        .data(paymentRepository.findAll())
-                        .build();
-        }
+        @Operation(summary = "Get all payments")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+        public ApiResponse<List<PaymentResponse>> getAllTransactionPayment() {
+                List<Payment> payments = paymentRepository.findAll();
+                List<PaymentResponse> responses = payments.stream()
+                                .map(payment -> PaymentResponse.builder()
+                                                .id(payment.getId())
+                                                .transactionCode(payment.getTransactionCode())
+                                                .total(payment.getTotal())
+                                                .paymentMethod(payment.getPaymentMethod())
+                                                .paymentStatus(payment.getPaymentStatus())
+                                                .date(payment.getDate())
+                                                .build())
+                                .collect(java.util.stream.Collectors.toList());
 
+                return ApiResponse.<List<PaymentResponse>>builder()
+                                .status(HttpStatus.OK.value())
+                                .message("Get transaction successfully")
+                                .data(responses)
+                                .build();
+        }
 
 }
