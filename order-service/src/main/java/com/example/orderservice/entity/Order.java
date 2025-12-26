@@ -1,5 +1,6 @@
 package com.example.orderservice.entity;
 
+import com.example.orderservice.enums.ComplaintStatus;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.OrderType;
 import jakarta.persistence.*;
@@ -117,4 +118,18 @@ public class Order extends AbstractEntity {
 
     @Column(name = "complaint_evidence_photos", columnDefinition = "TEXT")
     private String complaintEvidencePhotos; // JSON array of photo URLs
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "complaint_status")
+    private ComplaintStatus complaintStatus;
+
+    @Column(name = "reviewed_by")
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date reviewedAt;
+
+    @Column(name = "review_notes", columnDefinition = "TEXT")
+    private String reviewNotes;
 }

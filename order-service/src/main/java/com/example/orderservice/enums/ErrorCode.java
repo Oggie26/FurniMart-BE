@@ -68,12 +68,15 @@ public enum ErrorCode {
     CUSTOMER_NOT_CONTACTABLE(1234, "Không liên lạc được với khách hàng", HttpStatus.BAD_REQUEST),
     DEPOSIT_ALREADY_REFUNDED(1235, "Tiền cọc đã được hoàn trả", HttpStatus.BAD_REQUEST),
     NO_DEPOSIT_TO_REFUND(1236, "Không có tiền cọc để hoàn trả", HttpStatus.BAD_REQUEST),
+    COMPLAINT_NOT_PENDING_REVIEW(1237, "Complaint không ở trạng thái PENDING_REVIEW", HttpStatus.BAD_REQUEST),
+    COMPLAINT_ALREADY_REVIEWED(1238, "Complaint đã được review rồi", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_TO_REVIEW(1239, "Không có quyền review complaint", HttpStatus.FORBIDDEN),
     
     // Warranty claim validation errors
-    INVALID_REPAIR_COST(1237, "Repair cost must be greater than 0", HttpStatus.BAD_REQUEST),
-    INVALID_REFUND_AMOUNT(1238, "Refund amount must be greater than 0", HttpStatus.BAD_REQUEST),
-    INVALID_STATUS_TRANSITION(1239, "Invalid status transition", HttpStatus.BAD_REQUEST),
-    UNAUTHORIZED_STORE_ACCESS(1240, "Unauthorized access to this store's warranty claim", HttpStatus.FORBIDDEN),
+    INVALID_REPAIR_COST(1240, "Repair cost must be greater than 0", HttpStatus.BAD_REQUEST),
+    INVALID_REFUND_AMOUNT(1241, "Refund amount must be greater than 0", HttpStatus.BAD_REQUEST),
+    INVALID_STATUS_TRANSITION(1242, "Invalid status transition", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_STORE_ACCESS(1243, "Unauthorized access to this store's warranty claim", HttpStatus.FORBIDDEN),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

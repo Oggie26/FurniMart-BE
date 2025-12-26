@@ -14,6 +14,7 @@ import com.example.orderservice.repository.VoucherRepository;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.ComplaintRequest;
+import com.example.orderservice.request.ComplaintReviewRequest;
 import com.example.orderservice.repository.OrderRepository;
 import com.example.orderservice.response.*;
 import com.example.orderservice.service.VNPayService;
@@ -561,9 +562,8 @@ public class OrderController {
                                 .build();
         }
 
-        @Operation(summary = "Tạo khiếu nại và xử lý hoàn tiền cọc", 
-                   description = "Khách hàng tạo khiếu nại. Hệ thống sẽ tự động kiểm tra và hoàn tiền cọc nếu đủ điều kiện: " +
-                                 "Lỗi cửa hàng + Khách từ chối/trả hàng + Khiếu nại trong 24h từ deliveryDate + Có thể liên lạc với khách")
+        @Operation(summary = "Tạo khiếu nại", 
+                   description = "Khách hàng tạo khiếu nại. Khiếu nại sẽ ở trạng thái PENDING_REVIEW, chờ admin/staff review để xác nhận lỗi có thuộc về cửa hàng không.")
         @PostMapping("/{orderId}/complaint")
         public ApiResponse<OrderResponse> processComplaint(
                 @PathVariable Long orderId,
@@ -572,7 +572,28 @@ public class OrderController {
                 
                 return ApiResponse.<OrderResponse>builder()
                                 .status(200)
-                                .message("Khiếu nại đã được ghi nhận và xử lý")
+                                .message("Khiếu nại đã được ghi nhận. Đang chờ admin review.")
+                                .data(orderResponse)
+                                .build();
+        }
+
+        @Operation(summary = "Review khiếu nại (Admin/Manager only)", 
+                   description = "Admin/Manager review khiếu nại và xác nhận lỗi có thuộc về cửa hàng không. " +
+                                 "Nếu approve và isStoreError = true, hệ thống sẽ tự động kiểm tra và hoàn tiền cọc nếu đủ điều kiện.")
+        @PreAuthorize("hasRole('ADMIN') or hasRole('BRANCH_MANAGER')")
+        @PostMapping("/{orderId}/complaint/review")
+        public ApiResponse<OrderResponse> reviewComplaint(
+                @PathVariable Long orderId,
+                @Valid @RequestBody ComplaintReviewRequest request) {
+                OrderResponse orderResponse = orderService.reviewComplaint(orderId, request);
+                
+                String message = request.getApproved() && request.getIsStoreError() 
+                    ? "Khiếu nại đã được duyệt. Đã kiểm tra điều kiện hoàn tiền cọc."
+                    : "Khiếu nại đã được review.";
+                
+                return ApiResponse.<OrderResponse>builder()
+                                .status(200)
+                                .message(message)
                                 .data(orderResponse)
                                 .build();
         }

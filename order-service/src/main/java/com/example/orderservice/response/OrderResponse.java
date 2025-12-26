@@ -1,5 +1,6 @@
 package com.example.orderservice.response;
 
+import com.example.orderservice.enums.ComplaintStatus;
 import com.example.orderservice.enums.EnumProcessOrder;
 import com.example.orderservice.enums.OrderType;
 import lombok.*;
@@ -40,4 +41,8 @@ public class OrderResponse {
     private Boolean customerRefused;
     private Boolean customerContactable;
     private List<String> complaintEvidencePhotos;
+    private ComplaintStatus complaintStatus;
+    private String reviewedBy;
+    private Date reviewedAt;
+    private String reviewNotes;
 }
