@@ -10,6 +10,7 @@ import com.example.orderservice.repository.*;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.ComplaintRequest;
+import com.example.orderservice.request.ComplaintReviewRequest;
 import com.example.orderservice.response.*;
 import com.example.orderservice.response.WalletResponse;
 import com.example.orderservice.service.inteface.CartService;
@@ -859,6 +860,10 @@ public class OrderServiceImpl implements OrderService {
                 .customerRefused(order.getCustomerRefused())
                 .customerContactable(order.getCustomerContactable())
                 .complaintEvidencePhotos(complaintEvidencePhotos)
+                .complaintStatus(order.getComplaintStatus())
+                .reviewedBy(order.getReviewedBy())
+                .reviewedAt(order.getReviewedAt())
+                .reviewNotes(order.getReviewNotes())
                 .build();
     }
 
@@ -1217,13 +1222,6 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Lấy deliveryDate từ DeliveryConfirmation
-        DeliveryConfirmationResponse deliveryConfirmation = getDeliveryConfirmationResponse(orderId);
-        if (deliveryConfirmation == null || deliveryConfirmation.getDeliveryDate() == null) {
-            throw new AppException(ErrorCode.DELIVERY_CONFIRMATION_NOT_FOUND);
-        }
-
-        LocalDateTime deliveryDate = deliveryConfirmation.getDeliveryDate();
         Date complaintDate = new Date();
 
         // Serialize hình ảnh bằng chứng thành JSON string
@@ -1239,29 +1237,19 @@ public class OrderServiceImpl implements OrderService {
         // Lưu thông tin khiếu nại vào Order
         order.setComplaintReason(request.getComplaintReason());
         order.setComplaintDate(complaintDate);
-        order.setIsStoreError(request.getErrorType() == ComplaintErrorType.STORE_ERROR);
+        // KHÔNG tự động set isStoreError từ errorType của khách - chờ admin review
+        order.setIsStoreError(null);
         order.setCustomerRefused(request.getCustomerRefused());
         order.setComplaintEvidencePhotos(complaintEvidencePhotosJson);
+        // Set status = PENDING_REVIEW, chờ admin/staff review
+        order.setComplaintStatus(ComplaintStatus.PENDING_REVIEW);
         // Mặc định customerContactable = true, có thể cập nhật sau bởi admin/staff
         if (order.getCustomerContactable() == null) {
             order.setCustomerContactable(true);
         }
 
         orderRepository.save(order);
-
-        // Kiểm tra điều kiện hoàn tiền
-        if (canRefundDeposit(orderId, deliveryDate)) {
-            log.info("All conditions met for deposit refund. Processing refund for order: {}", orderId);
-            try {
-                refundDeposit(orderId);
-                log.info("Deposit refund processed successfully for order: {}", orderId);
-            } catch (Exception e) {
-                log.error("Failed to refund deposit for order {}: {}", orderId, e.getMessage());
-                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
-            }
-        } else {
-            log.info("Deposit refund conditions not met for order: {}", orderId);
-        }
+        log.info("Complaint saved with status PENDING_REVIEW for order: {}. Waiting for admin review.", orderId);
 
         return mapToResponse(orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND)));
@@ -1274,7 +1262,13 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
 
-        // Kiểm tra 1: Lỗi thuộc về cửa hàng
+        // Kiểm tra 0: Complaint phải được admin approve trước
+        if (order.getComplaintStatus() == null || !ComplaintStatus.APPROVED.equals(order.getComplaintStatus())) {
+            log.warn("Order {}: Complaint not approved yet. Current status: {}", orderId, order.getComplaintStatus());
+            return false;
+        }
+
+        // Kiểm tra 1: Lỗi thuộc về cửa hàng (đã được admin xác nhận)
         if (order.getIsStoreError() == null || !order.getIsStoreError()) {
             log.warn("Order {}: Not a store error", orderId);
             return false;
@@ -1372,6 +1366,75 @@ public class OrderServiceImpl implements OrderService {
             paymentRepository.save(payment);
             throw new RuntimeException("Deposit refund failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse reviewComplaint(Long orderId, ComplaintReviewRequest request) {
+        log.info("Reviewing complaint for order: {}", orderId);
+
+        Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+
+        // Kiểm tra complaint có tồn tại và đang ở trạng thái PENDING_REVIEW
+        if (order.getComplaintStatus() == null) {
+            throw new AppException(ErrorCode.ORDER_NOT_FOUND);
+        }
+
+        if (!ComplaintStatus.PENDING_REVIEW.equals(order.getComplaintStatus())) {
+            log.warn("Order {} complaint is not in PENDING_REVIEW status. Current status: {}", 
+                    orderId, order.getComplaintStatus());
+            throw new AppException(ErrorCode.COMPLAINT_NOT_PENDING_REVIEW);
+        }
+
+        // Lấy admin ID từ SecurityContext
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String adminId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof String) {
+            adminId = authentication.getName();
+        }
+
+        if (adminId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        // Set thông tin review
+        order.setIsStoreError(request.getIsStoreError());
+        order.setReviewedBy(adminId);
+        order.setReviewedAt(new Date());
+        order.setReviewNotes(request.getReviewNotes());
+
+        // Set status dựa trên quyết định của admin
+        if (request.getApproved() && request.getIsStoreError()) {
+            order.setComplaintStatus(ComplaintStatus.APPROVED);
+            log.info("Complaint approved for order: {}. isStoreError: {}", orderId, request.getIsStoreError());
+
+            // Kiểm tra điều kiện hoàn tiền và tự động hoàn tiền nếu đủ điều kiện
+            DeliveryConfirmationResponse deliveryConfirmation = getDeliveryConfirmationResponse(orderId);
+            if (deliveryConfirmation != null && deliveryConfirmation.getDeliveryDate() != null) {
+                LocalDateTime deliveryDate = deliveryConfirmation.getDeliveryDate();
+                if (canRefundDeposit(orderId, deliveryDate)) {
+                    log.info("All conditions met for deposit refund. Processing refund for order: {}", orderId);
+                    try {
+                        refundDeposit(orderId);
+                        log.info("Deposit refund processed successfully for order: {}", orderId);
+                    } catch (Exception e) {
+                        log.error("Failed to refund deposit for order {}: {}", orderId, e.getMessage());
+                        // Không throw exception, vì complaint đã được approve, chỉ là hoàn tiền thất bại
+                    }
+                } else {
+                    log.info("Deposit refund conditions not met for order: {}", orderId);
+                }
+            }
+        } else {
+            order.setComplaintStatus(ComplaintStatus.REJECTED);
+            log.info("Complaint rejected for order: {}. Approved: {}, isStoreError: {}", 
+                    orderId, request.getApproved(), request.getIsStoreError());
+        }
+
+        orderRepository.save(order);
+        return mapToResponse(orderRepository.findByIdAndIsDeletedFalse(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND)));
     }
 
     @Override

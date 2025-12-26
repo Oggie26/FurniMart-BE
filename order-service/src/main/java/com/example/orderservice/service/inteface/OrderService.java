@@ -5,6 +5,7 @@ import com.example.orderservice.enums.PaymentMethod;
 import com.example.orderservice.request.StaffCreateOrderRequest;
 import com.example.orderservice.request.CancelOrderRequest;
 import com.example.orderservice.request.ComplaintRequest;
+import com.example.orderservice.request.ComplaintReviewRequest;
 import com.example.orderservice.response.OrderResponse;
 import com.example.orderservice.response.PageResponse;
 import com.example.orderservice.response.ProcessOrderResponse;
@@ -54,6 +55,8 @@ public interface OrderService {
     PageResponse<OrderResponse> getMySales(int page, int size);
 
     OrderResponse processComplaint(Long orderId, ComplaintRequest request);
+
+    OrderResponse reviewComplaint(Long orderId, ComplaintReviewRequest request);
 
     boolean canRefundDeposit(Long orderId, LocalDateTime deliveryDate);
 
