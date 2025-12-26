@@ -312,18 +312,6 @@ public class DeliveryServiceImpl implements DeliveryService {
         DeliveryAssignment assignment = deliveryAssignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new AppException(ErrorCode.DELIVERY_ASSIGNMENT_NOT_FOUND));
 
-        if (assignment.getDeliveryStaffId() == null || !assignment.getDeliveryStaffId().equals(deliveryStaffId)) {
-            log.warn("Delivery staff {} tried to reject assignment {} assigned to {}",
-                    deliveryStaffId, assignmentId, assignment.getDeliveryStaffId());
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-
-        if (assignment.getStatus() != DeliveryStatus.ASSIGNED) {
-            log.warn("Cannot reject assignment {}: Status is {}, must be ASSIGNED",
-                    assignmentId, assignment.getStatus());
-            throw new AppException(ErrorCode.INVALID_STATUS);
-        }
-
         assignment.setStatus(DeliveryStatus.CANCELLED);
         assignment.setRejectReason(reason);
         assignment.setRejectedAt(LocalDateTime.now());
