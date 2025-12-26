@@ -34,4 +34,10 @@ public class OrderResponse {
     private Boolean hasPdfFile;
     private OrderType orderType;
     private Long warrantyClaimId;
+    private String complaintReason;
+    private Date complaintDate;
+    private Boolean isStoreError;
+    private Boolean customerRefused;
+    private Boolean customerContactable;
+    private List<String> complaintEvidencePhotos;
 }

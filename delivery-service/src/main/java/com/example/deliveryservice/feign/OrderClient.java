@@ -27,6 +27,11 @@ public interface OrderClient {
     @PostMapping("/api/{orderId}/confirm-cod")
     ApiResponse<Void> confirmCodPayment(@PathVariable Long orderId);
 
+    @PutMapping("/internal/orders/{orderId}/mark-customer-refused")
+    ApiResponse<Void> markCustomerRefused(
+            @PathVariable Long orderId,
+            @RequestParam(value = "contactable", required = false) Boolean contactable);
+
 }
 
 

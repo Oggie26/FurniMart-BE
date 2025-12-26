@@ -1,6 +1,7 @@
 package com.example.orderservice.request;
 
 import com.example.orderservice.enums.WarrantyActionType;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,8 +23,10 @@ public class WarrantyClaimResolutionRequest {
     private String resolutionNotes;
 
     // For REPAIR action
+    @DecimalMin(value = "0.01", message = "Repair cost must be greater than 0", inclusive = false)
     private Double repairCost;
 
     // For RETURN action
+    @DecimalMin(value = "0.01", message = "Refund amount must be greater than 0", inclusive = false)
     private Double refundAmount;
 }
