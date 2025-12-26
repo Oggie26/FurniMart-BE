@@ -737,6 +737,7 @@ public class OrderServiceImpl implements OrderService {
         if (!PaymentMethod.COD.equals(payment.getPaymentMethod())) {
             return false;
         }
+
         payment.setPaymentStatus(PaymentStatus.PAID);
         paymentRepository.save(payment);
         return true;
@@ -1056,7 +1057,6 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
         }
 
-        // 1. Update Order Status
         ProcessOrder process = new ProcessOrder();
         process.setOrder(order);
         process.setStatus(EnumProcessOrder.RETURNED);
@@ -1066,15 +1066,12 @@ public class OrderServiceImpl implements OrderService {
         order.getProcessOrders().add(process);
         order.setStatus(EnumProcessOrder.RETURNED);
 
-        // 2. Determine refund amount and handle payment
         Double refundAmount = null;
         Payment payment = order.getPayment();
         String referenceId = "ORDER-" + orderId;
 
-        // Check if this is a WARRANTY_RETURN order
         if (order.getOrderType() == OrderType.WARRANTY_RETURN && order.getWarrantyClaimId() != null) {
             referenceId = referenceId + "-CLAIM-" + order.getWarrantyClaimId();
-            // For WARRANTY_RETURN, get refundAmount from WarrantyClaim
             WarrantyClaim claim = warrantyClaimRepository.findByIdAndIsDeletedFalse(order.getWarrantyClaimId())
                     .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
 
@@ -1085,17 +1082,15 @@ public class OrderServiceImpl implements OrderService {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
-            // Prevent double refund
             if (payment != null && PaymentStatus.REFUNDED.equals(payment.getPaymentStatus())) {
                 log.warn("Order {} already refunded", orderId);
                 return mapToResponse(order);
             }
 
-            // Create Payment record if not exists (for warranty return orders)
             if (payment == null) {
                 payment = Payment.builder()
                         .order(order)
-                        .paymentMethod(PaymentMethod.CASH) // Refund back to wallet flow
+                        .paymentMethod(PaymentMethod.CASH)
                         .paymentStatus(PaymentStatus.REFUNDING)
                         .date(new Date())
                         .total(refundAmount)
@@ -1145,28 +1140,21 @@ public class OrderServiceImpl implements OrderService {
                         "Refund for order return " + orderId,
                         referenceId,
                         "FURNIMART_INTERNAL_KEY");
-                // mark payment as refunded
+
                 payment.setPaymentStatus(PaymentStatus.REFUNDED);
                 paymentRepository.save(payment);
                 log.info("Refunded {} to wallet for user {} (order: {}, ref: {})", refundAmount, order.getUserId(),
                         orderId, referenceId);
             } catch (Exception e) {
                 log.error("Failed to refund to wallet for order {}: {}", orderId, e.getMessage());
-                // keep REFUNDING to indicate pending manual intervention
                 payment.setPaymentStatus(PaymentStatus.REFUNDING);
                 paymentRepository.save(payment);
-                // Use generic exception or specific one if available, avoiding strict
-                // dependency on ErrorCode if unsure
                 throw new RuntimeException("Refund failed: " + e.getMessage());
             }
         } else {
             log.info("No refund needed for order {} (refundAmount: {})", orderId, refundAmount);
         }
 
-        // 3. Restore stock to inventory ONLY if it's a normal return (not warranty
-        // return)
-        // Warranty returns are damaged products and should NOT be added back to
-        // inventory
         if (order.getOrderType() != OrderType.WARRANTY_RETURN) {
             log.info("Restoring stock for normal return order: {}", orderId);
             for (OrderDetail detail : order.getOrderDetails()) {
