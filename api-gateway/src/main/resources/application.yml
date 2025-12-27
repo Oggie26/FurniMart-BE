@@ -84,7 +84,7 @@
                predicates:
                  - Path=/api/ws/**
                filters:
-                 - SetPath=/ws/**
+                 - RewritePath=/api/ws/(?<segment>.*), /ws/$\{segment}
 
              # PRODUCT SERVICE
              - id: product-service
