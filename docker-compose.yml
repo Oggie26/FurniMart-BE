@@ -87,6 +87,7 @@ services:
     depends_on:
       - eureka-server
       - product-db
+      - kafka
     networks:
       - backend
     restart: unless-stopped
@@ -96,6 +97,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   product-db:
     image: postgres:16
@@ -257,6 +259,7 @@ services:
     depends_on:
       - eureka-server
       - delivery-db
+      - kafka
     networks:
       - backend
     restart: unless-stopped
@@ -266,6 +269,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   delivery-db:
     image: postgres:16
@@ -402,7 +406,6 @@ services:
       - "traefik.http.routers.kafka-ui.tls.certresolver=myresolver"
       - "traefik.http.services.kafka-ui.loadbalancer.server.port=8080"
 
-# 👇 MẠNG CỐ ĐỊNH
 networks:
   backend:
     name: furnimart_net

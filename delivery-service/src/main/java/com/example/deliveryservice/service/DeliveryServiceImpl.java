@@ -1,6 +1,7 @@
 package com.example.deliveryservice.service;
 
 import com.example.deliveryservice.entity.DeliveryAssignment;
+import com.example.deliveryservice.entity.DriverLocation;
 import com.example.deliveryservice.enums.DeliveryStatus;
 import com.example.deliveryservice.enums.EnumProcessOrder;
 import com.example.deliveryservice.enums.ErrorCode;
@@ -10,6 +11,7 @@ import com.example.deliveryservice.feign.InventoryClient;
 import com.example.deliveryservice.feign.OrderClient;
 import com.example.deliveryservice.feign.StoreClient;
 import com.example.deliveryservice.repository.DeliveryAssignmentRepository;
+import com.example.deliveryservice.repository.DriverLocationRepository;
 import com.example.deliveryservice.request.AssignOrderRequest;
 import com.example.deliveryservice.request.PrepareProductsRequest;
 import com.example.deliveryservice.response.*;
@@ -42,6 +44,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final InventoryClient inventoryClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final com.example.deliveryservice.feign.AuthClient authClient;
+    private final DriverLocationRepository driverLocationRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -113,6 +116,19 @@ public class DeliveryServiceImpl implements DeliveryService {
                 request.getEstimatedDeliveryDate(),
                 request.getNotes());
 
+        ApiResponse<StoreResponse> storeResponse = storeClient.getStoreById(request.getStoreId());
+        if (storeResponse == null || storeResponse.getData() == null) {
+            throw new AppException(ErrorCode.STORE_NOT_FOUND);
+        }
+
+        DriverLocation driverLocation = DriverLocation.builder()
+                .orderId(request.getOrderId())
+                .driverId(request.getDeliveryStaffId())
+                .latitude(storeResponse.getData().getLatitude())
+                .longitude(storeResponse.getData().getLongitude())
+                .build();
+
+        driverLocationRepository.save(driverLocation);
         orderClient.updateOrderStatus(request.getOrderId(), EnumProcessOrder.SHIPPING);
 
         try {
@@ -177,6 +193,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         if (assignment.getStoreId() == null || !assignment.getStoreId().equals(order.getStoreId())) {
             assignment.setStoreId(order.getStoreId());
         }
+
 
         List<String> insufficientProducts = new ArrayList<>();
         if (order.getOrderDetails() != null) {

@@ -10,6 +10,8 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.core.KafkaAdmin;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,6 +20,13 @@ import java.util.Map;
 public class KafkaConfig {
 
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        return new KafkaAdmin(configs);
+    }
 
     @Bean
     public NewTopic deliveryAssignedTopic() {

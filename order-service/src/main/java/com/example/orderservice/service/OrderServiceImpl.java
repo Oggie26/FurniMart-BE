@@ -1350,9 +1350,7 @@ public class OrderServiceImpl implements OrderService {
                 refundDescription = "Hoàn tiền cọc đơn hàng " + orderId + " - Lỗi cửa hàng";
             }
         } else {
-            // Trường hợp 2: Không lỗi cửa hàng
             if (payment.getPaymentMethod() == PaymentMethod.VNPAY) {
-                // VNPAY: Hoàn với khấu trừ phí phạt 10%
                 Double standardDeposit = order.getTotal() * 0.1; // 10% tiền cọc tiêu chuẩn
                 refundAmount = order.getTotal() - standardDeposit;
                 if (refundAmount <= 0) {
@@ -1361,9 +1359,8 @@ public class OrderServiceImpl implements OrderService {
                 }
                 refundDescription = "Hoàn tiền đơn hàng " + orderId + " (khấu trừ phí phạt 10%) - Không lỗi cửa hàng";
             } else {
-                // COD: Không hoàn tiền cọc
                 log.info("Order {} is COD and not store error - no refund", orderId);
-                return; // Không hoàn tiền
+                return;
             }
         }
 
@@ -1372,17 +1369,14 @@ public class OrderServiceImpl implements OrderService {
             throw new AppException(ErrorCode.INVALID_REFUND_AMOUNT);
         }
 
-        // Lấy wallet của user
         ApiResponse<WalletResponse> walletResponse = userClient.getWalletByUserId(order.getUserId());
         if (walletResponse == null || walletResponse.getData() == null) {
             throw new RuntimeException("Wallet not found for user " + order.getUserId());
         }
 
-        // Cập nhật payment status
         payment.setPaymentStatus(PaymentStatus.REFUNDING);
         paymentRepository.save(payment);
 
-        // Hoàn tiền
         try {
             String referenceId = "REFUND-" + orderId + "-" + UUID.randomUUID();
             userClient.refundToWallet(
