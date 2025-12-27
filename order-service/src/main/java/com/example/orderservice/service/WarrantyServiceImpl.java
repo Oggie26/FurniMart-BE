@@ -312,7 +312,7 @@ public class WarrantyServiceImpl implements WarrantyService {
             WarrantyClaimStatus newStatus = WarrantyClaimStatus.valueOf(status.toUpperCase());
             WarrantyClaimStatus oldStatus = claim.getStatus();
             
-            String adminId = "4d0be15b-e34e-4770-a969-13e28ed492c8";
+            String adminId = "af260f94-e77d-4a3c-b2aa-d4b502a75ca9";
 
             validateStoreAccess(claim, adminId);
 
