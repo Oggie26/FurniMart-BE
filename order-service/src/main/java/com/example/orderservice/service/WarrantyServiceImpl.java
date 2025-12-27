@@ -359,33 +359,6 @@ public class WarrantyServiceImpl implements WarrantyService {
             WarrantyClaim savedClaim = warrantyClaimRepository.save(claim);
 
             // 3. Gửi Kafka Event: APPROVED
-            if (newStatus == WarrantyClaimStatus.APPROVED && oldStatus != WarrantyClaimStatus.APPROVED) {
-                try {
-                    WarrantyClaimApprovedEvent event = WarrantyClaimApprovedEvent.builder()
-                            .claimId(savedClaim.getId())
-                            .orderId(savedClaim.getOrderId())
-                            .customerId(savedClaim.getCustomerId())
-                            .addressId(savedClaim.getAddressId())
-                            .actionType(savedClaim.getActionType())
-                            .refundAmount(savedClaim.getRefundAmount())
-                            .repairCost(savedClaim.getRepairCost())
-                            .exchangeProductColorId(savedClaim.getExchangeProductColorId())
-                            .approvedAt(LocalDateTime.now())
-                            .approvedBy(adminId)
-                            .build();
-
-                    kafkaTemplate.send("warranty-claim-approved-topic", event)
-                            .whenComplete((result, ex) -> {
-                                if (ex != null) {
-                                    log.error("Failed to send WarrantyClaimApprovedEvent for claim {}: {}", claimId, ex.getMessage());
-                                } else {
-                                    log.info("Successfully sent WarrantyClaimApprovedEvent for claim: {}", claimId);
-                                }
-                            });
-                } catch (Exception e) {
-                    log.error("Error publishing WarrantyClaimApprovedEvent for claim {}: {}", claimId, e.getMessage(), e);
-                }
-            }
 
             // 4. Gửi Kafka Event: REJECTED
             if (newStatus == WarrantyClaimStatus.REJECTED && oldStatus != WarrantyClaimStatus.REJECTED) {
