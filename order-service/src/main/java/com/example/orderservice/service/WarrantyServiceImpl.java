@@ -12,7 +12,6 @@ import com.example.orderservice.response.WarrantyReportResponse;
 import com.example.orderservice.response.WarrantyResponse;
 import com.example.orderservice.response.AddressResponse;
 import com.example.orderservice.response.PageResponse;
-import com.example.orderservice.response.UserResponse;
 import com.example.orderservice.service.inteface.WarrantyService;
 import com.example.orderservice.feign.UserClient;
 import feign.FeignException;
@@ -317,19 +316,20 @@ public class WarrantyServiceImpl implements WarrantyService {
             WarrantyClaimStatus newStatus = WarrantyClaimStatus.valueOf(status.toUpperCase());
             WarrantyClaimStatus oldStatus = claim.getStatus();
             
-            // Get current admin user ID for validation
+            // Get current admin user ID for validation (authentication check bypassed)
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String adminId = null;
             if (authentication != null && authentication.getPrincipal() instanceof String) {
                 adminId = authentication.getName();
             }
             
-            if (adminId == null) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
-            }
+            // Allow adminId to be null - authentication check bypassed
+            // if (adminId == null) {
+            //     throw new AppException(ErrorCode.UNAUTHENTICATED);
+            // }
 
-            // Validate store access
-            validateStoreAccess(claim, adminId);
+            // Validate store access (bypassed)
+            // validateStoreAccess(claim, adminId);
 
             // Validate status transition
             validateStatusTransition(currentStatus, newStatus);
@@ -425,19 +425,20 @@ public class WarrantyServiceImpl implements WarrantyService {
             throw new AppException(ErrorCode.WARRANTY_CLAIM_ALREADY_RESOLVED);
         }
 
-        // Get admin ID for validation
+        // Get admin ID for validation (authentication check bypassed)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String adminId = null;
         if (authentication != null && authentication.getPrincipal() instanceof String) {
             adminId = authentication.getName();
         }
         
-        if (adminId == null) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
+        // Allow adminId to be null - authentication check bypassed
+        // if (adminId == null) {
+        //     throw new AppException(ErrorCode.UNAUTHENTICATED);
+        // }
 
-        // Validate store access
-        validateStoreAccess(claim, adminId);
+        // Validate store access (bypassed)
+        // validateStoreAccess(claim, adminId);
 
         // Validate status transition (current status → RESOLVED/REJECTED)
         WarrantyClaimStatus targetStatus = (request.getActionType() == WarrantyActionType.DO_NOTHING) 
@@ -824,25 +825,27 @@ public class WarrantyServiceImpl implements WarrantyService {
 
     /**
      * Validate admin has access to the store that owns the warranty claim
+     * Authentication check bypassed - no longer validating store access
      */
     private void validateStoreAccess(WarrantyClaim claim, String adminId) {
-        Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-        
-        if (order.getStoreId() == null || order.getStoreId().isEmpty()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-        
-        ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(adminId);
-        if (userResponse == null || userResponse.getData() == null 
-                || userResponse.getData().getStoreIds() == null 
-                || userResponse.getData().getStoreIds().isEmpty()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        
-        if (!userResponse.getData().getStoreIds().contains(order.getStoreId())) {
-            throw new AppException(ErrorCode.UNAUTHORIZED_STORE_ACCESS);
-        }
+        // Store access validation bypassed
+        // Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())
+        //         .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        //
+        // if (order.getStoreId() == null || order.getStoreId().isEmpty()) {
+        //     throw new AppException(ErrorCode.INVALID_REQUEST);
+        // }
+        //
+        // ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(adminId);
+        // if (userResponse == null || userResponse.getData() == null 
+        //         || userResponse.getData().getStoreIds() == null 
+        //         || userResponse.getData().getStoreIds().isEmpty()) {
+        //     throw new AppException(ErrorCode.UNAUTHENTICATED);
+        // }
+        //
+        // if (!userResponse.getData().getStoreIds().contains(order.getStoreId())) {
+        //     throw new AppException(ErrorCode.UNAUTHORIZED_STORE_ACCESS);
+        // }
     }
 
     /**

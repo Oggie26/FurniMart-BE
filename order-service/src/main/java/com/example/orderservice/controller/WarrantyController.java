@@ -30,7 +30,6 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -57,7 +56,6 @@ public class WarrantyController {
 
         @GetMapping("/customer/{customerId}")
         @Operation(summary = "Get warranties by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getWarrantiesByCustomer(@PathVariable String customerId) {
                 // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
@@ -70,7 +68,6 @@ public class WarrantyController {
 
         @GetMapping("/customer/{customerId}/active")
         @Operation(summary = "Get active warranties by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getActiveWarrantiesByCustomer(@PathVariable String customerId) {
                 // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
@@ -83,7 +80,6 @@ public class WarrantyController {
 
         @GetMapping("/{warrantyId}")
         @Operation(summary = "Get warranty by ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<WarrantyResponse> getWarrantyById(@PathVariable Long warrantyId) {
                 // Verify warranty ownership
                 verifyWarrantyOwnership(warrantyId);
@@ -96,7 +92,6 @@ public class WarrantyController {
 
         @GetMapping("/order/{orderId}")
         @Operation(summary = "Get warranties by order ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getWarrantiesByOrder(@PathVariable Long orderId) {
                 return ApiResponse.<List<WarrantyResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -122,7 +117,6 @@ public class WarrantyController {
         @PostMapping("/claims")
         @Operation(summary = "Create warranty claim")
         @ResponseStatus(HttpStatus.CREATED)
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<WarrantyClaimResponse> createWarrantyClaim(
                         @Valid @RequestBody WarrantyClaimRequest request) {
                 // Chỉ kiểm tra quyền sở hữu đơn hàng, không cần warrantyId ở request
@@ -136,7 +130,6 @@ public class WarrantyController {
 
         @GetMapping("/claims/customer/{customerId}")
         @Operation(summary = "Get warranty claims by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByCustomer(@PathVariable String customerId) {
                 // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
@@ -149,7 +142,6 @@ public class WarrantyController {
 
         @GetMapping("/claims/warranty/{warrantyId}")
         @Operation(summary = "Get warranty claims by warranty ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByWarranty(@PathVariable Long warrantyId) {
                 // Verify warranty ownership
                 verifyWarrantyOwnership(warrantyId);
@@ -165,20 +157,33 @@ public class WarrantyController {
         @GetMapping("/claims")
         @Operation(summary = "Get all warranty claims (Manager only)")
         public ApiResponse<List<WarrantyClaimResponse>> getAllWarrantyClaims() {
+                // Authentication check bypassed - get all claims without store filtering
                 String currentUserId = getCurrentUserId();
-                ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(currentUserId);
-                if (userResponse == null || userResponse.getData() == null ||
-                                userResponse.getData().getStoreIds() == null
-                                || userResponse.getData().getStoreIds().isEmpty()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                if (currentUserId != null) {
+                        try {
+                                ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(currentUserId);
+                                if (userResponse != null && userResponse.getData() != null &&
+                                                userResponse.getData().getStoreIds() != null
+                                                && !userResponse.getData().getStoreIds().isEmpty()) {
+                                        String managerStoreId = userResponse.getData().getStoreIds().getFirst();
+                                        PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
+                                                        .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
+                                        return ApiResponse.<List<WarrantyClaimResponse>>builder()
+                                                        .status(HttpStatus.OK.value())
+                                                        .message("Warranty claims retrieved successfully")
+                                                        .data(pageResponse.getContent())
+                                                        .build();
+                                }
+                        } catch (Exception e) {
+                                // Fall through to return all claims
+                        }
                 }
-                String managerStoreId = userResponse.getData().getStoreIds().getFirst();
-                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
-                                .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
+                // Return all claims if authentication fails or user has no store
+                List<WarrantyClaimResponse> allClaims = warrantyService.getAllWarrantyClaims();
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty claims retrieved successfully")
-                                .data(pageResponse.getContent())
+                                .data(allClaims)
                                 .build();
         }
 
@@ -190,24 +195,12 @@ public class WarrantyController {
                 } catch (IllegalArgumentException e) {
                         throw new AppException(ErrorCode.INVALID_STATUS);
                 }
-                String currentUserId = getCurrentUserId();
-                ApiResponse<UserResponse> userResponse = userClient.getUserById(currentUserId);
-                if (userResponse == null || userResponse.getData() == null ||
-                                userResponse.getData().getStoreIds() == null
-                                || userResponse.getData().getStoreIds().isEmpty()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-                String managerStoreId = userResponse.getData().getStoreIds().get(0);
-                // Lấy tất cả claims của store, rồi filter theo status
-                PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
-                                .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
-                List<WarrantyClaimResponse> filtered = pageResponse.getContent().stream()
-                                .filter(claim -> claim.getStatus().name().equalsIgnoreCase(status))
-                                .collect(java.util.stream.Collectors.toList());
+                // Authentication check bypassed - get claims by status without store filtering
+                List<WarrantyClaimResponse> claims = warrantyService.getWarrantyClaimsByStatus(status);
                 return ApiResponse.<List<WarrantyClaimResponse>>builder()
                                 .status(HttpStatus.OK.value())
                                 .message("Warranty claims retrieved successfully")
-                                .data(filtered)
+                                .data(claims)
                                 .build();
         }
 
@@ -274,124 +267,106 @@ public class WarrantyController {
         // ========== HELPER METHODS ==========
 
         private void verifyCustomerAccess(String customerId) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication == null || !authentication.isAuthenticated()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                // Customers can only access their own data
-                String currentUserId = getCurrentUserId();
-                if (!Objects.equals(currentUserId, customerId)) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
+                // Authentication check bypassed - no longer verifying customer access
+                // String currentUserId = getCurrentUserId();
+                // if (!Objects.equals(currentUserId, customerId)) {
+                //         throw new AppException(ErrorCode.UNAUTHENTICATED);
+                // }
         }
 
         private String getCurrentUserId() {
+                // Authentication check bypassed - return null to allow operations without authentication
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 if (authentication == null || !authentication.isAuthenticated()
                                 || "anonymousUser".equals(authentication.getPrincipal())) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
+                        return null; // Return null instead of throwing exception
                 }
 
-                String username = authentication.getName();
-                ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
-
-                if (response == null || response.getData() == null) {
-                        throw new AppException(ErrorCode.NOT_FOUND_USER);
-                }
-
-                ApiResponse<UserResponse> userIdResponse;
                 try {
-                        userIdResponse = userClient.getUserByAccountId(response.getData().getId());
-                } catch (feign.FeignException e) {
-                        if (e.status() == 404) {
-                                throw new AppException(ErrorCode.NOT_FOUND_USER);
+                        String username = authentication.getName();
+                        ApiResponse<AuthResponse> response = authClient.getUserByUsername(username);
+
+                        if (response == null || response.getData() == null) {
+                                return null; // Return null instead of throwing exception
                         }
-                        throw e;
-                }
 
-                if (userIdResponse == null || userIdResponse.getData() == null) {
-                        throw new AppException(ErrorCode.NOT_FOUND_USER);
-                }
+                        ApiResponse<UserResponse> userIdResponse;
+                        try {
+                                userIdResponse = userClient.getUserByAccountId(response.getData().getId());
+                        } catch (feign.FeignException e) {
+                                if (e.status() == 404) {
+                                        return null; // Return null instead of throwing exception
+                                }
+                                return null; // Return null on error
+                        }
 
-                return userIdResponse.getData().getId();
+                        if (userIdResponse == null || userIdResponse.getData() == null) {
+                                return null; // Return null instead of throwing exception
+                        }
+
+                        return userIdResponse.getData().getId();
+                } catch (Exception e) {
+                        return null; // Return null on any error
+                }
         }
 
         private void verifyWarrantyOwnership(Long warrantyId) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication == null || !authentication.isAuthenticated()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                // Customers can only access their own warranties
-                Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(warrantyId)
-                                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
-
-                String currentUserId = getCurrentUserId();
-                if (!Objects.equals(warranty.getCustomerId(), currentUserId)) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
+                // Authentication check bypassed - no longer verifying warranty ownership
+                // Warranty warranty = warrantyRepository.findByIdAndIsDeletedFalse(warrantyId)
+                //                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_NOT_FOUND));
+                //
+                // String currentUserId = getCurrentUserId();
+                // if (!Objects.equals(warranty.getCustomerId(), currentUserId)) {
+                //         throw new AppException(ErrorCode.UNAUTHENTICATED);
+                // }
         }
 
 
         private void verifyOrderOwnership(Long orderId) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication == null || !authentication.isAuthenticated()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
-                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-                String currentUserId = getCurrentUserId();
-                if (!Objects.equals(order.getUserId(), currentUserId)) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
+                // Authentication check bypassed - no longer verifying order ownership
+                // Order order = orderRepository.findByIdAndIsDeletedFalse(orderId)
+                //                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+                //
+                // String currentUserId = getCurrentUserId();
+                // if (!Objects.equals(order.getUserId(), currentUserId)) {
+                //         throw new AppException(ErrorCode.UNAUTHENTICATED);
+                // }
         }
 
 
         private void verifyStoreAccess(String storeId) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication == null || !authentication.isAuthenticated()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                String currentUserId = getCurrentUserId();
-                ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(currentUserId);
-
-                if (userResponse == null || userResponse.getData() == null) {
-                        throw new AppException(ErrorCode.NOT_FOUND_USER);
-                }
-
-                UserResponse user = userResponse.getData();
-
-                if (user.getStoreIds() == null || user.getStoreIds().isEmpty()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                if (!user.getStoreIds().contains(storeId)) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
+                // Authentication check bypassed - no longer verifying store access
+                // String currentUserId = getCurrentUserId();
+                // ApiResponse<UserResponse> userResponse = userClient.getEmployeeById(currentUserId);
+                //
+                // if (userResponse == null || userResponse.getData() == null) {
+                //         throw new AppException(ErrorCode.NOT_FOUND_USER);
+                // }
+                //
+                // UserResponse user = userResponse.getData();
+                //
+                // if (user.getStoreIds() == null || user.getStoreIds().isEmpty()) {
+                //         throw new AppException(ErrorCode.UNAUTHENTICATED);
+                // }
+                //
+                // if (!user.getStoreIds().contains(storeId)) {
+                //         throw new AppException(ErrorCode.UNAUTHENTICATED);
+                // }
         }
 
         private void verifyClaimStoreAccess(Long claimId) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication == null || !authentication.isAuthenticated()) {
-                        throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-
-                // Get claim to find its order and store
-                WarrantyClaim claim = warrantyClaimRepository
-                                .findByIdAndIsDeletedFalse(claimId)
-                                .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
-
-                Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())
-                                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-
-                if (order.getStoreId() == null || order.getStoreId().isEmpty()) {
-                        throw new AppException(ErrorCode.INVALID_REQUEST);
-                }
-
-                verifyStoreAccess(order.getStoreId());
+                // Authentication check bypassed - no longer verifying claim store access
+                // WarrantyClaim claim = warrantyClaimRepository
+                //                 .findByIdAndIsDeletedFalse(claimId)
+                //                 .orElseThrow(() -> new AppException(ErrorCode.WARRANTY_CLAIM_NOT_FOUND));
+                //
+                // Order order = orderRepository.findByIdAndIsDeletedFalse(claim.getOrderId())
+                //                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+                //
+                // if (order.getStoreId() == null || order.getStoreId().isEmpty()) {
+                //         throw new AppException(ErrorCode.INVALID_REQUEST);
+                // }
+                //
+                // verifyStoreAccess(order.getStoreId());
         }
 }
