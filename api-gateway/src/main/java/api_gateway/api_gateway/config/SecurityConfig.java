@@ -39,21 +39,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-                "http://152.53.244.124",
-                "https://furnimart-web.vercel.app",
-                "https://furnimart.click",
-                "http://furnimart.click",
-                "https://furnimart.click/api/ws/chat",
-                "exp://192.168.102.7:8081",
-                "http://172.20.10.4:8081",
-                "exp://172.20.10.4:8081",
-                "http://localhost:8081",
-                "http://152.53.244.124:8080"));
+        // Use setAllowedOriginPatterns instead of setAllowedOrigins to allow all while
+        // keeping allowCredentials(true)
+        config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "Content-Type"));
