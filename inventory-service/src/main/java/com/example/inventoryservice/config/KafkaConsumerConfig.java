@@ -11,6 +11,9 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
+import org.springframework.kafka.core.KafkaAdmin;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,7 +22,14 @@ import java.util.Map;
 public class KafkaConsumerConfig {
 
     private String BOOTSTRAP_SERVERS = "kafka:9092";
-//    private final String BOOTSTRAP_SERVERS = "localhost:9092";
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        return new KafkaAdmin(configs);
+    }
+    // private final String BOOTSTRAP_SERVERS = "localhost:9092";
 
     private final String GROUP_ID = "notification-group";
 
@@ -38,8 +48,7 @@ public class KafkaConsumerConfig {
         return new DefaultKafkaConsumerFactory<>(
                 baseConfigs(),
                 new StringDeserializer(),
-                new JsonDeserializer<>(OrderCreatedEvent.class, false)
-        );
+                new JsonDeserializer<>(OrderCreatedEvent.class, false));
     }
 
     @Bean

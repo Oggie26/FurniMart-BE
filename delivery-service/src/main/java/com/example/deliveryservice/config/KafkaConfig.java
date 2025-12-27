@@ -37,6 +37,14 @@ public class KafkaConfig {
     }
 
     @Bean
+    public NewTopic orderDeliveredTopic() {
+        return TopicBuilder.name("order-delivered-topic")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
     public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);

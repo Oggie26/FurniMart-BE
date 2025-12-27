@@ -1,9 +1,6 @@
 package com.example.deliveryservice.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -18,6 +15,7 @@ import java.time.LocalDateTime;
 public class DriverLocation {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column
@@ -33,5 +31,10 @@ public class DriverLocation {
     private Double longitude;
 
     private LocalDateTime updatedAt;
-}
 
+    @PrePersist
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+}

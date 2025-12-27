@@ -18,11 +18,21 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.kafka.core.KafkaAdmin;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+
 @Configuration
 @EnableKafka
 public class KafkaConsumerConfig {
 
     private String BOOTSTRAP_SERVERS = "kafka:9092";
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        return new KafkaAdmin(configs);
+    }
     // private final String BOOTSTRAP_SERVERS = "localhost:9092";
 
     private final String GROUP_ID = "notification-group";

@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.kafka.config.TopicBuilder;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.springframework.kafka.core.KafkaAdmin;
 
 @Configuration
 @EnableKafka
@@ -25,8 +27,31 @@ public class KafkaConfig {
     private final String BOOTSTRAP_SERVERS = "kafka:9092";
 
     @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        return new KafkaAdmin(configs);
+    }
+
+    @Bean
     public NewTopic orderCreatedTopic() {
         return TopicBuilder.name("order-created-topic")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic storeAssignedTopic() {
+        return TopicBuilder.name("store-assigned-topic")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic orderCancelledTopic() {
+        return TopicBuilder.name("order-cancelled-topic")
                 .partitions(1)
                 .replicas(1)
                 .build();
