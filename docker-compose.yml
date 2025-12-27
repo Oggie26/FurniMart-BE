@@ -107,8 +107,8 @@ services:
       POSTGRES_DB: product_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    #    ports:
-    #      - "5436:5432"
+    ports:
+      - "5436:5432"
     volumes:
       - product_data:/var/lib/postgresql/data
     networks:
@@ -140,8 +140,8 @@ services:
       POSTGRES_DB: user_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    #    ports:
-    #      - "5435:5432"
+    ports:
+      - "5435:5432"
     volumes:
       - user_data:/var/lib/postgresql/data
     networks:
@@ -192,8 +192,8 @@ services:
       POSTGRES_DB: order_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    #    ports:
-    #      - "5437:5432"
+    ports:
+      - "5437:5432"
     volumes:
       - order_data:/var/lib/postgresql/data
     networks:
@@ -228,8 +228,8 @@ services:
       POSTGRES_DB: inventory_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    #    ports:
-    #      - "5438:5432"
+    ports:
+      - "5438:5432"
     volumes:
       - inventory_data:/var/lib/postgresql/data
     networks:
@@ -279,8 +279,8 @@ services:
       POSTGRES_DB: delivery_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    #    ports:
-    #      - "5441:5432"
+    ports:
+      - "5441:5432"
     volumes:
       - delivery_data:/var/lib/postgresql/data
     networks:
@@ -290,8 +290,8 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: always
-    #    ports:
-    #      - "6379:6379"
+    ports:
+      - "6379:6379"
     networks:
       - backend
     command: [ "redis-server", "--appendonly", "yes" ]
