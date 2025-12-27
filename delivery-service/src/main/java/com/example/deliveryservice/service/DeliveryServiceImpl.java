@@ -195,30 +195,30 @@ public class DeliveryServiceImpl implements DeliveryService {
         }
 
 
-        List<String> insufficientProducts = new ArrayList<>();
-        if (order.getOrderDetails() != null) {
-            for (OrderDetailResponse detail : order.getOrderDetails()) {
-                ApiResponse<Integer> stockResponse = inventoryClient.getTotalAvailableStock(detail.getProductColorId());
-                if (stockResponse != null && stockResponse.getData() != null) {
-                    int availableStock = stockResponse.getData();
-                    if (availableStock < detail.getQuantity()) {
-                        insufficientProducts.add(String.format(
-                                "Product %s: Required %d, Available %d, Shortage %d",
-                                detail.getProductColorId(),
-                                detail.getQuantity(),
-                                availableStock,
-                                detail.getQuantity() - availableStock));
-                    }
-                }
-            }
-        }
-
-        if (!insufficientProducts.isEmpty()) {
-            String errorMessage = "Stock không đủ cho các sản phẩm sau:\n" +
-                    String.join("\n", insufficientProducts);
-            log.warn(errorMessage);
-            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
-        }
+//        List<String> insufficientProducts = new ArrayList<>();
+//        if (order.getOrderDetails() != null) {
+//            for (OrderDetailResponse detail : order.getOrderDetails()) {
+//                ApiResponse<Integer> stockResponse = inventoryClient.getTotalAvailableStock(detail.getProductColorId());
+//                if (stockResponse != null && stockResponse.getData() != null) {
+//                    int availableStock = stockResponse.getData();
+//                    if (availableStock < detail.getQuantity()) {
+//                        insufficientProducts.add(String.format(
+//                                "Product %s: Required %d, Available %d, Shortage %d",
+//                                detail.getProductColorId(),
+//                                detail.getQuantity(),
+//                                availableStock,
+//                                detail.getQuantity() - availableStock));
+//                    }
+//                }
+//            }
+//        }
+//
+//        if (!insufficientProducts.isEmpty()) {
+//            String errorMessage = "Stock không đủ cho các sản phẩm sau:\n" +
+//                    String.join("\n", insufficientProducts);
+//            log.warn(errorMessage);
+//            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
+//        }
 
         assignment.setProductsPrepared(true);
         assignment.setProductsPreparedAt(LocalDateTime.now());
