@@ -8,7 +8,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     generate-ddl: true
     properties:
       hibernate:
@@ -67,7 +67,7 @@ eureka:
 logging:
   level:
     root: INFO
-    com.example.deliveryservice: DEBUG
-    org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
+    com.example.deliveryservice: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
 
