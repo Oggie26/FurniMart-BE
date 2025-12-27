@@ -57,7 +57,6 @@ public class WarrantyController {
 
         @GetMapping("/customer/{customerId}")
         @Operation(summary = "Get warranties by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getWarrantiesByCustomer(@PathVariable String customerId) {
                 // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
@@ -70,7 +69,6 @@ public class WarrantyController {
 
         @GetMapping("/customer/{customerId}/active")
         @Operation(summary = "Get active warranties by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getActiveWarrantiesByCustomer(@PathVariable String customerId) {
                 // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
@@ -83,7 +81,6 @@ public class WarrantyController {
 
         @GetMapping("/{warrantyId}")
         @Operation(summary = "Get warranty by ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<WarrantyResponse> getWarrantyById(@PathVariable Long warrantyId) {
                 // Verify warranty ownership
                 verifyWarrantyOwnership(warrantyId);
@@ -96,7 +93,6 @@ public class WarrantyController {
 
         @GetMapping("/order/{orderId}")
         @Operation(summary = "Get warranties by order ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyResponse>> getWarrantiesByOrder(@PathVariable Long orderId) {
                 return ApiResponse.<List<WarrantyResponse>>builder()
                                 .status(HttpStatus.OK.value())
@@ -122,7 +118,6 @@ public class WarrantyController {
         @PostMapping("/claims")
         @Operation(summary = "Create warranty claim")
         @ResponseStatus(HttpStatus.CREATED)
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<WarrantyClaimResponse> createWarrantyClaim(
                         @Valid @RequestBody WarrantyClaimRequest request) {
                 // Chỉ kiểm tra quyền sở hữu đơn hàng, không cần warrantyId ở request
@@ -136,7 +131,6 @@ public class WarrantyController {
 
         @GetMapping("/claims/customer/{customerId}")
         @Operation(summary = "Get warranty claims by customer ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByCustomer(@PathVariable String customerId) {
                 // Verify customer can only access their own data
                 verifyCustomerAccess(customerId);
@@ -149,7 +143,6 @@ public class WarrantyController {
 
         @GetMapping("/claims/warranty/{warrantyId}")
         @Operation(summary = "Get warranty claims by warranty ID")
-        @PreAuthorize("hasRole('CUSTOMER')")
         public ApiResponse<List<WarrantyClaimResponse>> getWarrantyClaimsByWarranty(@PathVariable Long warrantyId) {
                 // Verify warranty ownership
                 verifyWarrantyOwnership(warrantyId);
@@ -197,7 +190,7 @@ public class WarrantyController {
                                 || userResponse.getData().getStoreIds().isEmpty()) {
                         throw new AppException(ErrorCode.UNAUTHENTICATED);
                 }
-                String managerStoreId = userResponse.getData().getStoreIds().get(0);
+                String managerStoreId = userResponse.getData().getStoreIds().getFirst();
                 // Lấy tất cả claims của store, rồi filter theo status
                 PageResponse<WarrantyClaimResponse> pageResponse = warrantyService
                                 .getWarrantyClaimsByStore(managerStoreId, 1, 1000);
