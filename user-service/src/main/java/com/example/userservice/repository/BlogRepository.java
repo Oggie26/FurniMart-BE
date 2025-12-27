@@ -19,10 +19,10 @@ public interface BlogRepository extends JpaRepository<Blog, Integer> {
 
     List<Blog> findByEmployeeAndStatus(Employee employee, Boolean status);
 
-    @Query("SELECT b FROM Blog b WHERE b.employee.id = :employeeId")
+    @Query("SELECT b FROM Blog b WHERE b.employee.id = :employeeId AND b.isDeleted = false")
     List<Blog> findByEmployeeId(@Param("employeeId") String employeeId);
 
-    @Query("SELECT b FROM Blog b WHERE b.employee.id = :employeeId AND b.status = :status")
+    @Query("SELECT b FROM Blog b WHERE b.employee.id = :employeeId AND b.status = :status AND b.isDeleted = false")
     List<Blog> findByEmployeeIdAndStatus(@Param("employeeId") String employeeId, @Param("status") Boolean status);
 
     // 5. Phân trang
@@ -30,7 +30,7 @@ public interface BlogRepository extends JpaRepository<Blog, Integer> {
 
     // 6. Phân trang theo Employee
     Page<Blog> findByEmployee(Employee employee, Pageable pageable);
-    
+
     // 7. Phân trang theo Employee và Status
     Page<Blog> findByEmployeeAndStatus(Employee employee, Boolean status, Pageable pageable);
 }
