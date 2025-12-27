@@ -78,6 +78,14 @@
                  - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**
                filters: []
 
+             # WEBSOCKET ROUTE
+             - id: user-service-websocket
+               uri: lb://user-service
+               predicates:
+                 - Path=/api/ws/**
+               filters:
+                 - RewritePath=/api/ws/(?<segment>.*), /ws/$\{segment}
+
              # PRODUCT SERVICE
              - id: product-service
                uri: lb://product-service
