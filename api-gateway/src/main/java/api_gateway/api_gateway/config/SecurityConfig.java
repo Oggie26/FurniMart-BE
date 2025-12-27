@@ -23,7 +23,7 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(Customizer.withDefaults())
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .authorizeExchange(exchange -> exchange
@@ -48,6 +48,7 @@ public class SecurityConfig {
                 "https://furnimart-web.vercel.app",
                 "https://furnimart.click",
                 "http://furnimart.click",
+                "https://furnimart.click/api/ws/chat",
                 "exp://192.168.102.7:8081",
                 "http://172.20.10.4:8081",
                 "exp://172.20.10.4:8081",
