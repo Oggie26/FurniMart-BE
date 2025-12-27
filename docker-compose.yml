@@ -52,6 +52,8 @@ services:
   eureka-server:
     build: ./eureka-server
     container_name: eureka-server
+    ports:
+      - "8761:8761"
     networks:
       - backend
     restart: unless-stopped
@@ -80,6 +82,8 @@ services:
   product-service:
     build: ./product-service
     container_name: product-service
+    ports:
+      - "8084:8084"
     depends_on:
       - eureka-server
       - product-db
@@ -115,6 +119,8 @@ services:
   user-service:
     build: ./user-service
     container_name: user-service
+    ports:
+      - "8086:8086"
     depends_on:
       - eureka-server
       - user-db
@@ -148,6 +154,8 @@ services:
   ai-service:
     build: ./ai-service
     container_name: ai-service
+    ports:
+      - "9000:9000"
     env_file:
       - .env
     depends_on:
@@ -165,6 +173,8 @@ services:
   order-service:
     build: ./order-service
     container_name: order-service
+    ports:
+      - "8085:8085"
     depends_on:
       - eureka-server
       - order-db
@@ -200,6 +210,8 @@ services:
   inventory-service:
     build: ./inventory-service
     container_name: inventory-service
+    ports:
+      - "8083:8083"
     depends_on:
       - eureka-server
       - inventory-db
@@ -236,6 +248,8 @@ services:
 
   notification-service:
     build: ./notification-service
+    ports:
+      - "8087:8087"
     container_name: notification-service
     depends_on:
       - eureka-server
@@ -252,6 +266,8 @@ services:
   delivery-service:
     build: ./delivery-service
     container_name: delivery-service
+    ports:
+      - "8089:8089"
     depends_on:
       - eureka-server
       - delivery-db

@@ -59,8 +59,6 @@ public class SecurityConfig {
                                 "/api/auth/google/login",
                                 "/api/auth/refresh",
                                 "/api/auth/verify-token",
-                                // Note: /api/auth/{email} is protected by ServiceAuthFilter - requires service
-                                // token
                                 "/api/users/{id}",
                                 "/api/addresses/*",
                                 "/api/employees/profile",
