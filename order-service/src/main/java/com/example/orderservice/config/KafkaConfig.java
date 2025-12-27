@@ -122,22 +122,6 @@ public class KafkaConfig {
         return props;
     }
 
-    @Bean
-    public ConsumerFactory<String, UpdateStatusOrderCreatedEvent> updateStatusConsumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(
-                baseConfigs(),
-                new StringDeserializer(),
-                new JsonDeserializer<>(UpdateStatusOrderCreatedEvent.class, false));
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, UpdateStatusOrderCreatedEvent> updateStatusCreatedKafkaListenerContainerFactory() {
-        var factory = new ConcurrentKafkaListenerContainerFactory<String, UpdateStatusOrderCreatedEvent>();
-
-        factory.setConsumerFactory(updateStatusConsumerFactory());
-        return factory;
-    }
-
     // Consumer factory for ProductUpdatedEvent
     @Bean
     public ConsumerFactory<String, com.example.orderservice.event.ProductUpdatedEvent> productUpdatedConsumerFactory() {
