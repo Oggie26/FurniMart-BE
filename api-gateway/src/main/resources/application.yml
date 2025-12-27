@@ -15,59 +15,116 @@
                enabled: true
                lower-case-service-id: true
            routes:
+             # USER SERVICE DOCS
+             - id: user-service-docs
+               uri: lb://user-service
+               predicates:
+                 - Path=/api/users/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
+             # PRODUCT SERVICE DOCS
+             - id: product-service-docs
+               uri: lb://product-service
+               predicates:
+                 - Path=/api/products/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
+             # ORDER SERVICE DOCS
+             - id: order-service-docs
+               uri: lb://order-service
+               predicates:
+                 - Path=/api/orders/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
+             # INVENTORY SERVICE DOCS
+             - id: inventory-service-docs
+               uri: lb://inventory-service
+               predicates:
+                 - Path=/api/inventories/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
+             # NOTIFICATION SERVICE DOCS
+             - id: notification-service-docs
+               uri: lb://notification-service
+               predicates:
+                 - Path=/api/notifications/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
+             # DELIVERY SERVICE DOCS
+             - id: delivery-service-docs
+               uri: lb://delivery-service
+               predicates:
+                 - Path=/api/deliveries/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
+             # AI SERVICE DOCS
+             - id: ai-service-docs
+               uri: lb://ai-service
+               predicates:
+                 - Path=/api/ai/v3/api-docs
+               filters:
+                 - SetPath=/v3/api-docs
+
              # USER SERVICE
-                     - id: user-service
-                       uri: lb://user-service
-                       predicates:
-                         - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**
-                       filters: []
+             - id: user-service
+               uri: lb://user-service
+               predicates:
+                 - Path=/api/users/**, /api/auth/**, /api/stores/**, /api/blogs/**, /api/addresses/**, /api/staff/**, /api/wallets/**, /api/profile, /api/employees/**, /api/chats/**, /api/chat-messages/**, /api/favorites/**, /api/accounts/**
+               filters: []
 
-                     # PRODUCT SERVICE
-                     - id: product-service
-                       uri: lb://product-service
-                       predicates:
-                         - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**,/api/ratings/** , /api/product-colors/**
-                       filters: []
+             # PRODUCT SERVICE
+             - id: product-service
+               uri: lb://product-service
+               predicates:
+                 - Path=/api/products/**, /api/categories/**, /api/materials/**, /api/colors/**, /api/ratings/**, /api/product-colors/**
+               filters: []
 
-                     # NOTIFICATION SERVICE
-                     - id: notification-service
-                       uri: lb://notification-service
-                       predicates:
-                         - Path=/api/notifications/**
-                       filters: []
+             # NOTIFICATION SERVICE
+             - id: notification-service
+               uri: lb://notification-service
+               predicates:
+                 - Path=/api/notifications/**
+               filters: []
 
-                     - id: delivery-service
-                       uri: lb://delivery-service
-                       predicates:
-                         - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**, /api/driver-location/**, /api/delivery/assignments/**
-                       filters: [ ]
+             # DELIVERY SERVICE
+             - id: delivery-service
+               uri: lb://delivery-service
+               predicates:
+                 - Path=/api/deliveries/**, /api/delivery-confirmations/**, /api/delivery/**, /api/driver-location/**, /api/delivery/assignments/**
+               filters: []
 
-                     # ORDER SERVICE
-                     - id: order-service
-                       uri: lb://order-service
-                       predicates:
-                         - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/payments/** , /api/warranties/**, /api/dashboard/**
-                       filters: []
+             # ORDER SERVICE
+             - id: order-service
+               uri: lb://order-service
+               predicates:
+                 - Path=/api/orders/**, /api/vouchers/**, /api/v1/**, /api/carts/**, /api/payments/**, /api/warranties/**, /api/dashboard/**
+               filters: []
 
-                     # INVENTORY SERVICE
-                     - id: inventory-service
-                       uri: lb://inventory-service
-                       predicates:
-                         - Path=/api/inventories/**, /api/warehouses/**, /api/location-items/**, /api/zones/**
-                       filters: []
+             # INVENTORY SERVICE
+             - id: inventory-service
+               uri: lb://inventory-service
+               predicates:
+                 - Path=/api/inventories/**, /api/warehouses/**, /api/location-items/**, /api/zones/**
+               filters: []
 
-                     # AI SERVICE
-                     - id: ai-service
-                       uri: lb://ai-service
-                       predicates:
-                         - Path=/api/ai/**
-                       filters: []
+             # AI SERVICE
+             - id: ai-service
+               uri: lb://ai-service
+               predicates:
+                 - Path=/api/ai/**
+               filters: []
 
-                     - id: swagger-docs-route
-                       uri: lb://api-gateway
-                       predicates:
-                         - Path=/v3/api-docs/**
-                       filters: []
+             - id: swagger-docs-route
+               uri: lb://api-gateway
+               predicates:
+                 - Path=/v3/api-docs/**
+               filters: []
 
  jwt:
    secret: j4G$z8LpN9vJ^T3Qb7fE2k!wYcB1uL0zRxH5MvAhDpXsCgKj
@@ -95,17 +152,17 @@
      path: /swagger-ui.html
      config-url: /v3/api-docs/swagger-config
      urls:
-       - url: /api/users/v3/api-docs
-         name: User Service
-       - url: /api/products/v3/api-docs
-         name: Product Service
-       - url: /api/orders/v3/api-docs
-         name: Order Service
-       - url: /api/inventories/v3/api-docs
-         name: Inventory Service
-       - url: /api/notifications/v3/api-docs
-         name: Notification Service
-       - url: /api/deliveries/v3/api-docs
-         name: Delivery Service
-       - url: /api/ai/v3/api-docs
-         name: AI Service
+       - name: 1. User Service
+         url: /api/users/v3/api-docs
+       - name: 2. Product Service
+         url: /api/products/v3/api-docs
+       - name: 3. Order Service
+         url: /api/orders/v3/api-docs
+       - name: 4. Inventory Service
+         url: /api/inventories/v3/api-docs
+       - name: 5. Notification Service
+         url: /api/notifications/v3/api-docs
+       - name: 6. Delivery Service
+         url: /api/deliveries/v3/api-docs
+       - name: 7. AI Service
+         url: /api/ai/v3/api-docs
