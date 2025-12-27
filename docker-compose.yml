@@ -47,8 +47,8 @@ services:
   eureka-server:
     build: ./eureka-server
     container_name: eureka-server
-    ports:
-      - "8761:8761"
+    #    ports:
+    #      - "8761:8761"
     networks:
       - backend
     restart: unless-stopped
@@ -82,8 +82,8 @@ services:
   product-service:
     build: ./product-service
     container_name: product-service
-    ports:
-      - "8084:8084"
+    #    ports:
+    #      - "8084:8084"
     depends_on:
       - eureka-server
       - product-db
@@ -105,8 +105,8 @@ services:
       POSTGRES_DB: product_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    ports:
-      - "5436:5432"
+    #    ports:
+    #      - "5436:5432"
     volumes:
       - product_data:/var/lib/postgresql/data
     networks:
@@ -115,8 +115,8 @@ services:
   user-service:
     build: ./user-service
     container_name: user-service
-    ports:
-      - "8086:8086"
+    #    ports:
+    #      - "8086:8086"
     depends_on:
       - eureka-server
       - user-db
@@ -138,8 +138,8 @@ services:
       POSTGRES_DB: user_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    ports:
-      - "5435:5432"
+    #    ports:
+    #      - "5435:5432"
     volumes:
       - user_data:/var/lib/postgresql/data
     networks:
@@ -150,8 +150,8 @@ services:
     container_name: ai-service
     env_file:
       - .env
-    ports:
-      - "9000:9000"
+    #    ports:
+    #      - "9000:9000"
     depends_on:
       - eureka-server
     networks:
@@ -166,8 +166,8 @@ services:
   order-service:
     build: ./order-service
     container_name: order-service
-    ports:
-      - "8085:8085"
+    #    ports:
+    #      - "8085:8085"
     depends_on:
       - eureka-server
       - order-db
@@ -190,8 +190,8 @@ services:
       POSTGRES_DB: order_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    ports:
-      - "5437:5432"
+    #    ports:
+    #      - "5437:5432"
     volumes:
       - order_data:/var/lib/postgresql/data
     networks:
@@ -200,8 +200,8 @@ services:
   inventory-service:
     build: ./inventory-service
     container_name: inventory-service
-    ports:
-      - "8083:8083"
+    #    ports:
+    #      - "8083:8083"
     depends_on:
       - eureka-server
       - inventory-db
@@ -226,8 +226,8 @@ services:
       POSTGRES_DB: inventory_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    ports:
-      - "5438:5432"
+    #    ports:
+    #      - "5438:5432"
     volumes:
       - inventory_data:/var/lib/postgresql/data
     networks:
@@ -236,8 +236,8 @@ services:
   notification-service:
     build: ./notification-service
     container_name: notification-service
-    ports:
-      - "8087:8087"
+    #    ports:
+    #      - "8087:8087"
     depends_on:
       - eureka-server
       - kafka
@@ -252,8 +252,8 @@ services:
   delivery-service:
     build: ./delivery-service
     container_name: delivery-service
-    ports:
-      - "8089:8089"
+    #    ports:
+    #      - "8089:8089"
     depends_on:
       - eureka-server
       - delivery-db
@@ -275,8 +275,8 @@ services:
       POSTGRES_DB: delivery_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
-    ports:
-      - "5441:5432"
+    #    ports:
+    #      - "5441:5432"
     volumes:
       - delivery_data:/var/lib/postgresql/data
     networks:
@@ -286,8 +286,8 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: always
-    ports:
-      - "6379:6379"
+    #    ports:
+    #      - "6379:6379"
     networks:
       - backend
     command: [ "redis-server", "--appendonly", "yes" ]
@@ -299,8 +299,8 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.4
     container_name: zookeeper
-    ports:
-      - "2181:2181"
+    #    ports:
+    #      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -324,8 +324,8 @@ services:
     container_name: kafka
     depends_on:
       - zookeeper
-    ports:
-      - "9092:9092"
+    #    ports:
+    #      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -387,8 +387,8 @@ services:
     restart: unless-stopped
     depends_on:
       - kafka
-    ports:
-      - "9090:8080"
+    #    ports:
+    #      - "9090:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
